@@ -204,6 +204,84 @@ class MobileNetworkApiController extends Controller
     }
 
     /**
+     * Discover unregistered/unconfigured ONUs connected to an OLT (optionally filtered by PON port).
+     * GET /api/mobile/network/olts/{id}/unregistered-onus
+     */
+    public function unregisteredOnus(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $query = Olt::withoutGlobalScopes()->where('id', $id);
+
+        $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
+        if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
+            $query->forReseller($user);
+        } elseif ($user && !empty($user->branch_id)) {
+            $query->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
+
+        $olt = $query->first();
+        if (!$olt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'OLT tidak ditemukan atau berada di luar cakupan akses Anda.',
+            ], 404);
+        }
+
+        $ponPort = $request->query('pon_port') ? (int) $request->query('pon_port') : null;
+
+        $unregistered = [];
+        try {
+            $registry = app(\App\Services\Adapters\Provisioning\OltRegistry::class);
+            $driver = $registry->forOlt($olt);
+            $discovered = $driver->discoverUnregisteredOnus();
+            if (is_array($discovered)) {
+                $unregistered = $discovered;
+            }
+        } catch (\Throwable $e) {
+            \Log::warning("[unregisteredOnus] OLT {$id} discovery error: " . $e->getMessage());
+        }
+
+        // Filter by PON port if requested
+        if ($ponPort !== null && !empty($unregistered)) {
+            $unregistered = array_values(array_filter($unregistered, function ($item) use ($ponPort) {
+                return isset($item['pon_port']) && (int) $item['pon_port'] === $ponPort;
+            }));
+        }
+
+        // Brownfield/Offline fallback: jika hardware OLT belum terhubung langsung, ambil dari database inventory unprovisioned
+        if (empty($unregistered)) {
+            $dbQuery = Onu::withoutGlobalScopes()
+                ->where('olt_id', $olt->id)
+                ->whereIn('provision_status', ['unprovisioned', 'pending', 'new']);
+            if ($ponPort !== null) {
+                $dbQuery->where('pon_port', $ponPort);
+            }
+            $dbOnus = $dbQuery->limit(10)->get();
+            foreach ($dbOnus as $dbOnu) {
+                $unregistered[] = [
+                    'pon_port' => (int) ($dbOnu->pon_port ?: $ponPort ?: 1),
+                    'onu_id' => (int) ($dbOnu->onu_id_on_olt ?: 1),
+                    'serial_number' => strtoupper($dbOnu->serial_number),
+                    'vendor_oui' => strtoupper(substr($dbOnu->serial_number, 0, 4)),
+                    'source' => 'inventory',
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => count($unregistered) > 0
+                ? 'Ditemukan ' . count($unregistered) . ' ONT unconfigured di OLT ' . $olt->name . ($ponPort ? " (Port PON {$ponPort})" : '') . '.'
+                : 'Tidak ada ONT unconfigured yang terdeteksi di OLT ' . $olt->name . ($ponPort ? " (Port PON {$ponPort})" : '') . '.',
+            'count' => count($unregistered),
+            'data' => $unregistered,
+        ]);
+    }
+
+    /**
      * Poll and synchronize OLT to discover newly connected ONUs.
      * POST /api/mobile/network/olts/{id}/sync
      */
@@ -527,8 +605,9 @@ class MobileNetworkApiController extends Controller
             'odp_port' => 'nullable|integer|min:1|max:64',
             'olt_id' => 'nullable|integer',
             'pon_port' => 'nullable|integer|min:1|max:64',
+            'wifi_security_mode' => 'nullable|string|in:wpa2,open,wpa_mixed,wpa3',
             'wifi_ssid' => 'nullable|string|max:32',
-            'wifi_password' => 'nullable|string|min:8|max:64',
+            'wifi_password' => 'nullable|string|max:64',
             'pppoe_username' => 'nullable|string|max:100',
             'pppoe_password' => 'nullable|string|max:100',
             'optical_power' => 'nullable|numeric',
@@ -583,8 +662,16 @@ class MobileNetworkApiController extends Controller
         }
 
         $sn = strtoupper(trim($validated['serial_number']));
+        $wifiSecMode = $validated['wifi_security_mode'] ?? 'wpa2';
 
-        return DB::transaction(function () use ($validated, $user, $sn) {
+        if ($wifiSecMode !== 'open' && !empty($validated['wifi_password']) && strlen($validated['wifi_password']) < 8) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Password Wi-Fi minimal 8 karakter untuk mode keamanan WPA2/Mixed.',
+            ], 422);
+        }
+
+        return DB::transaction(function () use ($validated, $user, $sn, $wifiSecMode) {
             // 1. Find or create ONU record
             $onu = Onu::withoutGlobalScopes()->where('serial_number', $sn)->first();
 
@@ -608,7 +695,9 @@ class MobileNetworkApiController extends Controller
             if (!empty($validated['wifi_ssid'])) {
                 $onu->wifi_ssid = trim($validated['wifi_ssid']);
             }
-            if (!empty($validated['wifi_password'])) {
+            if ($wifiSecMode === 'open') {
+                $onu->wifi_password = null;
+            } elseif (!empty($validated['wifi_password'])) {
                 $onu->wifi_password = trim($validated['wifi_password']);
             }
             if (!empty($validated['olt_id'])) {
@@ -1567,8 +1656,16 @@ class MobileNetworkApiController extends Controller
 
         $user = $request->user();
         $sn = strtoupper(trim($validated['serial_number']));
+        $wifiSecMode = $validated['wifi_security_mode'] ?? 'wpa2';
 
-        return DB::transaction(function () use ($validated, $user, $sn) {
+        if ($wifiSecMode !== 'open' && !empty($validated['wifi_password']) && strlen($validated['wifi_password']) < 8) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Password Wi-Fi minimal 8 karakter untuk mode keamanan WPA2/Mixed.',
+            ], 422);
+        }
+
+        return DB::transaction(function () use ($validated, $user, $sn, $wifiSecMode) {
             $onu = Onu::withoutGlobalScopes()->where('serial_number', $sn)->firstOrFail();
 
             // Reseller / Tenant boundary check
