@@ -116,10 +116,14 @@ class Wizard extends Component
                     'survey.prospect',
                 ]);
 
-            $requisitionQuery = \App\Models\Inventory\InventoryRequisition::withoutGlobalScopes()
-                ->where('work_order_type', 'psb')
-                ->whereIn('status', ['approved', 'dispatched'])
-                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()]);
+            $hasRequisitionsTable = \Illuminate\Support\Facades\Schema::hasTable('inventory_requisitions');
+            $requisitions = collect();
+            if ($hasRequisitionsTable) {
+                $requisitionQuery = \App\Models\Inventory\InventoryRequisition::withoutGlobalScopes()
+                    ->where('work_order_type', 'psb')
+                    ->whereIn('status', ['approved', 'dispatched'])
+                    ->with(['customer' => fn($q) => $q->withoutGlobalScopes()]);
+            }
 
             $hasTicketTechIds = \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'technician_ids');
             $hasInstTechIds = \Illuminate\Support\Facades\Schema::hasColumn('installations', 'technician_ids');
@@ -140,12 +144,16 @@ class Wizard extends Component
                         $q->orWhereJsonContains('technician_ids', $user->id);
                     }
                 });
-                $requisitionQuery->where('designated_technician_id', $user->id);
+                if ($hasRequisitionsTable) {
+                    $requisitionQuery->where('designated_technician_id', $user->id);
+                }
             }
 
             $tickets = $ticketQuery->latest()->get();
             $installations = $installationQuery->latest()->get();
-            $requisitions = $requisitionQuery->latest()->get();
+            if ($hasRequisitionsTable) {
+                $requisitions = $requisitionQuery->latest()->get();
+            }
 
             $totalWorkOrders = $tickets->count() + $installations->count() + $requisitions->count();
 
@@ -293,7 +301,7 @@ class Wizard extends Component
                 $this->hasAccess = true;
                 $this->tryAutoDetectPackage($inst->notes, $inst->customer_id);
             }
-        } elseif ($type === 'requisition') {
+        } elseif ($type === 'requisition' && \Illuminate\Support\Facades\Schema::hasTable('inventory_requisitions')) {
             $req = \App\Models\Inventory\InventoryRequisition::withoutGlobalScopes()->with(['customer'])->find($id);
             if ($req) {
                 $this->requisition_id = $req->id;
@@ -981,12 +989,7 @@ class Wizard extends Component
         $q = trim($query);
         $user = auth()->user();
 
-        $builder = Customer::withoutGlobalScopes()
-            ->where(function ($sq) {
-                $sq->whereNull('code')
-                  ->orWhere('code', 'not like', 'GST-%')
-                  ->orWhereHas('customerServices');
-            });
+        $builder = Customer::withoutGlobalScopes();
 
         // Jika user memiliki branch_id, izinkan pelanggan di cabang tersebut atau pelanggan unassigned
         if ($user && $user->branch_id && !$user->isSuperAdmin()) {
@@ -1006,7 +1009,7 @@ class Wizard extends Component
                 });
             })
             ->latest('id')
-            ->take(30)
+            ->take(50)
             ->get(['id', 'name', 'phone', 'code', 'address'])
             ->map(function ($c) {
                 $name = !empty(trim($c->name)) ? $c->name : 'Pelanggan #' . $c->id;
@@ -1104,7 +1107,16 @@ class Wizard extends Component
         $c = Customer::withoutGlobalScopes()->find($this->customer_id);
         if (!$c) return null;
         $name = !empty(trim($c->name)) ? $c->name : 'Pelanggan #' . $c->id;
-        return "{$name} ({$c->phone})";
+        return $c->phone ? "{$name} ({$c->phone})" : $name;
+    }
+
+    public function getSelectedCustomerSublabelProperty(): ?string
+    {
+        if (!$this->customer_id) return null;
+        $c = Customer::withoutGlobalScopes()->find($this->customer_id);
+        if (!$c) return null;
+        $details = array_filter([$c->phone, $c->code, $c->address ? \Illuminate\Support\Str::limit($c->address, 30) : null]);
+        return implode(' • ', $details);
     }
 
     public function getSelectedServiceProfileProperty()
@@ -1254,11 +1266,33 @@ class Wizard extends Component
             })
             ->toArray();
 
+        $customersOptions = Customer::withoutGlobalScopes()
+            ->when($user && $user->branch_id && !$user->isSuperAdmin(), function ($bq) use ($user) {
+                $bq->where(function ($sub) use ($user) {
+                    $sub->where('branch_id', $user->branch_id)
+                       ->orWhereNull('branch_id');
+                });
+            })
+            ->latest('id')
+            ->take(100)
+            ->get(['id', 'name', 'phone', 'code', 'address'])
+            ->map(function ($c) {
+                $name = !empty(trim($c->name)) ? $c->name : 'Pelanggan #' . $c->id;
+                $details = array_filter([$c->phone, $c->code, $c->address ? \Illuminate\Support\Str::limit($c->address, 30) : null]);
+                return [
+                    'value' => (string) $c->id,
+                    'label' => $name,
+                    'sublabel' => implode(' • ', $details),
+                ];
+            })
+            ->toArray();
+
         $olts = Olt::withoutGlobalScopes()->get();
         $vendors = \App\Models\ISP\Vendor::withoutGlobalScopes()->get();
         $allOdps = Odp::withoutGlobalScopes()->orderBy('name')->get();
 
         return view('livewire.isp.technician.installation.wizard', [
+            'customersOptions' => $customersOptions,
             'servicesOptions' => $servicesOptions,
             'serviceRecords' => $filteredRecords,
             'allServiceRecords' => $serviceRecords,

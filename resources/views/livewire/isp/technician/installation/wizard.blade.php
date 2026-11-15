@@ -175,14 +175,15 @@
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-[#DCE6F5] dark:border-slate-700 p-4">
             <div class="flex items-center justify-between relative mb-3">
                 <div class="absolute left-0 top-4 w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-full z-0"></div>
-                <div class="absolute left-0 top-4 h-1 bg-[#0866F5] rounded-full z-0 transition-all duration-300" style="width: {{ $currentStep >= 7 ? '100%' : ((($currentStep - 1) / 6) * 100) }}%"></div>
+                <div class="absolute left-0 top-4 h-1 bg-blue-600 rounded-full z-0 transition-all duration-300" style="background-color: #0866F5; width: {{ $currentStep >= 7 ? '100%' : ((($currentStep - 1) / 6) * 100) }}%"></div>
                 @foreach(range(1, 7) as $step)
                     <div class="relative z-10 flex flex-col items-center">
                         <button type="button" 
                             @if($step < $currentStep && $currentStep < 7) wire:click="goToStep({{ $step }})" @else disabled @endif
+                            style="{{ $currentStep === $step ? 'background-color: #0866F5 !important; color: #ffffff !important;' : ($currentStep > $step ? 'background-color: #16A36A !important; color: #ffffff !important;' : '') }}"
                             class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-sm
-                            {{ $currentStep === $step ? 'bg-[#0866F5] text-white ring-4 ring-blue-100 dark:ring-blue-900/50 scale-105' :
-                              ($currentStep > $step ? 'bg-[#16A36A] text-white cursor-pointer hover:opacity-90' : 'bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700') }}">
+                            {{ $currentStep === $step ? 'bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900/50 scale-105' :
+                              ($currentStep > $step ? 'bg-emerald-600 text-white cursor-pointer hover:opacity-90' : 'bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700') }}">
                             @if($currentStep > $step)
                                 <span class="material-symbols-outlined" style="font-size:16px">check</span>
                             @else
@@ -241,10 +242,10 @@
                     <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">person</span> Data Pelanggan
                 </h3>
 
-                @if(!$isRestrictedTechnician)
+                @if(!$isRestrictedTechnician || empty($activeWorkOrder))
                     <div class="bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl flex items-center shadow-inner mb-5">
-                        <button wire:click="$set('is_new_customer', true)" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all {{ $is_new_customer ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400' }}">Baru</button>
-                        <button wire:click="$set('is_new_customer', false)" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all {{ !$is_new_customer ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400' }}">Terdaftar</button>
+                        <button type="button" wire:click="$set('is_new_customer', true)" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all {{ $is_new_customer ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400' }}">Baru</button>
+                        <button type="button" wire:click="$set('is_new_customer', false)" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all {{ !$is_new_customer ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400' }}">Terdaftar</button>
                     </div>
                 @endif
 
@@ -281,7 +282,7 @@
                     </div>
                 @else
                     <div class="space-y-3">
-                        @if($isRestrictedTechnician && $this->selectedCustomer)
+                        @if($isRestrictedTechnician && $this->selectedCustomer && !empty($activeWorkOrder))
                             <div class="p-4 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
                                 <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pelanggan Sesuai Surat Tugas</div>
                                 <div class="text-base font-bold text-slate-900 dark:text-white">{{ $this->selectedCustomer->name }}</div>
@@ -315,12 +316,14 @@
                             </div>
                         @else
                             <x-ds-searchable-select
-                                wire:model="customer_id"
-                                strategy="remote"
+                                wire:model.live="customer_id"
+                                strategy="local"
+                                :options="$customersOptions"
                                 search-action="searchCustomers"
                                 placeholder="-- Pilih Pelanggan Terdaftar --"
                                 search-placeholder="Cari nama, nomor HP, atau kode..."
                                 :selected-label="$this->selectedCustomerLabel"
+                                :selected-sublabel="$this->selectedCustomerSublabel"
                                 :error="$errors->first('customer_id')"
                             />
 
@@ -1086,17 +1089,17 @@
         @if($currentStep < 7)
         <div class="mt-6 flex gap-2">
             @if($currentStep > 1)
-                <button wire:click="previousStep" class="w-1/3 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors">
+                <button type="button" wire:click="previousStep" class="w-1/3 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors">
                     Kembali
                 </button>
             @endif
             @if($currentStep < 6)
-                <button wire:click="nextStep" class="{{ $currentStep > 1 ? 'w-2/3' : 'w-full' }} py-3.5 bg-[#0866F5] text-white rounded-xl font-bold text-sm hover:bg-blue-600 flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 active:scale-95 transition-transform">
+                <button type="button" wire:click="nextStep" style="background-color: #0866F5 !important; color: #ffffff !important;" class="{{ $currentStep > 1 ? 'w-2/3' : 'w-full' }} py-3.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 active:bg-blue-800 flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 active:scale-95 transition-all">
                     <span>Lanjut</span>
                     <span class="material-symbols-outlined shrink-0" style="font-size:18px">arrow_forward</span>
                 </button>
             @else
-                <button wire:click="submit" wire:loading.attr="disabled" class="w-2/3 py-3.5 bg-[#16A36A] text-white rounded-xl font-black text-sm hover:bg-emerald-700 active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20">
+                <button type="button" wire:click="submit" wire:loading.attr="disabled" style="background-color: #16A36A !important; color: #ffffff !important;" class="w-2/3 py-3.5 bg-emerald-600 text-white rounded-xl font-black text-sm hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20">
                     <span wire:loading.remove wire:target="submit" class="flex items-center gap-2 justify-center">
                         <span class="material-symbols-outlined shrink-0" style="font-size:18px">rocket_launch</span>
                         AKTIFKAN SEKARANG
