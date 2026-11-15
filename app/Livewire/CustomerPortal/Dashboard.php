@@ -42,11 +42,14 @@ class Dashboard extends Component
     public function render()
     {
         $dashboardService = app(CustomerDashboardService::class);
-        $data = $dashboardService->getDashboardData($this->customer->id);
+        $data = $this->customer ? $dashboardService->getDashboardData($this->customer->id) : [];
+
+        if ($this->customer) {
+            $data['customer'] = $this->customer;
+        }
 
         // Explicitly compute primary_service once as SSOT so blade never gets Undefined variable
-        // (Blade computes it in @php block too, but this ensures it's bound via view()->with())
-        if (!isset($data['primary_service'])) {
+        if (!isset($data['primary_service']) && isset($data['customer_services'])) {
             $data['primary_service'] = $data['customer_services']->first() ?? null;
         }
         return view('livewire.customer-portal.dashboard', $data);

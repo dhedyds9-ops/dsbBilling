@@ -1,5 +1,5 @@
 @php
-    $customer = \App\Models\CRM\Customer::where('user_id', auth()->id())->first();
+    $customer = $customer ?? \App\Models\CRM\Customer::where('user_id', auth()->id())->first();
     $companyName = \App\Models\Setting::getValue('company.name', config('app.name', 'dsBilling'));
     $planName = $service_profile?->name ?? null;
     $dlSpeed = $service_profile?->download_speed ?? null;
@@ -103,10 +103,10 @@
             <div class="flex justify-between items-start mb-4">
                 <div>
                     <p class="text-xs text-slate-500 dark:text-slate-400">Nama Pelanggan</p>
-                    <p class="font-bold text-lg text-slate-900 dark:text-slate-100">{{ $customer->name ?? auth()->user()->name }}</p>
+                    <p class="font-bold text-lg text-slate-900 dark:text-slate-100">{{ $customer?->name ?? auth()->user()?->name ?? 'Pelanggan' }}</p>
                 </div>
                 <div class="text-right">
-                    <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">ID: {{ $customer->code ?? 'N/A' }}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">ID: {{ $customer?->code ?? 'N/A' }}</p>
                     <div class="inline-flex items-center gap-1.5 mt-1 {{ ($internet_status['is_online'] ?? false) || in_array($internet_status['status'], ['online', 'active']) ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}">
                         <span class="w-1.5 h-1.5 rounded-full {{ ($internet_status['is_online'] ?? false) ? 'bg-emerald-500 animate-pulse' : (in_array($internet_status['status'], ['online', 'active']) ? 'bg-emerald-400' : 'bg-red-500') }}"></span>
                         <span class="text-xs font-semibold">{{ ($internet_status['is_online'] ?? false) ? 'Internet Online' : (in_array($internet_status['status'], ['online', 'active']) ? 'Layanan Aktif' : 'Internet Offline') }}</span>

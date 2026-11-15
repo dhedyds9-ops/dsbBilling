@@ -176,18 +176,52 @@ class MobileCustomerApiController extends Controller
      */
     public function serviceProfiles(Request $request): JsonResponse
     {
-        $profiles = ServiceProfile::query()
-            ->where(function ($q) {
-                $q->where('is_active', true)
-                  ->orWhere('is_active', 1)
-                  ->orWhereNull('is_active');
-            })
-            ->orderBy('price', 'asc')
-            ->get(['id', 'name', 'price', 'speed_limit', 'category', 'billing_type']);
+        $user = $request->user();
+        $query = ServiceProfile::withoutGlobalScopes();
+
+        if ($user && $user->branch_id && method_exists($user, 'isSuperAdmin') && !$user->isSuperAdmin()) {
+            $query->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
+
+        $records = $query->where(function ($q) {
+            $q->whereNull('status')
+              ->orWhere('status', '')
+              ->orWhereIn(DB::raw('LOWER(status)'), ['active', 'enabled', '1', 'actived', 'aktif']);
+        })->orderBy('base_price', 'asc')->get();
+
+        if ($records->isEmpty()) {
+            $records = ServiceProfile::withoutGlobalScopes()->orderBy('name', 'asc')->get();
+        }
+
+        $data = $records->map(function ($p) {
+            $price = (float) ($p->base_price ?? $p->price ?? 0);
+            $speed = null;
+            if ($p->download_speed && $p->upload_speed) {
+                $speed = "{$p->download_speed} / {$p->upload_speed}";
+            } elseif ($p->download_speed) {
+                $speed = "{$p->download_speed} Down";
+            } elseif (!empty($p->speed_limit)) {
+                $speed = $p->speed_limit;
+            } else {
+                $speed = "Up to 50 Mbps";
+            }
+
+            return [
+                'id' => (int) $p->id,
+                'name' => (string) $p->name,
+                'price' => $price,
+                'speed_limit' => $speed,
+                'category' => (string) ($p->service_type ?? $p->package_type ?? 'broadband'),
+                'billing_type' => (string) ($p->billing_cycle ?? 'monthly'),
+            ];
+        });
 
         return response()->json([
             'success' => true,
-            'data' => $profiles,
+            'data' => $data,
         ]);
     }
 
