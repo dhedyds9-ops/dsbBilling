@@ -17,10 +17,19 @@ class Psb extends Component
         $user = auth()->user();
         $isAdmin = $user && ($user->isSuperAdmin() || $user->hasRole(['administrator', 'superadmin', 'admin', 'manager']));
 
+        $hasTicketTechIds = \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'technician_ids');
+
         $jobs = Ticket::withoutGlobalScopes()
             ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
             ->whereIn('category', ['psb', 'installation'])
-            ->when(!$isAdmin, fn ($q) => $q->where('assigned_to', $user->id))
+            ->when(!$isAdmin, function ($q) use ($user, $hasTicketTechIds) {
+                $q->where(function ($sub) use ($user, $hasTicketTechIds) {
+                    $sub->where('assigned_to', $user->id);
+                    if ($hasTicketTechIds) {
+                        $sub->orWhereJsonContains('technician_ids', $user->id);
+                    }
+                });
+            })
             ->whereIn('status', ['open', 'in_progress'])
             ->latest()
             ->paginate(10);

@@ -87,7 +87,7 @@ class Wizard extends Component
 
         $user = auth()->user();
         $isAdmin = $user && ($user->isSuperAdmin() || $user->hasRole(['administrator', 'superadmin', 'admin', 'manager', 'dispatcher']));
-        $this->isRestrictedTechnician = true; // Kunci total di portal teknisi: semua instalasi harus berbasis SPK/Tiket PSB sah
+        $this->isRestrictedTechnician = !$isAdmin; // Staf lapangan terkunci pada SPK resmi; Admin/Dispatcher memiliki akses penuh mandiri
 
         // Auto pre-populate from query parameters (PSB, Work Order, CRM Installation, or Ticket)
         $customerId = request()->query('customer_id');
@@ -145,9 +145,14 @@ class Wizard extends Component
 
             // 1. KUNCI TOTAL: Jika tidak ada Surat Tugas / SPK PSB apapun di sistem / untuk teknisi:
             if ($totalWorkOrders === 0 && empty($ticketId) && empty($installationId) && empty($requisitionId)) {
-                $this->hasAccess = false;
-                $this->requireWorkOrderSelection = false;
-                return;
+                if ($isAdmin) {
+                    $this->hasAccess = true;
+                    $this->requireWorkOrderSelection = false;
+                } else {
+                    $this->hasAccess = false;
+                    $this->requireWorkOrderSelection = false;
+                    return;
+                }
             }
 
             // 2. Jika ada parameter tiket / SPK di URL:
@@ -491,6 +496,10 @@ class Wizard extends Component
                 'onu_model' => 'required|string|max:255',
             ]);
 
+            if (!empty($this->wifi_password) && strlen(trim($this->wifi_password)) < 8) {
+                $this->addError('wifi_password', 'Password Wi-Fi minimal 8 karakter (standar keamanan WPA2).');
+            }
+
             $sn = strtoupper(trim($this->onu_sn));
             $existingOnu = \App\Models\ISP\Onu::where('serial_number', $sn)->first();
             if ($existingOnu) {
@@ -530,6 +539,11 @@ class Wizard extends Component
             'onu_vendor_id' => 'required|exists:vendors,id',
             'onu_model' => 'required|string|max:255',
         ]);
+
+        if (!empty($this->wifi_password) && strlen(trim($this->wifi_password)) < 8) {
+            $this->addError('wifi_password', 'Password Wi-Fi minimal 8 karakter (standar keamanan WPA2).');
+            return;
+        }
 
         // 2. Validasi & Penegakan Branch Isolation (P0-4)
         $user = auth()->user();

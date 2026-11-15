@@ -7,8 +7,10 @@ use Livewire\Attributes\Layout;
 #[Layout('layouts.technician-app')]
 class Show extends Component {
     public $jobId;
-    public function mount($id = null) {
-        $this->jobId = $id;
+    public array $breadcrumbs = [];
+
+    public function mount($job = null, $id = null) {
+        $this->jobId = $job ?? $id;
         $this->breadcrumbs = [
             ['label' => 'Technician Dashboard', 'url' => route('technician.dashboard')],
             ['label' => 'My Jobs', 'url' => route('technician.my-jobs.index')],

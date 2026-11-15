@@ -17,13 +17,13 @@
                     </div>
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <h3 class="text-lg font-bold text-slate-900 dark:text-white">{{ $job->customer->name ?? 'Pelanggan Tidak Diketahui' }}</h3>
+                            <h3 class="text-lg font-bold text-slate-900 dark:text-white">{{ $job->customer?->name ?? 'Pelanggan Tidak Diketahui' }}</h3>
                             <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">PSB</span>
                             <span class="bg-slate-100 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded dark:bg-slate-700 dark:text-slate-300">{{ $job->uuid }}</span>
                         </div>
                         <p class="text-sm text-slate-600 dark:text-slate-400 max-w-xl">{{ $job->description }}</p>
                         <div class="mt-2 text-xs text-slate-500 flex items-center gap-4">
-                            <span class="flex items-center gap-1"><span class="material-symbols-outlined notranslate text-[14px]" translate="no">location_on</span> {{ $job->customer->address ?? 'Alamat tidak tersedia' }}</span>
+                            <span class="flex items-center gap-1"><span class="material-symbols-outlined notranslate text-[14px]" translate="no">location_on</span> {{ $job->customer?->address ?? 'Alamat tidak tersedia' }}</span>
                             <span class="flex items-center gap-1"><span class="material-symbols-outlined notranslate text-[14px]" translate="no">calendar_today</span> {{ $job->created_at->format('d M Y, H:i') }}</span>
                         </div>
                     </div>

@@ -340,6 +340,13 @@
                 @endif
 
                 @if($job->job_type === 'ticket' && !$job->is_completed)
+                    @if(in_array(strtolower($job->category ?? ''), ['psb', 'installation', 'pasang baru']))
+                        <a href="{{ route('technician.installation.wizard', ['ticket' => $job->ticket_id, 'customer_id' => $job->customer_id]) }}"
+                           class="py-2 px-3 bg-[#0866F5] hover:bg-blue-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-base">rocket_launch</span>
+                            <span>Aktivasi PSB</span>
+                        </a>
+                    @endif
                     @if($job->status === 'open')
                         <button wire:click="startTicket({{ $job->ticket_id }})" type="button"
                                 class="py-2 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all">
@@ -409,6 +416,35 @@
                         <span class="material-symbols-outlined text-base">edit_document</span>
                         Input Hasil
                     </button>
+                @endif
+
+                @if($job->job_type === 'installation')
+                    @if(!$job->is_completed)
+                        <a href="{{ route('technician.installation.wizard', $job->source === 'installation' ? ['installation_id' => $job->raw_id, 'customer_id' => $job->customer_id] : ['customer_id' => $job->customer_id]) }}"
+                           class="flex-1 py-2 px-3 bg-[#0866F5] hover:bg-blue-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-base">rocket_launch</span>
+                            <span>Kerjakan Pasang Baru (PSB)</span>
+                        </a>
+                        @if($job->onu_sn)
+                            <a href="{{ route('technician.diagnostic.index', ['customer_id' => $job->customer_id]) }}"
+                               class="py-2 px-3 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/40 dark:hover:bg-sky-900/50 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-colors">
+                                <span class="material-symbols-outlined text-sm">troubleshoot</span>
+                                <span>Diagnosa</span>
+                            </a>
+                        @endif
+                    @else
+                        <span class="ml-auto py-1 px-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[10px] font-bold inline-flex items-center gap-1">
+                            <span class="material-symbols-outlined text-xs">verified</span>
+                            <span>Terpasang & Aktif</span>
+                        </span>
+                        @if($job->customer_id)
+                            <a href="{{ route('technician.diagnostic.index', ['customer_id' => $job->customer_id]) }}"
+                               class="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs inline-flex items-center gap-1 transition-colors">
+                                <span class="material-symbols-outlined text-sm">troubleshoot</span>
+                                <span>Cek Sinyal</span>
+                            </a>
+                        @endif
+                    @endif
                 @endif
             </div>
         </div>
