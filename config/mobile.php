@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10103,
-        'latest_version_name' => '1.1.3',
+        'latest_version_code' => 10104,
+        'latest_version_name' => '1.1.4',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'http://localhost') . '/downloads/dsbilling-mobile-release.apk',
-        'release_notes' => "dsBilling Staff & Teknisi v1.1.3:\n- Redesign Wizard Instalasi PSB INETS 7 Tahap sesuai standar ISP\n- Tampilan modern Hero Header dengan tower illustration\n- Memperbaiki daftar paket layanan & penyesuaian insets tombol kembali hp\n- Sinkronisasi instan kredensial PPPoE dan ODP.",
+        'release_notes' => "dsBilling Staff & Teknisi v1.1.4:\n- Normalisasi KPI Dashboard Teknisi (Stok Tangan bersih dari label Suspend/Billing)\n- Penjelasan dan pemisahan tegas SPK Berjalan vs SPK Selesai pada Tugas Harian\n- Integrasi langsung detail SPK Lapangan dengan Wizard Instalasi PSB 7 Tahap\n- Pemindai Barcode Kamera In-App (ZXing embedded) tanpa butuh aplikasi luar.",
     ],
     'customer' => [
         'latest_version_code' => 10103,
