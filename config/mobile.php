@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10105,
-        'latest_version_name' => '1.1.5',
+        'latest_version_code' => 10106,
+        'latest_version_name' => '1.1.6',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'http://localhost') . '/downloads/dsbilling-mobile-release.apk',
-        'release_notes' => "dsBilling Staff & Teknisi v1.1.5:\n- Penyesuaian penuh navigasi sistem Android (Diagnosa ONT, Stok Material, Tiket Gangguan & Speedtest)\n- Redesain tombol aksi Diagnosa ONT (Segarkan, Reboot, Wi-Fi, Swap, Speedtest) rapi 2-baris\n- Brand Logo ISP dinamis di header Wizard PSB\n- Filter cerdas paket wizard: hanya PPPoE & Hotspot (tanpa voucher)\n- Cerdas Hotspot: single input Username = Password otomatis.",
+        'release_notes' => "dsBilling Staff & Teknisi v1.1.6:\n- Penuntasan status SPK otomatis menjadi Selesai (Completed) saat aktivasi Wizard PSB berhasil\n- Resolusi otomatis tiket gangguan/penugasan dan SPK CRM saat instalasi tuntas\n- Auto-create dan aktivasi pelanggan baru (Customer & CustomerService) langsung dari pengerjaan wizard\n- Pencatatan otomatis pemakaian material kabel dropcore dan fast connector ke inventori operasional.",
     ],
     'customer' => [
         'latest_version_code' => 10103,

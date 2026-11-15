@@ -519,6 +519,9 @@ class MobileNetworkApiController extends Controller
             'model' => 'nullable|string|max:50',
             'work_order_id' => 'nullable|integer',
             'customer_id' => 'nullable|integer',
+            'customer_name' => 'nullable|string|max:150',
+            'customer_phone' => 'nullable|string|max:50',
+            'customer_address' => 'nullable|string|max:255',
             'service_profile_id' => 'nullable|integer',
             'odp_id' => 'nullable|integer',
             'odp_port' => 'nullable|integer|min:1|max:64',
@@ -640,6 +643,7 @@ class MobileNetworkApiController extends Controller
             // 3. If Work Order is referenced
             $workOrderInfo = null;
             $customerId = $validated['customer_id'] ?? null;
+            $wo = null;
 
             if (!empty($validated['work_order_id'])) {
                 $wo = WorkOrder::withoutGlobalScopes()->find($validated['work_order_id']);
@@ -662,13 +666,50 @@ class MobileNetworkApiController extends Controller
                     if (!empty($materialsUsed)) {
                         $wo->notes .= "\nPenggunaan Material: " . implode(', ', $materialsUsed);
                     }
-                    if (in_array($wo->status, ['assigned', 'pending'])) {
-                        $wo->status = 'in_progress';
-                        if (!$wo->started_at) {
-                            $wo->started_at = now();
-                        }
+
+                    // Tuntaskan status SPK menjadi Selesai (Completed) setelah wizard aktivasi sukses
+                    $wo->status = 'completed';
+                    if (!$wo->started_at) {
+                        $wo->started_at = now();
+                    }
+                    $wo->completed_at = now();
+                    if (isset($validated['optical_power']) && $validated['optical_power'] !== null) {
+                        $wo->optical_rx_power = (float) $validated['optical_power'];
                     }
                     $wo->save();
+
+                    // Sinkronkan status tiket gangguan/PSB terkait menjadi resolved
+                    if ($wo->ticket_id) {
+                        try {
+                            \App\Models\Support\Ticket::withoutGlobalScopes()
+                                ->where('id', $wo->ticket_id)
+                                ->update([
+                                    'status' => 'resolved',
+                                    'resolved_at' => now(),
+                                    'resolved_by' => $user->id,
+                                    'resolution_notes' => "PSB berhasil diaktivasi oleh teknisi {$user->name} (ONT SN: {$sn})",
+                                ]);
+                        } catch (\Throwable $te) {
+                            \Log::warning("[provisionOnt] Gagal update ticket dari work order: " . $te->getMessage());
+                        }
+                    }
+
+                    // Sinkronkan status SPK CRM Installation jika ada
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'installation_id') && $wo->installation_id) {
+                        try {
+                            \App\Models\CRM\Installation::withoutGlobalScopes()
+                                ->where('id', $wo->installation_id)
+                                ->update([
+                                    'status' => 'completed',
+                                    'completed_at' => now(),
+                                    'completed_by' => $user->id,
+                                    'onu_serial_number' => $sn,
+                                    'onu_id' => $onu->id,
+                                ]);
+                        } catch (\Throwable $ie) {
+                            \Log::warning("[provisionOnt] Gagal update installation dari work order: " . $ie->getMessage());
+                        }
+                    }
 
                     $workOrderInfo = [
                         'id' => $wo->id,
@@ -678,58 +719,195 @@ class MobileNetworkApiController extends Controller
                 }
             }
 
-            // 4. Link to CustomerService if customer is identified
+            // Catat pemakaian material kabel dropcore & fast connector pada tabel operasional
+            if ((!empty($validated['dropcore_meters']) || !empty($validated['fast_connector_qty'])) && \Illuminate\Support\Facades\Schema::hasTable('support_maintenance_materials')) {
+                try {
+                    if (!empty($validated['dropcore_meters']) && (int)$validated['dropcore_meters'] > 0) {
+                        $dc = \DB::table('support_maintenance_materials')->where('name', 'like', '%Dropcore%')->first();
+                        if ($dc) {
+                            \DB::table('support_maintenance_materials')->where('id', $dc->id)->decrement('stock', (int) $validated['dropcore_meters']);
+                        }
+                        \DB::table('support_maintenance_usages')->insert([
+                            'material_id' => $dc?->id,
+                            'material_name' => $dc?->name ?? 'Kabel Dropcore Optik 1 Core',
+                            'quantity' => (int) $validated['dropcore_meters'],
+                            'unit' => 'meter',
+                            'technician_id' => $user->id,
+                            'technician_name' => $user->name,
+                            'used_date' => now()->toDateString(),
+                            'notes' => 'PSB SPK #' . ($wo->id ?? '-') . ' oleh ' . $user->name,
+                            'created_by' => $user->id,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                    if (!empty($validated['fast_connector_qty']) && (int)$validated['fast_connector_qty'] > 0) {
+                        $fc = \DB::table('support_maintenance_materials')->where('name', 'like', '%Fast Connector%')->first();
+                        if ($fc) {
+                            \DB::table('support_maintenance_materials')->where('id', $fc->id)->decrement('stock', (int) $validated['fast_connector_qty']);
+                        }
+                        \DB::table('support_maintenance_usages')->insert([
+                            'material_id' => $fc?->id,
+                            'material_name' => $fc?->name ?? 'Fast Connector SC/UPC',
+                            'quantity' => (int) $validated['fast_connector_qty'],
+                            'unit' => 'pcs',
+                            'technician_id' => $user->id,
+                            'technician_name' => $user->name,
+                            'used_date' => now()->toDateString(),
+                            'notes' => 'PSB SPK #' . ($wo->id ?? '-') . ' oleh ' . $user->name,
+                            'created_by' => $user->id,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                } catch (\Throwable $me) {
+                    \Log::warning("[provisionOnt] Gagal catat pemakaian material: " . $me->getMessage());
+                }
+            }
+
+            // 4. Link atau Buat Pelanggan Baru (Customer) & CustomerService
             $customerInfo = null;
+            $customer = null;
+
             if ($customerId) {
                 $customer = Customer::withoutGlobalScopes()->find($customerId)
                          ?? \App\Models\User::withoutGlobalScopes()->find($customerId);
+            }
 
-                if ($customer) {
-                    $customerInfo = [
-                        'id' => $customer->id,
-                        'name' => $customer->name,
-                        'code' => $customer->code ?? $customer->customer_code ?? null,
-                    ];
+            // Jika Customer belum ada (misal SPK dibuat untuk calon pelanggan/lead baru), auto-create Customer
+            if (!$customer) {
+                $candName = trim((string) ($validated['customer_name'] ?? ''));
+                $candPhone = trim((string) ($validated['customer_phone'] ?? ''));
+                $candAddress = trim((string) ($validated['customer_address'] ?? ''));
 
-                    // Find or associate CustomerService
-                    $cs = CustomerService::withoutGlobalScopes()
-                        ->where('customer_id', $customerId)
-                        ->first();
+                // Jika nama belum dikirim langsung, ekstrak dari judul SPK (misal "PSB: Badru" -> "Badru")
+                if (empty($candName) && $wo) {
+                    $rawTitle = $wo->title ?? '';
+                    if (preg_match('/(?:PSB|Instalasi|Pasang Baru)[:\s-]+(.+)/i', $rawTitle, $matches)) {
+                        $candName = trim($matches[1]);
+                    } elseif (!empty($rawTitle)) {
+                        $candName = trim($rawTitle);
+                    }
+                }
 
-                    if ($cs) {
-                        $cs->onu_id = $onu->id;
-                        $cs->tr069_status = 'provisioned';
+                if (empty($candAddress) && $wo) {
+                    $candAddress = $wo->description ?: $wo->notes;
+                }
+
+                // Cek apakah sudah pernah terdaftar berdasarkan nomor telepon atau nama
+                if (!empty($candPhone) && $candPhone !== '-') {
+                    $customer = Customer::withoutGlobalScopes()->where('phone', $candPhone)->first();
+                }
+                if (!$customer && !empty($candName)) {
+                    $customer = Customer::withoutGlobalScopes()->where('name', $candName)->first();
+                }
+
+                // Jika benar-benar pelanggan baru, create ke tabel customers
+                if (!$customer && (!empty($candName) || !empty($candPhone))) {
+                    try {
+                        $customerCode = \App\Services\CRM\CustomerCodeGenerator::generate();
+                        $customer = Customer::create([
+                            'code' => $customerCode,
+                            'name' => $candName ?: ('Pelanggan ' . substr($sn, -6)),
+                            'phone' => $candPhone ?: '-',
+                            'address' => $candAddress ?: 'Alamat pemasangan lapangan',
+                            'status' => 'active',
+                            'branch_id' => $user->branch_id,
+                            'reseller_id' => $wo->reseller_id ?? $user->getEffectiveResellerId(),
+                            'created_by' => $user->id,
+                        ]);
+                    } catch (\Throwable $ce) {
+                        \Log::warning("[provisionOnt] Gagal auto-create Customer baru: " . $ce->getMessage());
+                    }
+                }
+            }
+
+            if ($customer) {
+                $customerId = $customer->id;
+
+                // Tautkan kembali Customer ID ke Work Order jika sebelumnya kosong
+                if ($wo && empty($wo->customer_id)) {
+                    $wo->customer_id = $customer->id;
+                    $wo->save();
+                }
+
+                $customerInfo = [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'code' => $customer->code ?? $customer->customer_code ?? null,
+                ];
+
+                // Cari atau buat CustomerService
+                $cs = CustomerService::withoutGlobalScopes()
+                    ->where('customer_id', $customerId)
+                    ->first();
+
+                if ($cs) {
+                    $cs->onu_id = $onu->id;
+                    $cs->tr069_status = 'provisioned';
+                    $cs->status = 'active';
+                    if (!empty($validated['service_profile_id'])) {
+                        $cs->service_profile_id = (int) $validated['service_profile_id'];
+                    }
+                    if (!empty($validated['pppoe_username'])) {
+                        $cs->username = trim($validated['pppoe_username']);
+                    }
+                    if (!empty($validated['pppoe_password'])) {
+                        $cs->password = bcrypt(trim($validated['pppoe_password']));
+                    }
+                    $cs->save();
+                } else {
+                    try {
+                        // Pastikan ada contract_id yang valid
+                        $contractId = \DB::table('contracts')->where('customer_id', $customerId)->value('id');
+                        if (!$contractId && \Illuminate\Support\Facades\Schema::hasTable('contracts')) {
+                            $contractId = \DB::table('contracts')->insertGetId([
+                                'uuid' => (string) Str::uuid(),
+                                'customer_id' => $customerId,
+                                'contract_number' => 'CTR-' . date('Ymd') . '-' . substr(strtoupper(md5(uniqid())), 0, 4),
+                                'start_date' => now(),
+                                'status' => 'active',
+                                'created_by' => $user->id,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
+
+                        $newCs = new CustomerService();
+                        $newCs->customer_id = $customerId;
+                        $newCs->uuid = (string) Str::uuid();
+                        $newCs->status = 'active';
+                        $newCs->branch_id = $user->branch_id;
+                        $newCs->reseller_id = $customer->reseller_id ?? $user->getEffectiveResellerId();
+                        $newCs->onu_id = $onu->id;
+                        $newCs->tr069_status = 'provisioned';
                         if (!empty($validated['service_profile_id'])) {
-                            $cs->service_profile_id = (int) $validated['service_profile_id'];
+                            $newCs->service_profile_id = (int) $validated['service_profile_id'];
                         }
-                        if (!empty($validated['pppoe_username'])) {
-                            $cs->username = trim($validated['pppoe_username']);
-                        }
-                        if (!empty($validated['pppoe_password'])) {
-                            $cs->password = bcrypt(trim($validated['pppoe_password']));
-                        }
-                        $cs->save();
-                    } else {
-                        // Attempt to link to contract or existing service if present
-                        try {
-                            $newCs = new CustomerService();
-                            $newCs->customer_id = $customerId;
-                            $newCs->uuid = (string) Str::uuid();
-                            $newCs->status = 'active';
-                            $newCs->branch_id = $user->branch_id;
-                            $newCs->onu_id = $onu->id;
-                            $newCs->tr069_status = 'provisioned';
-                            if (!empty($validated['service_profile_id'])) {
-                                $newCs->service_profile_id = (int) $validated['service_profile_id'];
-                            }
-                            $newCs->username = !empty($validated['pppoe_username']) ? trim($validated['pppoe_username']) : ('onu_' . strtolower(substr($sn, -6)));
-                            $newCs->password = !empty($validated['pppoe_password']) ? bcrypt(trim($validated['pppoe_password'])) : bcrypt(Str::random(12));
-                            $newCs->contract_id = \DB::table('contracts')->where('customer_id', $customerId)->value('id') ?? 1;
-                            $newCs->service_id = $validated['service_profile_id'] ?? (\DB::table('services')->value('id') ?? 1);
-                            $newCs->save();
-                        } catch (\Throwable $e) {
-                            \Log::info("Provision ONT: CustomerService link deferred: " . $e->getMessage());
-                        }
+                        $newCs->username = !empty($validated['pppoe_username']) ? trim($validated['pppoe_username']) : ('onu_' . strtolower(substr($sn, -6)));
+                        $newCs->password = !empty($validated['pppoe_password']) ? bcrypt(trim($validated['pppoe_password'])) : bcrypt(Str::random(12));
+                        $newCs->contract_id = $contractId ?: 1;
+                        $newCs->service_id = $validated['service_profile_id'] ?? (\DB::table('services')->value('id') ?? 1);
+                        $newCs->save();
+                    } catch (\Throwable $e) {
+                        \Log::info("Provision ONT: CustomerService link deferred: " . $e->getMessage());
+                    }
+                }
+
+                // Catat riwayat aktivasi resmi pada CRM
+                if (\Illuminate\Support\Facades\Schema::hasTable('activations')) {
+                    try {
+                        \App\Models\CRM\Activation::create([
+                            'uuid' => (string) Str::uuid(),
+                            'customer_name' => $customer->name,
+                            'activation_date' => now()->toDateString(),
+                            'service_package' => !empty($validated['service_profile_id']) ? ('Paket #' . $validated['service_profile_id']) : 'Internet Standar',
+                            'status' => 'completed',
+                            'notes' => "Aktivasi resmi via Mobile Wizard Teknisi {$user->name} (ONU SN: {$sn})",
+                            'created_by' => $user->id,
+                        ]);
+                    } catch (\Throwable $ae) {
+                        \Log::warning("[provisionOnt] Gagal catat CRM Activation: " . $ae->getMessage());
                     }
                 }
             }

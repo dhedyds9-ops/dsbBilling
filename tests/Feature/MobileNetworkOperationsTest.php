@@ -181,9 +181,10 @@ class MobileNetworkOperationsTest extends TestCase
             'provision_status' => 'provisioned',
         ]);
 
-        // Verify WorkOrder was updated with status in_progress and note
+        // Verify WorkOrder was completed upon successful provisioning and notes updated
         $wo->refresh();
-        $this->assertEquals('in_progress', $wo->status);
+        $this->assertEquals('completed', $wo->status);
+        $this->assertNotNull($wo->completed_at);
         $this->assertStringContainsString('FHTT12345678', $wo->notes);
     }
 
