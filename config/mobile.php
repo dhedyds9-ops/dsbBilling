@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10104,
-        'latest_version_name' => '1.1.4',
+        'latest_version_code' => 10105,
+        'latest_version_name' => '1.1.5',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'http://localhost') . '/downloads/dsbilling-mobile-release.apk',
-        'release_notes' => "dsBilling Staff & Teknisi v1.1.4:\n- Normalisasi KPI Dashboard Teknisi (Stok Tangan bersih dari label Suspend/Billing)\n- Penjelasan dan pemisahan tegas SPK Berjalan vs SPK Selesai pada Tugas Harian\n- Integrasi langsung detail SPK Lapangan dengan Wizard Instalasi PSB 7 Tahap\n- Pemindai Barcode Kamera In-App (ZXing embedded) tanpa butuh aplikasi luar.",
+        'release_notes' => "dsBilling Staff & Teknisi v1.1.5:\n- Penyesuaian penuh navigasi sistem Android (Diagnosa ONT, Stok Material, Tiket Gangguan & Speedtest)\n- Redesain tombol aksi Diagnosa ONT (Segarkan, Reboot, Wi-Fi, Swap, Speedtest) rapi 2-baris\n- Brand Logo ISP dinamis di header Wizard PSB\n- Filter cerdas paket wizard: hanya PPPoE & Hotspot (tanpa voucher)\n- Cerdas Hotspot: single input Username = Password otomatis.",
     ],
     'customer' => [
         'latest_version_code' => 10103,

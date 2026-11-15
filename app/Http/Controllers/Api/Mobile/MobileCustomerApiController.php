@@ -190,10 +190,23 @@ class MobileCustomerApiController extends Controller
             $q->whereNull('status')
               ->orWhere('status', '')
               ->orWhereIn(DB::raw('LOWER(status)'), ['active', 'enabled', '1', 'actived', 'aktif']);
+        })->where(function ($q) {
+            // Only allow PPPoE, Hotspot & Broadband packages; strictly exclude Voucher packages
+            $q->whereNull('service_type')
+              ->orWhereNotIn(DB::raw('LOWER(service_type)'), ['voucher']);
+        })->where(function ($q) {
+            $q->where(DB::raw('LOWER(name)'), 'NOT LIKE', '%voucher%');
         })->orderBy('base_price', 'asc')->get();
 
         if ($records->isEmpty()) {
-            $records = ServiceProfile::withoutGlobalScopes()->orderBy('name', 'asc')->get();
+            $records = ServiceProfile::withoutGlobalScopes()
+                ->where(function ($q) {
+                    $q->whereNull('service_type')
+                      ->orWhereNotIn(DB::raw('LOWER(service_type)'), ['voucher']);
+                })
+                ->where(DB::raw('LOWER(name)'), 'NOT LIKE', '%voucher%')
+                ->orderBy('name', 'asc')
+                ->get();
         }
 
         $data = $records->map(function ($p) {
