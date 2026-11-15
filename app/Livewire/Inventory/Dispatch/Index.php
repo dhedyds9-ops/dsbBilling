@@ -38,6 +38,10 @@ class Index extends Component
     public bool $showDetailModal = false;
     public ?int $selectedDispatchId = null;
 
+    // Serial Number Lookup & Checker
+    public ?array $snLookupResult = null;
+    public string $snLookupQuery = '';
+
     protected $queryString = [
         'search' => ['except' => ''],
         'warehouseFilter' => ['except' => ''],
@@ -173,6 +177,8 @@ class Index extends Component
         $this->selected_requisition_id = null;
         $this->notes = '';
         $this->dispatchItems = [];
+        $this->snLookupResult = null;
+        $this->snLookupQuery = '';
         $this->resetErrorBag();
     }
 
@@ -241,6 +247,122 @@ class Index extends Component
                 }
             }
         }
+    }
+
+    public function addScannedSerial(int $itemIndex, string $serialNumber)
+    {
+        $serial = strtoupper(trim($serialNumber));
+        if (empty($serial)) return;
+
+        if (!isset($this->dispatchItems[$itemIndex])) return;
+
+        $itemRow = &$this->dispatchItems[$itemIndex];
+        $itemId = (int) ($itemRow['item_id'] ?? 0);
+        $maxQty = (int) ($itemRow['quantity'] ?? 1);
+
+        $currentSelected = (array) ($itemRow['selected_serials'] ?? []);
+        $currentRaw = !empty($itemRow['serials_raw']) 
+            ? array_values(array_filter(array_map('trim', preg_split('/[\r\n,]+/', $itemRow['serials_raw'])))) 
+            : [];
+
+        if (in_array($serial, $currentSelected) || in_array($serial, $currentRaw)) {
+            session()->flash("serial_error_{$itemIndex}", "SN '{$serial}' sudah ada dalam daftar pilihan.");
+            return;
+        }
+
+        // Cek apakah SN ini berstatus in_warehouse di gudang yang dipilih
+        $existsInWarehouse = false;
+        if ($this->warehouse_id && $itemId) {
+            $existsInWarehouse = ItemSerial::where('item_id', $itemId)
+                ->where('warehouse_id', $this->warehouse_id)
+                ->where('status', 'in_warehouse')
+                ->where('serial_number', $serial)
+                ->exists();
+        }
+
+        if ($existsInWarehouse) {
+            $currentSelected[] = $serial;
+            $itemRow['selected_serials'] = array_values(array_unique($currentSelected));
+            session()->flash("serial_success_{$itemIndex}", "SN '{$serial}' (dari gudang) berhasil dipilih.");
+        } else {
+            $currentRaw[] = $serial;
+            $itemRow['serials_raw'] = implode("\n", array_values(array_unique($currentRaw)));
+            session()->flash("serial_success_{$itemIndex}", "SN '{$serial}' ditambahkan sebagai scan langsung / registrasi baru.");
+        }
+
+        $totalNow = count($itemRow['selected_serials'] ?? []) + (!empty($itemRow['serials_raw']) ? count(array_filter(array_map('trim', preg_split('/[\r\n,]+/', $itemRow['serials_raw'])))) : 0);
+        if ($totalNow > $maxQty) {
+            session()->flash("serial_warning_{$itemIndex}", "Perhatian: SN terpilih ({$totalNow}) melebihi kebutuhan unit ({$maxQty}).");
+        }
+    }
+
+    public function removeSelectedSerial(int $itemIndex, string $serialNumber)
+    {
+        if (!isset($this->dispatchItems[$itemIndex])) return;
+
+        $itemRow = &$this->dispatchItems[$itemIndex];
+
+        // Hapus dari selected_serials jika ada
+        if (!empty($itemRow['selected_serials'])) {
+            $itemRow['selected_serials'] = array_values(array_filter(
+                (array) $itemRow['selected_serials'],
+                fn($sn) => $sn !== $serialNumber
+            ));
+        }
+
+        // Hapus dari serials_raw jika ada
+        if (!empty($itemRow['serials_raw'])) {
+            $rawList = array_values(array_filter(array_map('trim', preg_split('/[\r\n,]+/', $itemRow['serials_raw']))));
+            $rawList = array_values(array_filter($rawList, fn($sn) => $sn !== $serialNumber));
+            $itemRow['serials_raw'] = implode("\n", $rawList);
+        }
+
+        session()->flash("serial_success_{$itemIndex}", "SN '{$serialNumber}' telah dihapus dari daftar pilihan.");
+    }
+
+    public function lookupSerial(string $serialNumber = '')
+    {
+        $sn = strtoupper(trim($serialNumber ?: $this->snLookupQuery));
+        if (empty($sn)) return;
+
+        $this->snLookupQuery = $sn;
+        $serial = ItemSerial::withoutGlobalScopes()
+            ->with(['item', 'warehouse', 'custodian', 'customer', 'branch'])
+            ->where('serial_number', $sn)
+            ->first();
+
+        if ($serial) {
+            $this->snLookupResult = [
+                'found' => true,
+                'serial_number' => $serial->serial_number,
+                'item_name' => $serial->item?->name ?? 'Perangkat',
+                'status' => $serial->status,
+                'status_label' => match($serial->status) {
+                    'in_warehouse' => 'Tersedia di Gudang (' . ($serial->warehouse?->name ?? 'Gudang') . ')',
+                    'in_custody_technician' => 'Dipegang Teknisi (' . ($serial->custodian?->name ?? '-') . ')',
+                    'in_custody_reseller' => 'Dipegang Reseller (' . ($serial->custodian?->name ?? '-') . ')',
+                    'installed' => 'Terpasang di Pelanggan (' . ($serial->customer?->name ?? '-') . ')',
+                    'damaged' => 'Kondisi Rusak (Damaged)',
+                    'returned_check' => 'Pemeriksaan Retur',
+                    default => $serial->status,
+                },
+                'warehouse' => $serial->warehouse?->name ?? '-',
+                'custodian' => $serial->custodian?->name ?? '-',
+                'customer' => $serial->customer?->name ?? '-',
+            ];
+        } else {
+            $this->snLookupResult = [
+                'found' => false,
+                'serial_number' => $sn,
+                'message' => 'SN belum terdaftar di database. Anda dapat langsung mengeluarkannya, sistem akan otomatis mendaftarkannya ke sistem.',
+            ];
+        }
+    }
+
+    public function clearLookupResult()
+    {
+        $this->snLookupResult = null;
+        $this->snLookupQuery = '';
     }
 
     public function saveDispatch(StockMutationService $mutationService)
@@ -361,6 +483,9 @@ class Index extends Component
                     ->orWhere('notes', 'like', $s)
                     ->orWhereHas('recipient', function ($rq) use ($s) {
                         $rq->where('name', 'like', $s);
+                    })
+                    ->orWhereHas('custodies.itemSerial', function ($sq) use ($s) {
+                        $sq->where('serial_number', 'like', $s);
                     });
             });
         }
