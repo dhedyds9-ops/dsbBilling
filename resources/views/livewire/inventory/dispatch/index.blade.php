@@ -207,7 +207,7 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Penerima Fisik Barang (Pemegang Sementara) *</label>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Penerima Fisik Barang *</label>
                             <select wire:model="recipient_id" required
                                     class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200 font-bold">
                                 <option value="">-- Pilih Penerima --</option>

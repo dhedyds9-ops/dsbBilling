@@ -426,6 +426,16 @@ class Index extends Component
                 ->where('item_id', $item->id)
                 ->first();
             $availableStock = $stock ? (float) $stock->quantity : 0.0;
+
+            // Jika barang berserial, hitung juga jumlah unit fisik berstatus 'in_warehouse' di gudang ini
+            if ($item->is_serialized) {
+                $physicalSerialCount = (float) ItemSerial::where('item_id', $item->id)
+                    ->where('warehouse_id', $this->warehouse_id)
+                    ->where('status', 'in_warehouse')
+                    ->count();
+                $availableStock = max($availableStock, $physicalSerialCount);
+            }
+
             if ($availableStock < $qty) {
                 $this->addError("dispatchItems.{$idx}.quantity", "Stok '{$item->name}' di gudang tidak mencukupi (Tersedia: {$availableStock} {$item->unit}, diminta: {$qty} {$item->unit}). Silakan lakukan Barang Masuk (Inbound) terlebih dahulu.");
                 return;
@@ -535,15 +545,20 @@ class Index extends Component
                     $stk = \App\Models\Inventory\InventoryStock::where('warehouse_id', $this->warehouse_id)
                         ->where('item_id', $itemId)
                         ->first();
-                    $warehouseStocks[$itemId] = $stk ? (float) $stk->quantity : 0.0;
+                    $qtyStock = $stk ? (float) $stk->quantity : 0.0;
 
                     if (!empty($row['is_serialized'])) {
-                        $availableSerials[$itemId] = ItemSerial::where('item_id', $itemId)
+                        $serialsInWh = ItemSerial::where('item_id', $itemId)
                             ->where('warehouse_id', $this->warehouse_id)
                             ->where('status', 'in_warehouse')
                             ->orderBy('serial_number')
                             ->get();
+                        $availableSerials[$itemId] = $serialsInWh;
+                        // Sinkronkan ketersediaan stok dengan jumlah serial fisik nyata di gudang
+                        $qtyStock = max($qtyStock, (float) $serialsInWh->count());
                     }
+
+                    $warehouseStocks[$itemId] = $qtyStock;
                 }
             }
         }

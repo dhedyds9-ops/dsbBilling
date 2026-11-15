@@ -320,6 +320,30 @@ class StockMutationService
 
             $balanceBefore = $stock ? (float) $stock->quantity : 0.0;
 
+            // Jika barang berserial, sinkronkan dengan jumlah unit fisik nyata di gudang (in_warehouse)
+            if ($item->is_serialized) {
+                $physicalSerialCount = (float) ItemSerial::withoutGlobalScopes()
+                    ->where('warehouse_id', $warehouseId)
+                    ->where('item_id', $itemId)
+                    ->where('status', 'in_warehouse')
+                    ->count();
+
+                if ($balanceBefore < $physicalSerialCount) {
+                    $balanceBefore = $physicalSerialCount;
+                    if ($stock) {
+                        $stock->update(['quantity' => $balanceBefore]);
+                    } else {
+                        $stock = InventoryStock::create([
+                            'warehouse_id' => $warehouseId,
+                            'item_id' => $itemId,
+                            'quantity' => $balanceBefore,
+                            'reserved_quantity' => 0,
+                            'branch_id' => $wh->branch_id,
+                        ]);
+                    }
+                }
+            }
+
             // Cegah stok negatif!
             if ($balanceBefore < $quantity) {
                 throw new \RuntimeException("Stok tidak mencukupi di gudang {$wh->name}. Tersedia: {$balanceBefore} {$item->unit}, dibutuhkan: {$quantity} {$item->unit}.");
@@ -327,10 +351,20 @@ class StockMutationService
 
             $balanceAfter = $balanceBefore - $quantity;
 
-            $stock->update([
-                'quantity' => $balanceAfter,
-                'updated_at' => now(),
-            ]);
+            if ($stock) {
+                $stock->update([
+                    'quantity' => $balanceAfter,
+                    'updated_at' => now(),
+                ]);
+            } else {
+                $stock = InventoryStock::create([
+                    'warehouse_id' => $warehouseId,
+                    'item_id' => $itemId,
+                    'quantity' => $balanceAfter,
+                    'reserved_quantity' => 0,
+                    'branch_id' => $wh->branch_id,
+                ]);
+            }
 
             // Catat ledger mutasi stok
             $mutation = InventoryStockMutation::create([
