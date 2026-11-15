@@ -1142,7 +1142,14 @@ class CustomerApiController extends Controller
 
         $notifications = Notification::where('recipient_id', $user->id)
             ->latest('created_at')
-            ->paginate(15);
+            ->paginate(20);
+
+        $unreadCount = Notification::where('recipient_id', $user->id)
+            ->where(function($q) {
+                $q->where('status', '!=', 'read')
+                  ->orWhereNull('status');
+            })
+            ->count();
 
         $items = collect($notifications->items())->map(fn($n) => [
             'id' => $n->id,
@@ -1150,17 +1157,62 @@ class CustomerApiController extends Controller
             'message' => $n->message,
             'type' => $n->type,
             'status' => $n->status,
+            'is_read' => ($n->status === 'read'),
             'created_at' => $n->created_at?->toIso8601String(),
         ]);
 
         return response()->json([
             'success' => true,
+            'unread_count' => $unreadCount,
             'data' => $items,
             'pagination' => [
                 'current_page' => $notifications->currentPage(),
                 'last_page' => $notifications->lastPage(),
                 'total' => $notifications->total(),
             ],
+        ]);
+    }
+
+    /**
+     * Mark single customer notification as read.
+     */
+    public function markAsRead(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $notif = Notification::where('recipient_id', $user->id)->find($id);
+
+        if (!$notif) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Notifikasi tidak ditemukan.',
+            ], 404);
+        }
+
+        $notif->status = 'read';
+        $notif->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Notifikasi ditandai sudah dibaca.',
+        ]);
+    }
+
+    /**
+     * Mark all customer notifications as read.
+     */
+    public function markAllAsRead(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        Notification::where('recipient_id', $user->id)
+            ->where(function($q) {
+                $q->where('status', '!=', 'read')
+                  ->orWhereNull('status');
+            })
+            ->update(['status' => 'read']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Semua notifikasi ditandai sudah dibaca.',
         ]);
     }
 

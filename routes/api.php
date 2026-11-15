@@ -363,6 +363,8 @@ Route::prefix('customer')->name('api.customer.')->group(function () {
 
         // Notifications & Announcements
         Route::get('/notifications', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'notifications'])->name('notifications.index');
+        Route::post('/notifications/{id}/read', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'markAsRead'])->where('id', '\d+')->name('notifications.read');
+        Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
 
         // Profile & Security
         Route::post('/profile', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'updateProfile'])->name('profile.update');
