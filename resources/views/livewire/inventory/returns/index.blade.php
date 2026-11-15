@@ -85,8 +85,8 @@
                         <th class="py-3 px-4">No. Retur</th>
                         <th class="py-3 px-4">Tanggal Pengajuan</th>
                         <th class="py-3 px-4">Pihak Pengembali</th>
+                        <th class="py-3 px-4">Barang Diretur</th>
                         <th class="py-3 px-4">Gudang Tujuan</th>
-                        <th class="py-3 px-4 text-center">Jml Macam</th>
                         <th class="py-3 px-4">Status QC</th>
                         <th class="py-3 px-4">Pemeriksa QC</th>
                         <th class="py-3 px-4 text-right">Aksi</th>
@@ -109,13 +109,35 @@
                                     {{ $ret->returner_type }}
                                 </span>
                             </td>
+                            <td class="py-3.5 px-4">
+                                <div class="space-y-1">
+                                    @forelse($ret->items->take(2) as $ri)
+                                        <div class="text-xs text-slate-800 dark:text-slate-200">
+                                            <div class="flex items-center gap-1.5 font-semibold">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0"></span>
+                                                <span class="font-bold truncate max-w-[200px]">{{ $ri->item?->name ?? 'Item #' . $ri->item_id }}</span>
+                                                <span class="font-mono text-[11px] text-teal-700 dark:text-teal-400 font-bold shrink-0">
+                                                    {{ (float)$ri->quantity }} {{ $ri->item?->unit ?? 'unit' }}
+                                                </span>
+                                            </div>
+                                            @if($ri->itemSerial)
+                                                <div class="mt-0.5 ml-3">
+                                                    <span class="px-1.5 py-0.2 rounded font-mono text-[10px] bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">SN: {{ $ri->itemSerial->serial_number }}</span>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @empty
+                                        <span class="text-xs text-slate-400 italic">Tidak ada item</span>
+                                    @endforelse
+                                    @if($ret->items->count() > 2)
+                                        <span class="inline-block text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                                            +{{ $ret->items->count() - 2 }} barang lainnya
+                                        </span>
+                                    @endif
+                                </div>
+                            </td>
                             <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300 font-semibold">
                                 {{ $ret->warehouse?->name ?? '-' }}
-                            </td>
-                            <td class="py-3.5 px-4 text-center">
-                                <span class="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs">
-                                    {{ $ret->items->count() }} item
-                                </span>
                             </td>
                             <td class="py-3.5 px-4">
                                 @if($ret->status === 'accepted')

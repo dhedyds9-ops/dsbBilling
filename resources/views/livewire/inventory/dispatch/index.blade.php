@@ -75,10 +75,10 @@
                         <th class="py-3 px-4">No. Pengeluaran</th>
                         <th class="py-3 px-4">Tanggal & Waktu</th>
                         <th class="py-3 px-4">Gudang Asal</th>
-                        <th class="py-3 px-4">Metode Distribusi</th>
+                        <th class="py-3 px-4">Barang Dikeluarkan</th>
                         <th class="py-3 px-4">Penerima Fisik (Custody)</th>
+                        <th class="py-3 px-4">Metode Distribusi</th>
                         <th class="py-3 px-4">Pelanggan</th>
-                        <th class="py-3 px-4">Petugas Gudang</th>
                         <th class="py-3 px-4 text-right">Aksi</th>
                     </tr>
                 </thead>
@@ -97,17 +97,36 @@
                                 {{ $dsp->warehouse?->name ?? '-' }}
                             </td>
                             <td class="py-3.5 px-4">
-                                @if($dsp->distribution_method === 'pickup_reseller')
-                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
-                                        <span class="material-symbols-outlined text-xs">store</span>
-                                        Metode A (Reseller)
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
-                                        <span class="material-symbols-outlined text-xs">local_shipping</span>
-                                        Metode B (Teknisi)
-                                    </span>
-                                @endif
+                                <div class="space-y-1">
+                                    @forelse($dsp->items->take(2) as $di)
+                                        <div class="text-xs text-slate-800 dark:text-slate-200">
+                                            <div class="flex items-center gap-1.5 font-semibold">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                                                <span class="font-bold truncate max-w-[200px]">{{ $di->item?->name ?? 'Item #' . $di->item_id }}</span>
+                                                <span class="font-mono text-[11px] text-blue-700 dark:text-blue-400 font-bold shrink-0">
+                                                    {{ (float)$di->quantity }} {{ $di->item?->unit ?? 'unit' }}
+                                                </span>
+                                            </div>
+                                            @if(!empty($di->serials))
+                                                <div class="flex items-center gap-1 flex-wrap mt-0.5 ml-3">
+                                                    @foreach(array_slice($di->serials, 0, 2) as $sn)
+                                                        <span class="px-1.5 py-0.2 rounded font-mono text-[10px] bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">SN: {{ $sn }}</span>
+                                                    @endforeach
+                                                    @if(count($di->serials) > 2)
+                                                        <span class="text-[10px] text-slate-400">+{{ count($di->serials) - 2 }} SN</span>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @empty
+                                        <span class="text-xs text-slate-400 italic">Tidak ada item</span>
+                                    @endforelse
+                                    @if($dsp->items->count() > 2)
+                                        <span class="inline-block text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                                            +{{ $dsp->items->count() - 2 }} barang lainnya
+                                        </span>
+                                    @endif
+                                </div>
                             </td>
                             <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
                                 <div class="font-bold text-slate-900 dark:text-slate-100">{{ $dsp->recipient?->name ?? '-' }}</div>
@@ -115,11 +134,24 @@
                                     {{ $dsp->recipient_type }}
                                 </span>
                             </td>
-                            <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
-                                {{ $dsp->customer?->name ?? 'Stok Operasional' }}
+                            <td class="py-3.5 px-4">
+                                @if($dsp->distribution_method === 'pickup_reseller')
+                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                                        <span class="material-symbols-outlined text-xs">store</span>
+                                        Metode A
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
+                                        <span class="material-symbols-outlined text-xs">local_shipping</span>
+                                        Metode B
+                                    </span>
+                                @endif
                             </td>
-                            <td class="py-3.5 px-4 text-slate-600 dark:text-slate-400 text-xs">
-                                {{ $dsp->dispatcher?->name ?? 'System' }}
+                            <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
+                                <div class="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                                    {{ $dsp->customer?->name ?? 'Stok Operasional' }}
+                                </div>
+                                <div class="text-[10px] text-slate-400">Petugas: {{ $dsp->dispatcher?->name ?? 'System' }}</div>
                             </td>
                             <td class="py-3.5 px-4 text-right">
                                 <button wire:click="showDetail({{ $dsp->id }})"

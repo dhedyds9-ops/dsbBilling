@@ -92,7 +92,7 @@
                         <th class="py-3 px-4">Gudang Penerima</th>
                         <th class="py-3 px-4">Sumber / Supplier</th>
                         <th class="py-3 px-4">Referensi Faktur/PO</th>
-                        <th class="py-3 px-4 text-center">Jml Macam Barang</th>
+                        <th class="py-3 px-4">Nama / Rincian Barang</th>
                         <th class="py-3 px-4">Penerima</th>
                         <th class="py-3 px-4 text-right">Aksi</th>
                     </tr>
@@ -121,11 +121,25 @@
                             <td class="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-400">
                                 {{ $inbound->reference_doc ?: '-' }}
                             </td>
-                            <td class="py-3.5 px-4 text-center">
-                                <span class="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs">
-                                    <span class="material-symbols-outlined text-[13px]">inventory_2</span>
-                                    {{ $inbound->items->count() }} macam
-                                </span>
+                            <td class="py-3.5 px-4">
+                                <div class="space-y-1">
+                                    @forelse($inbound->items->take(2) as $ii)
+                                        <div class="flex items-center gap-1.5 text-xs text-slate-800 dark:text-slate-200">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                                            <span class="font-bold truncate max-w-[200px]">{{ $ii->item?->name ?? 'Item #' . $ii->item_id }}</span>
+                                            <span class="font-mono text-[11px] text-emerald-700 dark:text-emerald-400 font-bold shrink-0">
+                                                +{{ (float)$ii->quantity }} {{ $ii->item?->unit ?? 'unit' }}
+                                            </span>
+                                        </div>
+                                    @empty
+                                        <span class="text-xs text-slate-400 italic">Tidak ada item</span>
+                                    @endforelse
+                                    @if($inbound->items->count() > 2)
+                                        <span class="inline-block text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                                            +{{ $inbound->items->count() - 2 }} barang lainnya
+                                        </span>
+                                    @endif
+                                </div>
                             </td>
                             <td class="py-3.5 px-4 text-slate-600 dark:text-slate-400 text-xs">
                                 {{ $inbound->receiver?->name ?? 'System' }}
