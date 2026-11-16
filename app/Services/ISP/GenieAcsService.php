@@ -156,7 +156,7 @@ class GenieAcsService
         return $onu->serial_number ?: null;
     }
 
-    public function getWifiCredentials(int $customerId, int $onuId): array
+    public function getWifiCredentials(int $customerId, int $onuId, int $wlanIndex = 1): array
     {
         $onu = $this->resolveCustomerOnu($customerId, $onuId);
         $deviceId = $this->resolveGenieAcsDeviceId($onu, $customerId);
@@ -165,16 +165,26 @@ class GenieAcsService
 
         $ssid = null;
         $password = null;
+        $securityMode = 'WPA_WPA2';
+        $isEnabled = true;
         $live = [];
+        $isOnline = false;
 
         if (!empty($deviceId)) {
             try {
-                $live = $this->genieACSDriver->getWifiCredentials($deviceId, $vendor);
+                $isOnline = $this->genieACSDriver->isDeviceOnline($deviceId);
+                $live = $this->genieACSDriver->getWifiCredentials($deviceId, $vendor, $wlanIndex);
                 if (!empty($live['ssid'])) {
                     $ssid = $live['ssid'];
                 }
                 if (!empty($live['password']) && $live['password'] !== '******') {
                     $password = $live['password'];
+                }
+                if (!empty($live['security_mode'])) {
+                    $securityMode = $live['security_mode'];
+                }
+                if (isset($live['is_enabled'])) {
+                    $isEnabled = (bool) $live['is_enabled'];
                 }
 
                 if (!empty($live['real_device_id'])) {
@@ -190,16 +200,29 @@ class GenieAcsService
             }
         }
 
+        // Secondary check for online status if GenieACS reported false or didn't respond
+        if (!$isOnline && $onu) {
+            if ($onu->operational_status === 'online') {
+                $isOnline = true;
+            } elseif ($onu->last_seen_at && abs(now()->diffInMinutes($onu->last_seen_at)) < 30) {
+                $isOnline = true;
+            } elseif ($onu->status === 'active') {
+                $isOnline = true;
+            }
+        }
+
         // Fallback to database values stored in onus or customer_services
         if (empty($ssid)) {
-            $ssid = $onu->wifi_ssid ?: ($onu->customerService?->attributes['wifi_ssid'] ?? null);
+            $ssid = ($wlanIndex === 1 ? $onu->wifi_ssid : null) 
+                ?: ($onu->customerService?->attributes["wifi_ssid_{$wlanIndex}"] ?? ($wlanIndex === 1 ? $onu->wifi_ssid : null) ?? "dsBilling_WiFi_{$wlanIndex}");
         }
-        if (empty($password)) {
-            $password = $onu->wifi_password ?: ($onu->customerService?->attributes['wifi_password'] ?? null);
+        if (empty($password) && $securityMode !== 'OPEN') {
+            $password = ($wlanIndex === 1 ? $onu->wifi_password : null) 
+                ?: ($onu->customerService?->attributes["wifi_password_{$wlanIndex}"] ?? ($wlanIndex === 1 ? $onu->wifi_password : null) ?? '••••••••');
         }
 
         // If live credentials successfully read from device, update DB to keep fresh
-        if (!empty($live['ssid']) || (!empty($live['password']) && $live['password'] !== '******')) {
+        if ($wlanIndex === 1 && (!empty($live['ssid']) || (!empty($live['password']) && $live['password'] !== '******'))) {
             try {
                 $updateData = [];
                 if (!empty($live['ssid']) && $live['ssid'] !== $onu->wifi_ssid) {
@@ -207,6 +230,10 @@ class GenieAcsService
                 }
                 if (!empty($live['password']) && $live['password'] !== '******' && $live['password'] !== $onu->wifi_password) {
                     $updateData['wifi_password'] = $live['password'];
+                }
+                if ($isOnline) {
+                    $updateData['operational_status'] = 'online';
+                    $updateData['last_seen_at'] = now();
                 }
                 if (!empty($updateData)) {
                     $onu->update($updateData);
@@ -217,6 +244,10 @@ class GenieAcsService
         return [
             'ssid' => $ssid,
             'password' => $password,
+            'security_mode' => $securityMode,
+            'is_enabled' => $isEnabled,
+            'is_online' => $isOnline,
+            'all_ssids' => $live['all_ssids'] ?? null,
         ];
     }
 

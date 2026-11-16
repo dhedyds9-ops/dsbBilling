@@ -1667,9 +1667,6 @@ class MobileNetworkApiController extends Controller
             'work_order_id' => 'nullable|integer',
             'ticket_id' => 'nullable|integer',
             'customer_id' => 'nullable|integer',
-            'require_proof' => 'nullable|boolean',
-            'require_acs_success' => 'nullable|boolean',
-            'queue_provisioning' => 'nullable|boolean',
             'photo_before_path' => 'nullable|string',
             'photo_after_path' => 'nullable|string',
             'digital_signature' => 'nullable|string',
@@ -1746,7 +1743,6 @@ class MobileNetworkApiController extends Controller
             'notes' => 'nullable|string',
             'work_order_id' => 'nullable|integer',
             'ticket_id' => 'nullable|integer',
-            'require_proof' => 'nullable|boolean',
             'photo_path' => 'nullable|string',
             'digital_signature' => 'nullable|string',
         ]);

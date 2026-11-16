@@ -17,13 +17,15 @@ class ProvisionOntLifecycleJob implements ShouldQueue, ShouldBeUnique
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
-    public int $backoff = 15;
+    public array $backoff = [15, 60, 180];
     public int $uniqueFor = 120;
 
     public function __construct(
         public int $onuId,
         public array $options = []
-    ) {}
+    ) {
+        $this->afterCommit();
+    }
 
     public function uniqueId(): string
     {
@@ -42,12 +44,11 @@ class ProvisionOntLifecycleJob implements ShouldQueue, ShouldBeUnique
             return;
         }
 
-        $onu->update([
-            'provision_status' => 'processing',
-        ]);
-
         try {
-            $result = $provisioningService->provisionOnt($onu, $this->options);
+            $result = $provisioningService->provisionOnt(
+                $onu,
+                array_merge($this->options, ['force_retry' => true])
+            );
             $status = $result['status'] ?? 'pending';
 
             $updates = [
@@ -57,14 +58,31 @@ class ProvisionOntLifecycleJob implements ShouldQueue, ShouldBeUnique
             if ($status === 'success') {
                 $updates['operational_status'] = Onu::OP_ONLINE;
                 $updates['last_seen_at'] = now();
+                $onu->update($updates);
+                return;
+            }
+
+            if ($status === 'failed') {
+                $attrs = is_array($onu->attributes) ? $onu->attributes : [];
+                $attrs['provisioning_error'] = $result['error'] ?? 'GenieACS provisioning failed';
+                $updates['attributes'] = $attrs;
+                $onu->update($updates);
+
+                throw new \RuntimeException($attrs['provisioning_error']);
             }
 
             $onu->update($updates);
         } catch (\Throwable $e) {
             Log::warning("[ProvisionOntLifecycleJob] Gagal provisioning ONT #{$this->onuId}: " . $e->getMessage());
-            $onu->update([
-                'provision_status' => 'failed',
-            ]);
+            $freshOnu = Onu::withoutGlobalScopes()->find($this->onuId);
+            if ($freshOnu && $freshOnu->provision_status !== 'success') {
+                $attrs = is_array($freshOnu->attributes) ? $freshOnu->attributes : [];
+                $attrs['provisioning_error'] = $e->getMessage();
+                $freshOnu->update([
+                    'provision_status' => 'failed',
+                    'attributes' => $attrs,
+                ]);
+            }
             throw $e;
         }
     }

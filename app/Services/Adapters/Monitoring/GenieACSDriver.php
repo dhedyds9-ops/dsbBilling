@@ -203,14 +203,17 @@ class GenieACSDriver
         ];
     }
 
-    public function getWifiCredentials(string $deviceId, string $vendor = 'default'): array
+    public function getWifiCredentials(string $deviceId, string $vendor = 'default', int $wlanIndex = 1): array
     {
         $params = $this->getDeviceParameters($deviceId);
         if (empty($params)) {
             return [
                 'ssid' => null,
                 'password' => null,
+                'security_mode' => 'WPA_WPA2',
+                'is_enabled' => true,
                 'real_device_id' => null,
+                'all_ssids' => [],
             ];
         }
         
@@ -254,30 +257,40 @@ class GenieACSDriver
             return null;
         };
 
-        // Vendor-configured paths
-        $vendorSsidPath = $this->getWifiParameterPath($vendor, 'ssid');
-        $vendorPassPath = $this->getWifiParameterPath($vendor, 'wpa_passphrase');
+        // Vendor-configured paths adjusted for wlanIndex
+        $rawVendorSsidPath = $this->getWifiParameterPath($vendor, 'ssid');
+        $rawVendorPassPath = $this->getWifiParameterPath($vendor, 'wpa_passphrase');
+        $rawVendorSecPath = $this->getWifiParameterPath($vendor, 'security_mode');
+
+        $vendorSsidPath = $this->wlanIndexedPath($rawVendorSsidPath, $wlanIndex);
+        $vendorPassPath = $this->wlanIndexedPath($rawVendorPassPath, $wlanIndex);
+        $vendorSecPath = $this->wlanIndexedPath($rawVendorSecPath, $wlanIndex);
+
+        $prefix = "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.";
+        $tr181SsidPrefix = "Device.WiFi.SSID.{$wlanIndex}.";
+        $tr181ApPrefix = "Device.WiFi.AccessPoint.{$wlanIndex}.";
 
         $ssidCandidates = array_unique(array_filter([
             $vendorSsidPath,
-            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID',
-            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.SSID',
-            'Device.WiFi.SSID.1.SSID',
-            'Device.WiFi.AccessPoint.1.SSID',
-            'VirtualParameters.wifiSsid',
+            $prefix . 'SSID',
+            $tr181SsidPrefix . 'SSID',
+            $tr181ApPrefix . 'SSID',
+            $wlanIndex === 1 ? 'VirtualParameters.wifiSsid' : null,
+            $wlanIndex === 1 ? 'VirtualParameters.WlanSSID' : null,
         ]));
 
         $passCandidates = array_unique(array_filter([
             $vendorPassPath,
-            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey',
-            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.KeyPassphrase',
-            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase',
-            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.X_ZTE-COM_WPAKey',
-            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.X_HW_KeyPassphrase',
-            'Device.WiFi.AccessPoint.1.Security.KeyPassphrase',
-            'Device.WiFi.AccessPoint.1.Security.PreSharedKey',
-            'VirtualParameters.wifiPassword',
-            'VirtualParameters.wifiPassphrase',
+            $prefix . 'PreSharedKey.1.PreSharedKey',
+            $prefix . 'PreSharedKey.1.KeyPassphrase',
+            $prefix . 'KeyPassphrase',
+            $prefix . 'X_ZTE-COM_WPAKey',
+            $prefix . 'X_HW_KeyPassphrase',
+            $tr181ApPrefix . 'Security.KeyPassphrase',
+            $tr181ApPrefix . 'Security.PreSharedKey',
+            $wlanIndex === 1 ? 'VirtualParameters.wifiPassword' : null,
+            $wlanIndex === 1 ? 'VirtualParameters.wifiPassphrase' : null,
+            $wlanIndex === 1 ? 'VirtualParameters.WlanPassword' : null,
         ]));
 
         $ssid = null;
@@ -300,41 +313,94 @@ class GenieACSDriver
 
         // Dynamic WLAN traversal if SSID or Password is still missing
         if (empty($ssid) || empty($password)) {
-            $wlanNode = $params['InternetGatewayDevice']['LANDevice']['1']['WLANConfiguration'] 
-                ?? $params['Device']['WiFi']['SSID'] 
-                ?? [];
+            $wlanNode = $params['InternetGatewayDevice']['LANDevice']['1']['WLANConfiguration'][$wlanIndex] 
+                ?? $params['Device']['WiFi']['SSID'][$wlanIndex] 
+                ?? $params['InternetGatewayDevice']['LANDevice']['1']['WLANConfiguration'][(string)$wlanIndex] 
+                ?? null;
+
             if (is_array($wlanNode)) {
-                foreach ($wlanNode as $key => $node) {
-                    if (is_numeric($key) && is_array($node)) {
-                        if (empty($ssid)) {
-                            $s = $node['SSID']['_value'] ?? $node['SSID'] ?? null;
-                            if (!empty($s) && is_scalar($s)) {
-                                $ssid = (string)$s;
-                            }
-                        }
-                        if (empty($password)) {
-                            $p = $node['PreSharedKey']['1']['KeyPassphrase']['_value']
-                                ?? $node['PreSharedKey']['1']['PreSharedKey']['_value']
-                                ?? $node['KeyPassphrase']['_value']
-                                ?? $node['PreSharedKey']['1']['KeyPassphrase']
-                                ?? $node['KeyPassphrase']
-                                ?? null;
-                            if (!empty($p) && is_scalar($p) && $p !== '******') {
-                                $password = (string)$p;
-                            }
-                        }
-                        if (!empty($ssid) && !empty($password)) {
-                            break;
-                        }
+                if (empty($ssid)) {
+                    $s = $node['SSID']['_value'] ?? $wlanNode['SSID']['_value'] ?? $wlanNode['SSID'] ?? null;
+                    if (!empty($s) && is_scalar($s)) {
+                        $ssid = (string)$s;
+                    }
+                }
+                if (empty($password)) {
+                    $p = $wlanNode['PreSharedKey']['1']['KeyPassphrase']['_value']
+                        ?? $wlanNode['PreSharedKey']['1']['PreSharedKey']['_value']
+                        ?? $wlanNode['KeyPassphrase']['_value']
+                        ?? $wlanNode['PreSharedKey']['1']['KeyPassphrase']
+                        ?? $wlanNode['KeyPassphrase']
+                        ?? null;
+                    if (!empty($p) && is_scalar($p) && $p !== '******') {
+                        $password = (string)$p;
                     }
                 }
             }
         }
 
+        // Extract Security Mode (BeaconType / ModeEnabled)
+        $beaconCandidates = array_unique(array_filter([
+            $vendorSecPath,
+            $prefix . 'BeaconType',
+            $prefix . 'BasicEncryptionModes',
+            $prefix . 'IEEE11iEncryptionModes',
+            $tr181ApPrefix . 'Security.ModeEnabled',
+        ]));
+        $rawBeacon = null;
+        foreach ($beaconCandidates as $path) {
+            $val = $extract($path);
+            if (!empty($val)) {
+                $rawBeacon = (string)$val;
+                break;
+            }
+        }
+        $securityMode = 'WPA_WPA2';
+        if ($rawBeacon !== null) {
+            $uBeacon = strtoupper($rawBeacon);
+            if (in_array($uBeacon, ['NONE', 'BASIC', 'OPEN', 'DISABLED', '0'], true)) {
+                $securityMode = 'OPEN';
+            } elseif (str_contains($uBeacon, 'WPA2') || $uBeacon === '11I' || str_contains($uBeacon, 'AES')) {
+                $securityMode = (str_contains($uBeacon, 'WPAAND11I') || str_contains($uBeacon, 'MIXED')) ? 'WPA_WPA2' : 'WPA2';
+            }
+        }
+
+        // Extract Radio/SSID Enable
+        $enableCandidates = array_unique(array_filter([
+            $prefix . 'Enable',
+            $tr181SsidPrefix . 'Enable',
+            $tr181ApPrefix . 'Enable',
+        ]));
+        $isEnabled = true;
+        foreach ($enableCandidates as $path) {
+            $val = $extract($path);
+            if ($val !== null) {
+                $isEnabled = !in_array((string)$val, ['0', 'false', 'Disabled'], true);
+                break;
+            }
+        }
+
+        // Extract All SSIDs (1-4) for Chip Tabs
+        $allSsids = [];
+        for ($i = 1; $i <= 4; $i++) {
+            $sVal = $extract("InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$i}.SSID") 
+                ?? $extract("Device.WiFi.SSID.{$i}.SSID")
+                ?? ($i === $wlanIndex ? $ssid : null);
+
+            $allSsids[] = [
+                'index' => $i,
+                'name' => "SSID {$i}" . ($i === 1 ? ' (Utama)' : ''),
+                'ssid' => $sVal ?: "SSID {$i}",
+            ];
+        }
+
         return [
             'ssid' => $ssid,
             'password' => $password,
+            'security_mode' => $securityMode,
+            'is_enabled' => $isEnabled,
             'real_device_id' => $params['_id'] ?? null,
+            'all_ssids' => $allSsids,
         ];
     }
 

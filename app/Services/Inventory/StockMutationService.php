@@ -1238,7 +1238,7 @@ class StockMutationService
         ?string $newModel = 'ONT GPON',
         ?string $opticalPower = null,
         ?string $notes = null,
-        bool $enforceStock = false
+        bool $enforceStock = true
     ): array {
         return DB::transaction(function () use (
             $technicianId,
@@ -1252,8 +1252,7 @@ class StockMutationService
             $oldModel,
             $newModel,
             $opticalPower,
-            $notes,
-            $enforceStock
+            $notes
         ) {
             $techUser = \App\Models\User::find($technicianId);
             $branchId = $techUser?->branch_id;
@@ -1271,21 +1270,24 @@ class StockMutationService
                 ->first();
 
             if ($newSerial) {
-                if ($newSerial->status === 'installed' && (int) $newSerial->customer_id !== (int) $customerId) {
-                    throw new \InvalidArgumentException("SN {$newSnClean} sudah terpasang pada pelanggan lain.");
+                if ($newSerial->status === 'installed') {
+                    throw new \InvalidArgumentException("SN {$newSnClean} sudah terpasang pada pelanggan dan tidak dapat digunakan untuk Swap.");
                 }
                 if ($newSerial->status === 'damaged' || $newSerial->condition === 'damaged') {
                     throw new \InvalidArgumentException("SN {$newSnClean} tercatat dalam kondisi rusak (damaged) dan tidak dapat dipasang.");
                 }
-                if ($newSerial->status === 'in_warehouse') {
+                if ($newSerial->status === 'in_warehouse' || ($newSerial->warehouse_id !== null && $newSerial->custodian_id === null)) {
                     throw new \InvalidArgumentException("SN {$newSnClean} masih berada di gudang dan belum diserahkan ke stok teknisi.");
                 }
                 if ($newSerial->custodian_id !== null && (int) $newSerial->custodian_id !== (int) $technicianId) {
                     throw new \InvalidArgumentException("SN {$newSnClean} berada di stok/custody teknisi lain.");
                 }
+                if ($newSerial->status !== 'in_custody_technician' || (int) $newSerial->custodian_id !== (int) $technicianId) {
+                    throw new \InvalidArgumentException("SN {$newSnClean} tidak tersedia di custody teknisi yang bertugas (status: {$newSerial->status}).");
+                }
             }
 
-            // Cari Custody ONT Baru milik teknisi
+            // Cari Custody ONT Baru milik teknisi (hanya cocokkan serial yang sesuai atau custody unserialized)
             $custodyOnt = null;
             if ($newSerial) {
                 $custodyOnt = InventoryCustody::withoutGlobalScopes()
@@ -1295,10 +1297,21 @@ class StockMutationService
                     ->whereRaw('(quantity - used_quantity - returned_quantity) >= 1')
                     ->lockForUpdate()
                     ->first();
-            }
 
-            if (!$custodyOnt) {
+                if (!$custodyOnt) {
+                    $custodyOnt = InventoryCustody::withoutGlobalScopes()
+                        ->whereNull('item_serial_id')
+                        ->where('item_id', $newSerial->item_id)
+                        ->where('holder_id', $technicianId)
+                        ->where('status', 'in_custody')
+                        ->whereRaw('(quantity - used_quantity - returned_quantity) >= 1')
+                        ->lockForUpdate()
+                        ->first();
+                }
+            } else {
+                // Jika serial belum terdaftar di item_serials, hanya boleh memakai custody ONT unserialized milik teknisi
                 $custodyOnt = InventoryCustody::withoutGlobalScopes()
+                    ->whereNull('item_serial_id')
                     ->where('holder_id', $technicianId)
                     ->where('status', 'in_custody')
                     ->whereHas('item', function ($q) {
@@ -1312,18 +1325,6 @@ class StockMutationService
                     ->lockForUpdate()
                     ->first();
             }
-
-            // Cek apakah teknisi memang memiliki alokasi custody ONT (meskipun sudah habis / 0)
-            $hasAnyOntCustodyHistory = InventoryCustody::withoutGlobalScopes()
-                ->where('holder_id', $technicianId)
-                ->whereHas('item', function ($q) {
-                    $q->where('name', 'like', '%ONU%')
-                      ->orWhere('name', 'like', '%ONT%')
-                      ->orWhere('name', 'like', '%Modem%')
-                      ->orWhere('sku', 'like', '%ONU%')
-                      ->orWhere('sku', 'like', '%ONT%');
-                })
-                ->exists();
 
             if ($custodyOnt) {
                 $newUsed = (float) $custodyOnt->used_quantity + 1;
@@ -1358,23 +1359,12 @@ class StockMutationService
                 ]);
             }
 
-            // 2. Backward compatibility: support_maintenance_materials
-            if (\Illuminate\Support\Facades\Schema::hasTable('support_maintenance_materials')) {
-                $matQuery = DB::table('support_maintenance_materials')->lockForUpdate();
-                if ($supportMaterialId) {
-                    $mat = $matQuery->where('id', $supportMaterialId)->first();
-                    if ((!$mat || (int) $mat->stock < 1) && !$custodyDeducted) {
-                        throw new \InvalidArgumentException("Stok material ONT tidak mencukupi (Inventory Shortage).");
-                    }
-                } else {
-                    $mat = $matQuery->where(function ($q) use ($newModel) {
-                        if ($newModel) {
-                            $q->where('name', 'like', "%{$newModel}%");
-                        }
-                        $q->orWhere('name', 'like', '%ONT%')
-                          ->orWhere('sku', 'like', '%ONT%');
-                    })->where('stock', '>', 0)->first();
-                }
+            // 2. Backward compatibility: support_maintenance_materials (hanya jika belum terpotong dari custody dan serial tidak terikat custody lain)
+            if (!$custodyDeducted && !$newSerial && $supportMaterialId && \Illuminate\Support\Facades\Schema::hasTable('support_maintenance_materials')) {
+                $mat = DB::table('support_maintenance_materials')
+                    ->where('id', $supportMaterialId)
+                    ->lockForUpdate()
+                    ->first();
 
                 if ($mat && (int) $mat->stock > 0) {
                     $newStock = max(0, ((int) $mat->stock) - 1);
@@ -1405,8 +1395,8 @@ class StockMutationService
                 }
             }
 
-            // Penegakan Inventory Shortage: Jika wajib stok (enforceStock) atau teknisi punya riwayat custody ONT tapi saldo 0
-            if (($enforceStock || $hasAnyOntCustodyHistory || $newSerial) && !$custodyDeducted && !$supportMaterialDeducted) {
+            // Penegakan Wajib Inventory: Stok TIDAK BOLEH dilewati meskipun enforce_stock tidak dikirim!
+            if (!$custodyDeducted && !$supportMaterialDeducted) {
                 throw new \InvalidArgumentException(
                     "Stok ONT di bagasi teknisi habis atau SN {$newSnClean} tidak tersedia di custody Anda (Inventory Shortage)."
                 );

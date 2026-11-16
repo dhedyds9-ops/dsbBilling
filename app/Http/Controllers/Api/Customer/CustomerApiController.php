@@ -671,8 +671,20 @@ class CustomerApiController extends Controller
         ];
 
         try {
-            $wifi = $this->selfService->getOnuWifiCredentials($customer->id, $service->onu_id);
+            $wifi = $this->selfService->getOnuWifiCredentials($customer->id, $service->onu_id, $wlanIndex);
             $devices = $this->selfService->getOnuConnectedDevices($customer->id, $service->onu_id);
+            $isOnline = $wifi['is_online'] ?? true;
+
+            if (!empty($wifi['all_ssids'])) {
+                $availableSsids = [];
+                foreach ($wifi['all_ssids'] as $opt) {
+                    $availableSsids[] = [
+                        'index' => $opt['index'],
+                        'name' => $opt['name'],
+                        'ssid' => $opt['ssid'],
+                    ];
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -681,16 +693,23 @@ class CustomerApiController extends Controller
                     'model' => $service->onu?->model ?? 'ONT Terminal',
                     'serial_number' => $service->onu?->serial_number,
                     'wlan_index' => $wlanIndex,
-                    'ssid' => $wifi['ssid'] ?? $service->onu?->wifi_ssid ?? 'dsBilling_WiFi',
-                    'password' => $wifi['password'] ?? $service->onu?->wifi_password ?? '••••••••',
+                    'ssid' => $wifi['ssid'] ?? ($service->onu?->wifi_ssid ?? "dsBilling_WiFi_{$wlanIndex}"),
+                    'password' => $wifi['password'] ?? ($service->onu?->wifi_password ?? '••••••••'),
                     'security_mode' => $wifi['security_mode'] ?? 'WPA_WPA2',
                     'is_enabled' => $wifi['is_enabled'] ?? true,
+                    'is_active' => $isOnline,
+                    'is_online' => $isOnline,
+                    'status' => $isOnline ? 'online' : 'offline',
                     'connected_devices_count' => count($devices),
                     'available_ssids' => $availableSsids,
                     'available_security_modes' => $availableModes,
                 ],
             ]);
         } catch (\Throwable $e) {
+            $isOnline = ($service->onu?->operational_status === 'online') 
+                || ($service->onu?->status === 'active')
+                || ($service->onu?->last_seen_at && abs(now()->diffInMinutes($service->onu?->last_seen_at)) < 30);
+
             // Fallback to local DB record
             return response()->json([
                 'success' => true,
@@ -703,6 +722,9 @@ class CustomerApiController extends Controller
                     'password' => $service->onu?->wifi_password ?? '••••••••',
                     'security_mode' => 'WPA_WPA2',
                     'is_enabled' => true,
+                    'is_active' => $isOnline,
+                    'is_online' => $isOnline,
+                    'status' => $isOnline ? 'online' : 'offline',
                     'connected_devices_count' => 0,
                     'available_ssids' => $availableSsids,
                     'available_security_modes' => $availableModes,

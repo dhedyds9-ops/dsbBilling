@@ -22,9 +22,9 @@ class CustomerSelfServiceService
 
 
 
-    public function getOnuWifiCredentials(int $customerId, int $onuId): array
+    public function getOnuWifiCredentials(int $customerId, int $onuId, int $wlanIndex = 1): array
     {
-        return $this->genieAcsService->getWifiCredentials($customerId, $onuId);
+        return $this->genieAcsService->getWifiCredentials($customerId, $onuId, $wlanIndex);
     }
 
     public function getOnuConnectedDevices(int $customerId, int $onuId): array

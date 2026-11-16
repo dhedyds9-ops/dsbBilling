@@ -174,6 +174,53 @@ class MobilePortalParityTest extends TestCase
             'branch_id' => $this->branch->id,
         ]);
 
+        $customer = \App\Models\CRM\Customer::withoutGlobalScopes()->create([
+            'code' => '2026111799',
+            'name' => 'Pelanggan Swap Parity',
+            'phone' => '081234567890',
+            'status' => 'active',
+            'branch_id' => $this->branch->id,
+        ]);
+
+        \App\Models\Customer\CustomerService::withoutGlobalScopes()->create([
+            'uuid' => (string) Str::uuid(),
+            'customer_id' => $customer->id,
+            'onu_id' => $oldOnu->id,
+            'status' => 'active',
+        ]);
+
+        $ontItem = \App\Models\Inventory\Item::withoutGlobalScopes()->create([
+            'sku' => 'ONT-HG8245H5',
+            'name' => 'Modem ONT Huawei HG8245H5',
+            'category' => 'Perangkat Aktif',
+            'unit' => 'unit',
+            'is_serialized' => true,
+            'is_active' => true,
+            'branch_id' => $this->branch->id,
+        ]);
+
+        $newSerial = \App\Models\Inventory\ItemSerial::withoutGlobalScopes()->create([
+            'item_id' => $ontItem->id,
+            'serial_number' => 'HWTC99998888',
+            'custodian_id' => $this->technician->id,
+            'custodian_type' => 'technician',
+            'status' => 'in_custody_technician',
+            'condition' => 'good',
+            'branch_id' => $this->branch->id,
+        ]);
+
+        \App\Models\Inventory\InventoryCustody::withoutGlobalScopes()->create([
+            'item_id' => $ontItem->id,
+            'item_serial_id' => $newSerial->id,
+            'holder_id' => $this->technician->id,
+            'holder_type' => 'technician',
+            'quantity' => 1,
+            'used_quantity' => 0,
+            'returned_quantity' => 0,
+            'status' => 'in_custody',
+            'branch_id' => $this->branch->id,
+        ]);
+
         $response = $this->postJson('/api/mobile/network/devices/swap-ont', [
             'old_serial_number' => 'ZTEG11112222',
             'new_serial_number' => 'HWTC99998888',
