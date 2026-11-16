@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10108,
-        'latest_version_name' => '1.1.8',
+        'latest_version_code' => 10109,
+        'latest_version_name' => '1.1.9',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'http://localhost') . '/downloads/dsbilling-mobile-release.apk',
-        'release_notes' => "dsBilling Staff & Teknisi v1.1.8:\n- Tahap 4: Deteksi otomatis SN ONT unconfigured langsung dari OLT & scan barcode fisik dengan auto-fill ke Tahap 5\n- Tahap 5: Pemilihan Mode Keamanan Wi-Fi (WPA2-Personal, Open/Tanpa Password untuk Hotspot, WPA/WPA2 Mixed)\n- Otomasi Cerdas: Paket Hotspot otomatis mengaktifkan mode Wi-Fi Open tanpa password dan menyamakan kredensial\n- Sinkronisasi lengkap profil PPPoE dan Hotspot ke sistem dsBilling.",
+        'release_notes' => "dsBilling Staff & Teknisi v1.1.9:\n- Tahap 4: Deteksi seluruh Port PON OLT (bukan hanya PON 1) saat scan modem unconfigured\n- Sanitasi cerdas Serial Number untuk mencegah teks status OLT terbaca sebagai SN\n- Tahap 5: Auto-detection vendor/model ONT (ZTE F609, Huawei, FiberHome, C-Data) & SSID Wi-Fi bawaan WINETS-XXXX\n- Tahap 1: Filter ketat akun tamu/voucher hotspot dari dialog pencarian pelanggan terdaftar\n- Tahap 1: Ekstraksi otomatis kontak telepon/WA dan alamat dari catatan SPK lapangan\n- Sinkronisasi otomatis pemotongan stok/custody barang teknisi & reseller saat aktivasi selesai.",
     ],
     'customer' => [
         'latest_version_code' => 10104,
