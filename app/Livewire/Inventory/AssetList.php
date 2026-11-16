@@ -76,6 +76,112 @@ class AssetList extends AdminComponent
         }
 
         $this->syncInstalledOnus(false);
+        $this->syncNetworkDevices(false);
+    }
+
+    public function syncNetworkDevices(bool $flash = true): void
+    {
+        try {
+            $networkCat = AssetCategory::where('code', 'CAT-NETWORK')->first();
+            $categoryId = $networkCat?->id;
+
+            $synced = 0;
+
+            // 1. Sinkronisasi MikroTik / Routers
+            if (class_exists(\App\Models\ISP\Router::class)) {
+                $routers = \App\Models\ISP\Router::all();
+                foreach ($routers as $r) {
+                    $code = $r->code ?: ('RTR-' . str_pad((string)$r->id, 4, '0', STR_PAD_LEFT));
+                    $sn = $r->serial_number ?: null;
+                    
+                    $asset = null;
+                    if ($sn) {
+                        $asset = Asset::where('serial_number', $sn)->first();
+                    }
+                    if (!$asset) {
+                        $asset = Asset::where('code', $code)->first();
+                    }
+
+                    $status = ($r->status === 'online' || $r->is_active) ? 'in_use' : 'available';
+                    $desc = 'Router / MikroTik IP: ' . ($r->ip_address ?: '-') . ($r->description ? ' (' . $r->description . ')' : '');
+
+                    if (!$asset) {
+                        Asset::create([
+                            'code' => $code,
+                            'name' => $r->name ?: ('Router ' . ($r->model ?: 'MikroTik')),
+                            'type' => 'network',
+                            'category_id' => $categoryId,
+                            'status' => $status,
+                            'condition' => 'good',
+                            'serial_number' => $sn,
+                            'vendor_id' => $r->vendor_id,
+                            'description' => $desc,
+                        ]);
+                        $synced++;
+                    } else {
+                        $asset->update([
+                            'name' => $r->name ?: $asset->name,
+                            'type' => 'network',
+                            'category_id' => $asset->category_id ?: $categoryId,
+                            'status' => $status,
+                            'description' => $desc,
+                        ]);
+                    }
+                }
+            }
+
+            // 2. Sinkronisasi OLT Server
+            if (class_exists(\App\Models\ISP\Olt::class)) {
+                $olts = \App\Models\ISP\Olt::all();
+                foreach ($olts as $o) {
+                    $code = $o->code ?: ('OLT-' . str_pad((string)$o->id, 4, '0', STR_PAD_LEFT));
+                    $sn = $o->serial_number ?: null;
+
+                    $asset = null;
+                    if ($sn) {
+                        $asset = Asset::where('serial_number', $sn)->first();
+                    }
+                    if (!$asset) {
+                        $asset = Asset::where('code', $code)->first();
+                    }
+
+                    $status = ($o->status === 'active') ? 'in_use' : 'available';
+                    $desc = 'OLT Server IP: ' . ($o->ip_address ?: '-') . ($o->description ? ' (' . $o->description . ')' : '');
+
+                    if (!$asset) {
+                        Asset::create([
+                            'code' => $code,
+                            'name' => $o->name ?: ('OLT ' . ($o->model ?: 'Server')),
+                            'type' => 'network',
+                            'category_id' => $categoryId,
+                            'status' => $status,
+                            'condition' => 'good',
+                            'serial_number' => $sn,
+                            'vendor_id' => $o->vendor_id,
+                            'description' => $desc,
+                        ]);
+                        $synced++;
+                    } else {
+                        $asset->update([
+                            'name' => $o->name ?: $asset->name,
+                            'type' => 'network',
+                            'category_id' => $asset->category_id ?: $categoryId,
+                            'status' => $status,
+                            'description' => $desc,
+                        ]);
+                    }
+                }
+            }
+
+            if ($flash) {
+                session()->flash('success', "Sinkronisasi selesai. {$synced} perangkat server (MikroTik & OLT) berhasil dihubungkan ke Aset & Alat Kerja.");
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Sync Network Devices error: ' . $e->getMessage());
+            if ($flash) {
+                session()->flash('error', 'Gagal mensinkronkan perangkat: ' . $e->getMessage());
+            }
+        }
     }
 
     public function syncInstalledOnus(bool $flash = true): void
