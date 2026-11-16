@@ -60,10 +60,10 @@ Schedule::command('voucher:reap-expired')
 Schedule::call(function (OltPollingService $polling) {
     $polling->pollAll();
 })
-    ->everyFifteenMinutes()
+    ->everyTenMinutes()
     ->timezone('Asia/Jakarta')
     ->name('OLT / ONU SNMP Signal Polling')
-    ->withoutOverlapping(5);
+    ->withoutOverlapping(10);
 
 // =================== ROUTER (MIKROTIK) POLLING ===================
 Schedule::call(function (RouterCollector $collector) {

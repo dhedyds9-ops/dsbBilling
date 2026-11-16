@@ -181,13 +181,28 @@ class Show extends AdminComponent
 
     public function getOnuStatus(Onu $onu): string
     {
-        if ($onu->status === 'los' || ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -30)) return 'LOS';
+        if ($onu->status === 'los' || ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -30.0)) return 'LOS';
         if ($onu->status === 'inactive') return 'OFFLINE';
-        if (empty($onu->last_seen_at) || $onu->last_seen_at->diffInMinutes(now()) > 10) {
+
+        $hasRecentAcs = $onu->relationLoaded('acsDevice') && $onu->acsDevice?->status === 'online';
+        $hasValidRx = $onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm >= -38.0 && (float)$onu->rx_power_dbm <= -6.0;
+
+        if ($onu->status === 'active' && ($hasValidRx || $hasRecentAcs)) {
+            if ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -27.0) return 'LOW_RX';
+            return 'ONLINE';
+        }
+
+        if (!empty($onu->last_seen_at) && $onu->last_seen_at->diffInMinutes(now()) <= 60) {
+            if ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -27.0) return 'LOW_RX';
+            return 'ONLINE';
+        }
+
+        if (empty($onu->last_seen_at) && !$hasRecentAcs && !$hasValidRx) {
             return 'OFFLINE';
         }
-        if ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -27) return 'LOW_RX';
-        return 'ONLINE';
+
+        if ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -27.0) return 'LOW_RX';
+        return $onu->status === 'active' ? 'ONLINE' : 'OFFLINE';
     }
 
     public function syncOlt(): void

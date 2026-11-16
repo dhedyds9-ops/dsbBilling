@@ -95,11 +95,16 @@ class AcsEvaluateStaleDevices extends Command
                             if ($device->onu_id) {
                                 Onu::withoutGlobalScopes(['branch_isolation'])
                                     ->where('id', $device->onu_id)
-                                    ->where('status', 'inactive')
-                                    ->update(['status' => 'active']);
+                                    ->update(['status' => 'active', 'last_seen_at' => $informTime]);
                             }
 
                             $this->notifyStatusChange($device, 'online', $now, $stateEngine, $oldStatus);
+                        } else {
+                            if ($device->onu_id) {
+                                Onu::withoutGlobalScopes(['branch_isolation'])
+                                    ->where('id', $device->onu_id)
+                                    ->update(['last_seen_at' => $informTime]);
+                            }
                         }
                     } elseif ($elapsedSeconds > $offlineThreshold) {
                         // Passed offline threshold -> Mark offline
@@ -108,11 +113,15 @@ class AcsEvaluateStaleDevices extends Command
                             $device->update(['status' => 'offline']);
                             $transitionedOffline++;
 
-                            // Also update linked ONU status if present
+                            // Hanya tandai ONU inactive jika ONU tidak memiliki redaman optik valid dari OLT
                             if ($device->onu_id) {
                                 Onu::withoutGlobalScopes(['branch_isolation'])
                                     ->where('id', $device->onu_id)
                                     ->where('status', 'active')
+                                    ->where(function($oq) {
+                                        $oq->whereNull('rx_power_dbm')
+                                           ->orWhere('rx_power_dbm', '<', -35.0);
+                                    })
                                     ->update(['status' => 'inactive']);
                             }
 

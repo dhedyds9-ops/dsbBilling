@@ -204,22 +204,42 @@ class Index extends AdminComponent
 
     public function getOnuStatus(Onu $onu): string
     {
-        if ($onu->status === 'los' || ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -30)) {
+        if ($onu->status === 'los' || ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -30.0)) {
             return 'LOS';
         }
         if ($onu->status === 'inactive') {
             return 'OFFLINE';
         }
-        if (empty($onu->last_seen_at) || $onu->last_seen_at->diffInMinutes(now()) > 10) {
+
+        // Cek apakah ada status online dari TR-069 GenieACS atau redaman optik valid dari OLT
+        $hasRecentAcs = $onu->relationLoaded('acsDevice') && $onu->acsDevice?->status === 'online';
+        $hasValidRx = $onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm >= -38.0 && (float)$onu->rx_power_dbm <= -6.0;
+
+        // Jika ONU aktif di database dan memiliki redaman optik valid atau TR-069 online
+        if ($onu->status === 'active' && ($hasValidRx || $hasRecentAcs)) {
+            if ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -27.0) {
+                return 'LOW_RX';
+            }
+            return 'ONLINE';
+        }
+
+        // Toleransi last_seen_at hingga 60 menit (mencegah status ONU tiba-tiba offline di sela waktu polling OLT)
+        if (!empty($onu->last_seen_at) && $onu->last_seen_at->diffInMinutes(now()) <= 60) {
+            if ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -27.0) {
+                return 'LOW_RX';
+            }
+            return 'ONLINE';
+        }
+
+        if (empty($onu->last_seen_at) && !$hasRecentAcs && !$hasValidRx) {
             return 'OFFLINE';
         }
-        if ($onu->rx_power_dbm === null && $onu->pon_port === null) {
-            return 'OFFLINE';
-        }
-        if ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -27) {
+
+        if ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -27.0) {
             return 'LOW_RX';
         }
-        return 'ONLINE';
+
+        return $onu->status === 'active' ? 'ONLINE' : 'OFFLINE';
     }
 
     public function render()
