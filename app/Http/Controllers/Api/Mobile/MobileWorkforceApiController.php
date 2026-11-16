@@ -93,7 +93,7 @@ class MobileWorkforceApiController extends Controller
     {
         $user = $request->user();
 
-        $query = WorkOrder::with(['customer', 'technician', 'approver', 'ticket', 'checklists', 'materialUsages', 'installation.customer'])
+        $query = WorkOrder::with(['customer', 'technician', 'approver', 'ticket', 'checklists', 'materialUsages', 'installation.customer.reseller', 'installation.reseller', 'installation.survey.prospect.reseller'])
             ->orderByRaw("CASE 
                 WHEN priority = 'urgent' THEN 1 
                 WHEN priority = 'high' THEN 2 
@@ -841,15 +841,56 @@ class MobileWorkforceApiController extends Controller
         } elseif ($wo->relationLoaded('installation') || $wo->installation) {
             $inst = $wo->installation;
             if ($inst) {
+                if (!$inst->relationLoaded('customer') || !$inst->relationLoaded('reseller') || !$inst->relationLoaded('survey')) {
+                    $inst->loadMissing(['customer.reseller', 'survey.prospect.reseller', 'reseller']);
+                }
                 $instCust = $inst->customer;
+
+                // Smart Regex Fallback dari notes jika field di tabel masih kosong (kompatibilitas SPK lama)
+                $notesPhone = null;
+                $notesAddress = null;
+                if (!empty($inst->notes)) {
+                    if (preg_match('/(?:Telp|Phone|WA|WhatsApp):\s*([0-9+\s\-]+?)(?:\s*\||\n|$)/i', $inst->notes, $m)) {
+                        $notesPhone = trim($m[1]);
+                    }
+                    if (preg_match('/(?:Alamat|Address):\s*([^|\n]+?)(?:\s*\||\n|$)/i', $inst->notes, $m)) {
+                        $notesAddress = trim($m[1]);
+                    }
+                }
+
+                $phone = $instCust?->phone 
+                    ?: ($instCust?->whatsapp 
+                    ?: ($inst->customer_phone 
+                    ?: ($inst->survey?->prospect?->phone 
+                    ?: ($notesPhone ?? null))));
+
+                $address = $instCust?->address 
+                    ?: ($inst->installation_address 
+                    ?: ($inst->survey?->address 
+                    ?: ($inst->survey?->prospect?->address 
+                    ?: ($notesAddress ?? null))));
+
+                $resellerId = $inst->reseller_id 
+                    ?? $instCust?->reseller_id 
+                    ?? $inst->survey?->prospect?->reseller_id 
+                    ?? null;
+
+                $resellerName = $inst->reseller?->name 
+                    ?? $instCust?->reseller?->name 
+                    ?? $inst->survey?->prospect?->reseller?->name 
+                    ?? null;
+
                 $customerData = [
                     'id' => $instCust?->id ?? null,
-                    'name' => $instCust?->name ?? ($inst->customer_name ?: 'Pelanggan Baru'),
+                    'name' => $instCust?->name ?? ($inst->survey?->prospect?->name ?? ($inst->customer_name ?: 'Pelanggan Baru')),
                     'email' => $instCust?->email ?? null,
-                    'phone' => $instCust?->phone ?? null,
-                    'whatsapp' => $instCust?->whatsapp ?? ($instCust?->phone ?? null),
-                    'address' => $instCust?->address ?? null,
+                    'phone' => $phone,
+                    'whatsapp' => $phone,
+                    'address' => $address,
                     'customer_code' => $instCust?->code ?? null,
+                    'reseller_id' => $resellerId,
+                    'reseller_name' => $resellerName,
+                    'package_name' => $inst->package_name ?? null,
                     'pppoe_username' => null,
                     'onu_sn' => null,
                 ];

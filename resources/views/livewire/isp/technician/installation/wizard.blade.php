@@ -122,7 +122,7 @@
                                 <div class="flex items-center gap-2">
                                     <span class="font-bold text-slate-900 dark:text-slate-100 text-sm">{{ $inst->customer?->name ?? $inst->customer_name }}</span>
                                     @php
-                                        $instReseller = $inst->customer?->reseller?->name ?? null;
+                                        $instReseller = $inst->reseller?->name ?? $inst->customer?->reseller?->name ?? $inst->survey?->prospect?->reseller?->name ?? null;
                                     @endphp
                                     @if($instReseller)
                                         <span class="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-[10px] border border-purple-200 dark:border-purple-800 flex items-center gap-1">
@@ -133,7 +133,7 @@
                                 </div>
                                 <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
                                     <span class="material-symbols-outlined text-xs notranslate" translate="no">location_on</span>
-                                    <span>{{ $inst->installation_address ?? $inst->customer?->address ?? 'Alamat pemasangan' }}</span>
+                                    <span>{{ $inst->installation_address ?: ($inst->customer?->address ?: ($inst->survey?->address ?: 'Alamat pemasangan')) }}</span>
                                 </div>
                             </div>
                             <button wire:click="selectWorkOrder('installation', {{ $inst->id }})" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs">

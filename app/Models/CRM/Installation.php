@@ -21,7 +21,12 @@ class Installation extends Model
         'uuid',
         'survey_id',
         'customer_id',
+        'reseller_id',
         'customer_name',
+        'customer_phone',
+        'installation_address',
+        'package_name',
+        'package_id',
         'contract_id',
         'onu_id',
         'assigned_to',
@@ -35,6 +40,8 @@ class Installation extends Model
         'status',
         'priority',
         'pop_id',
+        'latitude',
+        'longitude',
         'onu_serial_number',
         'onu_mac_address',
         'router_model',
@@ -93,6 +100,16 @@ class Installation extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'customer_id');
+    }
+
+    public function reseller()
+    {
+        return $this->belongsTo(User::class, 'reseller_id');
+    }
+
+    public function package()
+    {
+        return $this->belongsTo(\App\Models\Network\ServiceProfile::class, 'package_id');
     }
 
     public function contract()

@@ -334,6 +334,15 @@
               <input type="text" wire:model="newWo.manual_phone" placeholder="No. telepon / WhatsApp" class="{{ $fieldCls }}">
               <input type="text" wire:model="newWo.manual_address" placeholder="Alamat pemasangan" class="{{ $fieldCls }}">
               <input type="text" wire:model="newWo.manual_package" placeholder="Paket yang diminta (opsional)" class="{{ $fieldCls }}">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Owner / Reseller (Opsional)</label>
+                <select wire:model="newWo.reseller_id" class="{{ $fieldCls }}">
+                  <option value="">-- Milik Kantor / ISP Utama (Tanpa Reseller) --</option>
+                  @foreach($this->getResellerOptions() as $rid => $rname)
+                    <option value="{{ $rid }}">{{ $rname }}</option>
+                  @endforeach
+                </select>
+              </div>
               <p class="text-[11px] text-slate-400">Data pelanggan resmi dibuat oleh teknisi saat Wizard PSB.</p>
             </div>
           @endif

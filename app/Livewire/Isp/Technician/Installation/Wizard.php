@@ -260,7 +260,7 @@ class Wizard extends Component
                 $this->tryAutoDetectPackage($ticket->description, $ticket->customer_id);
             }
         } elseif ($type === 'installation') {
-            $inst = \App\Models\CRM\Installation::withoutGlobalScopes()->with(['customer.reseller', 'survey.prospect', 'completedBy'])->find($id);
+            $inst = \App\Models\CRM\Installation::withoutGlobalScopes()->with(['customer.reseller', 'survey.prospect.reseller', 'reseller', 'completedBy'])->find($id);
             if ($inst) {
                 if ($inst->status === 'completed' || !empty($inst->completed_by)) {
                     $completer = $inst->completedBy?->name ?? 'teknisi lain';
@@ -280,10 +280,45 @@ class Wizard extends Component
                     }
                 }
 
-                $instResellerId = $inst->customer?->reseller_id;
+                // Smart Fallback Parser dari notes jika kolom khusus kosong (SPK lama / manual legacy)
+                $notesPhone = null;
+                $notesAddress = null;
+                $notesPackage = null;
+                if (!empty($inst->notes)) {
+                    if (preg_match('/(?:Telp|Phone|WA|WhatsApp):\s*([0-9+\s\-]+?)(?:\s*\||\n|$)/i', $inst->notes, $m)) {
+                        $notesPhone = trim($m[1]);
+                    }
+                    if (preg_match('/(?:Alamat|Address):\s*([^|\n]+?)(?:\s*\||\n|$)/i', $inst->notes, $m)) {
+                        $notesAddress = trim($m[1]);
+                    }
+                    if (preg_match('/(?:Paket|Package):\s*([^|\n]+?)(?:\s*\||\n|$)/i', $inst->notes, $m)) {
+                        $notesPackage = trim($m[1]);
+                    }
+                }
+
+                $instResellerId = $inst->reseller_id 
+                    ?? $inst->customer?->reseller_id 
+                    ?? $inst->survey?->prospect?->reseller_id;
+
+                $resellerName = $inst->reseller?->name 
+                    ?? $inst->customer?->reseller?->name 
+                    ?? $inst->survey?->prospect?->reseller?->name 
+                    ?? null;
+
                 if ($instResellerId) {
                     $this->new_customer_reseller_id = (string) $instResellerId;
                 }
+
+                $resolvedPhone = $inst->customer?->phone 
+                    ?: ($inst->customer_phone 
+                    ?: ($inst->survey?->prospect?->phone 
+                    ?: ($notesPhone ?? '')));
+
+                $resolvedAddress = $inst->installation_address 
+                    ?: ($inst->customer?->address 
+                    ?: ($inst->survey?->address 
+                    ?: ($inst->survey?->prospect?->address 
+                    ?: ($notesAddress ?? ''))));
 
                 if ($inst->customer_id) {
                     $this->customer_id = (string) $inst->customer_id;
@@ -291,28 +326,31 @@ class Wizard extends Component
                 } elseif ($inst->survey && $inst->survey->prospect) {
                     $this->is_new_customer = true;
                     $this->new_customer_name = $inst->survey->prospect->name;
-                    $this->new_customer_phone = $inst->survey->prospect->phone ?? '';
-                    $this->new_customer_address = $inst->survey->address ?: ($inst->survey->prospect->address ?? '');
+                    $this->new_customer_phone = $resolvedPhone;
+                    $this->new_customer_address = $resolvedAddress;
                 } elseif (!empty($inst->customer_name)) {
                     $this->is_new_customer = true;
                     $this->new_customer_name = $inst->customer_name;
-                    $this->new_customer_phone = $inst->customer_phone ?? '';
-                    $this->new_customer_address = $inst->installation_address ?? '';
+                    $this->new_customer_phone = $resolvedPhone;
+                    $this->new_customer_address = $resolvedAddress;
                 }
+
                 $this->activeWorkOrder = [
                     'type' => 'installation',
                     'id' => $inst->id,
                     'number' => $inst->uuid ?? ('SPK-INST-' . $inst->id),
-                    'customer_name' => $inst->customer?->name ?? ($inst->survey?->prospect?->name ?? $inst->customer_name),
-                    'customer_phone' => $inst->customer?->phone ?? ($inst->survey?->prospect?->phone ?? $inst->customer_phone),
-                    'address' => $inst->installation_address ?? ($inst->survey?->address ?? ($inst->customer?->address ?? $inst->survey?->prospect?->address)),
-                    'reseller_name' => $inst->customer?->reseller?->name ?? null,
+                    'customer_name' => $inst->customer?->name ?? ($inst->survey?->prospect?->name ?? ($inst->customer_name ?: 'Pelanggan Baru')),
+                    'customer_phone' => $resolvedPhone ?: '-',
+                    'address' => $resolvedAddress ?: 'Alamat belum diatur',
+                    'reseller_name' => $resellerName,
                     'reseller_id' => $instResellerId,
                     'notes' => $inst->notes,
                 ];
                 $this->requireWorkOrderSelection = false;
                 $this->hasAccess = true;
-                $this->tryAutoDetectPackage($inst->notes, $inst->customer_id);
+
+                $packageToDetect = $inst->package_name ?: ($notesPackage ?: $inst->notes);
+                $this->tryAutoDetectPackage($packageToDetect, $inst->customer_id);
             }
         } elseif ($type === 'requisition' && \Illuminate\Support\Facades\Schema::hasTable('inventory_requisitions')) {
             $req = \App\Models\Inventory\InventoryRequisition::withoutGlobalScopes()->with(['customer'])->find($id);
@@ -1362,6 +1400,22 @@ class Wizard extends Component
                 ];
             })
             ->toArray();
+
+        if ($this->customer_id) {
+            $exists = collect($customersOptions)->firstWhere('value', (string) $this->customer_id);
+            if (!$exists) {
+                $c = Customer::withoutGlobalScopes()->find($this->customer_id);
+                if ($c) {
+                    $name = !empty(trim($c->name)) ? $c->name : 'Pelanggan #' . $c->id;
+                    $details = array_filter([$c->phone, $c->code, $c->address ? \Illuminate\Support\Str::limit($c->address, 30) : null]);
+                    array_unshift($customersOptions, [
+                        'value' => (string) $c->id,
+                        'label' => $name,
+                        'sublabel' => implode(' • ', $details),
+                    ]);
+                }
+            }
+        }
 
         $olts = Olt::withoutGlobalScopes()->get();
         $vendors = \App\Models\ISP\Vendor::withoutGlobalScopes()->get();

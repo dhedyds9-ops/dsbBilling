@@ -561,13 +561,18 @@ class Index extends BaseEnterpriseList
                     $this->errorMessage = 'Pilih hasil survey terlebih dahulu.';
                     return;
                 }
-                $survey = \App\Models\CRM\Survey::with('prospect')->find($this->newWo['survey_id']);
+                $survey = \App\Models\CRM\Survey::with(['prospect', 'lead'])->find($this->newWo['survey_id']);
                 if (!$survey || !$survey->prospect) {
                     $this->errorMessage = 'Data survey tidak valid.';
                     return;
                 }
                 $wo->survey_id = $survey->id;
                 $wo->customer_name = $survey->prospect->name;
+                $wo->customer_phone = $survey->prospect->phone ?? '';
+                $wo->installation_address = $survey->address ?: ($survey->prospect->address ?? '');
+                $wo->latitude = $survey->latitude ?: ($survey->prospect->latitude ?? null);
+                $wo->longitude = $survey->longitude ?: ($survey->prospect->longitude ?? null);
+                $wo->reseller_id = $survey->prospect->reseller_id ?? null;
             } elseif ($source === 'existing') {
                 if (empty($this->newWo['customer_id'])) {
                     $this->errorMessage = 'Pilih pelanggan terlebih dahulu.';
@@ -580,6 +585,11 @@ class Index extends BaseEnterpriseList
                 }
                 $wo->customer_id = $customer->id;
                 $wo->customer_name = $customer->name;
+                $wo->customer_phone = $customer->phone ?? ($customer->whatsapp ?? '');
+                $wo->installation_address = $customer->address ?? '';
+                $wo->latitude = $customer->latitude ?? null;
+                $wo->longitude = $customer->longitude ?? null;
+                $wo->reseller_id = $customer->reseller_id ?? (!empty($this->newWo['reseller_id']) && $this->newWo['reseller_id'] !== 'direct' ? (int) $this->newWo['reseller_id'] : null);
                 $jobTypes = ['pindah' => 'Pindah Lokasi', 'pasang_ulang' => 'Pasang Ulang', 'tambah' => 'Tambah Layanan'];
                 $jt = $jobTypes[$this->newWo['job_type'] ?? ''] ?? null;
                 if ($jt) {
@@ -591,11 +601,21 @@ class Index extends BaseEnterpriseList
                     $this->errorMessage = 'Nama calon pelanggan wajib diisi.';
                     return;
                 }
+                $phone = trim((string) ($this->newWo['manual_phone'] ?? ''));
+                $address = trim((string) ($this->newWo['manual_address'] ?? ''));
+                $package = trim((string) ($this->newWo['manual_package'] ?? ''));
+                $resellerId = !empty($this->newWo['reseller_id']) && $this->newWo['reseller_id'] !== 'direct' ? (int) $this->newWo['reseller_id'] : null;
+
                 $wo->customer_name = $name;
+                $wo->customer_phone = $phone;
+                $wo->installation_address = $address;
+                $wo->package_name = $package;
+                $wo->reseller_id = $resellerId;
+
                 $info = array_filter([
-                    !empty($this->newWo['manual_phone']) ? 'Telp: ' . trim($this->newWo['manual_phone']) : null,
-                    !empty($this->newWo['manual_address']) ? 'Alamat: ' . trim($this->newWo['manual_address']) : null,
-                    !empty($this->newWo['manual_package']) ? 'Paket: ' . trim($this->newWo['manual_package']) : null,
+                    !empty($phone) ? 'Telp: ' . $phone : null,
+                    !empty($address) ? 'Alamat: ' . $address : null,
+                    !empty($package) ? 'Paket: ' . $package : null,
                 ]);
                 if ($info) {
                     $notes = trim(implode(' | ', $info) . "\n" . $notes);
@@ -630,9 +650,7 @@ class Index extends BaseEnterpriseList
             $wo->scheduled_time = $this->newWo['scheduled_time'];
             $wo->technician_id = $primaryTechId;
             $wo->assigned_to = $primaryTechId;
-            if (\Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'technician_ids')) {
-                $wo->technician_ids = !empty($selectedTechIds) ? $selectedTechIds : null;
-            }
+            $wo->technician_ids = !empty($selectedTechIds) ? $selectedTechIds : null;
             $wo->notes = $notes;
             $wo->priority = $this->newWo['priority'] ?? 'medium';
             $wo->status = !empty($primaryTechId) ? 'scheduled' : 'pending';
