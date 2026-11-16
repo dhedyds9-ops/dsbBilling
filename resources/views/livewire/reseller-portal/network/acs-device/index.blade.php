@@ -37,6 +37,15 @@
                     {{ $territory['label'] }}
                 </span>
             @endif
+            <button type="button"
+                    wire:click="syncDevices"
+                    wire:loading.attr="disabled"
+                    class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap cursor-pointer">
+                <span wire:loading.remove wire:target="syncDevices" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sync</span>
+                <span wire:loading wire:target="syncDevices" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">sync</span>
+                <span wire:loading.remove wire:target="syncDevices">Sinkronkan GenieACS</span>
+                <span wire:loading wire:target="syncDevices">Sinkronisasi...</span>
+            </button>
             <a href="{{ route('reseller-portal.network.onus.index') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap">
                 <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:18px">router</span>
                 <span>Data ONU</span>
@@ -88,6 +97,7 @@
             <table class="w-full text-sm text-left">
                 <thead>
                     <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80 text-xs uppercase tracking-wider">
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Nama Pelanggan</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Serial Number</th>
@@ -96,7 +106,6 @@
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">IP Address</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Optical Power</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Software Ver.</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
@@ -109,6 +118,32 @@
                             $signalRaw = ($device->signal !== null && $device->signal !== '') ? $device->signal : $device->onu?->rx_power_dbm;
                         @endphp
                         <tr wire:key="acs-dev-{{ $device->id }}" class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                            <td class="px-4 py-3 whitespace-nowrap text-center">
+                                <div class="flex items-center justify-center gap-1">
+                                    <button type="button"
+                                            wire:click="summon({{ $device->id }})"
+                                            wire:loading.attr="disabled"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-600 dark:text-amber-400 transition-colors cursor-pointer"
+                                            title="Summon (Refresh Data)">
+                                        <span wire:loading.remove wire:target="summon({{ $device->id }})" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sensors</span>
+                                        <span wire:loading wire:target="summon({{ $device->id }})" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">hourglass_empty</span>
+                                    </button>
+                                    <a href="{{ route('reseller-portal.network.acs-devices.show', $device->id) }}"
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors cursor-pointer"
+                                       title="Detail Perangkat">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">info</span>
+                                    </a>
+                                    <button type="button"
+                                            wire:click="rebootDevice({{ $device->id }})"
+                                            wire:confirm="Yakin ingin me-reboot modem {{ $device->serial_number }} via TR-069?"
+                                            wire:loading.attr="disabled"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
+                                            title="Reboot Modem (TR-069)">
+                                        <span wire:loading.remove wire:target="rebootDevice({{ $device->id }})" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">restart_alt</span>
+                                        <span wire:loading wire:target="rebootDevice({{ $device->id }})" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">hourglass_empty</span>
+                                    </button>
+                                </div>
+                            </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider {{ $device->status === 'online' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400' }}">
                                     <span class="w-1.5 h-1.5 rounded-full {{ $device->status === 'online' ? 'bg-emerald-500' : 'bg-rose-500' }}"></span>
@@ -179,32 +214,6 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">{{ $device->software_version ?? '-' }}</td>
-                            <td class="px-4 py-3 text-right whitespace-nowrap">
-                                <div class="flex justify-end gap-1">
-                                    <button type="button"
-                                            wire:click="summon({{ $device->id }})"
-                                            wire:loading.attr="disabled"
-                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-600 dark:text-amber-400 transition-colors cursor-pointer"
-                                            title="Summon (Refresh Data)">
-                                        <span wire:loading.remove wire:target="summon({{ $device->id }})" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sensors</span>
-                                        <span wire:loading wire:target="summon({{ $device->id }})" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">hourglass_empty</span>
-                                    </button>
-                                    <a href="{{ route('reseller-portal.network.acs-devices.show', $device->id) }}"
-                                       class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors cursor-pointer"
-                                       title="Detail Perangkat">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">info</span>
-                                    </a>
-                                    <button type="button"
-                                            wire:click="rebootDevice({{ $device->id }})"
-                                            wire:confirm="Yakin ingin me-reboot modem {{ $device->serial_number }} via TR-069?"
-                                            wire:loading.attr="disabled"
-                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
-                                            title="Reboot Modem (TR-069)">
-                                        <span wire:loading.remove wire:target="rebootDevice({{ $device->id }})" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">restart_alt</span>
-                                        <span wire:loading wire:target="rebootDevice({{ $device->id }})" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">hourglass_empty</span>
-                                    </button>
-                                </div>
-                            </td>
                         </tr>
                     @empty
                         <tr>

@@ -4,6 +4,20 @@
 @endsection
 
 <div class="space-y-5 pb-10">
+    @if (session()->has('success'))
+        <div class="p-4 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-xl flex items-center gap-3">
+            <span class="material-symbols-outlined notranslate text-emerald-600 dark:text-emerald-400" translate="no">check_circle</span>
+            <p class="text-sm font-medium">{{ session('success') }}</p>
+        </div>
+    @endif
+
+    @if (session()->has('error'))
+        <div class="p-4 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl flex items-center gap-3">
+            <span class="material-symbols-outlined notranslate text-rose-600 dark:text-rose-400" translate="no">error</span>
+            <p class="text-sm font-medium">{{ session('error') }}</p>
+        </div>
+    @endif
+
     @if(isset($territory) && !$territory['has_territory'])
         <div class="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl text-amber-800 dark:text-amber-300 text-sm flex items-start gap-3">
             <span class="material-symbols-outlined notranslate text-amber-500 shrink-0 mt-0.5" translate="no">info</span>
@@ -78,12 +92,21 @@
                     {{ $territory['label'] }}
                 </span>
             @endif
+            <button type="button"
+                    wire:click="syncAll"
+                    wire:loading.attr="disabled"
+                    class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap cursor-pointer">
+                <span wire:loading.remove wire:target="syncAll" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sync</span>
+                <span wire:loading wire:target="syncAll" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">sync</span>
+                <span wire:loading.remove wire:target="syncAll">Sinkronkan OLT</span>
+                <span wire:loading wire:target="syncAll">Sinkronisasi...</span>
+            </button>
             <a href="{{ route('reseller-portal.network.onus.index') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap">
                 <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:18px">router</span>
                 <span>Data ONU</span>
             </a>
-            <a href="{{ route('reseller-portal.network.acs-devices.index') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">settings_remote</span>
+            <a href="{{ route('reseller-portal.network.acs-devices.index') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300 text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap">
+                <span class="material-symbols-outlined notranslate text-purple-600 dark:text-purple-400" translate="no" style="font-size:18px">settings_remote</span>
                 <span>Devices GenieACS</span>
             </a>
         </div>
@@ -148,6 +171,14 @@
                         <tr wire:key="olt-{{ $olt->id }}" class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                             <td class="px-4 py-3.5 whitespace-nowrap text-center">
                                 <div class="flex items-center justify-center gap-1.5">
+                                    <button type="button"
+                                            wire:click="rowSync({{ $olt->id }})"
+                                            wire:loading.attr="disabled"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors cursor-pointer"
+                                            title="Sinkronkan OLT ini sekarang">
+                                        <span wire:loading.remove wire:target="rowSync({{ $olt->id }})" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sync</span>
+                                        <span wire:loading wire:target="rowSync({{ $olt->id }})" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">sync</span>
+                                    </button>
                                     <a href="{{ route('reseller-portal.network.onus.index', ['oltFilter' => $olt->id]) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-400 transition-colors" title="Lihat ONU Terpasang">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">router</span>
                                     </a>

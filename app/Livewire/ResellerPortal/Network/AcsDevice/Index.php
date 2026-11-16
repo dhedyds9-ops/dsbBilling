@@ -63,6 +63,42 @@ class Index extends AdminComponent
         $this->resetPage();
     }
 
+    public function syncDevices(): void
+    {
+        try {
+            $driver = app(GenieACSDriver::class);
+            $query = [
+                'projection' => '_id,_deviceId,_ip,_lastInform,VirtualParameters,VirtualParameters.PonMac,VirtualParameters.ponMac,VirtualParameters.pppoeIP,VirtualParameters.IPTR069,VirtualParameters.pppoeMac,VirtualParameters.getSerialNumber,InternetGatewayDevice.DeviceInfo,Device.DeviceInfo,InternetGatewayDevice.WANDevice,Device.WANDevice,Device.Optical,InternetGatewayDevice.ManagementServer.ConnectionRequestURL,Device.ManagementServer.ConnectionRequestURL'
+            ];
+            $devices = $driver->listDevices($query, 5000);
+            
+            $adminAcs = app(\App\Livewire\ACS\Device\Index::class);
+            $count = 0;
+            $syncedIds = [];
+
+            \Illuminate\Support\Facades\DB::transaction(function () use ($devices, $adminAcs, &$count, &$syncedIds) {
+                foreach ($devices as $deviceData) {
+                    $savedId = $adminAcs->saveDeviceData($deviceData);
+                    if ($savedId) {
+                        $syncedIds[] = $savedId;
+                        $count++;
+                    }
+                }
+
+                if (count($syncedIds) > 0) {
+                    ACSDevice::whereNotIn('uuid', $syncedIds)->update(['status' => 'offline']);
+                }
+            });
+
+            $msg = "Sinkronisasi selesai: Berhasil memperbarui {$count} perangkat dari GenieACS!";
+            session()->flash('success', $msg);
+            $this->dispatch('toast', type: 'success', message: $msg);
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal sinkronisasi GenieACS: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Gagal sync GenieACS: ' . $e->getMessage());
+        }
+    }
+
     public function summon(int $deviceId): void
     {
         $device = ACSDevice::forReseller()->findOrFail($deviceId);
