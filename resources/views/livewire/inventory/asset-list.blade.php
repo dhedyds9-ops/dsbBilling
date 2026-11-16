@@ -473,7 +473,7 @@
                                     <select wire:model="assigned_to_id" class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
                                         <option value="">-- Tetap di Gudang (Tanpa Penugasan) --</option>
                                         @foreach($technicians as $tech)
-                                            <option value="{{ $tech->id }}">{{ $tech->name }} ({{ $tech->phone ?: 'Teknisi' }})</option>
+                                            <option value="{{ $tech->id }}">{{ $tech->name }} ({{ $tech->email ?: 'Teknisi' }})</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -564,7 +564,7 @@
                                 <select wire:model="assignTechnicianId" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
                                     <option value="">-- Pilih Teknisi Lapangan --</option>
                                     @foreach($technicians as $tech)
-                                        <option value="{{ $tech->id }}">{{ $tech->name }} ({{ $tech->phone ?: 'Teknisi' }})</option>
+                                        <option value="{{ $tech->id }}">{{ $tech->name }} ({{ $tech->email ?: 'Teknisi' }})</option>
                                     @endforeach
                                 </select>
                                 @error('assignTechnicianId')

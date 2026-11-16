@@ -406,7 +406,7 @@ class AssetList extends AdminComponent
         $technicians = \App\Models\User::where('job_function', 'TECHNICIAN')
             ->orWhereHas('roles', fn($q) => $q->whereIn('name', ['technician', 'noc', 'field-technician', 'admin_gudang']))
             ->orderBy('name')
-            ->get(['id', 'name', 'phone']);
+            ->get(['id', 'name', 'email']);
 
         return view('livewire.inventory.asset-list', [
             'assets' => $this->getAssets(),
