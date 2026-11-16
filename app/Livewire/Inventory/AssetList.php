@@ -415,6 +415,6 @@ class AssetList extends AdminComponent
             'warehouses' => $warehouses,
             'vendors' => $vendors,
             'technicians' => $technicians,
-        ]);
+        ])->layout('layouts.app', ['title' => 'Aset & Alat Kerja - dsBilling']);
     }
 }
