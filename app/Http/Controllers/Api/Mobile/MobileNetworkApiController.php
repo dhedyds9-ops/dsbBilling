@@ -1097,6 +1097,24 @@ class MobileNetworkApiController extends Controller
                         \Log::warning("[provisionOnt] Gagal catat CRM Activation: " . $ae->getMessage());
                     }
                 }
+
+                // Potong Barang dari Bagasi / Custody Teknisi & Reseller (Enterprise Inventory)
+                try {
+                    $stockService = app(\App\Services\Inventory\StockMutationService::class);
+                    $stockService->recordPsbConsumption(
+                        technicianId: (int) $user->id,
+                        customerId: (int) $customer->id,
+                        onuSn: (string) $sn,
+                        dropcoreMeters: (float) ($validated['dropcore_meters'] ?? 0),
+                        fastConnectorQty: (int) ($validated['fast_connector_qty'] ?? 0),
+                        opticalPower: !empty($validated['optical_power']) ? (string) $validated['optical_power'] : null,
+                        installationId: $wo->installation_id ?? null,
+                        ticketId: $wo->ticket_id ?? null,
+                        resellerId: $wo->reseller_id ?? $customer->reseller_id ?? $user->getEffectiveResellerId(),
+                    );
+                } catch (\Throwable $se) {
+                    \Log::warning("[provisionOnt] Gagal potong custody material PSB: " . $se->getMessage());
+                }
             }
 
             // 5. Injeksi OMCI WAN & TR-069 IP Host ke OLT C-Data / GPON jika OLT ditentukan
