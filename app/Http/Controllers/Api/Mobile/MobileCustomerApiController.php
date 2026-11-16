@@ -177,7 +177,7 @@ class MobileCustomerApiController extends Controller
     public function serviceProfiles(Request $request): JsonResponse
     {
         $user = $request->user();
-        $query = ServiceProfile::withoutGlobalScopes();
+        $query = ServiceProfile::withoutGlobalScopes()->availableForUser($user);
 
         if ($user && $user->branch_id && method_exists($user, 'isSuperAdmin') && !$user->isSuperAdmin()) {
             $query->where(function ($q) use ($user) {
@@ -190,24 +190,7 @@ class MobileCustomerApiController extends Controller
             $q->whereNull('status')
               ->orWhere('status', '')
               ->orWhereIn(DB::raw('LOWER(status)'), ['active', 'enabled', '1', 'actived', 'aktif']);
-        })->where(function ($q) {
-            // Only allow PPPoE, Hotspot & Broadband packages; strictly exclude Voucher packages
-            $q->whereNull('service_type')
-              ->orWhereNotIn(DB::raw('LOWER(service_type)'), ['voucher']);
-        })->where(function ($q) {
-            $q->where(DB::raw('LOWER(name)'), 'NOT LIKE', '%voucher%');
         })->orderBy('base_price', 'asc')->get();
-
-        if ($records->isEmpty()) {
-            $records = ServiceProfile::withoutGlobalScopes()
-                ->where(function ($q) {
-                    $q->whereNull('service_type')
-                      ->orWhereNotIn(DB::raw('LOWER(service_type)'), ['voucher']);
-                })
-                ->where(DB::raw('LOWER(name)'), 'NOT LIKE', '%voucher%')
-                ->orderBy('name', 'asc')
-                ->get();
-        }
 
         $data = $records->map(function ($p) {
             $price = (float) ($p->base_price ?? $p->price ?? 0);
@@ -226,8 +209,9 @@ class MobileCustomerApiController extends Controller
                 'id' => (int) $p->id,
                 'name' => (string) $p->name,
                 'price' => $price,
+                'is_free' => (bool) $p->isFreePackage(),
                 'speed_limit' => $speed,
-                'category' => (string) ($p->service_type ?? $p->package_type ?? 'broadband'),
+                'category' => (string) ($p->service_type ?? $p->package_type ?? 'pppoe'),
                 'billing_type' => (string) ($p->billing_cycle ?? 'monthly'),
             ];
         });

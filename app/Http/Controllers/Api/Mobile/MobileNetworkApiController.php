@@ -628,6 +628,17 @@ class MobileNetworkApiController extends Controller
         $user = $request->user();
         $isAdmin = $user && ($user->isSuperAdmin() || $user->hasRole(['administrator', 'superadmin', 'admin', 'manager', 'dispatcher']));
 
+        // Validasi Otorisasi Paket Gratis (0 Rupiah): Hanya Administrator yang diizinkan memilih Paket Gratis
+        if (!empty($validated['service_profile_id'])) {
+            $checkProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find((int) $validated['service_profile_id']);
+            if ($checkProfile && $checkProfile->isFreePackage() && (!$user || !$user->isSuperAdmin())) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aktivasi ditolak: Hanya Administrator yang memiliki izin untuk memilih Paket Gratis (0 Rupiah).',
+                ], 403);
+            }
+        }
+
         // Kebijakan Keamanan Jaringan & Anti-Perangkat Liar (Parity 100% dengan Web Installation Wizard)
         // Teknisi lapangan WAJIB memiliki penugasan Work Order / SPK PSB yang sah sebelum mengaktivasi ONT
         $workOrderId = $validated['work_order_id'] ?? null;

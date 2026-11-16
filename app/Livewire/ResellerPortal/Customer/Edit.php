@@ -148,6 +148,16 @@ class Edit extends AdminComponent
             'setup_fee'          => 'nullable|numeric',
         ]);
 
+        if (!empty($this->service_profile_id)) {
+            $checkProfile = ServiceProfile::find($this->service_profile_id);
+            $currentUser = auth()->user();
+            if ($checkProfile && $checkProfile->isFreePackage() && (!$currentUser || !$currentUser->isSuperAdmin())) {
+                $this->addError('service_profile_id', 'Paket Gratis (0 Rupiah) hanya dapat dipilih oleh Administrator.');
+                session()->flash('error', 'Paket Gratis (0 Rupiah) hanya dapat dipilih oleh Administrator.');
+                return;
+            }
+        }
+
         $ownerId = auth()->user()->getEffectiveResellerId();
         $customer = Customer::where(function($q) use ($ownerId) {
             $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
@@ -315,7 +325,8 @@ class Edit extends AdminComponent
 
     public function render()
     {
-        $serviceProfiles = ServiceProfile::active()->get();
+        $user = auth()->user();
+        $serviceProfiles = ServiceProfile::active()->availableForUser($user)->get();
         $routers = Router::active()->get();
         $odps = Odp::all();
         $availableOnus = Onu::orderBy('serial_number')

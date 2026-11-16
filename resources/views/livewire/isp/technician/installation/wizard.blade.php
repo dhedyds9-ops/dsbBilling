@@ -431,6 +431,10 @@
                                 class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all {{ $package_filter_type === 'hotspot' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500 hover:text-slate-800' }}">
                             Hotspot
                         </button>
+                        <button type="button" wire:click="setPackageFilterType('voucher')"
+                                class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all {{ $package_filter_type === 'voucher' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500 hover:text-slate-800' }}">
+                            Voucher
+                        </button>
                     </div>
                 </div>
 
@@ -463,9 +467,14 @@
                                 <div>
                                     <div class="flex items-start justify-between gap-2 mb-2">
                                         <div class="flex items-center gap-1.5 flex-wrap">
-                                            <span class="px-2 py-0.5 rounded-md font-black text-[10px] uppercase {{ $isHotspot ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' }}">
-                                                {{ $isHotspot ? 'HOTSPOT' : 'PPPoE' }}
+                                            <span class="px-2 py-0.5 rounded-md font-black text-[10px] uppercase {{ $pkg->service_type === 'voucher' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300' : ($isHotspot ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300') }}">
+                                                {{ $pkg->service_type === 'voucher' ? 'VOUCHER' : ($isHotspot ? 'HOTSPOT' : 'PPPoE') }}
                                             </span>
+                                            @if($pkg->isFreePackage())
+                                                <span class="px-2 py-0.5 rounded-md font-black text-[10px] uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
+                                                    GRATIS (0 RUPIAH)
+                                                </span>
+                                            @endif
                                             @if($pkg->code)
                                                 <span class="font-mono text-[10px] text-slate-400">{{ $pkg->code }}</span>
                                             @endif
@@ -503,10 +512,16 @@
                                 <div class="pt-2.5 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
                                     <div>
                                         <span class="text-[10px] text-slate-400 block leading-none">Harga</span>
-                                        <span class="font-black text-sm text-emerald-600 dark:text-emerald-400">
-                                            Rp{{ number_format($price, 0, ',', '.') }}
-                                            <span class="text-[10px] font-normal text-slate-400">/bln</span>
-                                        </span>
+                                        @if($pkg->isFreePackage())
+                                            <span class="font-black text-sm text-emerald-600 dark:text-emerald-400">
+                                                Rp 0 <span class="text-[10px] font-bold text-emerald-500">(Paket Gratis)</span>
+                                            </span>
+                                        @else
+                                            <span class="font-black text-sm text-emerald-600 dark:text-emerald-400">
+                                                Rp{{ number_format($price, 0, ',', '.') }}
+                                                <span class="text-[10px] font-normal text-slate-400">/bln</span>
+                                            </span>
+                                        @endif
                                     </div>
 
                                     <button type="button" class="px-3 py-1 rounded-xl text-xs font-bold transition-colors {{ $isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300' }}">

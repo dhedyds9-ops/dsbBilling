@@ -160,6 +160,65 @@ class ServiceProfile extends Model
         return $query->where('status', 'active');
     }
 
+    /**
+     * Check whether this package is marked as free (0 rupiah or is_free = true).
+     */
+    public function isFreePackage(): bool
+    {
+        if ((bool)$this->is_free) {
+            return true;
+        }
+
+        $basePrice = (float)($this->base_price ?? 0);
+        $promoPrice = (float)($this->promo_price ?? 0);
+        $ownerPrice = (float)($this->owner_price ?? 0);
+        $resellerPrice = (float)($this->reseller_price ?? 0);
+        $price = (float)($this->price ?? 0);
+
+        return $basePrice <= 0 && $promoPrice <= 0 && $ownerPrice <= 0 && $resellerPrice <= 0 && $price <= 0;
+    }
+
+    /**
+     * Scope to filter packages:
+     * - Only PPPoE, Hotspot, and Voucher service types.
+     * - Free packages (is_free = true or price <= 0) are strictly restricted to Administrators.
+     * - Resellers, Technicians, and other non-administrators can ONLY see and select paid packages.
+     */
+    public function scopeAvailableForUser($query, ?User $user = null)
+    {
+        // 1. Only allow PPPoE, Hotspot, and Voucher (and member_hotspot, combined)
+        $query->where(function ($q) {
+            $q->whereNull('service_type')
+              ->orWhereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), [
+                  'pppoe', 'hotspot', 'voucher', 'member_hotspot', 'combined'
+              ]);
+        });
+
+        // 2. Administrator check
+        $isAdmin = false;
+        if ($user) {
+            $isAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : false;
+            if (!$isAdmin && method_exists($user, 'hasRole')) {
+                $isAdmin = $user->hasRole([\App\Enums\UserRole::Administrator->value, 'administrator', 'Administrator', 'superadmin', 'Superadmin', 'admin', 'Admin']);
+            }
+        }
+
+        // If not administrator, strictly exclude free packages (0 rupiah or is_free = 1)
+        if (!$isAdmin) {
+            $query->where(function ($q) {
+                $q->where('is_free', false)
+                  ->orWhereNull('is_free');
+            })->where(function ($q) {
+                $q->where('base_price', '>', 0)
+                  ->orWhere('promo_price', '>', 0)
+                  ->orWhere('owner_price', '>', 0)
+                  ->orWhere('reseller_price', '>', 0);
+            });
+        }
+
+        return $query;
+    }
+
     // Relationships
     public function serviceProfileType(): BelongsTo
     {

@@ -400,13 +400,20 @@ class Wizard extends Component
 
     public function selectPackage($id)
     {
+        $user = auth()->user();
+        $profile = ServiceProfile::withoutGlobalScopes()->find($id);
+        if ($profile && $profile->isFreePackage() && (!$user || !$user->isSuperAdmin())) {
+            $this->dispatch('toast', type: 'error', message: 'Paket Gratis (0 Rupiah) hanya dapat dipilih oleh Administrator.');
+            return;
+        }
+
         $this->service_profile_id = (string) $id;
         $this->updatedServiceProfileId($id);
     }
 
     public function setPackageFilterType(string $type)
     {
-        $this->package_filter_type = in_array($type, ['all', 'pppoe', 'hotspot']) ? $type : 'all';
+        $this->package_filter_type = in_array($type, ['all', 'pppoe', 'hotspot', 'voucher']) ? $type : 'all';
     }
 
     protected function tryAutoDetectPackage(?string $notes = null, ?int $customerId = null): void
@@ -639,6 +646,12 @@ class Wizard extends Component
             }
         } elseif ($this->currentStep === 2) {
             $this->validate(['service_profile_id' => 'required|exists:service_profiles,id']);
+            $sp = ServiceProfile::withoutGlobalScopes()->find($this->service_profile_id);
+            $user = auth()->user();
+            if ($sp && $sp->isFreePackage() && (!$user || !$user->isSuperAdmin())) {
+                $this->addError('service_profile_id', 'Hanya Administrator yang memiliki izin untuk memilih Paket Gratis (0 Rupiah).');
+                return;
+            }
         } elseif ($this->currentStep === 3) {
             // ODP bersifat opsional (jika belum ada data ODP atau sambungan langsung)
             if (!empty($this->odp_id)) {
@@ -703,6 +716,13 @@ class Wizard extends Component
             'onu_vendor_id' => 'required|exists:vendors,id',
             'onu_model' => 'required|string|max:255',
         ]);
+
+        $checkProfile = ServiceProfile::withoutGlobalScopes()->find($this->service_profile_id);
+        $currentUser = auth()->user();
+        if ($checkProfile && $checkProfile->isFreePackage() && (!$currentUser || !$currentUser->isSuperAdmin())) {
+            $this->dispatch('toast', type: 'error', message: 'Aktivasi ditolak: Hanya Administrator yang dapat memilih Paket Gratis (0 Rupiah).');
+            return;
+        }
 
         if (!empty($this->wifi_password) && strlen(trim($this->wifi_password)) < 8) {
             $this->addError('wifi_password', 'Password Wi-Fi minimal 8 karakter (standar keamanan WPA2).');
@@ -1395,6 +1415,7 @@ class Wizard extends Component
     {
         $user = auth()->user();
         $baseServiceQuery = ServiceProfile::withoutGlobalScopes()
+            ->availableForUser($user)
             ->where(function ($q) {
                 $q->whereNull('status')
                   ->orWhere('status', '')
@@ -1413,22 +1434,19 @@ class Wizard extends Component
 
         $serviceRecords = $servicesQuery->orderBy('name')->get();
 
-        // Fallback jika tidak ada paket spesifik branch: ambil semua paket aktif sistem
+        // Fallback jika tidak ada paket spesifik branch: ambil semua paket aktif yang diizinkan untuk user
         if ($serviceRecords->isEmpty()) {
             $serviceRecords = $baseServiceQuery->orderBy('name')->get();
         }
 
-        // Fallback darurat: jika status bukan active, ambil semua profile agar teknisi tidak terblokir
-        if ($serviceRecords->isEmpty()) {
-            $serviceRecords = ServiceProfile::withoutGlobalScopes()->orderBy('name')->get();
-        }
-
-        // Filter tipe & pencarian untuk tampilan UI kartu paket
+        // Filter tipe & pencarian untuk tampilan UI kartu paket (PPPoE, Hotspot, Voucher)
         $filteredRecords = $serviceRecords;
         if ($this->package_filter_type === 'pppoe') {
-            $filteredRecords = $filteredRecords->filter(fn ($s) => !in_array(strtolower((string)$s->service_type), ['hotspot', 'voucher']));
+            $filteredRecords = $filteredRecords->filter(fn ($s) => in_array(strtolower((string)$s->service_type), ['pppoe', 'combined', 'broadband']) || empty($s->service_type));
         } elseif ($this->package_filter_type === 'hotspot') {
-            $filteredRecords = $filteredRecords->filter(fn ($s) => in_array(strtolower((string)$s->service_type), ['hotspot', 'voucher', 'member_hotspot']));
+            $filteredRecords = $filteredRecords->filter(fn ($s) => in_array(strtolower((string)$s->service_type), ['hotspot', 'member_hotspot']));
+        } elseif ($this->package_filter_type === 'voucher') {
+            $filteredRecords = $filteredRecords->filter(fn ($s) => in_array(strtolower((string)$s->service_type), ['voucher']));
         }
 
         if (!empty(trim($this->package_search))) {
@@ -1448,10 +1466,11 @@ class Wizard extends Component
                 if ($s->download_speed) {
                     $speed = " • {$s->download_speed} Mbps";
                 }
+                $priceLabel = $s->isFreePackage() ? "Paket Gratis (Rp 0)" : "Rp" . number_format($price, 0, ',', '.');
                 return [
                     'value' => (string) $s->id,
                     'label' => $s->name,
-                    'sublabel' => "[{$st}] Rp" . number_format($price, 0, ',', '.') . $speed,
+                    'sublabel' => "[{$st}] {$priceLabel}{$speed}",
                 ];
             })
             ->toArray();

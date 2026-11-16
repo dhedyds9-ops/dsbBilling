@@ -72,6 +72,16 @@ class CreateHotspot extends AdminComponent
                 'service_profile_id' => 'required|exists:service_profiles,id',
                 'router_id'          => 'nullable|exists:routers,id',
             ]);
+
+            $checkProfile = ServiceProfile::find($this->service_profile_id);
+            $currentUser = auth()->user();
+            if ($checkProfile && $checkProfile->isFreePackage() && (!$currentUser || !$currentUser->isSuperAdmin())) {
+                $this->dispatch('toast', [
+                    'type' => 'error',
+                    'message' => 'Paket Gratis (0 Rupiah) hanya dapat dipilih oleh Administrator.',
+                ]);
+                return;
+            }
         } catch (\Illuminate\Validation\ValidationException $e) {
             $errors = $e->validator->errors()->all();
             $errorMsg = implode('<br>', $errors);
@@ -152,7 +162,11 @@ class CreateHotspot extends AdminComponent
 
     public function render()
     {
-        $serviceProfiles = ServiceProfile::active()->whereIn('service_type', ['hotspot', 'combined'])->get();
+        $user = auth()->user();
+        $serviceProfiles = ServiceProfile::active()
+            ->availableForUser($user)
+            ->whereIn('service_type', ['hotspot', 'combined', 'member_hotspot'])
+            ->get();
         $routers = Router::active()->get();
         $networkProfiles = \App\Models\Provisioning\NetworkProfile::all();
         $odps = \App\Models\ISP\Odp::all();
