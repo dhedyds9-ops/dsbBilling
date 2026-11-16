@@ -358,7 +358,6 @@ class Index extends Component
         // 1. DATA STOK BAGASI SAYA (Real Enterprise Custody)
         $custodiesQuery = InventoryCustody::with(['item', 'itemSerial'])
             ->where('holder_id', $user->id)
-            ->where('holder_type', 'technician')
             ->whereRaw('(quantity - used_quantity - returned_quantity) > 0')
             ->when(!empty($q), function ($b) use ($q) {
                 $b->where(function ($sub) use ($q) {

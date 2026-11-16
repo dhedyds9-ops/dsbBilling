@@ -901,7 +901,28 @@ class Wizard extends Component
                 $this->provisioning_message = 'Layanan Hotspot Member & konfigurasi Bridge (PPPoE_Bridged + LAN 1-4 + SSID 1) berhasil dieksekusi.';
             }
 
-            // Catat pemakaian material kabel dropcore & fast connector jika diisi
+            // ==========================================
+            // Potong Barang dari Bagasi / Custody Teknisi & Reseller (Enterprise Inventory)
+            // ==========================================
+            try {
+                $stockService = app(\App\Services\Inventory\StockMutationService::class);
+                $stockService->recordPsbConsumption(
+                    technicianId: $user->id,
+                    customerId: $customer->id,
+                    onuSn: $sn,
+                    dropcoreMeters: (float) $this->dropcore_meters,
+                    fastConnectorQty: (int) $this->fast_connector_qty,
+                    opticalPower: $this->optical_power ?: null,
+                    installationId: $this->installation_id ?: null,
+                    ticketId: $this->ticket_id ?: null,
+                    requisitionId: $this->requisition_id ?: null,
+                    resellerId: $customer->reseller_id ?: ($this->new_customer_reseller_id ?: null)
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal potong custody material PSB: ' . $e->getMessage());
+            }
+
+            // Fallback backward-compatibility untuk support_maintenance_materials
             if (($this->dropcore_meters > 0 || $this->fast_connector_qty > 0) && \Illuminate\Support\Facades\Schema::hasTable('support_maintenance_materials')) {
                 try {
                     if ($this->dropcore_meters > 0) {
@@ -943,7 +964,7 @@ class Wizard extends Component
                         ]);
                     }
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal catat pemakaian material: ' . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal catat pemakaian material legacy: ' . $e->getMessage());
                 }
             }
 

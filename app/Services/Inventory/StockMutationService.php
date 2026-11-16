@@ -762,7 +762,6 @@ class StockMutationService
                     $newUsed = (float) $custody->used_quantity + $quantity;
                     $custody->update([
                         'used_quantity' => $newUsed,
-                        'available_quantity' => max(0, (float) $custody->quantity - $newUsed - (float) $custody->returned_quantity),
                         'status' => ($newUsed + (float) $custody->returned_quantity >= (float) $custody->quantity) ? 'used' : 'in_custody',
                         'customer_id' => $usage->customer_id ?: $custody->customer_id,
                         'installation_id' => $usage->installation_id ?: $custody->installation_id,
@@ -807,6 +806,255 @@ class StockMutationService
                     'notes' => $row['notes'] ?? null,
                 ]);
             }
+        });
+    }
+
+    /**
+     * Potong barang dari bagasi teknisi / reseller saat aktivasi PSB (Wizard)
+     */
+    public function recordPsbConsumption(
+        int $technicianId,
+        int $customerId,
+        string $onuSn,
+        float $dropcoreMeters = 0,
+        int $fastConnectorQty = 0,
+        ?string $opticalPower = null,
+        ?int $installationId = null,
+        ?int $ticketId = null,
+        ?int $requisitionId = null,
+        ?int $resellerId = null
+    ): ?InventoryUsage {
+        return DB::transaction(function () use (
+            $technicianId,
+            $customerId,
+            $onuSn,
+            $dropcoreMeters,
+            $fastConnectorQty,
+            $opticalPower,
+            $installationId,
+            $ticketId,
+            $requisitionId,
+            $resellerId
+        ) {
+            $techUser = \App\Models\User::find($technicianId);
+            $branchId = $techUser?->branch_id;
+
+            $usage = InventoryUsage::create([
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'usage_number' => 'USG-PSB-' . strtoupper(\Illuminate\Support\Str::random(8)),
+                'technician_id' => $technicianId,
+                'customer_id' => $customerId,
+                'installation_id' => $installationId,
+                'ticket_id' => $ticketId,
+                'work_order_type' => 'psb',
+                'usage_date' => now()->toDateString(),
+                'optical_power' => $opticalPower ?: null,
+                'notes' => "Pemakaian material PSB via Wizard (SN: {$onuSn})",
+                'branch_id' => $branchId,
+            ]);
+
+            $candidateHolderIds = array_filter(array_unique([$technicianId, $resellerId]));
+
+            // 1. Potong Modem ONT berdasarkan Serial Number
+            $snClean = strtoupper(trim($onuSn));
+            if (!empty($snClean)) {
+                $itemSerial = ItemSerial::where('serial_number', $snClean)->first();
+                $custodyOnt = null;
+
+                if ($itemSerial) {
+                    $custodyOnt = InventoryCustody::where('item_serial_id', $itemSerial->id)
+                        ->whereIn('holder_id', $candidateHolderIds)
+                        ->where('status', 'in_custody')
+                        ->first();
+                }
+
+                if (!$custodyOnt) {
+                    $custodyOnt = InventoryCustody::whereIn('holder_id', $candidateHolderIds)
+                        ->where('status', 'in_custody')
+                        ->whereHas('item', function ($q) {
+                            $q->where('name', 'like', '%ONU%')
+                              ->orWhere('name', 'like', '%ONT%')
+                              ->orWhere('name', 'like', '%Modem%')
+                              ->orWhere('sku', 'like', '%ONU%')
+                              ->orWhere('sku', 'like', '%ONT%');
+                        })
+                        ->whereRaw('(quantity - used_quantity - returned_quantity) >= 1')
+                        ->first();
+                }
+
+                if ($custodyOnt) {
+                    $newUsed = (float) $custodyOnt->used_quantity + 1;
+                    $custodyOnt->update([
+                        'used_quantity' => $newUsed,
+                        'status' => ($newUsed + (float) $custodyOnt->returned_quantity >= (float) $custodyOnt->quantity) ? 'used' : 'in_custody',
+                        'customer_id' => $customerId,
+                        'installation_id' => $installationId,
+                        'ticket_id' => $ticketId,
+                    ]);
+
+                    if ($itemSerial) {
+                        $itemSerial->update([
+                            'status' => 'installed',
+                            'customer_id' => $customerId,
+                            'installation_id' => $installationId,
+                            'ticket_id' => $ticketId,
+                            'updated_by' => $technicianId,
+                        ]);
+                    }
+
+                    InventoryUsageItem::create([
+                        'usage_id' => $usage->id,
+                        'custody_id' => $custodyOnt->id,
+                        'item_id' => $custodyOnt->item_id,
+                        'item_serial_id' => $itemSerial?->id ?? $custodyOnt->item_serial_id,
+                        'quantity' => 1,
+                        'notes' => "Modem ONT SN: {$snClean}",
+                    ]);
+                }
+            }
+
+            // 2. Potong Dropcore
+            if ($dropcoreMeters > 0) {
+                $custodyDc = InventoryCustody::whereIn('holder_id', $candidateHolderIds)
+                    ->where('status', 'in_custody')
+                    ->whereHas('item', function ($q) {
+                        $q->where('name', 'like', '%Dropcore%')
+                          ->orWhere('name', 'like', '%Drop Core%')
+                          ->orWhere('name', 'like', '%Kabel Optik%')
+                          ->orWhere('unit', 'meter');
+                    })
+                    ->whereRaw('(quantity - used_quantity - returned_quantity) > 0')
+                    ->first();
+
+                if ($custodyDc) {
+                    $newUsed = (float) $custodyDc->used_quantity + $dropcoreMeters;
+                    $custodyDc->update([
+                        'used_quantity' => $newUsed,
+                        'status' => ($newUsed + (float) $custodyDc->returned_quantity >= (float) $custodyDc->quantity) ? 'used' : 'in_custody',
+                        'customer_id' => $customerId,
+                        'installation_id' => $installationId,
+                    ]);
+
+                    InventoryUsageItem::create([
+                        'usage_id' => $usage->id,
+                        'custody_id' => $custodyDc->id,
+                        'item_id' => $custodyDc->item_id,
+                        'quantity' => $dropcoreMeters,
+                        'notes' => "Kabel Dropcore: {$dropcoreMeters} meter",
+                    ]);
+                }
+            }
+
+            // 3. Potong Fast Connector
+            if ($fastConnectorQty > 0) {
+                $custodyFc = InventoryCustody::whereIn('holder_id', $candidateHolderIds)
+                    ->where('status', 'in_custody')
+                    ->whereHas('item', function ($q) {
+                        $q->where('name', 'like', '%Fast Connector%')
+                          ->orWhere('name', 'like', '%Connector%')
+                          ->orWhere('name', 'like', '%SC/UPC%')
+                          ->orWhere('name', 'like', '%SOC%');
+                    })
+                    ->whereRaw('(quantity - used_quantity - returned_quantity) > 0')
+                    ->first();
+
+                if ($custodyFc) {
+                    $newUsed = (float) $custodyFc->used_quantity + $fastConnectorQty;
+                    $custodyFc->update([
+                        'used_quantity' => $newUsed,
+                        'status' => ($newUsed + (float) $custodyFc->returned_quantity >= (float) $custodyFc->quantity) ? 'used' : 'in_custody',
+                        'customer_id' => $customerId,
+                        'installation_id' => $installationId,
+                    ]);
+
+                    InventoryUsageItem::create([
+                        'usage_id' => $usage->id,
+                        'custody_id' => $custodyFc->id,
+                        'item_id' => $custodyFc->item_id,
+                        'quantity' => $fastConnectorQty,
+                        'notes' => "Fast Connector: {$fastConnectorQty} pcs",
+                    ]);
+                }
+            }
+
+            // 4. Update Requisition jika ada
+            if ($requisitionId) {
+                $req = InventoryRequisition::find($requisitionId);
+                if ($req && in_array($req->status, ['approved', 'dispatched'])) {
+                    $req->update(['status' => 'completed']);
+                }
+            }
+
+            return $usage;
+        });
+    }
+
+    /**
+     * Potong barang dari bagasi teknisi saat perbaikan tiket maintenance
+     */
+    public function recordTicketMaterialUsage(
+        int $ticketId,
+        int $technicianId,
+        int $custodyId,
+        float $quantity,
+        ?string $notes = null
+    ): ?InventoryUsage {
+        return DB::transaction(function () use ($ticketId, $technicianId, $custodyId, $quantity, $notes) {
+            $ticket = \App\Models\Support\Ticket::withoutGlobalScopes()->findOrFail($ticketId);
+            $techUser = \App\Models\User::find($technicianId);
+            $custody = InventoryCustody::with(['item', 'itemSerial'])
+                ->where('id', $custodyId)
+                ->where('holder_id', $technicianId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $avail = (float) $custody->available_quantity;
+            if ($quantity > $avail) {
+                throw new \RuntimeException("Jumlah melebihi stok barang di bagasi Anda (Tersedia: {$avail} {$custody->item?->unit}).");
+            }
+
+            $usage = InventoryUsage::create([
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'usage_number' => 'USG-TCK-' . strtoupper(\Illuminate\Support\Str::random(8)),
+                'technician_id' => $technicianId,
+                'customer_id' => $ticket->customer_id,
+                'ticket_id' => $ticket->id,
+                'work_order_type' => 'maintenance',
+                'usage_date' => now()->toDateString(),
+                'notes' => $notes ?: 'Pemakaian material perbaikan tiket #' . $ticket->id,
+                'branch_id' => $techUser?->branch_id,
+            ]);
+
+            $newUsed = (float) $custody->used_quantity + $quantity;
+            $custody->update([
+                'used_quantity' => $newUsed,
+                'status' => ($newUsed + (float) $custody->returned_quantity >= (float) $custody->quantity) ? 'used' : 'in_custody',
+                'customer_id' => $ticket->customer_id,
+                'ticket_id' => $ticket->id,
+            ]);
+
+            if ($custody->item_serial_id) {
+                $serial = ItemSerial::find($custody->item_serial_id);
+                if ($serial) {
+                    $serial->update([
+                        'status' => 'installed',
+                        'customer_id' => $ticket->customer_id,
+                        'ticket_id' => $ticket->id,
+                        'updated_by' => $technicianId,
+                    ]);
+                }
+            }
+
+            InventoryUsageItem::create([
+                'usage_id' => $usage->id,
+                'custody_id' => $custody->id,
+                'item_id' => $custody->item_id,
+                'item_serial_id' => $custody->item_serial_id,
+                'quantity' => $quantity,
+                'notes' => $notes,
+            ]);
+
+            return $usage;
         });
     }
 

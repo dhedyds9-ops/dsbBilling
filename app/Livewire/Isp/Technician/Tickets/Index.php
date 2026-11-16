@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Inventory\InventoryCustody;
 use Src\Domain\Support\Events\TicketResolvedEvent;
 
 #[Layout('layouts.technician-app')]
@@ -216,28 +217,45 @@ class Index extends Component
             $payload['checklists'] = $this->checklists;
         }
 
-        // Catat penggunaan material jika teknisi memilih material terpakai
-        if ($this->material_id && $this->material_qty > 0 && Schema::hasTable('support_maintenance_materials')) {
+        // Catat penggunaan material dari bagasi teknisi (Enterprise Inventory Custody)
+        if ($this->material_id && $this->material_qty > 0) {
             try {
-                $mat = DB::table('support_maintenance_materials')->where('id', $this->material_id)->first();
-                if ($mat) {
-                    DB::table('support_maintenance_materials')->where('id', $mat->id)->decrement('stock', $this->material_qty);
-                    DB::table('support_maintenance_usages')->insert([
-                        'ticket_id' => $ticket->id,
-                        'material_id' => $mat->id,
-                        'material_name' => $mat->name,
-                        'quantity' => $this->material_qty,
-                        'unit' => $mat->unit ?: 'pcs',
-                        'technician_id' => Auth::id(),
-                        'technician_name' => Auth::user()->name,
-                        'used_date' => now()->toDateString(),
-                        'notes' => 'Penyelesaian Tiket ' . ($this->selectedTicketCode ?? ('#' . $ticket->id)),
-                        'created_by' => Auth::id(),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
+                $custody = InventoryCustody::where('id', $this->material_id)
+                    ->where('holder_id', Auth::id())
+                    ->first();
+
+                if ($custody) {
+                    $stockService = app(\App\Services\Inventory\StockMutationService::class);
+                    $stockService->recordTicketMaterialUsage(
+                        ticketId: $ticket->id,
+                        technicianId: Auth::id(),
+                        custodyId: $custody->id,
+                        quantity: (float) $this->material_qty,
+                        notes: 'Material perbaikan tiket #' . $ticket->id
+                    );
+                } elseif (Schema::hasTable('support_maintenance_materials')) {
+                    $mat = DB::table('support_maintenance_materials')->where('id', $this->material_id)->first();
+                    if ($mat) {
+                        DB::table('support_maintenance_materials')->where('id', $mat->id)->decrement('stock', $this->material_qty);
+                        DB::table('support_maintenance_usages')->insert([
+                            'ticket_id' => $ticket->id,
+                            'material_id' => $mat->id,
+                            'material_name' => $mat->name,
+                            'quantity' => $this->material_qty,
+                            'unit' => $mat->unit ?: 'pcs',
+                            'technician_id' => Auth::id(),
+                            'technician_name' => Auth::user()->name,
+                            'used_date' => now()->toDateString(),
+                            'notes' => 'Penyelesaian Tiket ' . ($this->selectedTicketCode ?? ('#' . $ticket->id)),
+                            'created_by' => Auth::id(),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
                 }
-            } catch (\Throwable) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[Tickets] Gagal catat pemakaian material perbaikan: ' . $e->getMessage());
+            }
         }
 
         $ticket->update($payload);
@@ -365,28 +383,45 @@ class Index extends Component
             $payload['checklists'] = $this->checklists;
         }
 
-        // Catat penggunaan material jika teknisi memilih material terpakai
-        if ($this->material_id && $this->material_qty > 0 && Schema::hasTable('support_maintenance_materials')) {
+        // Catat penggunaan material dari bagasi teknisi (Enterprise Inventory Custody)
+        if ($this->material_id && $this->material_qty > 0) {
             try {
-                $mat = DB::table('support_maintenance_materials')->where('id', $this->material_id)->first();
-                if ($mat) {
-                    DB::table('support_maintenance_materials')->where('id', $mat->id)->decrement('stock', $this->material_qty);
-                    DB::table('support_maintenance_usages')->insert([
-                        'ticket_id' => $ticket->id,
-                        'material_id' => $mat->id,
-                        'material_name' => $mat->name,
-                        'quantity' => $this->material_qty,
-                        'unit' => $mat->unit ?: 'pcs',
-                        'technician_id' => Auth::id(),
-                        'technician_name' => Auth::user()->name,
-                        'used_date' => now()->toDateString(),
-                        'notes' => 'Penyelesaian Tiket ' . ($this->selectedTicketCode ?? ('#' . $ticket->id)),
-                        'created_by' => Auth::id(),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
+                $custody = InventoryCustody::where('id', $this->material_id)
+                    ->where('holder_id', Auth::id())
+                    ->first();
+
+                if ($custody) {
+                    $stockService = app(\App\Services\Inventory\StockMutationService::class);
+                    $stockService->recordTicketMaterialUsage(
+                        ticketId: $ticket->id,
+                        technicianId: Auth::id(),
+                        custodyId: $custody->id,
+                        quantity: (float) $this->material_qty,
+                        notes: 'Material perbaikan tiket #' . $ticket->id
+                    );
+                } elseif (Schema::hasTable('support_maintenance_materials')) {
+                    $mat = DB::table('support_maintenance_materials')->where('id', $this->material_id)->first();
+                    if ($mat) {
+                        DB::table('support_maintenance_materials')->where('id', $mat->id)->decrement('stock', $this->material_qty);
+                        DB::table('support_maintenance_usages')->insert([
+                            'ticket_id' => $ticket->id,
+                            'material_id' => $mat->id,
+                            'material_name' => $mat->name,
+                            'quantity' => $this->material_qty,
+                            'unit' => $mat->unit ?: 'pcs',
+                            'technician_id' => Auth::id(),
+                            'technician_name' => Auth::user()->name,
+                            'used_date' => now()->toDateString(),
+                            'notes' => 'Penyelesaian Tiket ' . ($this->selectedTicketCode ?? ('#' . $ticket->id)),
+                            'created_by' => Auth::id(),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
                 }
-            } catch (\Throwable) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[Tickets] Gagal catat pemakaian material perbaikan: ' . $e->getMessage());
+            }
         }
 
         $ticket->update($payload);
@@ -544,9 +579,30 @@ class Index extends Component
 
         $tickets = $query->latest('created_at')->paginate(10);
 
-        $availableMaterials = Schema::hasTable('support_maintenance_materials')
-            ? DB::table('support_maintenance_materials')->where('stock', '>', 0)->orderBy('name')->get()
-            : collect();
+        $user = Auth::user();
+        $myCustodies = InventoryCustody::activeCustody()
+            ->where('holder_id', $user?->id)
+            ->with(['item', 'itemSerial'])
+            ->get();
+
+        if ($myCustodies->isNotEmpty()) {
+            $availableMaterials = $myCustodies->map(function ($c) {
+                $name = $c->item?->name ?? ('Material #' . $c->item_id);
+                if ($c->itemSerial) {
+                    $name .= " [SN: {$c->itemSerial->serial_number}]";
+                }
+                return (object) [
+                    'id' => $c->id,
+                    'name' => $name,
+                    'stock' => $c->available_quantity,
+                    'unit' => $c->item?->unit ?: 'pcs',
+                ];
+            });
+        } elseif (Schema::hasTable('support_maintenance_materials')) {
+            $availableMaterials = DB::table('support_maintenance_materials')->where('stock', '>', 0)->orderBy('name')->get();
+        } else {
+            $availableMaterials = collect();
+        }
 
         return view('livewire.isp.technician.tickets.index', compact(
             'tickets',
