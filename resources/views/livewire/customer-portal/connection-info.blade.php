@@ -65,7 +65,7 @@
                     <div class="grid grid-cols-2 gap-y-3 gap-x-2 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 mb-2">
                         <div>
                             <p class="text-[10px] text-slate-500 dark:text-slate-400">IP Address</p>
-                            <p class="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono">{{ $session->framed_ip_address ?? '-' }}</p>
+                            <p class="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono"><x-ui.ip-link :ip="$session->framed_ip_address" /></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-500 dark:text-slate-400">Total Kuota</p>

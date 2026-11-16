@@ -382,7 +382,7 @@
                 </div>
                 <div>
                     <span class="text-slate-400 block text-[10px] uppercase font-bold">IP WAN:</span>
-                    <span class="font-mono text-slate-800 dark:text-slate-200">{{ $onu->ip_address ?: ($diagnostics['ip_address'] ?? '-') }}</span>
+                    <span class="font-mono text-slate-800 dark:text-slate-200"><x-ui.ip-link :ip="$onu->ip_address ?: ($diagnostics['ip_address'] ?? null)" /></span>
                 </div>
                 <div>
                     <span class="text-slate-400 block text-[10px] uppercase font-bold">PPPoE WAN:</span>
@@ -454,7 +454,7 @@
                                         {{ $client['host_name'] ?: 'Perangkat Tanpa Nama' }}
                                     </h5>
                                     <p class="text-[10px] font-mono text-slate-500 truncate">
-                                        {{ $client['ip_address'] }} • {{ $client['mac_address'] }}
+                                        <x-ui.ip-link :ip="$client['ip_address'] ?? null" /> • {{ $client['mac_address'] }}
                                     </p>
                                 </div>
                             </div>

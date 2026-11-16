@@ -49,7 +49,7 @@
                     <td class="p-3  font-medium noc-text">{{ $s->username }}</td>
                     <td class="p-3  noc-muted">{{ $s->customerService->customer->name ?? '-' }}</td>
                     <td class="p-3  noc-muted">{{ $s->router->name ?? '-' }}</td>
-                    <td class="p-3  noc-mono noc-muted">{{ $s->address }}</td>
+                    <td class="p-3  noc-mono noc-muted"><x-ui.ip-link :ip="$s->address" /></td>
                     <td class="p-3  noc-mono noc-muted">{{ $s->server ?? '-' }} / {{ $s->caller_id ?? '-' }}</td>
                     <td class="p-3  noc-mono noc-muted">{{ $s->rate_up ? number_format($s->rate_up / 1000000, 1) . ' Mbps' : '-' }}</td>
                     <td class="p-3  noc-mono noc-muted">{{ $s->rate_down ? number_format($s->rate_down / 1000000, 1) . ' Mbps' : '-' }}</td>

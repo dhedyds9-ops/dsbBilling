@@ -49,7 +49,7 @@
                         </a>
                     </td>
                     <td class="p-3  noc-text font-medium">{{ $olt->name }}</td>
-                    <td class="p-3  noc-mono noc-muted">{{ $olt->ip_address }}</td>
+                    <td class="p-3  noc-mono noc-muted"><x-ui.ip-link :ip="$olt->ip_address" /></td>
                     <td class="p-3  noc-muted">{{ $olt->vendor?->name ?? '-' }} / {{ $olt->model ?? '-' }}</td>
                     <td class="p-3  noc-mono {{ $olt->temperature > 60 ? 'text-red-500' : 'text-emerald-500' }}">{{ $olt->temperature ?? '-' }} °C</td>
                     <td class="p-3  noc-mono noc-muted">{{ $olt->onu_active_count ?? 0 }}</td>

@@ -445,7 +445,7 @@
                             </td>
                             <td class="px-4 py-3.5 whitespace-nowrap">
                                 <span class="font-mono text-sm text-slate-700 dark:text-slate-200 font-medium">
-                                    {{ $olt->ip_address ?: '-' }}
+                                    <x-ui.ip-link :ip="$olt->ip_address" />
                                 </span>
                             </td>
                             <td class="px-4 py-3.5 whitespace-nowrap">

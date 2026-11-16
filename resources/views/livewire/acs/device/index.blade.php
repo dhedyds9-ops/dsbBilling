@@ -209,12 +209,12 @@
                                 @endphp
                                 @if($pppoeIp)
                                     <div class="font-mono text-xs font-semibold {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}" title="IP PPPoE">
-                                        <span class="text-[10px] text-blue-500 font-bold uppercase mr-1">PPP:</span>{{ $pppoeIp }}
+                                        <span class="text-[10px] text-blue-500 font-bold uppercase mr-1">PPP:</span><x-ui.ip-link :ip="$pppoeIp" />
                                     </div>
                                 @endif
                                 @if($tr069Ip)
                                     <div class="font-mono text-[11px] text-slate-500 dark:text-slate-400 {{ $pppoeIp ? 'mt-0.5' : '' }}" title="IP TR-069">
-                                        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase mr-1">TR069:</span>{{ $tr069Ip }}
+                                        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase mr-1">TR069:</span><x-ui.ip-link :ip="$tr069Ip" />
                                     </div>
                                 @endif
                                 @if(!$pppoeIp && !$tr069Ip)

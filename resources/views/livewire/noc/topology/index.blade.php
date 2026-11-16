@@ -263,7 +263,7 @@
                     {{ $impactResult['device'] ?: 'No device selected' }}
                 </div>
                 <div class="text-xs text-slate-400 mt-1 font-mono flex items-center gap-2">
-                    <span>IP: {{ $impactResult['ip_address'] ?? '—' }}</span>
+                    <span>IP: <x-ui.ip-link :ip="$impactResult['ip_address'] ?? null" fallback="—" /></span>
                     <span class="text-slate-600">·</span>
                     <span class="uppercase {{ ($impactResult['status'] ?? '') === 'active' || ($impactResult['status'] ?? '') === 'online' ? 'text-emerald-400' : 'text-amber-400' }}">
                         {{ $impactResult['status'] ?? 'Standby' }}
@@ -577,7 +577,7 @@
                         </div>
                         <div class="flex justify-between py-1 border-b border-slate-800/60">
                             <span class="text-slate-400">IP Address:</span>
-                            <span class="font-mono text-slate-200 text-right">{{ $selectedNodeDetail['ip'] }}</span>
+                            <span class="font-mono text-slate-200 text-right"><x-ui.ip-link :ip="$selectedNodeDetail['ip'] ?? null" /></span>
                         </div>
                         <div class="flex justify-between py-1 border-b border-slate-800/60">
                             <span class="text-slate-400">Vendor / Manufaktur:</span>

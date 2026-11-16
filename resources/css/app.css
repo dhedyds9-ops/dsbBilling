@@ -533,3 +533,14 @@ table td.break-words {
     -webkit-text-fill-color: #f1f5f9 !important;
     transition: background-color 5000s ease-in-out 0s;
 }
+
+/* Direct IP Access Links - Strictly No Text Decoration */
+.ip-direct-link,
+.ip-direct-link:hover,
+.ip-direct-link:focus,
+.ip-direct-link:active,
+.ip-direct-link:visited,
+a[href^="http://"].ip-direct-link {
+    text-decoration: none !important;
+}
+

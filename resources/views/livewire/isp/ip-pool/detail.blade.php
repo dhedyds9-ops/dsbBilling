@@ -136,7 +136,7 @@
                             @forelse($ipAllocations as $alloc)
                             <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/50 transition-colors">
                                 <td class="px-6 py-4 whitespace-nowrap font-mono text-slate-900 dark:text-slate-100">
-                                    {{ $alloc->ip_address ?? '-' }}
+                                    <x-ui.ip-link :ip="$alloc->ip_address" />
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     {{ optional(optional($alloc->customerService)->customer)->name ?? '-' }}
@@ -214,7 +214,7 @@
                         <div class="flex items-center justify-between">
                             <div>
                                 <div class="font-medium text-slate-900 dark:text-slate-100">{{ $router->name }}</div>
-                                <div class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ $router->ip_address }}</div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400 font-mono"><x-ui.ip-link :ip="$router->ip_address" /></div>
                             </div>
                             <x-ui.badge variant="success">
                                 {{ optional($router)->status ? strtoupper(optional($router)->status) : 'AKTIF' }}

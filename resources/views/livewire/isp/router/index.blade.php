@@ -92,7 +92,7 @@
                                 <div class="font-medium text-slate-700 dark:text-slate-300">{{ $router->lokasi_pop ?? '-' }}</div>
                             </td>
                             <td class="px-4 py-3 font-mono text-sm text-slate-700 dark:text-slate-300">
-                                {{ $router->ip_address }}<span class="text-slate-400">:{{ $router->port }}</span>
+                                <x-ui.ip-link :ip="$router->ip_address" /><span class="text-slate-400">:{{ $router->port }}</span>
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-1.5">

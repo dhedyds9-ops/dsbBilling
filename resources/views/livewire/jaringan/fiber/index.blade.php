@@ -126,7 +126,7 @@ foreach ($this->tabs as $k => $label) {
                             @if ($this->activeTab === 'olt')
                                 <td class="px-3 py-2 font-mono text-xs text-slate-500 dark:text-slate-400">{{ $r->id }}</td>
                                 <td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">{{ $r->name }}</td>
-                                <td class="px-3 py-2 font-mono text-xs">{{ $r->host }}</td>
+                                <td class="px-3 py-2 font-mono text-xs"><x-ui.ip-link :ip="$r->host ?? $r->ip_address ?? null" /></td>
                                 <td class="px-3 py-2">{{ $r->pop?->name ?? '-' }}</td>
                                 <td class="px-3 py-2 text-right">{{ $r->ponPorts->count() ?? 0 }}</td>
                                 <td class="px-3 py-2 text-right">{{ $r->onus_count ?? 0 }}</td>

@@ -232,7 +232,7 @@
                             </td>
                             <td class="px-4 py-3.5 whitespace-nowrap">
                                 <div class="text-xs font-mono text-slate-700 dark:text-slate-200">{{ $onu->mac_address ?? $onu->acsDevice?->mac_address ?? '-' }}</div>
-                                <div class="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">{{ $onu->ip_address ?? $onu->acsDevice?->ip_address ?? '-' }}</div>
+                                <div class="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5"><x-ui.ip-link :ip="$onu->ip_address ?? $onu->acsDevice?->ip_address" /></div>
                             </td>
                             <td class="px-4 py-3.5 whitespace-nowrap">
                                 <div class="text-sm font-medium text-slate-700 dark:text-slate-200">{{ $onu->olt?->name ?? '-' }}</div>

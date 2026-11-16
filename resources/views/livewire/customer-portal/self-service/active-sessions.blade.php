@@ -113,7 +113,7 @@
                         <div>
                             <span class="text-[10px] font-medium text-slate-500 dark:text-slate-400 block uppercase tracking-wider">IP Address</span>
                             <span class="text-xs sm:text-sm font-bold font-mono text-slate-800 dark:text-slate-200 block mt-0.5">
-                                {{ $modem->ip_address }}
+                                <x-ui.ip-link :ip="$modem->ip_address" />
                             </span>
                         </div>
 
@@ -202,7 +202,7 @@
                                                 {{ $displayName }}
                                             </p>
                                             <div class="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5 truncate">
-                                                <span>{{ $dev['ip'] ?? '-' }}</span>
+                                                <x-ui.ip-link :ip="$dev['ip'] ?? null" />
                                                 <span>&bull;</span>
                                                 <span class="truncate" title="{{ $dev['mac'] }}">{{ $dev['mac'] ?? '-' }}</span>
                                             </div>
@@ -294,7 +294,7 @@
                             <div class="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 mb-4 text-xs font-mono">
                                 <div>
                                     <p class="text-[10px] text-slate-400 font-sans">IP Address</p>
-                                    <p class="font-semibold text-slate-700 dark:text-slate-300">{{ $session->ip_address }}</p>
+                                    <p class="font-semibold text-slate-700 dark:text-slate-300"><x-ui.ip-link :ip="$session->ip_address" /></p>
                                 </div>
                                 <div>
                                     <p class="text-[10px] text-slate-400 font-sans">MAC Address</p>

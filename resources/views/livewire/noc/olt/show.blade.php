@@ -17,7 +17,7 @@
     </div>
 
     <div class="flex items-center gap-3 text-xs ml-auto">
-        <span class="noc-muted">IP: <span class="noc-mono noc-text-secondary">{{ $olt->ip_address }}</span></span>
+        <span class="noc-muted">IP: <span class="noc-mono noc-text-secondary"><x-ui.ip-link :ip="$olt->ip_address" /></span></span>
         <span class="noc-muted">Model: <span class="noc-text-secondary">{{ $olt->vendor?->name ?? '-' }} {{ $olt->model ?? '' }}</span></span>
         <span class="noc-muted">Uptime: <span class="noc-mono noc-text-secondary">{{ $olt->uptime_text ?? '-' }}</span></span>
         <span class="noc-muted">Temp:
@@ -52,7 +52,7 @@
             </x-slot>
             <dl class="space-y-2 text-xs">
                 <div class="flex justify-between"><dt class="noc-muted">Code</dt><dd class="noc-mono noc-text-secondary">{{ $olt->code ?? '-' }}</dd></div>
-                <div class="flex justify-between"><dt class="noc-muted">IP Address</dt><dd class="noc-mono noc-text-secondary">{{ $olt->ip_address }}</dd></div>
+                <div class="flex justify-between"><dt class="noc-muted">IP Address</dt><dd class="noc-mono noc-text-secondary"><x-ui.ip-link :ip="$olt->ip_address" /></dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">SNMP Port</dt><dd class="noc-mono noc-text-secondary">{{ $olt->snmp_port ?? '-' }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">Firmware</dt><dd class="noc-mono noc-text-secondary">{{ $olt->firmware_version ?? '-' }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">POP</dt><dd class="noc-text-secondary">{{ $olt->pop?->name ?? '-' }}</dd></div>
@@ -150,7 +150,7 @@
                     <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors noc-row-hover transition-colors">
                         <td class="p-3  font-mono noc-muted">{{ $onu->serial_number }}</td>
                         <td class="p-3  font-mono noc-muted">{{ $onu->mac_address ?? $onu->acsDevice?->mac_address ?? '-' }}</td>
-                        <td class="p-3  font-mono noc-muted">{{ $onu->acsDevice?->ip_address ?? '-' }}</td>
+                        <td class="p-3  font-mono noc-muted"><x-ui.ip-link :ip="$onu->acsDevice?->ip_address" /></td>
                         <td class="p-3 noc-text">
                             @if($editingOnuId === $onu->id)
                                 <div class="flex items-center gap-1">

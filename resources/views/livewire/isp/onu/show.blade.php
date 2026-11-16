@@ -94,7 +94,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">IP Host (ACS)</label>
-                            <p class="text-slate-900 dark:text-slate-100 font-mono">{{ $onu->acsDevice?->ip_address ?? '-' }}</p>
+                            <p class="text-slate-900 dark:text-slate-100 font-mono"><x-ui.ip-link :ip="$onu->acsDevice?->ip_address" /></p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">PON Port</label>

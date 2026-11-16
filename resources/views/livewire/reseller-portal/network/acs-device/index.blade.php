@@ -183,13 +183,13 @@
                                 <div class="text-[11px] text-slate-500 dark:text-slate-400">{{ $vendorName }}</div>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
-                                <div class="font-mono text-xs text-slate-900 dark:text-slate-100" title="PPPoE IP">{{ $device->ip_address ?? '-' }}</div>
+                                <div class="font-mono text-xs text-slate-900 dark:text-slate-100" title="PPPoE IP"><x-ui.ip-link :ip="$device->ip_address" /></div>
                                 @if($device->connection_request_url)
                                     @php
                                         $tr069Ip = parse_url($device->connection_request_url, PHP_URL_HOST);
                                     @endphp
                                     @if($tr069Ip && $tr069Ip !== $device->ip_address)
-                                        <div class="font-mono text-[11px] text-slate-500 dark:text-slate-400" title="TR069 IP (Connection Request)">{{ $tr069Ip }}</div>
+                                        <div class="font-mono text-[11px] text-slate-500 dark:text-slate-400" title="TR069 IP (Connection Request)"><x-ui.ip-link :ip="$tr069Ip" /></div>
                                     @endif
                                 @endif
                             </td>

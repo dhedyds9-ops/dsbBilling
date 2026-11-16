@@ -342,15 +342,8 @@
                             </td>
                             
                             {{-- Ip Address --}}
-                            <td class="px-4 py-3 whitespace-nowrap {{ $textSecondary }} font-mono text-xs">
-                                @if($ipAddress !== '-')
-                                    <a href="http://{{ $ipAddress }}" target="_blank" rel="noopener noreferrer" class="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline transition-colors inline-flex items-center gap-1">
-                                        {{ $ipAddress }}
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:12px">open_in_new</span>
-                                    </a>
-                                @else
-                                    {{ $ipAddress }}
-                                @endif
+                            <td class="px-4 py-3 whitespace-nowrap {{ $textSecondary }} font-mono text-xs" style="text-decoration: none !important;">
+                                <x-ui.ip-link :ip="$ipAddress" :icon="true" />
                             </td>
                             
                             {{-- Owner/Reseller --}}

@@ -713,7 +713,7 @@
                     </div>
                     <div class="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
                         <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">IP Address</label>
-                        <span class="font-mono font-semibold text-slate-900 dark:text-slate-100">{{ $mon['ip'] ?? 'Dynamic' }}</span>
+                        <span class="font-mono font-semibold text-slate-900 dark:text-slate-100"><x-ui.ip-link :ip="$mon['ip'] ?? 'Dynamic'" fallback="Dynamic" /></span>
                     </div>
                     <div class="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
                         <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">MAC Address</label>

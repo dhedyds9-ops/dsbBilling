@@ -97,7 +97,7 @@
                                         <span class="badge bg-{{ $customer->status === 'active' ? 'success' : 'secondary' }} badge-status">{{ ucfirst($customer->status ?? 'active') }}</span>
                                     </td>
                                     <td><span class="text-primary fw-bold">{{ $customer->customerServices?->first()?->serviceProfile?->name ?? '-' }}</span></td>
-                                    <td><span class="text-muted small">{{ $customer->customerServices?->first()?->pppoeUser?->static_ip ?? 'Dynamic' }}</span></td>
+                                    <td><span class="text-muted small"><x-ui.ip-link :ip="$customer->customerServices?->first()?->pppoeUser?->static_ip ?? 'Dynamic'" fallback="Dynamic" /></span></td>
                                     <td>
                                         <div class="text-muted small">
                                             -

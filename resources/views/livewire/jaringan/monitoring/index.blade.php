@@ -235,7 +235,7 @@ $filterConfig = $this->getFilterConfig();
                                 <td class="px-3 py-2 font-mono text-xs text-blue-600 dark:text-blue-400">{{ $r->username }}</td>
                                 <td class="px-3 py-2 text-xs">{{ $r->pppoeUser?->customer?->name ?? '-' }}</td>
                                 <td class="px-3 py-2 text-xs">{{ $r->router?->name ?? '-' }}</td>
-                                <td class="px-3 py-2 font-mono text-xs">{{ $r->ip_address }}</td>
+                                <td class="px-3 py-2 font-mono text-xs"><x-ui.ip-link :ip="$r->ip_address" /></td>
                                 <td class="px-3 py-2 text-right font-mono text-xs tabular-nums">{{ $r->uptime }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs tabular-nums text-cyan-600 dark:text-cyan-400">{{ round(($r->download_rate ?? 0)/1e6, 2) }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs tabular-nums text-purple-600 dark:text-purple-400">{{ round(($r->upload_rate ?? 0)/1e6, 2) }}</td>
@@ -243,7 +243,7 @@ $filterConfig = $this->getFilterConfig();
                             @else
                                 <td class="px-3 py-2 font-mono text-xs text-purple-600 dark:text-purple-400">{{ $r->username }}</td>
                                 <td class="px-3 py-2 text-xs">{{ $r->router?->name ?? '-' }}</td>
-                                <td class="px-3 py-2 font-mono text-xs">{{ $r->ip_address }}</td>
+                                <td class="px-3 py-2 font-mono text-xs"><x-ui.ip-link :ip="$r->ip_address" /></td>
                                 <td class="px-3 py-2 font-mono text-[10px] text-slate-500 dark:text-slate-400">{{ $r->mac_address }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs tabular-nums">{{ $r->uptime }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs tabular-nums text-cyan-600 dark:text-cyan-400">{{ $r->rx_bytes }}</td>

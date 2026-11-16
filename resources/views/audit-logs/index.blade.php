@@ -44,7 +44,7 @@
                             </span>
                         </td>
                         <td>{{ $log->notes ?? '-' }}</td>
-                        <td>{{ $log->ip_address ?? '-' }}</td>
+                        <td class="font-mono"><x-ui.ip-link :ip="$log->ip_address" /></td>
                     </tr>
                     @empty
                     <tr>

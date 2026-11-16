@@ -2474,7 +2474,7 @@
                             <div class="node-panel">
                                 <div class="node-kv">
                                     <span class="node-kv-label">IP Address:</span>
-                                    <span class="node-kv-value font-mono text-emerald-400 font-bold">${ipDisplay}</span>
+                                    <span class="node-kv-value font-mono text-emerald-400 font-bold">${ipDisplay !== '-' ? `<a href="http://${ipDisplay}" target="_blank" rel="noopener noreferrer" class="ip-direct-link text-emerald-400 hover:text-emerald-300" style="text-decoration:none !important;">${ipDisplay}</a>` : ipDisplay}</span>
                                 </div>
                                 <div class="node-kv">
                                     <span class="node-kv-label">Port PON:</span>
@@ -3046,7 +3046,7 @@
                             <div class="node-panel">
                                 <div class="node-kv">
                                     <span class="node-kv-label"><i class="fa fa-network-wired text-slate-400 mr-1"></i> IP TR-069:</span>
-                                    <span class="node-kv-value font-mono text-cyan-400 font-bold" id="popup-ip-text-${customer.id}">${tr069Ip}</span>
+                                    <span class="node-kv-value font-mono text-cyan-400 font-bold" id="popup-ip-text-${customer.id}">${tr069Ip !== '-' && tr069Ip !== '0.0.0.0' ? `<a href="http://${tr069Ip}" target="_blank" rel="noopener noreferrer" class="ip-direct-link text-cyan-400 hover:text-cyan-300" style="text-decoration:none !important;">${tr069Ip}</a>` : tr069Ip}</span>
                                 </div>
                                 <span id="popup-acs-ip-${customer.id}" class="d-none">${tr069Ip}</span>
                                 <div class="node-kv">
@@ -3211,7 +3211,9 @@
                                 }
 
                                 if (data.tr069_ip) {
-                                    ipText.innerText = data.tr069_ip;
+                                    ipText.innerHTML = (data.tr069_ip !== '-' && data.tr069_ip !== '0.0.0.0')
+                                        ? `<a href="http://${data.tr069_ip}" target="_blank" rel="noopener noreferrer" class="ip-direct-link text-cyan-400 hover:text-cyan-300" style="text-decoration:none !important;">${data.tr069_ip}</a>`
+                                        : data.tr069_ip;
                                     if (acsIp) acsIp.innerText = data.tr069_ip;
                                 }
 

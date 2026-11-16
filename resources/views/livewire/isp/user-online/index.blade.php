@@ -225,7 +225,7 @@
                                 {{ $session->router?->name ?? '-' }}
                             </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono">
-                                {{ $session->address }}
+                                <x-ui.ip-link :ip="$session->address" />
                             </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-xs">
                                 @if($currentType === 'pppoe')

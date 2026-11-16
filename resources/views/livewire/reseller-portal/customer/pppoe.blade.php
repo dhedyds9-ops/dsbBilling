@@ -300,8 +300,8 @@
                             <td class="px-4 py-3 {{ $textSecondary }}">
                                 {{ $user->serviceProfile->name ?? '-' }}
                             </td>
-                            <td class="px-4 py-3 {{ $textSecondary }} font-mono text-xs">
-                                {{ $user->static_ip ?? $user->ip_address ?? 'Dynamic' }}
+                            <td class="px-4 py-3 {{ $textSecondary }} font-mono text-xs" style="text-decoration: none !important;">
+                                <x-ui.ip-link :ip="$user->static_ip ?? $user->ip_address ?? 'Dynamic'" fallback="Dynamic" />
                             </td>
                             <td class="px-4 py-3">
                                 @php

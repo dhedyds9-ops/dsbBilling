@@ -112,7 +112,7 @@
                             <span style="font-weight:700;color:#60a5fa;font-size:13px;">OLT: ${i.name}</span>
                             <span style="font-size:9px;font-weight:700;background:#1e3a8a;color:#93c5fd;padding:2px 6px;border-radius:999px;">OLT</span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">IP Host:</span><span style="font-family:monospace;color:#34d399;font-weight:700;">${i.ip_address || '-'}</span></div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">IP Host:</span><span style="font-family:monospace;color:#34d399;font-weight:700;">${i.ip_address ? `<a href="http://${i.ip_address}" target="_blank" rel="noopener noreferrer" class="ip-direct-link" style="color:#34d399;text-decoration:none !important;">${i.ip_address}</a>` : '-'}</span></div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Port PON:</span><span style="color:#38bdf8;font-weight:700;">${i.pon_port_count || i.port_count || '-'} Port</span></div>
                     </div>`;
                 window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);

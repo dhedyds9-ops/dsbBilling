@@ -480,7 +480,7 @@
                                             <td class="py-2 pr-2 font-bold text-slate-800 dark:text-slate-200 max-w-[120px] truncate" title="{{ $client['host_name'] }}">
                                                 {{ $client['host_name'] }}
                                             </td>
-                                            <td class="py-2 px-2 font-mono text-slate-600 dark:text-slate-400">{{ $client['ip_address'] }}</td>
+                                            <td class="py-2 px-2 font-mono text-slate-600 dark:text-slate-400"><x-ui.ip-link :ip="$client['ip_address'] ?? null" /></td>
                                             <td class="py-2 px-2 font-mono text-[10px] text-slate-500">{{ $client['mac_address'] }}</td>
                                             <td class="py-2 px-2">
                                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold {{ $client['interface_type'] === 'Wi-Fi' ? 'bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' }}">

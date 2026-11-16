@@ -13,7 +13,7 @@
         <x-noc.stat-badge :status="$status" />
     </div>
     <div class="flex items-center gap-3 text-xs ml-auto">
-        <span class="noc-muted">IP: <span class="noc-mono noc-text-secondary">{{ $router->ip_address }}</span></span>
+        <span class="noc-muted">IP: <span class="noc-mono noc-text-secondary"><x-ui.ip-link :ip="$router->ip_address" /></span></span>
         <span class="noc-muted">API: <span class="noc-mono noc-text-secondary">{{ $router->api_port ?? '-' }}</span></span>
         <span class="noc-muted">Model: <span class="noc-text-secondary">{{ $router->vendor?->name ?? '-' }} {{ $router->model ?? '' }}</span></span>
         <span class="noc-muted">RouterOS: <span class="noc-mono noc-text-secondary">{{ $router->routeros_version ?? '-' }}</span></span>
@@ -87,7 +87,7 @@
             <dl class="space-y-2 text-xs">
                 <div class="flex justify-between"><dt class="noc-muted">Code</dt><dd class="noc-mono noc-text-secondary">{{ $router->code ?? '-' }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">Hostname</dt><dd class="noc-text-secondary">{{ $router->hostname ?? '-' }}</dd></div>
-                <div class="flex justify-between"><dt class="noc-muted">IP Address</dt><dd class="noc-mono noc-text-secondary">{{ $router->ip_address }}</dd></div>
+                <div class="flex justify-between"><dt class="noc-muted">IP Address</dt><dd class="noc-mono noc-text-secondary"><x-ui.ip-link :ip="$router->ip_address" /></dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">API Port</dt><dd class="noc-mono noc-text-secondary">{{ $router->api_port ?? '-' }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">COA Port</dt><dd class="noc-mono noc-text-secondary">{{ $router->coa_port ?? '-' }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">Model</dt><dd class="noc-text-secondary">{{ $router->model ?? '-' }}</dd></div>
@@ -172,7 +172,7 @@
                     </div>
                     <div>
                         <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">IP</div>
-                        <div class="text-sm font-bold text-gray-200">{{ $router->ip_address }}</div>
+                        <div class="text-sm font-bold text-gray-200"><x-ui.ip-link :ip="$router->ip_address" /></div>
                     </div>
                 </div>
                 <div class="flex gap-4 text-right">
@@ -397,7 +397,7 @@
                         <td class="p-3 noc-muted text-xs">
                             <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase" style="background-color: var(--noc-subpanel); color: var(--noc-muted);">{{ $s->service ?? 'ppp' }}</span>
                         </td>
-                        <td class="p-3 font-mono noc-muted text-xs">{{ $s->address ?? '-' }}</td>
+                        <td class="p-3 font-mono noc-muted text-xs"><x-ui.ip-link :ip="$s->address" /></td>
                         <td class="p-3 font-mono noc-muted text-xs">{{ $s->caller_id ?? '-' }}</td>
                         <td class="p-3 font-mono noc-muted text-xs">{{ $s->uptime ?? '-' }}</td>
                         <td class="p-3 font-mono text-xs">
@@ -437,7 +437,7 @@
                     @forelse($hotspotSessions as $s)
                     <tr class="noc-row-hover transition-colors">
                         <td class="p-3 font-medium noc-text font-mono text-xs">{{ $s->user }}</td>
-                        <td class="p-3 font-mono noc-muted text-xs">{{ $s->address ?? '-' }}</td>
+                        <td class="p-3 font-mono noc-muted text-xs"><x-ui.ip-link :ip="$s->address" /></td>
                         <td class="p-3 font-mono noc-muted text-xs">{{ $s->mac_address ?? '-' }}</td>
                         <td class="p-3 noc-muted text-xs">{{ $s->server ?? '-' }}</td>
                         <td class="p-3 text-xs">
@@ -478,7 +478,7 @@
                         <td class="p-3"><span class="px-2 py-0.5 rounded text-xs font-medium uppercase" style="background-color: var(--noc-subpanel); color: var(--noc-muted);">{{ $sess->protocol }}</span></td>
                         <td class="p-3 font-medium noc-text text-xs">{{ $sess->username }}</td>
                         <td class="p-3 font-mono noc-muted text-xs">
-                            <div>{{ $sess->address }}</div>
+                            <div><x-ui.ip-link :ip="$sess->address" /></div>
                             <div class="text-[10px]">{{ $sess->caller_id }}</div>
                         </td>
                         <td class="p-3 font-mono noc-muted text-xs">{{ $sess->uptime }}</td>

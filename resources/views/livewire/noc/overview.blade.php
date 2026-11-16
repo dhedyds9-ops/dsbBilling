@@ -339,7 +339,7 @@
                             {{ $device->type ?? 'â€”' }}
                         </span>
                     </td>
-                    <td class="px-3 py-1.5 noc-mono text-gray-400">{{ $device->ip ?? 'â€”' }}</td>
+                    <td class="px-3 py-1.5 noc-mono text-gray-400"><x-ui.ip-link :ip="$device->ip ?? null" fallback="—" /></td>
                     <td class="px-3 py-1.5">
                         @php
                             $st = strtolower($device->status ?? 'unknown');

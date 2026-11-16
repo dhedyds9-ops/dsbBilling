@@ -749,7 +749,7 @@
                             <td class="p-4 text-slate-600 dark:text-slate-400">
                                 <span class="px-2 py-0.5 {{ ($tt['service'] ?? '') == 'PPPOE' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300' }} rounded text-xs font-semibold">{{ $tt['service'] }}</span>
                             </td>
-                            <td class="p-4 font-mono text-xs text-slate-500 dark:text-slate-400">{{ $tt['ip'] }}</td>
+                            <td class="p-4 font-mono text-xs text-slate-500 dark:text-slate-400"><x-ui.ip-link :ip="$tt['ip'] ?? null" /></td>
                             <td class="p-4 text-right font-medium text-emerald-600 dark:text-emerald-400">{{ $tt['download'] }}</td>
                             <td class="p-4 text-right font-medium text-amber-600 dark:text-amber-400">{{ $tt['upload'] }}</td>
                         </tr>

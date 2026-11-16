@@ -25,7 +25,7 @@
                     </span>
                     <span class="flex items-center gap-1">
                         <span class="material-symbols-outlined notranslate text-[16px]" translate="no">lan</span> 
-                        {{ $router->ip_address }} : {{ $router->api_port }}
+                        <x-ui.ip-link :ip="$router->ip_address" /> : {{ $router->api_port }}
                     </span>
                 </div>
             </div>
@@ -530,7 +530,7 @@
                                                 <span class="text-sm font-bold text-slate-900 dark:text-slate-100">{{ $session['name'] ?? '-' }}</span>
                                             </div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono">{{ $session['address'] ?? '-' }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono"><x-ui.ip-link :ip="$session['address'] ?? null" /></td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono">{{ $session['caller-id'] ?? '-' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{{ $session['uptime'] ?? '-' }}</td>
 <td class="px-6 py-4 whitespace-nowrap text-right"><button wire:click="disconnectPpp('{{ $session['name'] }}')" wire:confirm="Yakin ingin kick user ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors" title="Kick"><span class="material-symbols-outlined notranslate text-[18px]" translate="no">power_settings_new</span></button></td>
@@ -664,7 +664,7 @@
                                                 <span class="text-sm font-bold text-slate-900 dark:text-slate-100">{{ $session['user'] ?? $session['name'] ?? '-' }}</span>
                                             </div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono">{{ $session['address'] ?? $session['ip'] ?? '-' }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono"><x-ui.ip-link :ip="$session['address'] ?? $session['ip'] ?? null" /></td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono">{{ $session['mac-address'] ?? $session['mac'] ?? '-' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{{ $session['uptime'] ?? '-' }}</td>
 <td class="px-6 py-4 whitespace-nowrap text-right"><button wire:click="disconnectHotspot('{{ $session['user'] ?? $session['mac-address'] }}')" wire:confirm="Yakin ingin kick user ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors" title="Kick"><span class="material-symbols-outlined notranslate text-[18px]" translate="no">power_settings_new</span></button></td>
@@ -733,7 +733,7 @@
                             <div class="w-3 h-3 rounded-full bg-amber-500/80"></div>
                             <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
                         </div>
-                        <span class="text-xs font-mono text-slate-400 font-semibold tracking-wider">admin@{{ $router->ip_address }}</span>
+                        <span class="text-xs font-mono text-slate-400 font-semibold tracking-wider">admin@<x-ui.ip-link :ip="$router->ip_address" /></span>
                     </div>
                 </div>
                 

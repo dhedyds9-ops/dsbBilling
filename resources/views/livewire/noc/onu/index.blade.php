@@ -156,7 +156,7 @@
                     </td>
                     <td class="p-3 noc-mono noc-text font-medium">{{ $onu->serial_number }}</td>
                     <td class="p-3 noc-mono noc-text-secondary">{{ $onu->mac_address ?? $onu->acsDevice?->mac_address ?? '-' }}</td>
-                    <td class="p-3 noc-mono noc-text-secondary">{{ $onu->ip_address ?? $onu->acsDevice?->ip_address ?? '-' }}</td>
+                    <td class="p-3 noc-mono noc-text-secondary"><x-ui.ip-link :ip="$onu->ip_address ?? $onu->acsDevice?->ip_address" /></td>
                     <td class="p-3 noc-muted">
                         <span class="noc-muted">{{ $onu->olt?->name ?? '-' }}</span>
                         <span class="noc-muted opacity-60">/</span>

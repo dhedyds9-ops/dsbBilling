@@ -260,7 +260,7 @@
                             </div>
                             <div class="truncate">
                                 <p class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{{ $dev['hostname'] ?? $dev['name'] ?? 'Perangkat Nirkabel' }}</p>
-                                <p class="text-[11px] font-mono text-slate-500 dark:text-slate-400">{{ $dev['ip'] ?? $dev['ip_address'] ?? '-' }}</p>
+                                <p class="text-[11px] font-mono text-slate-500 dark:text-slate-400"><x-ui.ip-link :ip="$dev['ip'] ?? $dev['ip_address'] ?? null" /></p>
                             </div>
                         </div>
                         <div class="text-right shrink-0">

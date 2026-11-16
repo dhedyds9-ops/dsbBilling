@@ -130,7 +130,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">IP Address</label>
-                            <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ $olt->ip_address ?? '-' }}</p>
+                            <p class="text-slate-900 dark:text-slate-100 text-sm font-mono"><x-ui.ip-link :ip="$olt->ip_address" /></p>
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Jumlah Port</label>

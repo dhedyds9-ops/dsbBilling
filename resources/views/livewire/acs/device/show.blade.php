@@ -28,7 +28,7 @@
                     </span>
                 </h1>
                 <div class="text-sm text-slate-500 dark:text-slate-400 font-mono mt-1">
-                    MAC: {{ $device->mac_address ?? '-' }} | IP: {{ $device->ip_address ?? '-' }}
+                    MAC: {{ $device->mac_address ?? '-' }} | IP: <x-ui.ip-link :ip="$device->ip_address" />
                 </div>
             </div>
         </div>

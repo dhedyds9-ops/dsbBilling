@@ -128,13 +128,13 @@
                             {{-- Target Router --}}
                             <td class="px-4 py-3.5 whitespace-nowrap">
                                 @if($profile->router)
-                                    <a href="{{ route('isp.routers.show', ['id' => $profile->router_id, 'tab' => 'vlan']) }}" class="group flex flex-col hover:opacity-85 transition-opacity" title="Buka Network Profile VLAN di Router ini">
-                                        <div class="font-semibold text-indigo-600 dark:text-indigo-400 group-hover:underline flex items-center gap-1">
+                                    <div class="flex flex-col">
+                                        <a href="{{ route('isp.routers.show', ['id' => $profile->router_id, 'tab' => 'vlan']) }}" class="group hover:opacity-85 transition-opacity font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1" title="Buka Network Profile VLAN di Router ini">
                                             <span>{{ $profile->router->name }}</span>
                                             <span class="material-symbols-outlined notranslate text-[14px]" translate="no">open_in_new</span>
-                                        </div>
-                                        <div class="text-xs font-mono text-slate-400">{{ $profile->router->ip_address }}</div>
-                                    </a>
+                                        </a>
+                                        <div class="text-xs font-mono text-slate-400"><x-ui.ip-link :ip="$profile->router->ip_address" /></div>
+                                    </div>
                                 @else
                                     <span class="text-xs text-slate-400">-</span>
                                 @endif
