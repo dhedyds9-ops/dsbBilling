@@ -19,10 +19,13 @@ class TicketCreatedListener
     public function handle(TicketCreatedEvent $event): void
     {
         try {
-            $ticket = Ticket::with(['customer'])->find((int) $event->ticketId);
+            $ticket = Ticket::with(['customer', 'assignedTo', 'installation.survey'])->find((int) $event->ticketId);
             if (!$ticket) return;
 
             $customer = $ticket->customer;
+            $address = $customer?->address ?: ($ticket->installation?->survey?->address ?: '-');
+            $lat = $customer?->latitude ?: ($ticket->installation?->survey?->latitude ?: null);
+            $lng = $customer?->longitude ?: ($ticket->installation?->survey?->longitude ?: null);
 
             $creator = !empty($event->userId) ? User::find((int) $event->userId) : null;
             $creatorLabel = $creator ? "Admin ({$creator->name})" : 'Portal Pelanggan';
@@ -55,12 +58,15 @@ class TicketCreatedListener
                     $adminPhone = $this->normalizePhone($admin->phone ?? $admin->whatsapp ?? null);
                     if ($adminPhone) {
                         $text = $this->template->ticketCreated([
-                            'ticket_id'     => $ticket->id,
-                            'title'         => $ticket->title,
-                            'category'      => $ticket->category ?? '-',
-                            'priority'      => $ticket->priority ?? 'medium',
-                            'customer_name' => $customer?->name ?? 'Pelanggan',
-                            'created_by'    => $creatorLabel,
+                            'ticket_id'        => $ticket->id,
+                            'title'            => $ticket->title,
+                            'category'         => $ticket->category ?? '-',
+                            'priority'         => $ticket->priority ?? 'medium',
+                            'customer_name'    => $customer?->name ?? 'Pelanggan',
+                            'customer_address' => $address,
+                            'latitude'         => $lat,
+                            'longitude'        => $lng,
+                            'created_by'       => $creatorLabel,
                         ]);
                         $msg = new WaOutgoingMessage(
                             toPhone: $adminPhone,
@@ -121,7 +127,9 @@ class TicketCreatedListener
                         'category'         => $ticket->category ?? 'internet',
                         'priority'         => $ticket->priority ?? 'medium',
                         'customer_name'    => $customer?->name ?? 'Pelanggan',
-                        'customer_address' => $customer?->address ?? '-',
+                        'customer_address' => $address,
+                        'latitude'         => $lat,
+                        'longitude'        => $lng,
                         'technician_name'  => $ticket->assignedTo?->name ?? 'Belum Ditugaskan',
                     ]);
 
@@ -150,7 +158,9 @@ class TicketCreatedListener
                         'ticket_id'        => $ticket->id,
                         'title'            => $ticket->title,
                         'customer_name'    => $customer?->name ?? 'Pelanggan',
-                        'customer_address' => $customer?->address ?? '-',
+                        'customer_address' => $address,
+                        'latitude'         => $lat,
+                        'longitude'        => $lng,
                         'category'         => $ticket->category ?? 'internet',
                         'priority'         => $ticket->priority ?? 'medium',
                         'technician_name'  => $ticket->assignedTo?->name ?? 'Belum Ditugaskan',

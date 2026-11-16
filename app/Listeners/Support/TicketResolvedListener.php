@@ -19,11 +19,14 @@ class TicketResolvedListener
     public function handle(TicketResolvedEvent $event): void
     {
         try {
-            $ticket = Ticket::with(['customer', 'assignedTo'])->find((int) $event->ticketId);
+            $ticket = Ticket::with(['customer', 'assignedTo', 'installation.survey'])->find((int) $event->ticketId);
             if (!$ticket) return;
 
             $customer   = $ticket->customer;
             $technician = $ticket->assignedTo;
+            $address = $customer?->address ?: ($ticket->installation?->survey?->address ?: '-');
+            $lat = $customer?->latitude ?: ($ticket->installation?->survey?->latitude ?: null);
+            $lng = $customer?->longitude ?: ($ticket->installation?->survey?->longitude ?: null);
 
             // ── 1. WA Konfirmasi ke Pelanggan ─────────────────────────────
             try {
@@ -90,7 +93,9 @@ class TicketResolvedListener
                         'ticket_id'        => $ticket->id,
                         'title'            => $ticket->title,
                         'customer_name'    => $customer?->name ?? 'Pelanggan',
-                        'customer_address' => $customer?->address ?? '-',
+                        'customer_address' => $address,
+                        'latitude'         => $lat,
+                        'longitude'        => $lng,
                         'technician_name'  => $technician?->name ?? 'Tim Teknis',
                         'note'             => $event->note ?? ($ticket->resolution_notes ?? ''),
                     ]);
@@ -111,7 +116,9 @@ class TicketResolvedListener
                         'ticket_id'        => $ticket->id,
                         'title'            => $ticket->title,
                         'customer_name'    => $customer?->name ?? 'Pelanggan',
-                        'customer_address' => $customer?->address ?? '-',
+                        'customer_address' => $address,
+                        'latitude'         => $lat,
+                        'longitude'        => $lng,
                         'technician_name'  => $technician?->name ?? 'Tim Teknis',
                         'note'             => $event->note ?? ($ticket->resolution_notes ?? ''),
                     ], 'resolved');

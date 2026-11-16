@@ -51,12 +51,15 @@ class InstallationTechnicianNotifier
             return $result;
         }
 
-        $wo->loadMissing(['customer']);
+        $wo->loadMissing(['customer', 'survey.prospect']);
         $customer = $wo->customer;
+        $survey = $wo->survey;
 
         $customerName = $customer?->name ?? ($wo->customer_name ?: 'Pelanggan');
-        $address = $customer?->address ?? '-';
-        $phone = $customer?->phone ?? '-';
+        $address = $customer?->address ?: ($survey?->address ?: ($survey?->prospect?->address ?: '-'));
+        $lat = $customer?->latitude ?: ($survey?->latitude ?: ($survey?->prospect?->latitude ?: null));
+        $lng = $customer?->longitude ?: ($survey?->longitude ?: ($survey?->prospect?->longitude ?: null));
+        $phone = $customer?->phone ?: ($survey?->prospect?->phone ?: '-');
         $date = $wo->scheduled_date
             ? (is_string($wo->scheduled_date) ? $wo->scheduled_date : $wo->scheduled_date->translatedFormat('d M Y'))
             : '-';
@@ -101,13 +104,20 @@ class InstallationTechnicianNotifier
             return $result;
         }
 
+        $latNum = is_numeric($lat) ? (float) $lat : null;
+        $lngNum = is_numeric($lng) ? (float) $lng : null;
+        $mapsLine = ($latNum !== null && $lngNum !== null && ($latNum != 0.0 || $lngNum != 0.0))
+            ? "\n*Lokasi GPS:* https://www.google.com/maps/search/?api=1&query={$latNum},{$lngNum}"
+            : "";
+
         $text = "*[{$heading}]*\n\n"
             . "Halo {$technician->name},\n"
             . "Anda ditugaskan untuk pekerjaan instalasi berikut:\n\n"
             . "*WO:* #{$wo->id}\n"
             . "*Pelanggan:* {$customerName}\n"
             . "*No. HP:* {$phone}\n"
-            . "*Alamat:* {$address}\n"
+            . "*Alamat:* {$address}"
+            . $mapsLine . "\n"
             . "*Jadwal:* {$date} {$time} WIB\n"
             . "*Prioritas:* {$priority}\n"
             . "*Catatan:* " . ($wo->notes ?: '-') . "\n\n"

@@ -19,7 +19,7 @@ class TicketAssignedListener
     public function handle(TicketAssignedEvent $event): void
     {
         try {
-            $ticket = Ticket::with(['customer', 'assignedTo'])->find((int) $event->ticketId);
+            $ticket = Ticket::with(['customer', 'assignedTo', 'installation.survey'])->find((int) $event->ticketId);
             if (!$ticket) return;
 
             $technician = User::find((int) $event->assigneeId);
@@ -28,6 +28,9 @@ class TicketAssignedListener
             $customer = $ticket->customer;
             $customerName = $customer?->name 
                 ?? ($ticket->installation ? ('PSB: ' . ($ticket->installation->customer_name ?: 'Calon Pelanggan')) : 'Pelanggan / Objek');
+            $address = $customer?->address ?: ($ticket->installation?->survey?->address ?: '-');
+            $lat = $customer?->latitude ?: ($ticket->installation?->survey?->latitude ?: null);
+            $lng = $customer?->longitude ?: ($ticket->installation?->survey?->longitude ?: null);
 
             // ── 1. In-App Database Notification ke Teknisi (Portal Teknisi & Android) ──
             try {
@@ -64,7 +67,9 @@ class TicketAssignedListener
                         'priority'         => $ticket->priority ?? 'medium',
                         'description'      => $ticket->description ?? '',
                         'customer_name'    => $customerName,
-                        'customer_address' => $customer?->address ?? '-',
+                        'customer_address' => $address,
+                        'latitude'         => $lat,
+                        'longitude'        => $lng,
                         'customer_phone'   => $this->normalizePhone($customer?->phone ?? '') ?: '',
                         'technician_name'  => $technician->name,
                     ]);
@@ -93,7 +98,9 @@ class TicketAssignedListener
                             'category'         => $ticket->category ?? 'internet',
                             'priority'         => $ticket->priority ?? 'medium',
                             'customer_name'    => $customer?->name ?? 'Pelanggan',
-                            'customer_address' => $customer?->address ?? '-',
+                            'customer_address' => $address,
+                            'latitude'         => $lat,
+                            'longitude'        => $lng,
                             'technician_name'  => $technician->name,
                         ]);
 
@@ -121,7 +128,9 @@ class TicketAssignedListener
                             'ticket_id'        => $ticket->id,
                             'title'            => $ticket->title,
                             'customer_name'    => $customer?->name ?? 'Pelanggan',
-                            'customer_address' => $customer?->address ?? '-',
+                            'customer_address' => $address,
+                            'latitude'         => $lat,
+                            'longitude'        => $lng,
                             'category'         => $ticket->category ?? 'internet',
                             'priority'         => $ticket->priority ?? 'medium',
                             'status'           => $ticket->status ?? 'in_progress',

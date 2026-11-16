@@ -156,6 +156,12 @@ class TelegramService
         $tech  = htmlspecialchars((string)($data['technician_name'] ?? 'Belum Ditugaskan'));
         $addr  = htmlspecialchars((string)($data['customer_address'] ?? ($data['address'] ?? '-')));
         if (trim($addr) === '') $addr = '-';
+
+        $lat = is_numeric($data['latitude'] ?? null) ? (float)$data['latitude'] : null;
+        $lng = is_numeric($data['longitude'] ?? null) ? (float)$data['longitude'] : null;
+        $mapsUrl = !empty($data['maps_url']) ? $data['maps_url'] : (($lat !== null && $lng !== null && ($lat != 0.0 || $lng != 0.0)) ? "https://www.google.com/maps/search/?api=1&query={$lat},{$lng}" : null);
+        $mapsLine = $mapsUrl ? "\n🗺️ <b>Peta Lokasi:</b> <a href=\"{$mapsUrl}\">Buka Google Maps" . ($lat !== null ? " ({$lat}, {$lng})" : "") . "</a>" : "";
+
         $note  = !empty($data['note']) ? htmlspecialchars((string)$data['note']) : '';
         $url   = $this->ticketUrl($id);
 
@@ -167,7 +173,8 @@ class TelegramService
                 . "👤 <b>Pelanggan:</b> {$cust}\n"
                 . "📝 <b>Subjek:</b> {$title}\n"
                 . "⚡ <b>Prioritas:</b> {$prio}\n"
-                . "📍 <b>Alamat:</b> {$addr}\n\n"
+                . "📍 <b>Alamat:</b> {$addr}"
+                . $mapsLine . "\n\n"
                 . "🔗 <b>Detail:</b> {$url}\n\n"
                 . "🚀 <i>Sistem</i>";
         } elseif ($action === 'updated') {
@@ -180,7 +187,8 @@ class TelegramService
                 . "👤 <b>Pelanggan:</b> {$cust}\n"
                 . "📝 <b>Subjek:</b> {$title}\n"
                 . "⚡ <b>Prioritas:</b> {$prio}\n"
-                . "📍 <b>Alamat:</b> {$addr}\n"
+                . "📍 <b>Alamat:</b> {$addr}"
+                . $mapsLine . "\n"
                 . ($note ? "💬 <b>Catatan:</b> {$note}\n\n" : "\n")
                 . "🔗 <b>Detail:</b> {$url}\n\n"
                 . "🚀 <i>Sistem</i>";
@@ -208,7 +216,14 @@ class TelegramService
         $no    = htmlspecialchars((string)($data['wo_id'] ?? ($data['id'] ?? '-')));
         $cust  = htmlspecialchars((string)($data['customer_name'] ?? 'Pelanggan'));
         $phone = htmlspecialchars((string)($data['customer_phone'] ?? '-'));
-        $addr  = htmlspecialchars((string)($data['customer_address'] ?? '-'));
+        $addr  = htmlspecialchars((string)($data['customer_address'] ?? ($data['address'] ?? '-')));
+        if (trim($addr) === '') $addr = '-';
+
+        $lat = is_numeric($data['latitude'] ?? null) ? (float)$data['latitude'] : null;
+        $lng = is_numeric($data['longitude'] ?? null) ? (float)$data['longitude'] : null;
+        $mapsUrl = !empty($data['maps_url']) ? $data['maps_url'] : (($lat !== null && $lng !== null && ($lat != 0.0 || $lng != 0.0)) ? "https://www.google.com/maps/search/?api=1&query={$lat},{$lng}" : null);
+        $mapsLine = $mapsUrl ? "\n<b>Titik GPS :</b> <a href=\"{$mapsUrl}\">Buka Google Maps" . ($lat !== null ? " ({$lat}, {$lng})" : "") . "</a>" : "";
+
         $date  = htmlspecialchars((string)($data['scheduled_date'] ?? '-'));
         $time  = htmlspecialchars((string)($data['scheduled_time'] ?? '09:00'));
         $tech  = htmlspecialchars((string)($data['technician_name'] ?? 'Belum Ditugaskan'));
@@ -223,7 +238,8 @@ class TelegramService
             . "<b>No. WO    :</b> #{$no}\n"
             . "<b>Pelanggan :</b> {$cust}\n"
             . "<b>No. HP    :</b> {$phone}\n"
-            . "<b>Alamat    :</b> {$addr}\n"
+            . "<b>Alamat    :</b> {$addr}"
+            . $mapsLine . "\n"
             . "<b>Jadwal    :</b> 🗓️ {$date} pk {$time}\n"
             . "<b>Prioritas :</b> {$prioEmoji} <b>{$prio}</b>\n"
             . "<b>Teknisi   :</b> 👨‍🔧 <b>{$tech}</b>\n"

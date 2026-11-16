@@ -846,16 +846,25 @@ class Index extends BaseEnterpriseList
     protected function sendInstallationWhatsAppNotification(CrmInstallation $wo): void
     {
         try {
-            $wo->loadMissing(['customer', 'technician']);
+            $wo->loadMissing(['customer', 'technician', 'survey.prospect']);
             $customer = $wo->customer;
             $technician = $wo->technician;
+            $survey = $wo->survey;
+
+            $customerName = $customer?->name ?? ($wo->customer_name ?: 'Pelanggan');
+            $customerPhone = $customer?->phone ?: ($survey?->prospect?->phone ?: '-');
+            $address = $customer?->address ?: ($survey?->address ?: ($survey?->prospect?->address ?: '-'));
+            $lat = $customer?->latitude ?: ($survey?->latitude ?: ($survey?->prospect?->latitude ?: null));
+            $lng = $customer?->longitude ?: ($survey?->longitude ?: ($survey?->prospect?->longitude ?: null));
 
             $template = app(\App\Services\Notifications\WhatsApp\WaTemplateEngine::class);
             $groupText = $template->installationCreated([
                 'wo_id'            => $wo->id,
-                'customer_name'    => $customer?->name ?? ($wo->customer_name ?? 'Pelanggan'),
-                'customer_phone'   => $customer?->phone ?? '-',
-                'customer_address' => $customer?->address ?? '-',
+                'customer_name'    => $customerName,
+                'customer_phone'   => $customerPhone,
+                'customer_address' => $address,
+                'latitude'         => $lat,
+                'longitude'        => $lng,
                 'scheduled_date'   => $wo->scheduled_date ? (is_string($wo->scheduled_date) ? $wo->scheduled_date : $wo->scheduled_date->format('Y-m-d')) : '-',
                 'scheduled_time'   => $wo->scheduled_time ?? '09:00',
                 'technician_name'  => $technician?->name ?? 'Belum Ditugaskan',
@@ -897,9 +906,11 @@ class Index extends BaseEnterpriseList
                 if ($telegram->isEnabled()) {
                     $telegram->sendInstallationNotification([
                         'wo_id'            => $wo->id,
-                        'customer_name'    => $customer?->name ?? ($wo->customer_name ?? 'Pelanggan'),
-                        'customer_phone'   => $customer?->phone ?? '-',
-                        'customer_address' => $customer?->address ?? '-',
+                        'customer_name'    => $customerName,
+                        'customer_phone'   => $customerPhone,
+                        'customer_address' => $address,
+                        'latitude'         => $lat,
+                        'longitude'        => $lng,
                         'scheduled_date'   => $wo->scheduled_date ? (is_string($wo->scheduled_date) ? $wo->scheduled_date : $wo->scheduled_date->format('Y-m-d')) : '-',
                         'scheduled_time'   => $wo->scheduled_time ?? '09:00',
                         'technician_name'  => $technician?->name ?? 'Belum Ditugaskan',

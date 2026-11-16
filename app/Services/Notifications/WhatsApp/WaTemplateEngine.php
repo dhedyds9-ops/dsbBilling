@@ -368,6 +368,8 @@ final class WaTemplateEngine
         };
         $addr  = $this->e($d['customer_address'] ?? ($d['address'] ?? '-'));
         if (trim($addr) === '') $addr = '-';
+        $mapsUrl = $this->resolveMapsUrl($d['latitude'] ?? null, $d['longitude'] ?? null, $d['maps_url'] ?? null);
+        $locLine = $mapsUrl ? "\n🗺️ Lokasi: {$mapsUrl}" : "";
         $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
         $url   = $this->ticketUrl($id);
 
@@ -378,7 +380,8 @@ final class WaTemplateEngine
             . "👤 Pelanggan: {$cust}\n"
             . "📝 Subjek: {$subj}\n"
             . "⚡ Prioritas: {$prio}\n"
-            . "📍 Alamat: {$addr}\n\n"
+            . "📍 Alamat: {$addr}"
+            . $locLine . "\n\n"
             . "🔗 Detail: {$url}\n\n"
             . "🚀 Sistem";
     }
@@ -407,6 +410,8 @@ final class WaTemplateEngine
         };
         $addr  = $this->e($d['customer_address'] ?? ($d['address'] ?? '-'));
         if (trim($addr) === '') $addr = '-';
+        $mapsUrl = $this->resolveMapsUrl($d['latitude'] ?? null, $d['longitude'] ?? null, $d['maps_url'] ?? null);
+        $locLine = $mapsUrl ? "\n🗺️ Lokasi: {$mapsUrl}" : "";
         $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
         $url   = $this->ticketUrl($id);
 
@@ -417,7 +422,8 @@ final class WaTemplateEngine
             . "👤 Pelanggan: {$cust}\n"
             . "📝 Subjek: {$subj}\n"
             . "⚡ Prioritas: {$prio}\n"
-            . "📍 Alamat: {$addr}\n\n"
+            . "📍 Alamat: {$addr}"
+            . $locLine . "\n\n"
             . "🔗 Detail: {$url}\n\n"
             . "🚀 Sistem";
     }
@@ -468,6 +474,8 @@ final class WaTemplateEngine
         };
         $addr  = $this->e($d['customer_address'] ?? ($d['address'] ?? '-'));
         if (trim($addr) === '') $addr = '-';
+        $mapsUrl = $this->resolveMapsUrl($d['latitude'] ?? null, $d['longitude'] ?? null, $d['maps_url'] ?? null);
+        $locLine = $mapsUrl ? "\n🗺️ Lokasi: {$mapsUrl}" : "";
         $note  = !empty($d['note']) ? $this->e($d['note']) : '';
         $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
         $url   = $this->ticketUrl($id);
@@ -480,7 +488,8 @@ final class WaTemplateEngine
             . "👤 Pelanggan: {$cust}\n"
             . "📝 Subjek: {$subj}\n"
             . "⚡ Prioritas: {$prio}\n"
-            . "📍 Alamat: {$addr}\n"
+            . "📍 Alamat: {$addr}"
+            . $locLine . "\n"
             . ($note ? "💬 Catatan: {$note}\n\n" : "\n")
             . "🔗 Detail: {$url}\n\n"
             . "🚀 Sistem";
@@ -493,6 +502,9 @@ final class WaTemplateEngine
         $cust      = $this->e($d['customer_name'] ?? 'Pelanggan');
         $phone     = $this->e($d['customer_phone'] ?? '-');
         $addr      = $this->e($d['customer_address'] ?? '-');
+        if (trim($addr) === '') $addr = '-';
+        $mapsUrl   = $this->resolveMapsUrl($d['latitude'] ?? null, $d['longitude'] ?? null, $d['maps_url'] ?? null);
+        $locLine   = $mapsUrl ? "\nTitik GPS : {$mapsUrl}" : "";
         $date      = $this->e($d['scheduled_date'] ?? '-');
         $time      = $this->e($d['scheduled_time'] ?? '09:00');
         $tech      = $this->e($d['technician_name'] ?? 'Belum Ditugaskan');
@@ -506,13 +518,30 @@ final class WaTemplateEngine
             . "No. WO    : *#{$no}*\n"
             . "Pelanggan : *{$cust}*\n"
             . "No. HP    : {$phone}\n"
-            . "Alamat    : {$addr}\n"
+            . "Alamat    : {$addr}"
+            . $locLine . "\n"
             . "Jadwal    : 🗓️ *{$date}* pk *{$time}*\n"
             . "Prioritas : {$prioEmoji} *{$prio}*\n"
             . "Teknisi   : 👨‍🔧 *{$tech}*\n"
             . ($notes ? "\n📝 *Catatan:*\n{$notes}\n" : "\n")
             . "\nMohon tim teknisi mempersiapkan perangkat & material instalasi.\n"
             . "— " . $this->brand();
+    }
+
+    private function resolveMapsUrl(mixed $lat, mixed $lng, ?string $customUrl = null): ?string
+    {
+        if (!empty($customUrl) && filter_var($customUrl, FILTER_VALIDATE_URL)) {
+            return $customUrl;
+        }
+
+        $latNum = is_numeric($lat) ? (float) $lat : null;
+        $lngNum = is_numeric($lng) ? (float) $lng : null;
+
+        if ($latNum !== null && $lngNum !== null && ($latNum != 0.0 || $lngNum != 0.0)) {
+            return "https://www.google.com/maps/search/?api=1&query={$latNum},{$lngNum}";
+        }
+
+        return null;
     }
 
     private function ticketUrl(mixed $id): string

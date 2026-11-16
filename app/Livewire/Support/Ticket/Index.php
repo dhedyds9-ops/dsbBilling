@@ -741,6 +741,12 @@ class Index extends BaseEnterpriseList
                 // Hanya kirim notifikasi edit umum jika BUKAN resolve dan BUKAN ganti assignee
                 // (Mencegah pesan terkirim ganda 2x ke grup WhatsApp & Telegram)
                 try {
+                    $ticket->loadMissing(['customer', 'assignedTo', 'installation.survey']);
+                    $cust = $ticket->customer;
+                    $address = $cust?->address ?: ($ticket->installation?->survey?->address ?: '-');
+                    $lat = $cust?->latitude ?: ($ticket->installation?->survey?->latitude ?: null);
+                    $lng = $cust?->longitude ?: ($ticket->installation?->survey?->longitude ?: null);
+
                     $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
                     $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
                     if ($ticketGroupId !== '') {
@@ -751,8 +757,10 @@ class Index extends BaseEnterpriseList
                             'ticket_id'        => $ticket->id,
                             'title'            => $ticket->title,
                             'category'         => $ticket->category ?? 'internet',
-                            'customer_name'    => $ticket->customer?->name ?? 'Pelanggan',
-                            'customer_address' => $ticket->customer?->address ?? '-',
+                            'customer_name'    => $cust?->name ?? 'Pelanggan',
+                            'customer_address' => $address,
+                            'latitude'         => $lat,
+                            'longitude'        => $lng,
                             'status'           => $ticket->status,
                             'priority'         => $ticket->priority,
                             'technician_name'  => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
@@ -775,8 +783,10 @@ class Index extends BaseEnterpriseList
                             'ticket_code'      => $code,
                             'ticket_id'        => $ticket->id,
                             'title'            => $ticket->title,
-                            'customer_name'    => $ticket->customer?->name ?? 'Pelanggan',
-                            'customer_address' => $ticket->customer?->address ?? '-',
+                            'customer_name'    => $cust?->name ?? 'Pelanggan',
+                            'customer_address' => $address,
+                            'latitude'         => $lat,
+                            'longitude'        => $lng,
                             'category'         => $ticket->category ?? 'internet',
                             'priority'         => $ticket->priority ?? 'medium',
                             'status'           => $ticket->status,
