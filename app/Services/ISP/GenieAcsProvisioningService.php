@@ -154,6 +154,81 @@ if (vlanId && pppPath !== "") {
 }
 JS,
         ],
+        'dsBilling_Setup_Hotspot_Bridge' => [
+            'weight' => 45,
+            'script' => <<<'JS'
+let vlanId = args[0];
+let customBind = args[1];
+let hotspotSsid = args[2];
+
+let defaultBind = "InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1,InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.2,InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.3,InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.4,InternetGatewayDevice.LANDevice.1.WLANConfiguration.1";
+let bindString = (customBind && customBind !== "") ? customBind : defaultBind;
+
+let brandDecl = declare("DeviceID.Manufacturer", {value: 1});
+let brand = (brandDecl.value !== undefined) ? brandDecl.value[0] : "";
+let pppPath = "";
+
+let wanDevices = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*", {path: 1});
+if (wanDevices.size) {
+    for (let p of wanDevices) {
+        pppPath = p.path;
+        break;
+    }
+}
+
+if (pppPath === "") {
+    declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1", {path: 1}, {path: 1});
+    pppPath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1";
+}
+
+if (pppPath !== "") {
+    const now = Date.now();
+    declare(pppPath + ".Enable", {value: now}, {value: true});
+    declare(pppPath + ".ConnectionType", {value: now}, {value: "PPPoE_Bridged"});
+    declare(pppPath + ".NATEnabled", {value: now}, {value: false});
+    declare(pppPath + ".Name", {value: now}, {value: "Bridged"});
+    declare(pppPath + ".ConnectionTrigger", {value: now}, {value: "AlwaysOn"});
+    
+    if (brand.indexOf("ZTE") !== -1) {
+        if (vlanId && parseInt(vlanId) > 0) {
+            declare(pppPath + ".X_ZTE-COM_VLANID", {value: now}, {value: parseInt(vlanId)});
+            declare(pppPath + ".X_ZTE-COM_VLANEnable", {value: now}, {value: 1});
+        }
+        declare(pppPath + ".X_ZTE-COM_ServiceList", {value: now}, {value: "INTERNET"});
+        declare(pppPath + ".X_ZTE-COM_LanInterface", {value: now}, {value: bindString});
+        declare(pppPath + ".X_ZTE-COM_PortBind", {value: now}, {value: bindString});
+    } else if (brand.indexOf("Huawei") !== -1 || brand.indexOf("EcomTech") !== -1) {
+        let match = pppPath.match(/WANConnectionDevice\.(\d+)\./);
+        let wanIdx = match ? match[1] : "1";
+        if (vlanId && parseInt(vlanId) > 0) {
+            declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: parseInt(vlanId)});
+            declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx + ".WANEthernetLinkConfig.Mode", {value: now}, {value: 2});
+        }
+        declare(pppPath + ".X_HW_SERVICELIST", {value: now}, {value: "INTERNET"});
+        declare(pppPath + ".X_HW_LANBIND", {value: now}, {value: bindString});
+        declare(pppPath + ".X_HW_LANBinding", {value: now}, {value: bindString});
+    } else if (brand.indexOf("FiberHome") !== -1) {
+        let match = pppPath.match(/WANConnectionDevice\.(\d+)\./);
+        let wanIdx = match ? match[1] : "1";
+        if (vlanId && parseInt(vlanId) > 0) {
+            declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx + ".X_FH_WANGponLinkConfig.VLANIDMark", {value: now}, {value: parseInt(vlanId)});
+            declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx + ".X_FH_WANGponLinkConfig.VLANID", {value: now}, {value: parseInt(vlanId)});
+            declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx + ".X_FH_WANGponLinkConfig.Mode", {value: now}, {value: 1});
+        }
+        declare(pppPath + ".X_FH_ServiceList", {value: now}, {value: "INTERNET"});
+        declare(pppPath + ".X_FH_LanInterface", {value: now}, {value: bindString});
+    }
+    
+    if (hotspotSsid && hotspotSsid !== "") {
+        declare("InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID", {value: now}, {value: hotspotSsid});
+        declare("InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType", {value: now}, {value: "None"});
+        declare("InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BasicEncryptionModes", {value: now}, {value: "None"});
+        declare("InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BasicAuthenticationMode", {value: now}, {value: "None"});
+        declare("InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.Enable", {value: now}, {value: true});
+    }
+}
+JS,
+        ],
     ];
 
     public function publishDefaultProvisions(): array
@@ -540,6 +615,54 @@ JS,
             return [
                 'status' => 'failed',
                 'error' => $sanitizedErr,
+                'device_id' => $deviceId,
+            ];
+        }
+    }
+
+    public function provisionHotspotBridge(Onu $onu, array $options = []): array
+    {
+        $genieAcsService = app(GenieAcsService::class);
+        $deviceId = $genieAcsService->resolveGenieAcsDeviceId($onu);
+        if (empty($deviceId)) {
+            $deviceId = $onu->serial_number;
+        }
+
+        $vlanId = $options['vlan_id'] ?? $onu->olt?->vlan_id ?? 300;
+        $bindString = $options['bind_string'] ?? "InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1,InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.2,InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.3,InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.4,InternetGatewayDevice.LANDevice.1.WLANConfiguration.1";
+        $hotspotSsid = $options['wifi_ssid'] ?? $onu->wifi_ssid ?? \App\Models\Setting::getValue('company.name', 'WINETS.ID');
+
+        try {
+            // Pastikan provision script sudah ada di GenieACS
+            if (isset(self::DEFAULT_PROVISIONS['dsBilling_Setup_Hotspot_Bridge'])) {
+                $pConfig = self::DEFAULT_PROVISIONS['dsBilling_Setup_Hotspot_Bridge'];
+                $this->driver->upsertProvision('dsBilling_Setup_Hotspot_Bridge', $pConfig['script'], $pConfig['weight'] ?? 45);
+            }
+
+            $payload = [
+                'name' => 'run_provision',
+                'provision' => 'dsBilling_Setup_Hotspot_Bridge',
+                'args' => [(string) $vlanId, $bindString, $hotspotSsid],
+            ];
+            $this->driver->postTaskWithFallback($deviceId, $payload, true);
+
+            Log::info("[GenieACS Provisioning] Queued Hotspot Bridge for ONU {$onu->id} (SN: {$onu->serial_number})", [
+                'device_id' => $deviceId,
+                'vlan_id' => $vlanId,
+                'bind' => $bindString,
+                'ssid' => $hotspotSsid,
+            ]);
+
+            return [
+                'status' => 'success',
+                'message' => 'Konfigurasi Hotspot Bridge (PPPoE_Bridged + LAN 1-4 + SSID 1) berhasil dikirim ke perangkat.',
+                'device_id' => $deviceId,
+            ];
+        } catch (\Throwable $e) {
+            Log::error("[GenieACS Provisioning] Gagal kirim Hotspot Bridge task untuk ONU {$onu->id}: " . $e->getMessage());
+            return [
+                'status' => 'failed',
+                'error' => $e->getMessage(),
                 'device_id' => $deviceId,
             ];
         }

@@ -885,12 +885,20 @@ class Wizard extends Component
                             'enable' => true,
                         ],
                     ], null, $user->id);
+
+                    // Auto-Provisioning WAN PPPoE_Bridged & Port Binding via GenieACS (Hotspot ZTP)
+                    $npVlan = $npId ? (\App\Models\ISP\NetworkProfile::withoutGlobalScopes()->where('id', $npId)->value('vlan_id') ?? 300) : 300;
+                    $acsProv = app(\App\Services\ISP\GenieAcsProvisioningService::class);
+                    $acsProv->provisionHotspotBridge($onu, [
+                        'vlan_id' => $npVlan,
+                        'wifi_ssid' => $ssidName,
+                    ]);
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::error('[Wizard] Gagal push konfigurasi WiFi/Bridge ke ONU: ' . $e->getMessage());
                 }
 
                 $this->provisioning_status = 'queued';
-                $this->provisioning_message = 'Layanan Hotspot Member & konfigurasi Bridge berhasil dieksekusi.';
+                $this->provisioning_message = 'Layanan Hotspot Member & konfigurasi Bridge (PPPoE_Bridged + LAN 1-4 + SSID 1) berhasil dieksekusi.';
             }
 
             // Catat pemakaian material kabel dropcore & fast connector jika diisi

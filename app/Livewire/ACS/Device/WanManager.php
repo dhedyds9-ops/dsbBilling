@@ -203,6 +203,10 @@ class WanManager extends Component
         $portBind = '';
         if (isset($node['X_FH_LanInterface']['_value'])) {
             $portBind = $node['X_FH_LanInterface']['_value'];
+        } elseif (isset($node['X_ZTE-COM_LanInterface']['_value'])) {
+            $portBind = $node['X_ZTE-COM_LanInterface']['_value'];
+        } elseif (isset($node['X_ZTE-COM_LANInterface']['_value'])) {
+            $portBind = $node['X_ZTE-COM_LANInterface']['_value'];
         } elseif (isset($node['X_ZTE-COM_PortBind']['_value'])) {
             $portBind = $node['X_ZTE-COM_PortBind']['_value'];
         } elseif ($fullPath && isset($this->zteBindings[$fullPath])) {
@@ -383,7 +387,32 @@ class WanManager extends Component
         }
 
         $this->customBindString = $wan['port_bind'] ?? '';
-        $this->useManualBinding = !empty($this->customBindString);
+        $this->useManualBinding = false;
+
+        // Parse port_bind string ke checkbox bindLan & bindWlan jika ada
+        if (!empty($wan['port_bind'])) {
+            $parsedLans = [];
+            $parsedWlans = [];
+            $tokens = explode(',', $wan['port_bind']);
+            foreach ($tokens as $token) {
+                $token = trim($token);
+                if (preg_match('/LANEthernetInterfaceConfig\.(\d+)/i', $token, $m)) {
+                    $parsedLans[] = (int) $m[1];
+                } elseif (preg_match('/WLANConfiguration\.(\d+)/i', $token, $m)) {
+                    $parsedWlans[] = (int) $m[1];
+                } elseif (preg_match('/^LAN(\d+)/i', $token, $m)) {
+                    $parsedLans[] = (int) $m[1];
+                } elseif (preg_match('/^SSID(\d+)/i', $token, $m)) {
+                    $parsedWlans[] = (int) $m[1];
+                }
+            }
+            if (!empty($parsedLans)) {
+                $this->bindLan = array_values(array_unique($parsedLans));
+            }
+            if (!empty($parsedWlans)) {
+                $this->bindWlan = array_values(array_unique($parsedWlans));
+            }
+        }
     }
 
     public function cancelEdit()
@@ -579,6 +608,8 @@ if ("{$bindString}" !== "") {
         declare(pppPath + ".X_HW_LANBIND", {value: now}, {value: "{$bindString}"});
         declare(pppPath + ".X_HW_LANBinding", {value: now}, {value: "{$bindString}"});
     } else if ("{$vendor}".includes("zte")) {
+        declare(pppPath + ".X_ZTE-COM_LanInterface", {value: now}, {value: "{$bindString}"});
+        declare(pppPath + ".X_ZTE-COM_PortBind", {value: now}, {value: "{$bindString}"});
         let bindings = declare("InternetGatewayDevice.X_ZTE-COM_PortBinding.*", {path: 1});
         let bindIdx = 1;
         for (let b of bindings) {
@@ -718,6 +749,7 @@ if ("{$escapedBind}" !== "") {
         declare(pppPath + ".X_HW_LANBIND", {value: now}, {value: "{$escapedBind}"});
         declare(pppPath + ".X_HW_LANBinding", {value: now}, {value: "{$escapedBind}"});
     } else if ("{$vendor}".includes("zte")) {
+        declare(pppPath + ".X_ZTE-COM_LanInterface", {value: now}, {value: "{$escapedBind}"});
         declare(pppPath + ".X_ZTE-COM_PortBind", {value: now}, {value: "{$escapedBind}"});
     }
 }
@@ -807,8 +839,15 @@ JS;
                     $parameters["{$this->editFullPath}.X_HW_LANBinding"] = $bindString;
                 }
             } elseif ($isZte) {
-                if ($this->pathExistsInTree($this->rawParams, "{$this->editFullPath}.X_ZTE-COM_PortBind")) {
+                if ($this->pathExistsInTree($this->rawParams, "{$this->editFullPath}.X_ZTE-COM_LanInterface")) {
+                    $parameters["{$this->editFullPath}.X_ZTE-COM_LanInterface"] = $bindString;
+                } elseif ($this->pathExistsInTree($this->rawParams, "{$this->editFullPath}.X_ZTE-COM_LANInterface")) {
+                    $parameters["{$this->editFullPath}.X_ZTE-COM_LANInterface"] = $bindString;
+                } elseif ($this->pathExistsInTree($this->rawParams, "{$this->editFullPath}.X_ZTE-COM_PortBind")) {
                     $parameters["{$this->editFullPath}.X_ZTE-COM_PortBind"] = $bindString;
+                } else {
+                    // Default standar ZTE F609 / F670
+                    $parameters["{$this->editFullPath}.X_ZTE-COM_LanInterface"] = $bindString;
                 }
             }
         }
