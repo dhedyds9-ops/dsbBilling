@@ -1420,49 +1420,83 @@ class CDataOltDriver extends BaseOltDriver
         $onus = [];
         try {
             $this->initializeCli();
-            
-            $output = $this->cli->execute("show ont autofind all\r\n", false);
-            if (str_contains($output, 'Unknown command')) {
-                $output = $this->cli->execute("show gpon onu uncfg\r\n", false);
-            }
-            if (str_contains($output, 'Unknown command') || empty(trim($output))) {
-                $output = $this->cli->execute("show onu uncfg\r\n", false);
-            }
-            if (str_contains($output, 'Unknown command') || empty(trim($output))) {
-                $output = $this->cli->execute("show gpon onu unconfigured\r\n", false);
-            }
-            if (str_contains($output, 'Unknown command') || empty(trim($output))) {
-                $output = $this->cli->execute("show onu unauthorized\r\n", false);
-            }
-            
-            foreach (explode("\n", (string)$output) as $line) {
-                if (preg_match('/(?:GPON-ONU_|GPON\s+|EPON-ONU_|EPON\s+)?(?:\d+\/)?\d+\/(\d+)(?::\d+)?\s+.*?([A-F0-9]{12,16})/i', strtoupper($line), $m)) {
-                    $onus[] = [
-                        'pon_port'      => (int)$m[1],
-                        'onu_id'        => 0,
-                        'serial_number' => $m[2],
-                        'vendor_oui'    => substr($m[2], 0, 4),
-                    ];
-                } elseif (preg_match('/PON\s*(\d+)\s+.*?([A-F0-9]{12,16})/', strtoupper($line), $m)) {
-                    $onus[] = [
-                        'pon_port'      => (int)$m[1],
-                        'onu_id'        => 0,
-                        'serial_number' => $m[2],
-                        'vendor_oui'    => substr($m[2], 0, 4),
-                    ];
-                } elseif (preg_match('/([A-Z0-9]{4}[A-Z0-9]{8,12})/i', $line, $m)) {
-                    $p = (($this->olt->pon_port_count ?? 0) === 1) ? 1 : 1;
-                    $onus[] = [
-                        'pon_port'      => $p,
-                        'onu_id'        => 0,
-                        'serial_number' => strtoupper($m[1]),
-                        'vendor_oui'    => substr(strtoupper($m[1]), 0, 4),
-                    ];
+
+            $commands = [
+                "show ont autofind all\r\n",
+                "show ont autofind\r\n",
+                "show gpon onu uncfg\r\n",
+                "show onu uncfg\r\n",
+                "show gpon onu unconfigured\r\n",
+                "show onu unauthorized\r\n",
+                "show epon onu unregister\r\n",
+                "show autofind all\r\n",
+                "show autofind\r\n",
+            ];
+
+            foreach ($commands as $cmd) {
+                $output = $this->cli->execute($cmd, false);
+                if (empty(trim((string)$output)) || str_contains($output, 'Unknown command')) {
+                    continue;
+                }
+
+                foreach (explode("\n", (string)$output) as $line) {
+                    $lineStr = trim($line);
+                    if (empty($lineStr)) continue;
+
+                    // Format 1: Slot/Port/ONU SN (e.g. 0/1:1 ZTEGC408F02 atau GPON-ONU_0/2:1 HWTC12345678)
+                    if (preg_match('/(?:GPON-ONU_|GPON\s+|EPON-ONU_|EPON\s+)?(?:\d+\/)?(\d+)(?::\d+)?\s+.*?([A-Za-z0-9:.-]{11,20})/i', $lineStr, $m)) {
+                        $candidateSn = strtoupper(trim($m[2]));
+                        $candidatePort = (int)$m[1];
+                        if (self::isValidOnuSerial($candidateSn)) {
+                            $onus[$candidateSn] = [
+                                'pon_port'      => $candidatePort ?: 1,
+                                'onu_id'        => 0,
+                                'serial_number' => $candidateSn,
+                                'vendor_oui'    => substr($candidateSn, 0, 4),
+                            ];
+                        }
+                    }
+
+                    // Format 2: PON/Port X SN (e.g. PON 2 ZTEGC408F02)
+                    if (preg_match('/(?:PON|PORT)\s*(\d+)\s+.*?([A-Za-z0-9:.-]{11,20})/i', $lineStr, $m)) {
+                        $candidateSn = strtoupper(trim($m[2]));
+                        $candidatePort = (int)$m[1];
+                        if (self::isValidOnuSerial($candidateSn)) {
+                            $onus[$candidateSn] = [
+                                'pon_port'      => $candidatePort ?: 1,
+                                'onu_id'        => 0,
+                                'serial_number' => $candidateSn,
+                                'vendor_oui'    => substr($candidateSn, 0, 4),
+                            ];
+                        }
+                    }
+
+                    // Format 3: Standalone ITU-T GPON SN dalam baris (e.g. ZTEGC408F02, HWTC12345678)
+                    if (preg_match('/\b([A-Za-z]{4}[0-9A-Fa-f]{7,8})\b/', $lineStr, $m)) {
+                        $candidateSn = strtoupper($m[1]);
+                        if (self::isValidOnuSerial($candidateSn) && !isset($onus[$candidateSn])) {
+                            $candidatePort = 1;
+                            if (preg_match('/(?:\/|port\s*|pon\s*)(\d+)/i', $lineStr, $pm)) {
+                                $candidatePort = (int)$pm[1];
+                            }
+                            $onus[$candidateSn] = [
+                                'pon_port'      => $candidatePort ?: 1,
+                                'onu_id'        => 0,
+                                'serial_number' => $candidateSn,
+                                'vendor_oui'    => substr($candidateSn, 0, 4),
+                            ];
+                        }
+                    }
+                }
+
+                // Jika sudah menemukan perangkat valid di perintah ini, tidak perlu teruskan ke perintah fallback lain
+                if (!empty($onus)) {
+                    break;
                 }
             }
         } catch (\Throwable) {}
 
-        // Fallback to SNMP discovery for Autofind/Unregistered ONUs
+        // Fallback to SNMP discovery for Autofind/Unregistered ONUs jika CLI belum menemukan
         if (empty($onus)) {
             try {
                 $autofindSn = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1.2')
@@ -1474,7 +1508,7 @@ class CDataOltDriver extends BaseOltDriver
 
                     $hex = strtoupper(preg_replace('/[^0-9A-Fa-f]/', '', $raw));
                     $sn = null;
-                    if (preg_match('/^[A-Z0-9]{4}[A-Z0-9]{8,12}$/i', $raw)) {
+                    if (preg_match('/^[A-Z0-9]{4}[A-Z0-9]{7,12}$/i', $raw)) {
                         $sn = strtoupper($raw);
                     } elseif (strlen($hex) === 16) {
                         $vendorAscii = @hex2bin(substr($hex, 0, 8));
@@ -1485,7 +1519,7 @@ class CDataOltDriver extends BaseOltDriver
                         }
                     }
 
-                    if ($sn) {
+                    if ($sn && self::isValidOnuSerial($sn)) {
                         $parts = explode('.', (string)$oidKey);
                         $port = 1;
                         if (count($parts) >= 2) {
@@ -1498,7 +1532,7 @@ class CDataOltDriver extends BaseOltDriver
                             $port = 1;
                         }
 
-                        $onus[] = [
+                        $onus[$sn] = [
                             'pon_port'      => $port,
                             'onu_id'        => 0,
                             'serial_number' => $sn,
@@ -1509,7 +1543,7 @@ class CDataOltDriver extends BaseOltDriver
             } catch (\Throwable) {}
         }
 
-        return $onus;
+        return array_values($onus);
     }
 
     protected function resolveVlanId(Onu $onu, int $default = 200): int

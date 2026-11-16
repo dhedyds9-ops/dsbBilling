@@ -299,6 +299,56 @@ abstract class BaseOltDriver implements OltDriverInterface
         return $default ?? 'N/A';
     }
 
+    public static function isValidOnuSerial(string $sn): bool
+    {
+        $sn = strtoupper(trim($sn));
+        if (strlen($sn) < 6 || strlen($sn) > 24) {
+            return false;
+        }
+
+        $blacklist = [
+            'AUTOMATICALLY', 'AUTOMATIC', 'UNCONFIGURED', 'UNREGISTERED', 'UNREGISTER',
+            'UNAUTHORIZED', 'AUTHENTICATION', 'AUTHENTICATED', 'DESCRIPTION', 'INFORMATION',
+            'SUCCESSFULLY', 'CONFIGURATION', 'SERIALNUMBER', 'DISCONNECTED', 'ADMINISTRATION',
+            'MANUFACTURER', 'MACADDRESS', 'EQUIPMENTID', 'SOFTWAREVER', 'HARDWAREVER',
+            'COMMAND', 'UNKNOWN', 'INTERFACE', 'PASSWORD', 'PORTNAME', 'AUTOFIND',
+            'DISABLED', 'ENABLED', 'CONNECTED', 'OFFLINE', 'ONLINE', 'PROFILE',
+            'BLANK', 'NONE', 'NULL', 'DEFAULT',
+        ];
+
+        if (in_array($sn, $blacklist, true)) {
+            return false;
+        }
+
+        // Teks murni alfabet tanpa angka bukan serial number perangkat
+        if (preg_match('/^[A-Z]+$/', $sn)) {
+            return false;
+        }
+
+        // Format standar ITU-T GPON: 4 huruf kapital (Vendor ID) diikuti 7-8 karakter heksadesimal (e.g. ZTEGC408F02, HWTC12345678)
+        if (preg_match('/^[A-Z]{4}[0-9A-F]{7,8}$/i', $sn)) {
+            return true;
+        }
+
+        // Format 16-heksadesimal yang memiliki setidaknya satu angka
+        if (preg_match('/^[0-9A-F]{16}$/i', $sn) && preg_match('/[0-9]/', $sn)) {
+            return true;
+        }
+
+        // Format MAC Address EPON (12 hex chars atau dipisah :/-)
+        $cleanMac = str_replace([':', '-', '.'], '', $sn);
+        if (strlen($cleanMac) === 12 && ctype_xdigit($cleanMac) && preg_match('/[0-9]/', $cleanMac)) {
+            return true;
+        }
+
+        // Vendor prefix GPON terdaftar (ZTEG, HWTC, CDAT, CIOT, FHTT, ALCL, VSOL, HSGQ, dll)
+        if (preg_match('/^(ZTEG|HWTC|CDAT|CIOT|FHTT|ALCL|VSOL|HSGQ|BDCM|MSTC|ISKT)[0-9A-F]{6,12}$/i', $sn)) {
+            return true;
+        }
+
+        return false;
+    }
+
     abstract public function getPonPortsStatus(): array;
     abstract public function getOnuRxPower(int $ponPort): array;
     abstract public function discoverUnregisteredOnus(): array;

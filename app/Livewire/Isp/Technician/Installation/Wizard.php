@@ -536,22 +536,14 @@ class Wizard extends Component
             $driver = $registry->forOlt($olt);
             $rawDiscovered = $driver->discoverUnregisteredOnus();
             if (is_array($rawDiscovered) && !empty($rawDiscovered)) {
-                $discovered = $rawDiscovered;
+                $discovered = array_values(array_filter($rawDiscovered, function ($item) {
+                    $sn = strtoupper(trim($item['serial_number'] ?? ''));
+                    return \App\Services\Adapters\Provisioning\Drivers\BaseOltDriver::isValidOnuSerial($sn);
+                }));
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning("[Wizard::detectUnregisteredOnus] OLT {$olt->id} discovery: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning("[Wizard::detectUnregisteredOnus] OLT {$olt->id} discovery error: " . $e->getMessage());
             $this->oltScanMessage = 'Peringatan koneksi OLT: ' . $e->getMessage();
-        }
-
-        // Filter jika pon_port sudah diisi teknisi
-        $targetPort = !empty($this->pon_port) ? (int) $this->pon_port : null;
-        if ($targetPort !== null && !empty($discovered)) {
-            $filtered = array_values(array_filter($discovered, function ($item) use ($targetPort) {
-                return isset($item['pon_port']) && (int) $item['pon_port'] === $targetPort;
-            }));
-            if (!empty($filtered)) {
-                $discovered = $filtered;
-            }
         }
 
         // Brownfield / Offline Inventory Fallback jika belum ada ont unconfigured realtime
@@ -559,18 +551,19 @@ class Wizard extends Component
             $dbQuery = \App\Models\ISP\Onu::withoutGlobalScopes()
                 ->where('olt_id', $olt->id)
                 ->whereIn('provision_status', ['unprovisioned', 'pending', 'new']);
-            if ($targetPort !== null) {
-                $dbQuery->where('pon_port', $targetPort);
-            }
+            
             $dbOnus = $dbQuery->limit(10)->get();
             foreach ($dbOnus as $dbOnu) {
-                $discovered[] = [
-                    'pon_port' => (int) ($dbOnu->pon_port ?: $targetPort ?: 1),
-                    'onu_id' => (int) ($dbOnu->onu_id_on_olt ?: 1),
-                    'serial_number' => strtoupper($dbOnu->serial_number),
-                    'vendor_oui' => strtoupper(substr($dbOnu->serial_number, 0, 4)),
-                    'source' => 'inventory',
-                ];
+                $sn = strtoupper(trim($dbOnu->serial_number));
+                if (\App\Services\Adapters\Provisioning\Drivers\BaseOltDriver::isValidOnuSerial($sn)) {
+                    $discovered[] = [
+                        'pon_port' => (int) ($dbOnu->pon_port ?: 1),
+                        'onu_id' => (int) ($dbOnu->onu_id_on_olt ?: 1),
+                        'serial_number' => $sn,
+                        'vendor_oui' => strtoupper(substr($sn, 0, 4)),
+                        'source' => 'inventory',
+                    ];
+                }
             }
         }
 

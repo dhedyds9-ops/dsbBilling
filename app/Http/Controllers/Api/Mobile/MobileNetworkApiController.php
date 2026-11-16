@@ -238,7 +238,10 @@ class MobileNetworkApiController extends Controller
             $driver = $registry->forOlt($olt);
             $discovered = $driver->discoverUnregisteredOnus();
             if (is_array($discovered)) {
-                $unregistered = $discovered;
+                $unregistered = array_values(array_filter($discovered, function ($item) {
+                    $sn = strtoupper(trim($item['serial_number'] ?? ''));
+                    return \App\Services\Adapters\Provisioning\Drivers\BaseOltDriver::isValidOnuSerial($sn);
+                }));
             }
         } catch (\Throwable $e) {
             \Log::warning("[unregisteredOnus] OLT {$id} discovery error: " . $e->getMessage());
