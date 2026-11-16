@@ -44,6 +44,8 @@ class DatabaseSeeder extends Seeder
 
         // Seed service profile types
         $this->call(ServiceProfileTypeSeeder::class);
+        // Seed asset categories (Tools, Equipment, Network)
+        $this->call(AssetCategorySeeder::class);
         // Seed chart of accounts
         $this->call(ChartOfAccountsSeeder::class);
         // Seed journals

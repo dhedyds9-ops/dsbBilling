@@ -77,13 +77,103 @@ class MobileInventoryApiController extends Controller
             ];
         });
 
+        // Also query assigned assets/tools for the technician
+        $tools = \App\Models\Inventory\Asset::with(['category', 'warehouse'])
+            ->where('assigned_to_id', $user->id)
+            ->where('status', 'in_use')
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $formattedTools = $tools->map(function (\App\Models\Inventory\Asset $a) {
+            return [
+                'id' => $a->id,
+                'code' => $a->code,
+                'name' => $a->name,
+                'type' => $a->type ?: 'tool',
+                'category' => $a->category?->name ?? 'Alat Kerja',
+                'condition' => $a->condition ?: 'good',
+                'condition_label' => match ($a->condition) {
+                    'good' => 'Kondisi Baik',
+                    'fair' => 'Cukup',
+                    'damaged' => 'Rusak Ringan',
+                    'maintenance' => 'Perlu Servis',
+                    default => 'Baik',
+                },
+                'serial_number' => $a->serial_number ?: '-',
+                'status' => $a->status,
+                'warehouse_name' => $a->warehouse?->name ?? 'Gudang Pusat',
+                'assigned_at' => $a->assigned_at?->toIso8601String(),
+                'is_reusable' => true,
+            ];
+        });
+
         return response()->json([
             'success' => true,
             'data' => $formatted,
+            'tools' => $formattedTools,
             'summary' => [
                 'total_items' => $custodies->count(),
                 'total_units' => $formatted->sum('available_quantity'),
                 'serialized_items' => $formatted->where('is_serialized', true)->count(),
+                'total_tools' => $formattedTools->count(),
+            ],
+        ]);
+    }
+
+    /**
+     * Get tools & equipment currently assigned to the authenticated technician.
+     */
+    public function myTools(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $query = \App\Models\Inventory\Asset::with(['category', 'warehouse'])
+            ->where('assigned_to_id', $user->id)
+            ->where('status', 'in_use')
+            ->orderBy('id', 'desc');
+
+        if ($request->filled('search')) {
+            $search = '%' . trim((string)$request->input('search')) . '%';
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', $search)
+                    ->orWhere('code', 'like', $search)
+                    ->orWhere('serial_number', 'like', $search);
+            });
+        }
+
+        $assets = $query->get();
+
+        $formatted = $assets->map(function (\App\Models\Inventory\Asset $a) {
+            return [
+                'id' => $a->id,
+                'code' => $a->code,
+                'name' => $a->name,
+                'type' => $a->type ?: 'tool',
+                'category' => $a->category?->name ?? 'Alat Kerja',
+                'condition' => $a->condition ?: 'good',
+                'condition_label' => match ($a->condition) {
+                    'good' => 'Kondisi Baik',
+                    'fair' => 'Cukup',
+                    'damaged' => 'Rusak Ringan',
+                    'maintenance' => 'Perlu Servis',
+                    default => 'Baik',
+                },
+                'serial_number' => $a->serial_number ?: '-',
+                'status' => $a->status,
+                'warehouse_name' => $a->warehouse?->name ?? 'Gudang Pusat',
+                'description' => $a->description,
+                'assigned_at' => $a->assigned_at?->toIso8601String(),
+                'is_reusable' => true,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $formatted,
+            'summary' => [
+                'total_tools' => $formatted->count(),
+                'good_condition' => $formatted->where('condition', 'good')->count(),
+                'needs_repair' => $formatted->whereIn('condition', ['damaged', 'maintenance'])->count(),
             ],
         ]);
     }

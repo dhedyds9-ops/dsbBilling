@@ -366,6 +366,10 @@ class CustomerApiController extends Controller
         ]);
 
         $companyName = Setting::getValue('company.name', config('app.name', 'WINETS ID'));
+        $companyPhone = Setting::getValue('company.phone', '081234567890');
+        $companyWhatsapp = Setting::getValue('company.whatsapp') ?: $companyPhone;
+        $companyLogo = Setting::getValue('company.logo_url') ?: Setting::getValue('company.logo') ?: asset('images/logo.png');
+        $companyEmail = Setting::getValue('company.email', 'cs@ispprovider.com');
         $dueDays = (int) Setting::getValue('billing.invoice_due_days', 7);
         $nextBillingFormatted = $data['next_billing_date'] ? Carbon::parse($data['next_billing_date'])->translatedFormat('d M Y') : null;
 
@@ -373,6 +377,14 @@ class CustomerApiController extends Controller
             'success' => true,
             'data' => [
                 'company_name' => $companyName,
+                'company_logo' => $companyLogo,
+                'admin_contact' => [
+                    'company_name' => $companyName,
+                    'company_logo' => $companyLogo,
+                    'whatsapp' => $companyWhatsapp,
+                    'phone' => $companyPhone,
+                    'email' => $companyEmail,
+                ],
                 'warning_password_change' => empty($user->password_changed_at),
                 'customer' => [
                     'id' => $customer->id,
@@ -639,6 +651,20 @@ class CustomerApiController extends Controller
             ], 404);
         }
 
+        $wlanIndex = max(1, min(4, (int) $request->input('wlan_index', 1)));
+        $availableModes = [
+            ['code' => 'WPA_WPA2', 'name' => 'WPA/WPA2 Mixed (Rekomendasi)'],
+            ['code' => 'WPA2', 'name' => 'WPA2-Personal (AES)'],
+            ['code' => 'WPA', 'name' => 'WPA-Personal (TKIP)'],
+            ['code' => 'OPEN', 'name' => 'Open / Tanpa Password'],
+        ];
+        $availableSsids = [
+            ['index' => 1, 'name' => 'SSID 1 (Utama)'],
+            ['index' => 2, 'name' => 'SSID 2'],
+            ['index' => 3, 'name' => 'SSID 3'],
+            ['index' => 4, 'name' => 'SSID 4'],
+        ];
+
         try {
             $wifi = $this->selfService->getOnuWifiCredentials($customer->id, $service->onu_id);
             $devices = $this->selfService->getOnuConnectedDevices($customer->id, $service->onu_id);
@@ -649,11 +675,14 @@ class CustomerApiController extends Controller
                     'onu_id' => $service->onu_id,
                     'model' => $service->onu?->model ?? 'ONT Terminal',
                     'serial_number' => $service->onu?->serial_number,
+                    'wlan_index' => $wlanIndex,
                     'ssid' => $wifi['ssid'] ?? $service->onu?->wifi_ssid ?? 'dsBilling_WiFi',
                     'password' => $wifi['password'] ?? $service->onu?->wifi_password ?? '••••••••',
-                    'security_mode' => $wifi['security_mode'] ?? 'WPA2-PSK (AES)',
+                    'security_mode' => $wifi['security_mode'] ?? 'WPA_WPA2',
                     'is_enabled' => $wifi['is_enabled'] ?? true,
                     'connected_devices_count' => count($devices),
+                    'available_ssids' => $availableSsids,
+                    'available_security_modes' => $availableModes,
                 ],
             ]);
         } catch (\Throwable $e) {
@@ -664,11 +693,14 @@ class CustomerApiController extends Controller
                     'onu_id' => $service->onu_id,
                     'model' => $service->onu?->model ?? 'ONT Terminal',
                     'serial_number' => $service->onu?->serial_number,
+                    'wlan_index' => $wlanIndex,
                     'ssid' => $service->onu?->wifi_ssid ?? 'dsBilling_WiFi',
                     'password' => $service->onu?->wifi_password ?? '••••••••',
-                    'security_mode' => 'WPA2-PSK (AES)',
+                    'security_mode' => 'WPA_WPA2',
                     'is_enabled' => true,
                     'connected_devices_count' => 0,
+                    'available_ssids' => $availableSsids,
+                    'available_security_modes' => $availableModes,
                 ],
             ]);
         }
@@ -679,12 +711,24 @@ class CustomerApiController extends Controller
      */
     public function updateWifi(Request $request): JsonResponse
     {
-        $request->validate([
-            'ssid' => 'required|string|min:3|max:32',
-            'password' => 'nullable|string|min:8|max:64',
-            'security_mode' => 'nullable|string',
-        ]);
+        $securityMode = strtoupper(trim((string)$request->input('security_mode', 'WPA_WPA2')));
+        if ($securityMode === 'OPEN' || $securityMode === 'NONE') {
+            $securityMode = 'OPEN';
+            $request->validate([
+                'ssid' => 'required|string|min:3|max:32',
+                'wlan_index' => 'nullable|integer|between:1,4',
+            ]);
+            $newPassword = null;
+        } else {
+            $request->validate([
+                'ssid' => 'required|string|min:3|max:32',
+                'password' => 'nullable|string|min:8|max:64',
+                'wlan_index' => 'nullable|integer|between:1,4',
+            ]);
+            $newPassword = $request->input('password') ? trim($request->input('password')) : null;
+        }
 
+        $wlanIndex = max(1, min(4, (int) $request->input('wlan_index', 1)));
         $user = $request->user();
         $customer = $this->getAuthenticatedCustomer($user);
 
@@ -702,8 +746,6 @@ class CustomerApiController extends Controller
         }
 
         $newSsid = trim($request->input('ssid'));
-        $newPassword = $request->input('password') ? trim($request->input('password')) : null;
-        $securityMode = $request->input('security_mode', 'WPA2-PSK (AES)');
 
         try {
             $result = $this->selfService->changeOnuWifiCredentials(
@@ -711,30 +753,32 @@ class CustomerApiController extends Controller
                 onuId: $service->onu_id,
                 newSsid: $newSsid,
                 newPassword: $newPassword,
-                wlanIndex: 1,
+                wlanIndex: $wlanIndex,
                 securityMode: $securityMode
             );
 
-            // Dual write to local onus table
-            $service->onu?->update([
-                'wifi_ssid' => $newSsid,
-                'wifi_password' => $newPassword ?: $service->onu?->wifi_password,
-            ]);
+            if ($wlanIndex === 1) {
+                $service->onu?->update([
+                    'wifi_ssid' => $newSsid,
+                    'wifi_password' => $newPassword ?: $service->onu?->wifi_password,
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => $result['message'] ?? 'Pengaturan Wi-Fi berhasil diperbarui.',
+                'message' => $result['message'] ?? "Pengaturan SSID {$wlanIndex} berhasil diperbarui.",
             ]);
         } catch (\Throwable $e) {
-            // If GenieACS driver is offline, still update local db and inform user
-            $service->onu?->update([
-                'wifi_ssid' => $newSsid,
-                'wifi_password' => $newPassword ?: $service->onu?->wifi_password,
-            ]);
+            if ($wlanIndex === 1) {
+                $service->onu?->update([
+                    'wifi_ssid' => $newSsid,
+                    'wifi_password' => $newPassword ?: $service->onu?->wifi_password,
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Pengaturan Wi-Fi berhasil disimpan di sistem.',
+                'message' => "Pengaturan SSID {$wlanIndex} berhasil disimpan di sistem.",
             ]);
         }
     }
@@ -821,13 +865,23 @@ class CustomerApiController extends Controller
             }
         }
 
-        $formatted = collect($devices)->map(function ($d) {
+        $formatted = collect($devices)->map(function ($d) use ($onu) {
+            $iface = $d['interface'] ?? $d['InterfaceType'] ?? 'WiFi';
+            $mainSsid = $onu?->wifi_ssid ?? 'WiFi';
+            
+            $connectedSsid = $mainSsid;
+            if (preg_match('/SSID\s*(\d+)/i', $iface, $matches)) {
+                $idx = (int)$matches[1];
+                $connectedSsid = ($idx === 1) ? $mainSsid : "SSID {$idx}";
+            }
+
             return [
                 'id' => 0,
                 'hostname' => $d['hostname'] ?? $d['HostName'] ?? 'Unknown Device',
                 'ip' => $d['ip'] ?? $d['IPAddress'] ?? '-',
                 'mac' => $d['mac'] ?? $d['MACAddress'] ?? '-',
-                'interface' => $d['interface'] ?? $d['InterfaceType'] ?? 'WiFi',
+                'interface' => $iface,
+                'ssid' => $connectedSsid,
                 'active' => !empty($d['active']) || !empty($d['Active']),
                 'uptime' => '-',
                 'bytes_in' => 0,
@@ -1272,8 +1326,13 @@ class CustomerApiController extends Controller
      */
     public function contactAdmin(Request $request): JsonResponse
     {
+        $companyName = Setting::getValue('company.name', 'dsBilling ISP');
         $companyPhone = Setting::getValue('company.phone', '081234567890');
-        $cleanPhone = preg_replace('/[^0-9]/', '', (string)$companyPhone);
+        $companyWhatsapp = Setting::getValue('company.whatsapp') ?: $companyPhone;
+        $companyLogo = Setting::getValue('company.logo_url') ?: Setting::getValue('company.logo') ?: asset('images/logo.png');
+        $companyEmail = Setting::getValue('company.email', 'cs@ispprovider.com');
+
+        $cleanPhone = preg_replace('/[^0-9]/', '', (string)$companyWhatsapp);
         if (str_starts_with($cleanPhone, '0')) {
             $cleanPhone = '62' . substr($cleanPhone, 1);
         }
@@ -1283,16 +1342,18 @@ class CustomerApiController extends Controller
         $custName = urlencode($customer?->name ?? $user->name);
         $custCode = urlencode($customer?->code ?? '-');
 
-        $message = urlencode("Halo Admin dsBilling, saya {$custName} (ID: {$custCode}) ingin bertanya perihal layanan internet saya.");
+        $message = urlencode("Halo Admin {$companyName}, saya {$custName} (ID: {$custCode}) ingin bertanya perihal layanan internet saya.");
         $waUrl = "https://wa.me/{$cleanPhone}?text={$message}";
 
         return response()->json([
             'success' => true,
             'data' => [
-                'company_name' => Setting::getValue('company.name', 'dsBilling ISP'),
+                'company_name' => $companyName,
+                'company_logo' => $companyLogo,
+                'whatsapp' => $companyWhatsapp,
                 'phone' => $companyPhone,
                 'whatsapp_url' => $waUrl,
-                'email' => Setting::getValue('company.email', 'cs@ispprovider.com'),
+                'email' => $companyEmail,
             ],
         ]);
     }
@@ -1303,8 +1364,10 @@ class CustomerApiController extends Controller
     public function getAvailablePlans(Request $request): JsonResponse
     {
         $category = strtolower((string) $request->input('category', 'all'));
+        $user = $request->user();
+        $customer = $this->getAuthenticatedCustomer($user);
 
-        $query = \App\Models\ISP\ServiceProfile::query()
+        $query = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()
             ->where(function ($q) {
                 $q->where('status', 'active')->orWhereNull('status');
             })
@@ -1318,7 +1381,19 @@ class CustomerApiController extends Controller
                 $q->whereNull('visibility')->orWhere('visibility', '!=', 'hidden');
             })
             ->where('name', 'NOT LIKE', '%gratis%')
-            ->where('name', 'NOT LIKE', '%isolir%');
+            ->where('name', 'NOT LIKE', '%isolir%')
+            ->where('name', 'NOT LIKE', '%voucher%')
+            ->where(function ($q) {
+                $q->whereNull('service_type')
+                  ->orWhereRaw('LOWER(service_type) NOT IN (?, ?, ?)', ['voucher', 'hotspot_voucher', 'member_voucher']);
+            });
+
+        if ($customer && $customer->branch_id) {
+            $query->where(function ($q) use ($customer) {
+                $q->where('branch_id', $customer->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
 
         if ($category === 'pppoe') {
             $query->where(function ($q) {
@@ -1327,15 +1402,14 @@ class CustomerApiController extends Controller
             });
         } elseif ($category === 'hotspot') {
             $query->where(function ($q) {
-                $q->whereRaw('LOWER(service_type) IN (?, ?, ?)', ['hotspot', 'member_hotspot', 'voucher'])
-                  ->orWhere('service_type', 'LIKE', '%hotspot%')
-                  ->orWhere('service_type', 'LIKE', '%voucher%');
+                $q->whereRaw('LOWER(service_type) IN (?, ?)', ['hotspot', 'member_hotspot'])
+                  ->orWhere('service_type', 'LIKE', '%hotspot%');
             });
         }
 
         $plans = $query->orderBy('base_price')->get()->map(function ($plan) {
             $rawType = strtolower($plan->service_type ?? '');
-            $typeLabel = in_array($rawType, ['hotspot', 'member_hotspot', 'voucher']) ? 'Hotspot' : 'PPPoE';
+            $typeLabel = (in_array($rawType, ['hotspot', 'member_hotspot']) || str_contains($rawType, 'hotspot')) ? 'Hotspot' : 'PPPoE';
             $price = (int) ($plan->price ?? $plan->base_price ?? 0);
             return [
                 'id' => $plan->id,
@@ -1344,9 +1418,9 @@ class CustomerApiController extends Controller
                 'service_type' => $typeLabel,
                 'price' => $price,
                 'price_formatted' => 'Rp ' . number_format($price, 0, ',', '.'),
-                'download_speed' => $plan->download_speed,
-                'upload_speed' => $plan->upload_speed,
-                'description' => $plan->description,
+                'download_speed' => $plan->download_speed ? ($plan->download_speed . ' Mbps') : '-',
+                'upload_speed' => $plan->upload_speed ? ($plan->upload_speed . ' Mbps') : '-',
+                'description' => $plan->description ?: 'Koneksi Cepat & Kuota Unlimited',
             ];
         });
 

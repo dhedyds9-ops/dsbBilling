@@ -221,6 +221,7 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
         // Inventory & Material Management (Phase 2B)
         Route::prefix('inventory')->name('inventory.')->group(function () {
             Route::get('/my-stock', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'myStock'])->name('my-stock');
+            Route::get('/my-tools', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'myTools'])->name('my-tools');
             Route::get('/items', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'items'])->name('items');
             Route::post('/requisitions', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'createRequisition'])->name('requisitions.create');
             Route::get('/requisitions', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'requisitions'])->name('requisitions.index');
@@ -374,6 +375,7 @@ Route::prefix('customer')->name('api.customer.')->group(function () {
         // Auxiliary & OTA App Updates
         Route::get('/app/check-update', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate'])->name('customer.app.check-update');
         Route::get('/support/contact', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'contactAdmin'])->name('support.contact');
+        Route::get('/contact-admin', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'contactAdmin'])->name('contact-admin');
         Route::get('/speedtest/config', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'speedtestConfig'])->name('speedtest.config');
     });
 });

@@ -84,6 +84,11 @@ class Asset extends Model
         return $this->belongsTo(Asset::class, 'parent_asset_id');
     }
 
+    public function assignedTo(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'assigned_to_id');
+    }
+
     public function children(): HasMany
     {
         return $this->hasMany(Asset::class, 'parent_asset_id');
