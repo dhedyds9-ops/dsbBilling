@@ -32,6 +32,7 @@ class Wizard extends Component
     public $new_customer_reseller_id;
 
     public $customer_id;
+    public string $customer_search = '';
     public $service_profile_id;
     public $service_type = 'pppoe'; // Default to PPPoE
     public string $package_filter_type = 'all'; // all, pppoe, hotspot
@@ -1401,7 +1402,19 @@ class Wizard extends Component
             }
         }
 
-        $customersOptions = Customer::withoutGlobalScopes()
+        $customersQuery = Customer::withoutGlobalScopes();
+        $customerSearchTerm = trim((string) $this->customer_search);
+        if ($customerSearchTerm !== '') {
+            $like = '%' . $customerSearchTerm . '%';
+            $customersQuery->where(function ($q) use ($like) {
+                $q->where('name', 'like', $like)
+                    ->orWhere('phone', 'like', $like)
+                    ->orWhere('code', 'like', $like)
+                    ->orWhere('address', 'like', $like);
+            });
+        }
+
+        $customersOptions = $customersQuery
             ->latest('id')
             ->take(150)
             ->get(['id', 'name', 'phone', 'code', 'address'])

@@ -268,15 +268,15 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Owner / Reseller (Opsional)</label>
-                            <x-ds-searchable-select
-                                wire:model.live="new_customer_reseller_id"
-                                strategy="local"
-                                :options="$resellersOptions"
-                                placeholder="-- Pilih Owner / Reseller (Default: Kantor Pusat / HQ) --"
-                                search-placeholder="Cari nama atau email reseller..."
-                                :selected-label="$this->selectedResellerLabel"
-                                :selected-sublabel="$this->selectedResellerSublabel"
-                            />
+                            <div class="relative">
+                                <select wire:model.live="new_customer_reseller_id" class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors">
+                                    <option value="">-- Kantor Pusat (HQ / Direct) --</option>
+                                    @foreach($resellersOptions as $r)
+                                        <option value="{{ $r['value'] }}">{{ $r['label'] }} ({{ $r['sublabel'] }})</option>
+                                    @endforeach
+                                </select>
+                                <span class="material-symbols-outlined absolute left-3 top-3 text-slate-400 text-lg pointer-events-none notranslate" translate="no">storefront</span>
+                            </div>
                             <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
                                 Pilih Mitra / Reseller jika pemasangan ini untuk pelanggan mitra, atau kosongkan jika milik Kantor Pusat (HQ).
                             </p>
@@ -317,17 +317,35 @@
                                 </div>
                             </div>
                         @else
-                            <x-ds-searchable-select
-                                wire:model.live="customer_id"
-                                strategy="local"
-                                :options="$customersOptions"
-                                search-action="searchCustomers"
-                                placeholder="-- Pilih Pelanggan Terdaftar --"
-                                search-placeholder="Cari nama, nomor HP, atau kode..."
-                                :selected-label="$this->selectedCustomerLabel"
-                                :selected-sublabel="$this->selectedCustomerSublabel"
-                                :error="$errors->first('customer_id')"
-                            />
+                            <div class="space-y-3">
+                                {{-- Input Pencarian Livewire Pelanggan --}}
+                                <div class="relative">
+                                    <input type="text"
+                                           wire:model.live.debounce.300ms="customer_search"
+                                           placeholder="Ketik nama, no HP/WA, kode pelanggan, atau alamat..."
+                                           class="w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors placeholder:text-slate-400"
+                                           autocomplete="off">
+                                    <span class="material-symbols-outlined absolute left-3 top-3 text-slate-400 text-lg pointer-events-none notranslate" translate="no">search</span>
+                                    @if(!empty($customer_search))
+                                        <button type="button" wire:click="$set('customer_search', '')" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                            <span class="material-symbols-outlined text-lg notranslate" translate="no">close</span>
+                                        </button>
+                                    @endif
+                                </div>
+
+                                {{-- Dropdown Pilih Pelanggan --}}
+                                <div class="relative">
+                                    <select wire:model.live="customer_id"
+                                            class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors">
+                                        <option value="">-- Pilih Pelanggan Terdaftar ({{ count($customersOptions) }} Ditemukan) --</option>
+                                        @foreach($customersOptions as $c)
+                                            <option value="{{ $c['value'] }}">{{ $c['label'] }} • {{ $c['sublabel'] }}</option>
+                                        @endforeach
+                                    </select>
+                                    <span class="material-symbols-outlined absolute left-3 top-3 text-slate-400 text-lg pointer-events-none notranslate" translate="no">person</span>
+                                </div>
+                                @error('customer_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                            </div>
 
                             {{-- Detail Pelanggan Terpilih --}}
                             @if(!$is_new_customer && $this->selectedCustomer)
@@ -371,15 +389,15 @@
                                 @if(empty($this->selectedCustomer->reseller_id))
                                     <div class="mt-2.5">
                                         <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">Tautkan ke Owner / Reseller (Opsional)</label>
-                                        <x-ds-searchable-select
-                                            wire:model.live="new_customer_reseller_id"
-                                            strategy="local"
-                                            :options="$resellersOptions"
-                                            placeholder="-- Tautkan ke Owner / Reseller (Default: HQ) --"
-                                            search-placeholder="Cari reseller..."
-                                            :selected-label="$this->selectedResellerLabel"
-                                            :selected-sublabel="$this->selectedResellerSublabel"
-                                        />
+                                        <div class="relative">
+                                            <select wire:model.live="new_customer_reseller_id" class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors">
+                                                <option value="">-- Kantor Pusat (HQ / Direct) --</option>
+                                                @foreach($resellersOptions as $r)
+                                                    <option value="{{ $r['value'] }}">{{ $r['label'] }} ({{ $r['sublabel'] }})</option>
+                                                @endforeach
+                                            </select>
+                                            <span class="material-symbols-outlined absolute left-3 top-3 text-slate-400 text-lg pointer-events-none notranslate" translate="no">storefront</span>
+                                        </div>
                                     </div>
                                 @endif
                             @endif
