@@ -343,6 +343,22 @@ class CustomerApiController extends Controller
         $isOnline = is_array($rawInternetStatus) ? ($rawInternetStatus['is_online'] ?? ($statusStr === 'online')) : ($statusStr === 'online');
         $statusMsg = is_array($rawInternetStatus) ? ($rawInternetStatus['message'] ?? 'Internet Online') : 'Internet Online';
 
+        if (!$profile && $customer) {
+            $custService = CustomerService::withoutGlobalScopes()
+                ->where('customer_id', $customer->id)
+                ->whereNotNull('service_profile_id')
+                ->first();
+            if ($custService?->service_profile_id) {
+                $profile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find($custService->service_profile_id);
+            }
+            if (!$profile && $pppoeUser?->service_profile_id) {
+                $profile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find($pppoeUser->service_profile_id);
+            }
+            if (!$profile && $hotspotUser?->service_profile_id) {
+                $profile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find($hotspotUser->service_profile_id);
+            }
+        }
+
         $dlSpeed = $profile?->download_speed ?? null;
         $ulSpeed = $profile?->upload_speed ?? null;
         $speedLabel = $dlSpeed ? (($dlSpeed >= 1000 ? round($dlSpeed / 1000, 0) . 'Gbps' : $dlSpeed . 'Mbps') . '↓') : null;
@@ -354,6 +370,21 @@ class CustomerApiController extends Controller
         $isHotspotService = in_array($rawProfileType, ['hotspot', 'member_hotspot', 'voucher']) || ($hotspotUser && !$pppoeUser);
         $serviceBadgeLabel = $isHotspotService ? 'Hotspot' : 'PPPoE';
         $activeUsername = $pppoeUser?->username ?? $hotspotUser?->username ?? $primaryService?->username;
+
+        $packageName = $profile?->name ?? 'Home Internet (Aktif)';
+        $packagePrice = (int) ($profile?->price ?? $profile?->base_price ?? $profile?->reseller_price ?? 0);
+        $currentPackagePayload = [
+            'id' => $profile?->id ?? 0,
+            'name' => $packageName,
+            'speed_download' => (string) ($profile?->download_speed ?? '10'),
+            'speed_upload' => (string) ($profile?->upload_speed ?? '10'),
+            'speed_label' => $speedLabel ?: (($profile?->download_speed ?? 10) . ' Mbps'),
+            'price' => $packagePrice,
+            'type' => $serviceBadgeLabel,
+            'service_type' => $serviceBadgeLabel,
+            'username' => $activeUsername,
+            'is_active' => true,
+        ];
 
         $recentInvoices = collect($data['recent_invoices'])->map(fn($inv) => [
             'id' => $inv->id,
@@ -407,18 +438,7 @@ class CustomerApiController extends Controller
                     'onu_sn' => $onu?->serial_number ?? null,
                     'optical_power' => $onu?->rx_power_dbm ? number_format($onu->rx_power_dbm, 2) . ' dBm' : null,
                 ],
-                'current_package' => $profile ? [
-                    'id' => $profile->id,
-                    'name' => $profile->name,
-                    'speed_download' => $profile->download_speed,
-                    'speed_upload' => $profile->upload_speed,
-                    'speed_label' => $speedLabel,
-                    'price' => (int) ($profile->price ?? $profile->base_price ?? 0),
-                    'type' => $serviceBadgeLabel,
-                    'service_type' => $serviceBadgeLabel,
-                    'username' => $activeUsername,
-                    'is_active' => true,
-                ] : null,
+                'current_package' => $currentPackagePayload,
                 'billing' => [
                     'total_unpaid' => (double) $data['total_outstanding'],
                     'total_outstanding' => (int) $data['total_outstanding'],
@@ -1397,19 +1417,25 @@ class CustomerApiController extends Controller
      */
     public function getAvailablePlans(Request $request): JsonResponse
     {
-        $category = strtolower((string) $request->input('category', 'all'));
+        $category = strtolower(trim((string) $request->input('category', 'all')));
+        if (empty($category)) {
+            $category = 'all';
+        }
         $user = $request->user();
         $customer = $this->getAuthenticatedCustomer($user);
 
         $query = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()
             ->where(function ($q) {
-                $q->where('status', 'active')->orWhereNull('status');
+                $q->whereIn('status', ['active', 'enabled', '1', 'aktif'])->orWhereNull('status');
             })
             ->where(function ($q) {
                 $q->whereNull('is_free')->orWhere('is_free', false);
             })
             ->where(function ($q) {
-                $q->where('base_price', '>', 0)->orWhere('price', '>', 0);
+                $q->where('base_price', '>', 0)
+                  ->orWhere('reseller_price', '>', 0)
+                  ->orWhere('owner_price', '>', 0)
+                  ->orWhere('cost_price', '>', 0);
             })
             ->where(function ($q) {
                 $q->whereNull('visibility')->orWhere('visibility', '!=', 'hidden');
@@ -1422,16 +1448,24 @@ class CustomerApiController extends Controller
                   ->orWhereRaw('LOWER(service_type) NOT IN (?, ?, ?)', ['voucher', 'hotspot_voucher', 'member_voucher']);
             });
 
+        // Filter branch only if there are profiles specifically defined for this branch
         if ($customer && $customer->branch_id) {
-            $query->where(function ($q) use ($customer) {
-                $q->where('branch_id', $customer->branch_id)
-                  ->orWhereNull('branch_id');
-            });
+            $hasBranchProfiles = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()
+                ->where('branch_id', $customer->branch_id)
+                ->exists();
+
+            if ($hasBranchProfiles) {
+                $query->where(function ($q) use ($customer) {
+                    $q->where('branch_id', $customer->branch_id)
+                      ->orWhereNull('branch_id')
+                      ->orWhere('branch_id', 0);
+                });
+            }
         }
 
         if ($category === 'pppoe') {
             $query->where(function ($q) {
-                $q->whereRaw('LOWER(service_type) IN (?, ?)', ['pppoe', 'combined'])
+                $q->whereRaw('LOWER(service_type) IN (?, ?, ?)', ['pppoe', 'combined', 'ftth'])
                   ->orWhereNull('service_type');
             });
         } elseif ($category === 'hotspot') {
@@ -1441,10 +1475,30 @@ class CustomerApiController extends Controller
             });
         }
 
-        $plans = $query->orderBy('base_price')->get()->map(function ($plan) {
+        $rawPlans = $query->orderBy('base_price')->get();
+
+        // Safety fallback: if filters were too restrictive, load all non-voucher service profiles
+        if ($rawPlans->isEmpty()) {
+            $fallbackQuery = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()
+                ->where('name', 'NOT LIKE', '%isolir%')
+                ->where('name', 'NOT LIKE', '%gratis%')
+                ->where('name', 'NOT LIKE', '%voucher%');
+
+            if ($category === 'pppoe') {
+                $fallbackQuery->where(function ($q) {
+                    $q->whereRaw('LOWER(service_type) IN (?, ?)', ['pppoe', 'combined', 'ftth'])->orWhereNull('service_type');
+                });
+            } elseif ($category === 'hotspot') {
+                $fallbackQuery->where('service_type', 'LIKE', '%hotspot%');
+            }
+
+            $rawPlans = $fallbackQuery->orderBy('base_price')->get();
+        }
+
+        $plans = $rawPlans->map(function ($plan) {
             $rawType = strtolower($plan->service_type ?? '');
             $typeLabel = (in_array($rawType, ['hotspot', 'member_hotspot']) || str_contains($rawType, 'hotspot')) ? 'Hotspot' : 'PPPoE';
-            $price = (int) ($plan->price ?? $plan->base_price ?? 0);
+            $price = (int) ($plan->price ?? $plan->base_price ?? $plan->reseller_price ?? $plan->owner_price ?? 0);
             return [
                 'id' => $plan->id,
                 'name' => $plan->name,
