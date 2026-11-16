@@ -36,10 +36,12 @@ class MobileAcsProxyController extends Controller
         }
 
         $isAuthorized = $user->isSuperAdmin()
-            || $user->hasRole(['noc', 'teknisi', 'administrator', 'manager', 'reseller'])
+            || $user->hasRole(['noc', 'teknisi', 'technician', 'administrator', 'manager', 'reseller'])
+            || $user->isTechnician()
             || in_array(strtoupper($user->job_function ?? ''), ['TECHNICIAN', 'TEKNISI', 'NOC', 'ADMINISTRATOR', 'MANAGER', 'RESELLER'])
             || str_contains(strtoupper($user->job_title ?? ''), 'NOC')
             || str_contains(strtoupper($user->job_title ?? ''), 'TEKNISI')
+            || str_contains(strtoupper($user->job_title ?? ''), 'TECHNICIAN')
             || str_contains(strtoupper($user->job_title ?? ''), 'RESELLER');
 
         if (!$isAuthorized) {
@@ -148,12 +150,15 @@ class MobileAcsProxyController extends Controller
             })->first();
         }
 
-        // Must exist in registered database records
+        // Must exist in registered database records, or exist in GenieACS for diagnostic operations
         if (!$dbDevice && !$dbOnu) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Perangkat ini tidak terdaftar atau berada di luar cakupan izin akun Anda.',
-            ], 403);
+            $isDiagnosticOp = in_array($operation, ['summon', 'read', 'ping', 'tasks.view']);
+            if (!$isDiagnosticOp || $user->hasRole('reseller')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Perangkat ini tidak terdaftar atau berada di luar cakupan izin akun Anda.',
+                ], 403);
+            }
         }
 
         // Resolve CustomerService relationship
@@ -269,8 +274,9 @@ class MobileAcsProxyController extends Controller
                         })->exists();
                 }
 
-                // Strictly reject unassigned cross-branch device operations
-                if (!$hasAssignedWo && !$user->isSuperAdmin() && !$user->roles->contains(fn ($r) => in_array($r->name, ['manager', 'administrator', 'superadmin']))) {
+                // Strictly reject unassigned cross-branch device operations (exempt diagnostic/summon operations for staff)
+                $isDiagOp = in_array($operation, ['summon', 'read', 'ping', 'tasks.view']);
+                if (!$hasAssignedWo && !$isDiagOp && !$user->isSuperAdmin() && !$user->roles->contains(fn ($r) => in_array($r->name, ['manager', 'administrator', 'superadmin', 'noc']))) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Akses ditolak: Perangkat ini terdaftar pada cabang/tenant lain.',
@@ -660,16 +666,24 @@ class MobileAcsProxyController extends Controller
         }
 
         try {
-            $success = $this->driver->summonDeviceResult($cleanId);
+            $res = $this->driver->summonDeviceResult($cleanId);
+            $success = ($res['connection_request_success'] ?? false) || ($res['task_queued'] ?? false);
 
             // Audit log
             $user = $request->user();
-            Log::info("ACS Summon: User #{$user->id} ({$user->name}) summoned device {$cleanId}.");
+            Log::info("ACS Summon: User #{$user->id} ({$user->name}) summoned device {$cleanId}. Result: " . json_encode($res));
+
+            $message = !empty($res['connection_request_success'])
+                ? "Permintaan koneksi (Summon Live) berhasil dikirim ke perangkat."
+                : (!empty($res['task_queued'])
+                    ? "Tugas refresh parameter berhasil diantrikan ke GenieACS (modem akan merespons)."
+                    : ("Perangkat tidak merespons summon: " . ($res['error'] ?? "Modem offline atau tidak terjangkau.")));
 
             return response()->json([
                 'success' => $success,
-                'message' => $success ? "Permintaan koneksi (Summon) berhasil dikirim ke perangkat." : "Perangkat tidak merespons summon.",
-            ]);
+                'message' => $message,
+                'details' => $res,
+            ], $success ? 200 : 422);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,

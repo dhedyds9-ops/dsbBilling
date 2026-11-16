@@ -80,6 +80,11 @@ class GenieACSDriver
             if (!empty($candidateSn) && $candidateSn !== $cleanId) {
                 $orConditions[] = ['_deviceId._SerialNumber' => $candidateSn];
                 $orConditions[] = ['_id' => ['$regex' => preg_quote($candidateSn, '/')]];
+                $candUpper = strtoupper($candidateSn);
+                if ($candUpper !== $candidateSn) {
+                    $orConditions[] = ['_deviceId._SerialNumber' => $candUpper];
+                    $orConditions[] = ['_id' => ['$regex' => preg_quote($candUpper, '/')]];
+                }
             }
 
             $queryObj = [
