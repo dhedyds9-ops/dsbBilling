@@ -329,6 +329,10 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
 
 // ========================= DSBILLING CUSTOMER MOBILE API ========================
 Route::prefix('customer')->name('api.customer.')->group(function () {
+    // Public OTA Update Checks (Must be unauthenticated so older apps & login screen can check)
+    Route::get('/app/check-update', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate'])->name('app.check-update');
+    Route::get('/version/check', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate']);
+
     Route::post('/auth/login', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'login'])->name('auth.login');
     Route::post('/login', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'login'])->name('login');
 
@@ -373,8 +377,7 @@ Route::prefix('customer')->name('api.customer.')->group(function () {
         Route::post('/profile', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'updateProfile'])->name('profile.update');
         Route::post('/profile/change-password', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'changePassword'])->name('profile.change-password');
 
-        // Auxiliary & OTA App Updates
-        Route::get('/app/check-update', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate'])->name('customer.app.check-update');
+        // Auxiliary & Contacts
         Route::get('/support/contact', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'contactAdmin'])->name('support.contact');
         Route::get('/contact-admin', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'contactAdmin'])->name('contact-admin');
         Route::get('/speedtest/config', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'speedtestConfig'])->name('speedtest.config');

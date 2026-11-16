@@ -37,6 +37,10 @@ class MobileAppApiController extends Controller
             $downloadUrl = $configuredUrl;
         }
 
+        // Anti-cache query parameter to ensure download is always fresh
+        $separator = str_contains($downloadUrl, '?') ? '&' : '?';
+        $downloadUrl = "{$downloadUrl}{$separator}v={$latestVersionCode}";
+
         $releaseNotes = (string) ($appConfig['release_notes'] ?? config('mobile.release_notes') ?? "Versi {$latestVersionName} telah tersedia dengan berbagai peningkatan performa dan stabilitas.");
 
         $updateAvailable = $latestVersionCode > $currentVersionCode;
