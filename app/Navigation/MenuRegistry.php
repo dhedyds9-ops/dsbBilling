@@ -83,6 +83,7 @@ class MenuRegistry
                         'icon' => 'inventory_2',
                         'items' => [
                             ['label' => 'Master Barang', 'route' => 'inventory.items.index', 'active' => 'inventory.items.*', 'permission' => 'inventory.view'],
+                            ['label' => 'Aset & Alat Kerja', 'route' => 'inventory.assets.index', 'active' => 'inventory.assets.*', 'permission' => 'inventory.view'],
                             ['label' => 'Data Gudang', 'route' => 'inventory.warehouses.index', 'active' => 'inventory.warehouses.*', 'permission' => 'warehouse.view'],
                             ['label' => 'Data Vendor', 'route' => 'isp.vendors.index', 'active' => 'isp.vendors.*', 'permission' => ['vendor.view', 'inventory.view']],
                         ]
@@ -208,7 +209,7 @@ class MenuRegistry
                             ['label' => 'Data ODP', 'route' => 'isp.odps.index', 'active' => 'isp.odps.*', 'permission' => 'odp.view'],
                             ['label' => 'Data POP', 'route' => 'isp.pops.index', 'active' => 'isp.pops.*', 'permission' => 'pop.view'],
                             ['label' => 'Data Vendor', 'route' => 'isp.vendors.index', 'active' => 'isp.vendors.*', 'permission' => 'vendor.view'],
-                            ['label' => 'Network Assets', 'route' => 'inventory.assets.index', 'active' => 'inventory.assets.*', 'permission' => 'network.view'],
+                            ['label' => 'Aset Jaringan & Alat', 'route' => 'inventory.assets.index', 'active' => 'inventory.assets.*', 'permission' => 'network.view'],
                         ]
                     ],
                     [
@@ -216,6 +217,7 @@ class MenuRegistry
                         'icon' => 'warehouse',
                         'items' => [
                             ['label' => 'Dashboard Stok', 'route' => 'inventory.dashboard', 'active' => 'inventory.dashboard', 'permission' => 'inventory.view'],
+                            ['label' => 'Aset & Alat Kerja', 'route' => 'inventory.assets.index', 'active' => 'inventory.assets.*', 'permission' => 'inventory.view'],
                             ['label' => 'Master Barang', 'route' => 'inventory.items.index', 'active' => 'inventory.items.*', 'permission' => 'inventory.view'],
                             ['label' => 'Data Gudang', 'route' => 'inventory.warehouses.index', 'active' => 'inventory.warehouses.*', 'permission' => 'warehouse.view'],
                             ['label' => 'Barang Masuk', 'route' => 'inventory.inbounds.index', 'active' => 'inventory.inbounds.*', 'permission' => 'inventory.inbound'],
@@ -366,7 +368,7 @@ class MenuRegistry
                         'icon' => 'inventory',
                         'items' => [
                             ['label' => 'Data Vendor', 'route' => 'isp.vendors.index', 'active' => 'isp.vendors.*'],
-                            ['label' => 'Network Assets', 'route' => 'inventory.assets.index', 'active' => 'inventory.assets.*'],
+                            ['label' => 'Aset & Alat Kerja', 'route' => 'inventory.assets.index', 'active' => 'inventory.assets.*'],
                         ]
                     ],
                     [
