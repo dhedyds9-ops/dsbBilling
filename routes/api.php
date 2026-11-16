@@ -240,6 +240,7 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::get('/devices', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'devices'])->name('devices.index');
             Route::get('/devices/{identifier}', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'showDevice'])->name('devices.show');
             Route::post('/devices/provision-ont', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'provisionOnt'])->name('devices.provision');
+            Route::post('/devices/sensus', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'sensusOnt'])->name('devices.sensus');
             Route::post('/devices/swap-ont', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'swapOnt'])->name('devices.swap');
             Route::post('/devices/dismantle', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'dismantle'])->name('devices.dismantle');
             Route::get('/devices/{serialNumber}/diagnostics', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'diagnostics'])->name('devices.diagnostics');

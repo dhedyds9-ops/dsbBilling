@@ -25,6 +25,7 @@ class Form extends Component
     public $odp_port;
     public $latitude;
     public $longitude;
+    public string $transaction_id = '';
 
     protected function rules()
     {
@@ -48,6 +49,8 @@ class Form extends Component
 
     public function mount()
     {
+        $this->transaction_id = 'SENSUS-' . (string) \Illuminate\Support\Str::uuid();
+
         // Default OLT jika hanya ada 1
         $firstOlt = Olt::withoutGlobalScopes()->first();
         if ($firstOlt) {
@@ -60,114 +63,33 @@ class Form extends Component
         $this->validate();
 
         $user = auth()->user();
-        $customer = null;
-        $branchId = null;
 
-        if (!$this->is_titipan) {
-            $customer = Customer::find($this->customer_id);
-            if (!$customer) {
-                $this->addError('customer_id', 'Pelanggan tidak ditemukan.');
-                return;
+        try {
+            app(\App\Services\ISP\OntLifecycleService::class)->recordSensus([
+                'transaction_id' => $this->transaction_id ?: ('SENSUS-' . (string) \Illuminate\Support\Str::uuid()),
+                'is_titipan' => (bool) $this->is_titipan,
+                'titipan_name' => $this->titipan_name,
+                'titipan_notes' => $this->titipan_notes,
+                'customer_id' => $this->customer_id,
+                'olt_id' => $this->olt_id,
+                'pon_port' => $this->pon_port,
+                'onu_sn' => $this->onu_sn,
+                'odp_id' => $this->odp_id,
+                'odp_port' => $this->odp_port,
+                'latitude' => $this->latitude,
+                'longitude' => $this->longitude,
+            ], $user);
+
+            session()->flash("success", "Data Sensus ONU & Audit ODP berhasil disimpan ke sistem!");
+            return redirect()->route("technician.dashboard");
+        } catch (\InvalidArgumentException $e) {
+            if (str_contains($e->getMessage(), 'Pelanggan tidak ditemukan')) {
+                $this->addError('customer_id', $e->getMessage());
+            } else {
+                $this->addError('onu_sn', $e->getMessage());
             }
-            $branchId = $user->branch_id ?? $customer->branch_id ?? $customer->reseller?->branch_id;
-        } else {
-            $branchId = $user->branch_id ?? Odp::withoutGlobalScopes()->where('id', $this->odp_id)->value('branch_id');
+            return;
         }
-
-        if (!$branchId) {
-            $branchId = 1; // Fallback ke default branch
-        }
-
-        // Validasi: Cegah penggunaan ONU yang sedang aktif digunakan oleh pelanggan lain
-        $existingOnu = Onu::withoutGlobalScopes()->where('serial_number', $this->onu_sn)->first();
-        if ($existingOnu && !$this->is_titipan && $customer) {
-            $activeOtherCs = CustomerService::withoutGlobalScopes()->where('onu_id', $existingOnu->id)
-                ->where('status', 'active')
-                ->where('customer_id', '!=', $customer->id)
-                ->with('customer')
-                ->first();
-            if ($activeOtherCs) {
-                $otherName = $activeOtherCs->customer?->name ?? 'Pelanggan #' . $activeOtherCs->customer_id;
-                $this->addError('onu_sn', "ONU SN {$this->onu_sn} sedang aktif digunakan oleh pelanggan lain ({$otherName}). Tidak dapat dialihkan secara sepihak.");
-                return;
-            }
-        }
-
-        \Illuminate\Support\Facades\DB::transaction(function () use ($customer, $branchId, $user) {
-            $onuName = $this->is_titipan
-                ? "Titipan: " . trim($this->titipan_name)
-                : "ONU " . ($customer ? $customer->name : 'Pelanggan');
-
-            $onuDesc = $this->is_titipan
-                ? ($this->titipan_notes ?: "Perangkat titipan infrastruktur/lokal tanpa paket PPPoE/Hotspot")
-                : "Hasil Sensus Lapangan & Audit Jalur";
-
-            // Update Koordinat Pelanggan jika bukan titipan
-            if ($customer) {
-                $updateCust = ['branch_id' => $branchId];
-                if ($this->latitude && $this->longitude) {
-                    $updateCust['latitude'] = $this->latitude;
-                    $updateCust['longitude'] = $this->longitude;
-                }
-                $customer->update($updateCust);
-            }
-
-            // 1. Buat/Update ONU (Tandai online pasif, terikat ODP & OLT)
-            $onuData = [
-                "olt_id" => $this->olt_id,
-                "pon_port" => $this->pon_port,
-                "odp_id" => $this->odp_id,
-                "branch_id" => $branchId,
-                "name" => $onuName,
-                "description" => $onuDesc,
-                "status" => "online",
-                "attributes" => [
-                    "odp_port" => $this->odp_port,
-                    "is_titipan" => $this->is_titipan,
-                    "titipan_name" => $this->is_titipan ? $this->titipan_name : null,
-                    "audited_by" => $user?->name,
-                    "audited_at" => now()->toDateTimeString(),
-                ],
-            ];
-
-            if ($this->latitude && $this->longitude) {
-                $onuData['latitude'] = $this->latitude;
-                $onuData['longitude'] = $this->longitude;
-            }
-
-            $onu = Onu::withoutGlobalScopes()->updateOrCreate(
-                ["serial_number" => $this->onu_sn],
-                $onuData
-            );
-
-            // Perbarui okupansi port ODP jika belum dihitung
-            if ($this->odp_id) {
-                $odp = Odp::withoutGlobalScopes()->find($this->odp_id);
-                if ($odp) {
-                    $count = Onu::withoutGlobalScopes()->where('odp_id', $odp->id)->count();
-                    $odp->update(['used_port_count' => $count]);
-                }
-            }
-
-            // 2. Hubungkan CustomerService jika pelanggan resmi
-            if ($customer && !$this->is_titipan) {
-                $cs = CustomerService::where("customer_id", $customer->id)->where("onu_id", $onu->id)->first();
-                if (!$cs) {
-                    CustomerService::create([
-                        "uuid" => (string) \Illuminate\Support\Str::uuid(),
-                        "customer_id" => $customer->id,
-                        "service_id" => 1,
-                        "onu_id" => $onu->id,
-                        "status" => "active",
-                        "service_status" => "active",
-                        "created_by" => $user->id,
-                    ]);
-                }
-            }
-        });
-
-        session()->flash("success", "Data Sensus ONU & Audit ODP berhasil disimpan ke sistem!");
-        return redirect()->route("technician.dashboard");
     }
 
     #[Renderless]

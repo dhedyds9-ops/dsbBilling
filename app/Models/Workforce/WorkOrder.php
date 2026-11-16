@@ -19,6 +19,8 @@ class WorkOrder extends Model
         'company_id',
         'branch_id',
         'type',
+        'source_type',
+        'source_id',
         'ticket_id',
         'installation_id',
         'customer_id',

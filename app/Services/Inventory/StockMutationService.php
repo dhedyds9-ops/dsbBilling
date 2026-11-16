@@ -1220,4 +1220,359 @@ class StockMutationService
             ]);
         });
     }
+
+    /**
+     * Mutasi stok terintegrasi untuk Ganti/Swap ONT di lapangan (Web & Android).
+     * Memotong 1 unit ONT baru dari stok/custody teknisi dan mencatat retur ONT lama (good/damaged).
+     */
+    public function recordOntSwap(
+        int $technicianId,
+        string $oldSn,
+        string $newSn,
+        string $oldCondition = 'damaged',
+        ?int $customerId = null,
+        ?int $ticketId = null,
+        ?int $workOrderId = null,
+        ?int $supportMaterialId = null,
+        ?string $oldModel = 'ONT GPON',
+        ?string $newModel = 'ONT GPON',
+        ?string $opticalPower = null,
+        ?string $notes = null
+    ): array {
+        return DB::transaction(function () use (
+            $technicianId,
+            $oldSn,
+            $newSn,
+            $oldCondition,
+            $customerId,
+            $ticketId,
+            $workOrderId,
+            $supportMaterialId,
+            $oldModel,
+            $newModel,
+            $opticalPower,
+            $notes
+        ) {
+            $techUser = \App\Models\User::find($technicianId);
+            $branchId = $techUser?->branch_id;
+            $oldSnClean = strtoupper(trim($oldSn));
+            $newSnClean = strtoupper(trim($newSn));
+            $normalizedOldCond = in_array($oldCondition, ['good', 'berfungsi']) ? 'good' : 'damaged';
+
+            $custodyDeducted = false;
+            $supportMaterialDeducted = false;
+
+            // 1. Potong stok ONT Baru dari Enterprise InventoryCustody & ItemSerial (dengan lockForUpdate)
+            $newSerial = ItemSerial::withoutGlobalScopes()
+                ->where('serial_number', $newSnClean)
+                ->lockForUpdate()
+                ->first();
+
+            $custodyOnt = null;
+            if ($newSerial) {
+                $custodyOnt = InventoryCustody::withoutGlobalScopes()
+                    ->where('item_serial_id', $newSerial->id)
+                    ->where('holder_id', $technicianId)
+                    ->where('status', 'in_custody')
+                    ->lockForUpdate()
+                    ->first();
+            }
+
+            if (!$custodyOnt) {
+                $custodyOnt = InventoryCustody::withoutGlobalScopes()
+                    ->where('holder_id', $technicianId)
+                    ->where('status', 'in_custody')
+                    ->whereHas('item', function ($q) {
+                        $q->where('name', 'like', '%ONU%')
+                          ->orWhere('name', 'like', '%ONT%')
+                          ->orWhere('name', 'like', '%Modem%')
+                          ->orWhere('sku', 'like', '%ONU%')
+                          ->orWhere('sku', 'like', '%ONT%');
+                    })
+                    ->whereRaw('(quantity - used_quantity - returned_quantity) >= 1')
+                    ->lockForUpdate()
+                    ->first();
+            }
+
+            if ($custodyOnt) {
+                $newUsed = (float) $custodyOnt->used_quantity + 1;
+                $custodyOnt->update([
+                    'used_quantity' => $newUsed,
+                    'status' => ($newUsed + (float) $custodyOnt->returned_quantity >= (float) $custodyOnt->quantity) ? 'used' : 'in_custody',
+                    'customer_id' => $customerId,
+                    'ticket_id' => $ticketId,
+                ]);
+                $custodyDeducted = true;
+
+                $usage = InventoryUsage::create([
+                    'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                    'usage_number' => 'USG-SWP-' . strtoupper(\Illuminate\Support\Str::random(8)),
+                    'technician_id' => $technicianId,
+                    'customer_id' => $customerId,
+                    'ticket_id' => $ticketId,
+                    'work_order_type' => 'swap_ont',
+                    'usage_date' => now()->toDateString(),
+                    'optical_power' => $opticalPower,
+                    'notes' => "Swap ONT [{$oldSnClean}] -> [{$newSnClean}]. " . ($notes ?? ''),
+                    'branch_id' => $branchId,
+                ]);
+
+                InventoryUsageItem::create([
+                    'usage_id' => $usage->id,
+                    'custody_id' => $custodyOnt->id,
+                    'item_id' => $custodyOnt->item_id,
+                    'item_serial_id' => $newSerial?->id ?? $custodyOnt->item_serial_id,
+                    'quantity' => 1,
+                    'notes' => "Pemasangan ONT Baru SN: {$newSnClean}",
+                ]);
+            }
+
+            if ($newSerial) {
+                $newSerial->update([
+                    'status' => 'installed',
+                    'condition' => 'good',
+                    'customer_id' => $customerId,
+                    'ticket_id' => $ticketId,
+                    'custodian_id' => null,
+                    'custodian_type' => null,
+                    'updated_by' => $technicianId,
+                ]);
+            }
+
+            // 2. Update ItemSerial untuk ONT Lama
+            $oldSerial = ItemSerial::withoutGlobalScopes()
+                ->where('serial_number', $oldSnClean)
+                ->lockForUpdate()
+                ->first();
+
+            if ($oldSerial) {
+                $oldSerial->update([
+                    'status' => $normalizedOldCond === 'good' ? 'in_custody_technician' : 'damaged',
+                    'condition' => $normalizedOldCond,
+                    'customer_id' => null,
+                    'custodian_id' => $technicianId,
+                    'custodian_type' => 'technician',
+                    'ticket_id' => $ticketId,
+                    'notes' => "Ditarik via Swap ONT digantikan oleh {$newSnClean}",
+                    'updated_by' => $technicianId,
+                ]);
+            }
+
+            // 3. Backward compatibility: support_maintenance_materials & support_maintenance_usages
+            if (\Illuminate\Support\Facades\Schema::hasTable('support_maintenance_materials')) {
+                $matQuery = DB::table('support_maintenance_materials')->lockForUpdate();
+                if ($supportMaterialId) {
+                    $mat = $matQuery->where('id', $supportMaterialId)->first();
+                } else {
+                    $mat = $matQuery->where(function ($q) use ($newModel) {
+                        if ($newModel) {
+                            $q->where('name', 'like', "%{$newModel}%");
+                        }
+                        $q->orWhere('name', 'like', '%ONT%')
+                          ->orWhere('sku', 'like', '%ONT%');
+                    })->where('stock', '>', 0)->first();
+                }
+
+                if ($mat) {
+                    $newStock = max(0, ((int) $mat->stock) - 1);
+                    DB::table('support_maintenance_materials')
+                        ->where('id', $mat->id)
+                        ->update([
+                            'stock' => $newStock,
+                            'updated_at' => now(),
+                        ]);
+                    $supportMaterialDeducted = true;
+
+                    if (\Illuminate\Support\Facades\Schema::hasTable('support_maintenance_usages')) {
+                        DB::table('support_maintenance_usages')->insert([
+                            'material_id' => $mat->id,
+                            'material_name' => "[SWAP ONT BARU] " . $mat->name . " (SN: {$newSnClean})",
+                            'quantity' => 1,
+                            'unit' => 'unit',
+                            'technician_id' => $technicianId,
+                            'technician_name' => $techUser?->name ?? 'Teknisi',
+                            'ticket_id' => $ticketId,
+                            'used_date' => now()->toDateString(),
+                            'notes' => "Pemasangan ONT baru pengganti {$oldSnClean}. Redaman OPM: " . ($opticalPower ?? '-'),
+                            'created_by' => $technicianId,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+
+                // Jika ONT lama masih bagus (berfungsi), kembalikan +1 ke stok teknisi
+                if ($normalizedOldCond === 'good') {
+                    $retMat = DB::table('support_maintenance_materials')
+                        ->where(function ($q) use ($oldModel) {
+                            if ($oldModel) {
+                                $q->where('name', 'like', "%{$oldModel}%");
+                            }
+                            $q->orWhere('sku', 'like', '%ONT%');
+                        })
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($retMat) {
+                        DB::table('support_maintenance_materials')
+                            ->where('id', $retMat->id)
+                            ->increment('stock', 1);
+                    }
+                }
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('support_maintenance_usages')) {
+                $condLabel = $normalizedOldCond === 'damaged' ? '[ONT RUSAK/AFKIR]' : '[ONT BEKAS RETUR]';
+                DB::table('support_maintenance_usages')->insert([
+                    'material_id' => null,
+                    'material_name' => "{$condLabel} " . ($oldModel ?: 'ONT') . " (SN: {$oldSnClean})",
+                    'quantity' => 1,
+                    'unit' => 'unit',
+                    'technician_id' => $technicianId,
+                    'technician_name' => $techUser?->name ?? 'Teknisi',
+                    'ticket_id' => $ticketId,
+                    'used_date' => now()->toDateString(),
+                    'notes' => $notes ?: "Retur Swap ONT lama {$oldSnClean}",
+                    'created_by' => $technicianId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            return [
+                'custody_deducted' => $custodyDeducted,
+                'support_material_deducted' => $supportMaterialDeducted,
+                'old_condition' => $normalizedOldCond,
+            ];
+        });
+    }
+
+    /**
+     * Mutasi stok terintegrasi untuk Cabut/Dismantle ONT di lapangan (Web & Android).
+     * Jika kondisi 'good', menambah stok teknisi (+1). Jika 'damaged', dicatat sebagai barang rusak/afkir.
+     */
+    public function recordOntDismantle(
+        int $technicianId,
+        string $sn,
+        string $condition = 'good',
+        ?int $customerId = null,
+        ?int $ticketId = null,
+        ?int $workOrderId = null,
+        ?string $modelName = 'ONT GPON',
+        ?string $notes = null
+    ): array {
+        return DB::transaction(function () use (
+            $technicianId,
+            $sn,
+            $condition,
+            $customerId,
+            $ticketId,
+            $workOrderId,
+            $modelName,
+            $notes
+        ) {
+            $techUser = \App\Models\User::find($technicianId);
+            $snClean = strtoupper(trim($sn));
+            $normalizedCond = in_array($condition, ['good', 'berfungsi']) ? 'good' : 'damaged';
+            $restocked = false;
+
+            // 1. Update ItemSerial & InventoryCustody jika terdaftar di Enterprise Inventory
+            $serial = ItemSerial::withoutGlobalScopes()
+                ->where('serial_number', $snClean)
+                ->lockForUpdate()
+                ->first();
+
+            if ($serial) {
+                $serial->update([
+                    'status' => $normalizedCond === 'good' ? 'in_custody_technician' : 'damaged',
+                    'condition' => $normalizedCond,
+                    'customer_id' => null,
+                    'installation_id' => null,
+                    'ticket_id' => $ticketId,
+                    'custodian_id' => $technicianId,
+                    'custodian_type' => 'technician',
+                    'notes' => $notes ?: "Ditarik (Dismantle) dalam kondisi {$normalizedCond}",
+                    'updated_by' => $technicianId,
+                ]);
+
+                if ($normalizedCond === 'good') {
+                    $existingCustody = InventoryCustody::withoutGlobalScopes()
+                        ->where('holder_id', $technicianId)
+                        ->where('item_serial_id', $serial->id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($existingCustody) {
+                        $existingCustody->update([
+                            'used_quantity' => max(0, (float) $existingCustody->used_quantity - 1),
+                            'status' => 'in_custody',
+                        ]);
+                        $restocked = true;
+                    } else {
+                        InventoryCustody::create([
+                            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                            'item_id' => $serial->item_id,
+                            'item_serial_id' => $serial->id,
+                            'holder_id' => $technicianId,
+                            'holder_type' => 'technician',
+                            'quantity' => 1,
+                            'used_quantity' => 0,
+                            'returned_quantity' => 0,
+                            'status' => 'in_custody',
+                            'branch_id' => $techUser?->branch_id ?? $serial->branch_id,
+                            'notes' => "Hasil cabutan (Dismantle) SN: {$snClean}",
+                        ]);
+                        $restocked = true;
+                    }
+                }
+            }
+
+            // 2. Update support_maintenance_materials (dengan lockForUpdate)
+            if (\Illuminate\Support\Facades\Schema::hasTable('support_maintenance_materials')) {
+                if ($normalizedCond === 'good') {
+                    $existingMat = DB::table('support_maintenance_materials')
+                        ->where(function ($q) use ($modelName) {
+                            if ($modelName) {
+                                $q->where('name', 'like', "%{$modelName}%");
+                            }
+                            $q->orWhere('sku', 'like', '%ONT%')
+                              ->orWhere('name', 'like', '%ONT%');
+                        })
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($existingMat) {
+                        DB::table('support_maintenance_materials')
+                            ->where('id', $existingMat->id)
+                            ->increment('stock', 1);
+                        $restocked = true;
+                    }
+                }
+            }
+
+            // 3. Catat log penarikan di support_maintenance_usages
+            if (\Illuminate\Support\Facades\Schema::hasTable('support_maintenance_usages')) {
+                $tag = $normalizedCond === 'good' ? '[TARIKAN BAGUS/SIAP PAKAI]' : '[TARIKAN RUSAK/AFKIR]';
+                DB::table('support_maintenance_usages')->insert([
+                    'material_id' => null,
+                    'material_name' => "{$tag} " . ($modelName ?: 'ONT GPON') . " (SN: {$snClean})",
+                    'quantity' => 1,
+                    'unit' => 'unit',
+                    'technician_id' => $technicianId,
+                    'technician_name' => $techUser?->name ?? 'Teknisi',
+                    'ticket_id' => $ticketId,
+                    'used_date' => now()->toDateString(),
+                    'notes' => $notes ?: "Dismantle ONT {$snClean}",
+                    'created_by' => $technicianId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            return [
+                'restocked' => $restocked,
+                'condition' => $normalizedCond,
+            ];
+        });
+    }
 }

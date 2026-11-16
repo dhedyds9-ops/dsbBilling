@@ -59,9 +59,12 @@ class Index extends Component
     public bool $isProcessing = false;
     public bool $isCompleted = false;
     public ?string $completedSummary = null;
+    public string $transaction_id = '';
 
     public function mount()
     {
+        $this->transaction_id = 'DISMANTLE-' . (string) \Illuminate\Support\Str::uuid();
+
         if ($this->onu_id) {
             $this->selectOnu($this->onu_id);
         } elseif ($this->customer_id) {
@@ -187,108 +190,29 @@ class Index extends Component
         $this->isProcessing = true;
 
         try {
-            DB::transaction(function () use ($user) {
-                $sn = $this->onu->serial_number;
-                $custName = $this->customer?->name ?? 'Pelanggan';
-                $modelName = $this->onu->model ?: 'ONT GPON';
+            $sn = $this->onu->serial_number;
+            $custName = $this->customer?->name ?? 'Pelanggan';
+            $modelName = $this->onu->model ?: 'ONT GPON';
+            $photoPath = $this->photoProof ? $this->photoProof->store('technician/dismantle', 'public') : null;
 
-                // 1. Simpan Foto Bukti jika ada
-                $photoPath = null;
-                if ($this->photoProof) {
-                    $photoPath = $this->photoProof->store('technician/dismantle', 'public');
-                }
+            app(\App\Services\ISP\OntLifecycleService::class)->executeDismantle([
+                'transaction_id' => $this->transaction_id ?: ('DISMANTLE-' . (string) \Illuminate\Support\Str::uuid()),
+                'onu_id' => $this->onu->id,
+                'serial_number' => $sn,
+                'dismantle_reason' => $this->dismantleReason,
+                'device_condition' => $this->deviceCondition,
+                'checklist' => $this->checklist,
+                'notes' => $this->notes,
+                'customer_id' => $this->customer?->id,
+                'ticket_id' => $this->ticket?->id,
+                'photo_path' => $photoPath,
+                'digital_signature' => $this->digitalSignature,
+            ], $user);
 
-                // 2. Update Status ONU di database
-                $this->onu->status = 'dismantled';
-                $this->onu->description = "Dibongkar/ditarik dari {$custName} pada " . now()->format('d/m/Y H:i') . " oleh {$user->name}. Alasan: {$this->dismantleReason}. Kondisi: {$this->deviceCondition}";
-                $this->onu->save();
-
-                // 3. Lepaskan ikatan di CustomerService
-                if ($this->customerService) {
-                    $this->customerService->update([
-                        'onu_id' => null,
-                        'status' => 'inactive',
-                    ]);
-                }
-
-                // 4. Lepaskan ikatan di ACS Device
-                if (Schema::hasTable('acs_devices')) {
-                    ACSDevice::where('serial_number', $sn)->update([
-                        'customer_service_id' => null,
-                        'status' => 'dismantled',
-                    ]);
-                }
-
-                // 5. Kelola Stok Teknisi (Inventory Return / Reuse)
-                if (Schema::hasTable('support_maintenance_materials')) {
-                    if ($this->deviceCondition === 'good') {
-                        // Jika perangkat masih bagus/normal, kembalikan ke stok bagasi teknisi agar bisa dipasang kembali
-                        $existingMat = DB::table('support_maintenance_materials')
-                            ->where(function ($q) use ($modelName) {
-                                $q->where('name', 'like', "%{$modelName}%")
-                                  ->orWhere('sku', 'like', '%ONT%');
-                            })
-                            ->first();
-
-                        if ($existingMat) {
-                            DB::table('support_maintenance_materials')
-                                ->where('id', $existingMat->id)
-                                ->increment('stock', 1);
-                        }
-                    }
-                }
-
-                // 6. Catat log penarikan di support_maintenance_usages
-                if (Schema::hasTable('support_maintenance_usages')) {
-                    $tag = $this->deviceCondition === 'good' ? '[TARIKAN BAGUS/SIAP PAKAI]' : '[TARIKAN RUSAK/AFKIR]';
-                    DB::table('support_maintenance_usages')->insert([
-                        'material_id' => null,
-                        'material_name' => "{$tag} {$modelName} (SN: {$sn})",
-                        'quantity' => 1,
-                        'unit' => 'unit',
-                        'technician_id' => $user->id,
-                        'technician_name' => $user->name,
-                        'ticket_id' => $this->ticket?->id,
-                        'used_date' => now()->toDateString(),
-                        'notes' => "Pembongkaran dari {$custName}. Alasan: {$this->dismantleReason}. " . ($this->notes ? "Catatan: {$this->notes}" : ''),
-                        'created_by' => $user->id,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
-
-                // 7. Jika ada Tiket Penarikan/Dismantle terkait
-                if ($this->ticket) {
-                    $resText = "Pembongkaran perangkat selesai dilaksanakan.\n"
-                        . "• Pelanggan: {$custName}\n"
-                        . "• Unit Ditarik: {$modelName} (SN: {$sn})\n"
-                        . "• Kondisi: " . ($this->deviceCondition === 'good' ? 'Berfungsi Baik (Masuk ke Stok Teknisi)' : 'Rusak / Afkir') . "\n"
-                        . "• Alasan: {$this->dismantleReason}\n"
-                        . ($this->notes ? "• Catatan: {$this->notes}\n" : "");
-
-                    $tUpdates = [
-                        'resolution_notes' => $resText,
-                        'status' => 'resolved',
-                        'resolved_at' => now(),
-                        'resolved_by' => $user->id,
-                    ];
-
-                    if (Schema::hasColumn('tickets', 'digital_signature') && !empty($this->digitalSignature)) {
-                        $tUpdates['digital_signature'] = $this->digitalSignature;
-                    }
-                    if ($photoPath) {
-                        $cur = is_array($this->ticket->photos) ? $this->ticket->photos : [];
-                        $cur[] = '/storage/' . $photoPath;
-                        $tUpdates['photos'] = array_values(array_unique($cur));
-                    }
-
-                    $this->ticket->update($tUpdates);
-                }
-
-                $this->completedSummary = "Perangkat {$modelName} (SN: {$sn}) berhasil dicabut dari {$custName}. "
-                    . ($this->deviceCondition === 'good' ? "Unit telah ditambahkan (+1) ke Stok Saya untuk pemasangan baru." : "Unit dicatat sebagai afkir.");
-                $this->isCompleted = true;
-            });
+            $this->onu = $this->onu->fresh();
+            $this->completedSummary = "Perangkat {$modelName} (SN: {$sn}) berhasil dicabut dari {$custName}. "
+                . ($this->deviceCondition === 'good' ? "Unit telah ditambahkan (+1) ke Stok Saya untuk pemasangan baru." : "Unit dicatat sebagai afkir.");
+            $this->isCompleted = true;
 
             session()->flash('success', 'Pembongkaran perangkat berhasil diproses dan dicatat!');
         } catch (\Throwable $e) {
@@ -306,6 +230,7 @@ class Index extends Component
         ]);
         $this->deviceCondition = 'good';
         $this->dismantleReason = 'Berhenti Berlangganan (Permintaan Pelanggan)';
+        $this->transaction_id = 'DISMANTLE-' . (string) \Illuminate\Support\Str::uuid();
     }
 
     public function render()

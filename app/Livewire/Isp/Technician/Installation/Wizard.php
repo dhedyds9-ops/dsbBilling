@@ -1060,6 +1060,26 @@ class Wizard extends Component
                     requisitionId: $this->requisition_id ?: null,
                     resellerId: $customer->reseller_id ?: ($this->new_customer_reseller_id ?: null)
                 );
+
+                if (isset($onu) && $onu && \Illuminate\Support\Facades\Schema::hasTable('onu_histories')) {
+                    \App\Models\ISP\OnuHistory::withoutGlobalScopes()->create([
+                        'onu_id' => $onu->id,
+                        'serial_number' => $onu->serial_number,
+                        'customer_id' => $customer->id,
+                        'old_status' => 'spare',
+                        'new_status' => 'active',
+                        'condition' => 'good',
+                        'old_olt_id' => null,
+                        'new_olt_id' => $onu->olt_id,
+                        'old_odp_id' => null,
+                        'new_odp_id' => $onu->odp_id,
+                        'activity' => 'psb',
+                        'technician_id' => $user->id,
+                        'ticket_id' => $this->ticket_id ?: null,
+                        'branch_id' => $onu->branch_id,
+                        'description' => "Aktivasi PSB via Wizard Teknisi oleh {$user->name}",
+                    ]);
+                }
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal potong custody material PSB: ' . $e->getMessage());
             }

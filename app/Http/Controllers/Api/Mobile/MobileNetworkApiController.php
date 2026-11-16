@@ -727,6 +727,9 @@ class MobileNetworkApiController extends Controller
             $onu->branch_id = $user->branch_id ?? $onu->branch_id;
             $onu->created_by = $onu->created_by ?? $user->id;
             $onu->status = 'active';
+            $onu->condition = 'good';
+            $onu->audit_status = 'audited';
+            $onu->operational_status = (isset($validated['optical_power']) && $validated['optical_power'] !== null && $validated['optical_power'] !== '') ? 'online' : 'unknown';
             $onu->provision_status = 'provisioned';
             $onu->provisioned_at = now();
             $onu->updated_by = $user->id;
@@ -1154,6 +1157,29 @@ class MobileNetworkApiController extends Controller
                 }
             }
 
+            if (\Illuminate\Support\Facades\Schema::hasTable('onu_histories')) {
+                try {
+                    \App\Models\ISP\OnuHistory::withoutGlobalScopes()->create([
+                        'onu_id' => $onu->id,
+                        'serial_number' => $onu->serial_number,
+                        'customer_id' => $customerInfo['id'] ?? null,
+                        'old_status' => 'spare',
+                        'new_status' => $onu->status,
+                        'condition' => $onu->condition ?? 'good',
+                        'old_olt_id' => null,
+                        'new_olt_id' => $onu->olt_id,
+                        'old_odp_id' => null,
+                        'new_odp_id' => $onu->odp_id,
+                        'activity' => 'psb',
+                        'technician_id' => $user->id,
+                        'ticket_id' => $wo->ticket_id ?? null,
+                        'work_order_id' => $wo->id ?? null,
+                        'branch_id' => $onu->branch_id,
+                        'description' => "Aktivasi PSB ONT SN {$sn} oleh {$user->name}",
+                    ]);
+                } catch (\Throwable $he) {}
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => "ONT SN {$sn} berhasil dipasangkan dan diprovisioning!",
@@ -1537,7 +1563,10 @@ class MobileNetworkApiController extends Controller
             'model' => $onu->model ?: 'ONT',
             'name' => $onu->name,
             'code' => $onu->code,
-            'status' => $isOnline ? 'online' : ($onu->status ?: 'offline'),
+            'status' => $onu->status ?: 'active',
+            'condition' => $onu->condition ?: 'good',
+            'audit_status' => $onu->audit_status ?: 'pending',
+            'operational_status' => $isOnline ? 'online' : ($onu->operational_status ?: 'offline'),
             'is_online' => $isOnline,
             'provision_status' => $onu->provision_status ?: 'unprovisioned',
             'rx_power_dbm' => $rx,
@@ -1581,19 +1610,69 @@ class MobileNetworkApiController extends Controller
     }
 
     /**
+     * Sensus / Field Audit ONT & ODP via Mobile API.
+     * POST /api/mobile/network/devices/sensus
+     */
+    public function sensusOnt(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'transaction_id' => 'nullable|string|max:100',
+            'serial_number' => 'required|string|max:100',
+            'olt_id' => 'required|integer|exists:olts,id',
+            'pon_port' => 'nullable|integer|min:1',
+            'odp_id' => 'required|integer|exists:odps,id',
+            'odp_port' => 'nullable|integer|min:1|max:128',
+            'customer_id' => 'nullable|integer',
+            'is_titipan' => 'nullable|boolean',
+            'titipan_name' => 'nullable|string|max:100',
+            'titipan_notes' => 'nullable|string',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+        ]);
+
+        try {
+            $result = app(\App\Services\ISP\OntLifecycleService::class)->recordSensus($validated, $request->user());
+            return response()->json([
+                'success' => true,
+                'message' => 'Data Sensus ONU & Audit ODP berhasil disimpan ke sistem!',
+                'data' => $result,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
      * One-click ONT Swap for replacing damaged/defective customer ONT in field.
-     * Mirrors Web Portal Swap\Index.php.
+     * Uses unified OntLifecycleService (shared with Web Portal Swap\Index.php).
      *
      * POST /api/mobile/network/devices/swap-ont
      */
     public function swapOnt(Request $request): JsonResponse
     {
         $validated = $request->validate([
+            'transaction_id' => 'nullable|string|max:100',
             'old_serial_number' => 'required|string',
             'new_serial_number' => 'required|string',
             'new_mac_address' => 'nullable|string',
             'new_model' => 'nullable|string',
+            'new_wifi_ssid' => 'nullable|string',
+            'new_wifi_password' => 'nullable|string',
+            'optical_power' => 'nullable|numeric',
+            'old_device_condition' => 'nullable|in:good,damaged,rusak,berfungsi',
+            'replacement_reason' => 'nullable|string',
             'work_order_id' => 'nullable|integer',
+            'ticket_id' => 'nullable|integer',
+            'customer_id' => 'nullable|integer',
+            'require_proof' => 'nullable|boolean',
+            'require_acs_success' => 'nullable|boolean',
+            'queue_provisioning' => 'nullable|boolean',
+            'photo_before_path' => 'nullable|string',
+            'photo_after_path' => 'nullable|string',
+            'digital_signature' => 'nullable|string',
             'notes' => 'nullable|string',
         ]);
 
@@ -1601,89 +1680,69 @@ class MobileNetworkApiController extends Controller
         $oldSn = strtoupper(trim($validated['old_serial_number']));
         $newSn = strtoupper(trim($validated['new_serial_number']));
 
-        return DB::transaction(function () use ($validated, $user, $oldSn, $newSn) {
-            $oldOnu = Onu::withoutGlobalScopes()->where('serial_number', $oldSn)->firstOrFail();
+        $oldOnu = Onu::withoutGlobalScopes()->where('serial_number', $oldSn)->firstOrFail();
 
-            // Reseller / Tenant boundary check
-            $userResellerId = $user->getEffectiveResellerId();
-            if ($userResellerId && $oldOnu->reseller_id && (int)$oldOnu->reseller_id !== (int)$userResellerId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Akses ditolak: Perangkat ONT bukan milik reseller/tenant Anda.'
-                ], 403);
-            }
+        $userResellerId = $user->getEffectiveResellerId();
+        if ($userResellerId && $oldOnu->reseller_id && (int) $oldOnu->reseller_id !== (int) $userResellerId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak: Perangkat ONT bukan milik reseller/tenant Anda.'
+            ], 403);
+        }
 
-            // Find or create new ONU
-            $newOnu = Onu::withoutGlobalScopes()->where('serial_number', $newSn)->first();
-            if (!$newOnu) {
-                $newOnu = new Onu();
-                $newOnu->serial_number = $newSn;
-                $newOnu->code = 'ONU-' . substr(preg_replace('/[^A-Z0-9]/', '', $newSn), -6);
-                $newOnu->name = ($validated['new_model'] ?? 'ONT') . ' ' . substr($newSn, -6);
-            }
+        try {
+            $result = app(\App\Services\ISP\OntLifecycleService::class)->executeSwap(array_merge($validated, [
+                'old_onu_id' => $oldOnu->id,
+                'old_serial_number' => $oldSn,
+                'new_serial_number' => $newSn,
+            ]), $user);
 
-            // Inherit configurations from old ONU & PRESERVE target branch
-            $newOnu->mac_address = !empty($validated['new_mac_address']) ? strtoupper(trim($validated['new_mac_address'])) : $newOnu->mac_address;
-            $newOnu->model = $validated['new_model'] ?? $oldOnu->model;
-            $newOnu->odp_id = $oldOnu->odp_id;
-            $newOnu->wifi_ssid = $oldOnu->wifi_ssid;
-            $newOnu->wifi_password = $oldOnu->wifi_password;
-            $newOnu->status = 'active';
-            $newOnu->provision_status = 'provisioned';
-            $newOnu->branch_id = $oldOnu->branch_id ?? $user->branch_id;
-            $newOnu->created_by = $oldOnu->created_by ?? $user->id;
-            $newOnu->updated_by = $user->id;
-            $newOnu->save();
-
-            // Update old ONU status with cross-branch audit trail
-            $oldOnu->status = 'replaced';
-            $oldOnu->provision_status = 'unprovisioned';
-            $auditText = \App\Services\Workforce\AttendanceAuthorizationService::formatAuditTrail(
-                'SWAP',
-                $user,
-                $oldOnu->branch_id,
-                "Digantikan oleh {$newSn}. " . ($validated['notes'] ?? '')
-            );
-            $oldOnu->description = ($oldOnu->description ? $oldOnu->description . "\n" : '') . $auditText;
-            $oldOnu->save();
-
-            // Re-bind CustomerService from old to new ONU
-            $cs = CustomerService::withoutGlobalScopes()->where('onu_id', $oldOnu->id)->first();
-            if ($cs) {
-                $cs->onu_id = $newOnu->id;
-                $cs->save();
-            }
+            $newOnu = Onu::withoutGlobalScopes()->find($result['new_onu_id']);
 
             return response()->json([
                 'success' => true,
                 'message' => "Penggantian ONT berhasil: [{$oldSn}] -> [{$newSn}]",
                 'data' => [
                     'old_onu' => [
-                        'serial_number' => $oldOnu->serial_number,
-                        'status' => $oldOnu->status,
+                        'serial_number' => $oldSn,
+                        'status' => $result['old_status'],
+                        'condition' => $result['old_condition'],
                     ],
-                    'new_onu' => $this->formatOnuDevice($newOnu),
-                    'customer_service_id' => $cs?->id,
+                    'new_onu' => $newOnu ? $this->formatOnuDevice($newOnu) : null,
+                    'customer_service_id' => $result['customer_service_id'],
+                    'acs_provision_status' => $result['acs_provision_status'],
+                    'ticket_resolved' => $result['ticket_resolved'],
+                    'idempotent_replay' => $result['idempotent_replay'] ?? false,
                 ],
             ]);
-        });
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
     }
 
     /**
      * Dismantle ONT/ONU and equipment upon service termination.
-     * Mirrors Web Portal Dismantle\Index.php.
+     * Uses unified OntLifecycleService (shared with Web Portal Dismantle\Index.php).
      *
      * POST /api/mobile/network/devices/dismantle
      */
     public function dismantle(Request $request): JsonResponse
     {
         $validated = $request->validate([
+            'transaction_id' => 'nullable|string|max:100',
             'serial_number' => 'required|string',
             'dismantle_reason' => 'nullable|string',
             'device_condition' => 'required|in:good,damaged',
             'checklist' => 'nullable|array',
             'notes' => 'nullable|string',
             'work_order_id' => 'nullable|integer',
+            'ticket_id' => 'nullable|integer',
+            'require_proof' => 'nullable|boolean',
+            'photo_path' => 'nullable|string',
+            'digital_signature' => 'nullable|string',
         ]);
 
         $user = $request->user();
@@ -1697,49 +1756,34 @@ class MobileNetworkApiController extends Controller
             ], 422);
         }
 
-        return DB::transaction(function () use ($validated, $user, $sn, $wifiSecMode) {
-            $onu = Onu::withoutGlobalScopes()->where('serial_number', $sn)->firstOrFail();
+        $onu = Onu::withoutGlobalScopes()->where('serial_number', $sn)->firstOrFail();
 
-            // Reseller / Tenant boundary check
-            $userResellerId = $user->getEffectiveResellerId();
-            if ($userResellerId && $onu->reseller_id && (int)$onu->reseller_id !== (int)$userResellerId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Akses ditolak: Perangkat ONT bukan milik reseller/tenant Anda.'
-                ], 403);
-            }
-
-            // Unbind CustomerService
-            $cs = CustomerService::withoutGlobalScopes()->where('onu_id', $onu->id)->first();
-            if ($cs) {
-                $cs->onu_id = null;
-                $cs->status = 'suspended';
-                $cs->save();
-            }
-
-            $onu->status = $validated['device_condition'] === 'good' ? 'dismantled_good' : 'dismantled_damaged';
-            $onu->odp_id = null;
-
-            $auditText = \App\Services\Workforce\AttendanceAuthorizationService::formatAuditTrail(
-                'DISMANTLE',
-                $user,
-                $onu->branch_id,
-                "Alasan: " . ($validated['dismantle_reason'] ?? 'Berhenti Berlangganan')
-            );
-            $onu->description = ($onu->description ? $onu->description . "\n" : '') . $auditText;
-            $onu->save();
-
+        $userResellerId = $user->getEffectiveResellerId();
+        if ($userResellerId && $onu->reseller_id && (int) $onu->reseller_id !== (int) $userResellerId) {
             return response()->json([
-                'success' => true,
-                'message' => "Perangkat ONT {$sn} berhasil ditarik (Dismantle).",
-                'data' => [
-                    'serial_number' => $onu->serial_number,
-                    'status' => $onu->status,
-                    'device_condition' => $validated['device_condition'],
-                    'checklist' => $validated['checklist'] ?? [],
-                    'customer_id' => $cs?->customer_id,
-                ],
-            ]);
-        });
+                'success' => false,
+                'message' => 'Akses ditolak: Perangkat ONT bukan milik reseller/tenant Anda.'
+            ], 403);
+        }
+
+        $result = app(\App\Services\ISP\OntLifecycleService::class)->executeDismantle(array_merge($validated, [
+            'onu_id' => $onu->id,
+            'serial_number' => $sn,
+        ]), $user);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Perangkat ONT {$sn} berhasil ditarik (Dismantle).",
+            'data' => [
+                'serial_number' => $result['serial_number'],
+                'status' => $result['status'],
+                'condition' => $result['condition'],
+                'device_condition' => $result['device_condition'],
+                'checklist' => $result['checklist'],
+                'customer_id' => $result['customer_id'],
+                'ticket_resolved' => $result['ticket_resolved'],
+                'idempotent_replay' => $result['idempotent_replay'] ?? false,
+            ],
+        ]);
     }
 }

@@ -169,15 +169,15 @@
         </div>
     </div>
 
-    <!-- Compact Floating Download APK Button for dsBilling Staff & Teknisi (Versi 1.1.2) -->
+    <!-- Compact Floating Download APK Button for dsBilling Staff & Teknisi (Versi Dinamis) -->
     <div style="position: fixed; bottom: 20px; right: 20px; z-index: 99999; margin: 0; padding: 0;">
-        <a href="{{ asset('downloads/dsbilling-mobile-release.apk') }}" download
+        <a href="{{ asset('downloads/dsbilling-mobile-release.apk') }}?v={{ config('mobile.staff.latest_version_code', '10109') }}" download="dsbilling-mobile-v{{ config('mobile.staff.latest_version_name', '1.1.9') }}.apk"
            style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(6, 182, 212, 0.45); border-radius: 9999px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(6, 182, 212, 0.15); text-decoration: none; transition: all 0.2s ease-in-out; cursor: pointer;"
            onmouseover="this.style.transform='translateY(-2px) scale(1.02)'; this.style.borderColor='rgba(6, 182, 212, 0.8)';"
            onmouseout="this.style.transform='none'; this.style.borderColor='rgba(6, 182, 212, 0.45)';">
             <span class="material-symbols-outlined" style="font-size: 19px; color: #22d3ee; display: flex; align-items: center;">android</span>
             <span style="font-size: 12px; font-weight: 700; color: #ffffff; letter-spacing: 0.2px;">APK Staff</span>
-            <span style="font-size: 10px; font-weight: 700; color: #67e8f9; background: rgba(6, 182, 212, 0.2); padding: 1px 6px; border-radius: 9999px; border: 1px solid rgba(6, 182, 212, 0.3);">v1.1.2</span>
+            <span style="font-size: 10px; font-weight: 700; color: #67e8f9; background: rgba(6, 182, 212, 0.2); padding: 1px 6px; border-radius: 9999px; border: 1px solid rgba(6, 182, 212, 0.3);">v{{ config('mobile.staff.latest_version_name', '1.1.9') }}</span>
             <span class="material-symbols-outlined" style="font-size: 16px; color: #94a3b8; display: flex; align-items: center;">download</span>
         </a>
     </div>

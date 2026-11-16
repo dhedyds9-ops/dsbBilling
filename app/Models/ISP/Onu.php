@@ -14,6 +14,24 @@ class Onu extends Model
     use \App\Traits\HasBranchScope;
     use HasFactory, \App\Traits\HasUserAreaScope, SoftDeletes;
 
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_SPARE = 'spare';
+    public const STATUS_REPLACED = 'replaced';
+    public const STATUS_DISMANTLED = 'dismantled';
+    public const STATUS_DAMAGED = 'damaged';
+    public const STATUS_RESERVED = 'reserved';
+
+    public const CONDITION_GOOD = 'good';
+    public const CONDITION_DAMAGED = 'damaged';
+
+    public const AUDIT_PENDING = 'pending';
+    public const AUDIT_AUDITED = 'audited';
+    public const AUDIT_VERIFIED = 'verified';
+
+    public const OP_ONLINE = 'online';
+    public const OP_OFFLINE = 'offline';
+    public const OP_UNKNOWN = 'unknown';
+
     protected $hidden = ['wifi_password', 'admin_password'];
     protected $fillable = [
         'branch_id',
@@ -42,7 +60,12 @@ class Onu extends Model
         'hardware_version',
         'last_seen_at',
         'provisioned_at',
+        'audited_at',
+        'audited_by',
         'status',
+        'condition',
+        'audit_status',
+        'operational_status',
         'provision_status',
         'latitude',
         'longitude',
@@ -129,8 +152,14 @@ class Onu extends Model
         'temperature' => 'float',
         'last_seen_at' => 'datetime',
         'provisioned_at' => 'datetime',
+        'audited_at' => 'datetime',
         'attributes' => 'array',
     ];
+
+    public function histories(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(OnuHistory::class, 'onu_id')->orderBy('id', 'desc');
+    }
 
 
 

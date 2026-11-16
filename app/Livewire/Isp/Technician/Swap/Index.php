@@ -82,9 +82,12 @@ class Index extends Component
     public bool $isProcessing = false;
     public bool $swapCompleted = false;
     public ?string $completedSummary = null;
+    public string $transaction_id = '';
 
     public function mount()
     {
+        $this->transaction_id = 'SWAP-' . (string) Str::uuid();
+
         if ($this->onu_id) {
             $this->selectOnu($this->onu_id);
         } elseif ($this->customer_id) {
@@ -299,182 +302,41 @@ class Index extends Component
         $this->isProcessing = true;
 
         try {
-            DB::transaction(function () use ($user, $newSn) {
-                $oldSn = $this->oldSerialNumber ?: ($this->oldOnu?->serial_number ?? 'ONT-LAMA');
-                $custName = $this->customer?->name ?? 'Pelanggan';
+            $oldSn = $this->oldSerialNumber ?: ($this->oldOnu?->serial_number ?? 'ONT-LAMA');
+            $photoBeforePath = $this->photoBefore ? $this->photoBefore->store('technician/swap', 'public') : null;
+            $photoAfterPath = $this->photoAfter ? $this->photoAfter->store('technician/swap', 'public') : null;
 
-                // 1. Upload Foto Bukti jika ada
-                $photoBeforePath = null;
-                $photoAfterPath = null;
-                if ($this->photoBefore) {
-                    $photoBeforePath = $this->photoBefore->store('technician/swap', 'public');
-                }
-                if ($this->photoAfter) {
-                    $photoAfterPath = $this->photoAfter->store('technician/swap', 'public');
-                }
+            app(\App\Services\ISP\OntLifecycleService::class)->executeSwap([
+                'transaction_id' => $this->transaction_id ?: ('SWAP-' . (string) Str::uuid()),
+                'old_onu_id' => $this->oldOnu?->id,
+                'old_serial_number' => $oldSn,
+                'new_serial_number' => $newSn,
+                'new_mac_address' => $this->newMacAddress,
+                'new_model' => $this->newModel,
+                'new_vendor_id' => $this->newVendorId,
+                'new_wifi_ssid' => $this->newWifiSsid,
+                'new_wifi_password' => $this->newWifiPassword,
+                'pppoe_username' => $this->oldPppoeUsername,
+                'pppoe_password' => $this->oldPppoePassword,
+                'optical_power' => $this->opticalPower,
+                'replacement_reason' => $this->replacementReason,
+                'old_device_condition' => $this->oldDeviceCondition === 'rusak' ? 'damaged' : 'good',
+                'selected_material_id' => $this->selectedMaterialId,
+                'notes' => $this->notes,
+                'customer_id' => $this->selectedCustomerId,
+                'customer_service_id' => $this->customerService?->id,
+                'ticket_id' => $this->ticket?->id,
+                'photo_before_path' => $photoBeforePath,
+                'photo_after_path' => $photoAfterPath,
+                'digital_signature' => $this->digitalSignature,
+            ], $user);
 
-                // 2. Simpan Riwayat Modem Lama & Catat Record Modem Baru
-                if ($this->oldOnu) {
-                    $this->oldOnu->status = 'dismantled';
-                    $this->oldOnu->rx_power_dbm = null;
-                    $this->oldOnu->description = "Bekas penarikan dari {$custName} pada " . now()->format('d/m/Y H:i') . " oleh {$user->name}. Diganti (Swap) ke SN Baru: {$newSn}. Alasan: {$this->replacementReason}";
-                    $this->oldOnu->save();
-                }
-
-                $targetOnu = Onu::firstOrNew(['serial_number' => $newSn]);
-                if (!empty($this->newMacAddress)) {
-                    $targetOnu->mac_address = strtoupper(trim($this->newMacAddress));
-                }
-                if (!empty($this->newModel)) {
-                    $targetOnu->model = trim($this->newModel);
-                }
-                if (!empty($this->newVendorId)) {
-                    $targetOnu->vendor_id = $this->newVendorId;
-                }
-                $targetOnu->wifi_ssid = $this->newWifiSsid;
-                if (!empty($this->newWifiPassword)) {
-                    $targetOnu->wifi_password = $this->newWifiPassword;
-                }
-                $targetOnu->rx_power_dbm = (float) $this->opticalPower;
-                $targetOnu->status = 'active';
-                $targetOnu->last_seen_at = now();
-                $targetOnu->updated_by = $user->id;
-                $targetOnu->description = "Pemasangan ONT baru untuk {$custName} (Swap pengganti {$oldSn}) pada " . now()->format('d/m/Y H:i') . " oleh {$user->name}. Alasan: {$this->replacementReason}";
-                $targetOnu->save();
-
-                // Pastikan CustomerService terhubung ke ONU baru ini
-                if ($this->customerService) {
-                    $this->customerService->update(['onu_id' => $targetOnu->id]);
-                }
-
-                // 3. Potong Stok Material Teknisi (Jika dipilih dari stok ONT)
-                if ($this->selectedMaterialId && Schema::hasTable('support_maintenance_materials')) {
-                    $mat = DB::table('support_maintenance_materials')
-                        ->where('id', $this->selectedMaterialId)
-                        ->lockForUpdate()
-                        ->first();
-
-                    if ($mat) {
-                        $newStock = max(0, ((int) $mat->stock) - 1);
-                        DB::table('support_maintenance_materials')
-                            ->where('id', $mat->id)
-                            ->update([
-                                'stock' => $newStock,
-                                'updated_at' => now(),
-                            ]);
-
-                        // Catat pemakaian ONT baru
-                        if (Schema::hasTable('support_maintenance_usages')) {
-                            DB::table('support_maintenance_usages')->insert([
-                                'material_id' => $mat->id,
-                                'material_name' => "[SWAP ONT BARU] " . $mat->name . " (SN: {$newSn})",
-                                'quantity' => 1,
-                                'unit' => 'unit',
-                                'technician_id' => $user->id,
-                                'technician_name' => $user->name,
-                                'ticket_id' => $this->ticket?->id,
-                                'used_date' => now()->toDateString(),
-                                'notes' => "Pemasangan ONT baru pengganti {$oldSn} untuk {$custName}. Redaman OPM: {$this->opticalPower} dBm",
-                                'created_by' => $user->id,
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ]);
-                        }
-                    }
-                }
-
-                // 4. Catat Pengembalian / Laporan Kerusakan ONT Lama
-                if (Schema::hasTable('support_maintenance_usages')) {
-                    $condLabel = $this->oldDeviceCondition === 'rusak' ? '[ONT RUSAK/AFKIR]' : '[ONT BEKAS RETUR]';
-                    DB::table('support_maintenance_usages')->insert([
-                        'material_id' => null,
-                        'material_name' => "{$condLabel} {$this->oldModel} (SN: {$oldSn})",
-                        'quantity' => 1,
-                        'unit' => 'unit',
-                        'technician_id' => $user->id,
-                        'technician_name' => $user->name,
-                        'ticket_id' => $this->ticket?->id,
-                        'used_date' => now()->toDateString(),
-                        'notes' => "Ditarik dari {$custName}. Penyebab swap: {$this->replacementReason}. " . ($this->notes ? "Catatan: {$this->notes}" : ''),
-                        'created_by' => $user->id,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
-
-                // 5. Update GenieACS / ACSDevice Records
-                if (Schema::hasTable('acs_devices')) {
-                    // Lepas ikatan perangkat lama
-                    ACSDevice::where('serial_number', $oldSn)->update([
-                        'customer_service_id' => null,
-                        'status' => 'replaced',
-                    ]);
-
-                    // Hubungkan perangkat baru jika sudah inform ke ACS
-                    $newAcs = ACSDevice::where('serial_number', $newSn)->first();
-                    if ($newAcs) {
-                        $newAcs->update([
-                            'customer_service_id' => $this->customerService?->id,
-                            'status' => 'online',
-                            'wifi_ssid' => $this->newWifiSsid,
-                            'wifi_password' => $this->newWifiPassword,
-                        ]);
-                    }
-                }
-
-                // 6. Push TR-069 Provisioning jika layanan tersedia
-                try {
-                    $genieService = app(GenieAcsProvisioningService::class);
-                    $genieService->provisionOnt($targetOnu, [
-                        'pppoe_username' => $this->oldPppoeUsername,
-                        'pppoe_password' => $this->oldPppoePassword,
-                        'wifi_ssid' => $this->newWifiSsid,
-                        'wifi_password' => $this->newWifiPassword,
-                    ]);
-                } catch (\Throwable $acsEx) {
-                    Log::warning("GenieACS Provisioning during Swap ONT skipped or queued: " . $acsEx->getMessage());
-                }
-
-                // 7. Jika terhubung dengan Tiket Gangguan, update tiket
-                if ($this->ticket) {
-                    $ticketUpdates = [];
-                    $resolutionText = "Pekerjaan Ganti/Swap ONT berhasil dilaksanakan.\n"
-                        . "• Pelanggan: {$custName}\n"
-                        . "• ONT Lama: {$oldSn} ({$this->oldModel})\n"
-                        . "• ONT Baru: {$newSn} ({$this->newModel})\n"
-                        . "• Redaman Optik (OPM): {$this->opticalPower} dBm\n"
-                        . "• SSID Wi-Fi: {$this->newWifiSsid}\n"
-                        . "• Alasan: {$this->replacementReason}\n"
-                        . ($this->notes ? "• Catatan: {$this->notes}\n" : "");
-
-                    $ticketUpdates['resolution_notes'] = $resolutionText;
-                    $ticketUpdates['status'] = 'resolved';
-                    $ticketUpdates['resolved_at'] = now();
-                    $ticketUpdates['resolved_by'] = $user->id;
-
-                    if (Schema::hasColumn('tickets', 'optical_power')) {
-                        $ticketUpdates['optical_power'] = $this->opticalPower . ' dBm';
-                    }
-                    if (Schema::hasColumn('tickets', 'digital_signature') && !empty($this->digitalSignature)) {
-                        $ticketUpdates['digital_signature'] = $this->digitalSignature;
-                    }
-
-                    // Tambahkan foto ke list foto tiket
-                    if ($photoBeforePath || $photoAfterPath) {
-                        $currentPhotos = is_array($this->ticket->photos) ? $this->ticket->photos : [];
-                        if ($photoBeforePath) $currentPhotos[] = '/storage/' . $photoBeforePath;
-                        if ($photoAfterPath) $currentPhotos[] = '/storage/' . $photoAfterPath;
-                        $ticketUpdates['photos'] = array_values(array_unique($currentPhotos));
-                    }
-
-                    $this->ticket->update($ticketUpdates);
-                }
-
-                $this->completedSummary = "ONT berhasil ditukar dari [{$oldSn}] ke [{$newSn}]. Konfigurasi Wi-Fi & PPPoE telah ditransfer secara otomatis.";
-                $this->swapCompleted = true;
-            });
+            $this->completedSummary = "ONT berhasil ditukar dari [{$oldSn}] ke [{$newSn}]. Konfigurasi Wi-Fi & PPPoE telah ditransfer secara otomatis.";
+            $this->swapCompleted = true;
 
             session()->flash('success', 'Ganti ONT berhasil diselesaikan dan dicatat ke sistem!');
+        } catch (\InvalidArgumentException $e) {
+            $this->addError('newSerialNumber', $e->getMessage());
         } catch (\Throwable $e) {
             session()->flash('error', 'Gagal memproses Ganti ONT: ' . $e->getMessage());
         } finally {
@@ -493,6 +355,7 @@ class Index extends Component
         ]);
         $this->opticalPower = '-20.5';
         $this->replacementReason = 'Modem Tersambar Petir / Korsleting Listrik';
+        $this->transaction_id = 'SWAP-' . (string) Str::uuid();
     }
 
     public function render()
