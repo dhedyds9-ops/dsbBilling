@@ -26,11 +26,18 @@ class MobileAppApiController extends Controller
         $defaultApk = ($app === 'customer') ? 'dsbilling-customer-release.apk' : 'dsbilling-mobile-release.apk';
         $defaultName = ($app === 'customer') ? 'dsBilling Customer' : 'dsBilling Staff';
 
-        $latestVersionCode = (int) (config('mobile.latest_version_code') ?? $appConfig['latest_version_code'] ?? 10101);
-        $latestVersionName = (string) (config('mobile.latest_version_name') ?? $appConfig['latest_version_name'] ?? '1.1.1');
-        $minimumSupportedCode = (int) (config('mobile.minimum_supported_code') ?? $appConfig['minimum_supported_code'] ?? 1);
-        $downloadUrl = (string) (config('mobile.download_url') ?? $appConfig['download_url'] ?? url("/downloads/{$defaultApk}"));
-        $releaseNotes = (string) (config('mobile.release_notes') ?? $appConfig['release_notes'] ?? "Versi {$latestVersionName} telah tersedia dengan berbagai peningkatan performa dan stabilitas.");
+        $latestVersionCode = (int) ($appConfig['latest_version_code'] ?? config('mobile.latest_version_code') ?? 10101);
+        $latestVersionName = (string) ($appConfig['latest_version_name'] ?? config('mobile.latest_version_name') ?? '1.1.1');
+        $minimumSupportedCode = (int) ($appConfig['minimum_supported_code'] ?? config('mobile.minimum_supported_code') ?? 1);
+
+        $configuredUrl = (string) ($appConfig['download_url'] ?? config('mobile.download_url') ?? '');
+        if (empty($configuredUrl) || str_contains($configuredUrl, 'localhost') || str_contains($configuredUrl, '127.0.0.1')) {
+            $downloadUrl = $request->getSchemeAndHttpHost() . "/downloads/{$defaultApk}";
+        } else {
+            $downloadUrl = $configuredUrl;
+        }
+
+        $releaseNotes = (string) ($appConfig['release_notes'] ?? config('mobile.release_notes') ?? "Versi {$latestVersionName} telah tersedia dengan berbagai peningkatan performa dan stabilitas.");
 
         $updateAvailable = $latestVersionCode > $currentVersionCode;
         $updateRequired = $currentVersionCode < $minimumSupportedCode;
