@@ -12,7 +12,8 @@ class CustomerBillingService
 {
     public function getPaginatedInvoices(int $customerId, int $perPage = 10): LengthAwarePaginator
     {
-        return Invoice::with('items')
+        return Invoice::withoutGlobalScopes()
+            ->with('items')
             ->where('customer_id', $customerId)
             ->latest('due_date')
             ->paginate($perPage);
@@ -20,7 +21,8 @@ class CustomerBillingService
 
     public function getInvoiceDetails(int $customerId, int $invoiceId): ?Invoice
     {
-        return Invoice::with(['items', 'payments'])
+        return Invoice::withoutGlobalScopes()
+            ->with(['items', 'payments'])
             ->where('customer_id', $customerId)
             ->where('id', $invoiceId)
             ->first();

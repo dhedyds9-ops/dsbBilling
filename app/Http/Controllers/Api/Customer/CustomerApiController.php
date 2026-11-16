@@ -386,15 +386,25 @@ class CustomerApiController extends Controller
             'is_active' => true,
         ];
 
-        $recentInvoices = collect($data['recent_invoices'])->map(fn($inv) => [
-            'id' => $inv->id,
-            'invoice_number' => $inv->invoice_number,
-            'total_amount' => (int) $inv->total_amount,
-            'paid_amount' => (int) $inv->paid_amount,
-            'status' => $inv->status,
-            'due_date' => $inv->due_date?->format('d M Y') ?? (string) $inv->due_date,
-            'created_at' => $inv->created_at?->format('d M Y') ?? (string) $inv->created_at,
-        ]);
+        $recentInvoices = collect($data['recent_invoices'])->map(function($inv) {
+            $period = $inv->created_at ? $inv->created_at->translatedFormat('F Y') : '-';
+            $dueDateStr = $inv->due_date ? (is_string($inv->due_date) ? $inv->due_date : $inv->due_date->format('d M Y')) : null;
+            return [
+                'id' => $inv->id,
+                'invoice_number' => $inv->invoice_number,
+                'period' => $period,
+                'total_amount' => (int) $inv->total_amount,
+                'paid_amount' => (int) ($inv->paid_amount ?? 0),
+                'remaining_amount' => max(0, (int) ($inv->total_amount - ($inv->paid_amount ?? 0))),
+                'status' => $inv->status,
+                'due_date' => $dueDateStr,
+                'created_at' => $inv->created_at?->format('d M Y') ?? (string) $inv->created_at,
+            ];
+        });
+
+        $unpaidInv = $recentInvoices->first(fn($i) => ($i['status'] ?? '') !== 'paid');
+        $resolvedDueDate = $unpaidInv['due_date'] ?? $recentInvoices->first()['due_date'] ?? $nextBillingFormatted ?? '-';
+        $isLunas = ((int) $data['total_outstanding'] <= 0) && ($data['active_invoices']->isEmpty());
 
         $branch = $customer?->branch;
         $host = request()->getHost();
@@ -442,12 +452,12 @@ class CustomerApiController extends Controller
                 'billing' => [
                     'total_unpaid' => (double) $data['total_outstanding'],
                     'total_outstanding' => (int) $data['total_outstanding'],
-                    'is_lunas' => $data['total_outstanding'] <= 0,
+                    'is_lunas' => $isLunas,
                     'unpaid_count' => count($data['active_invoices']),
                     'unpaid_invoices_count' => count($data['active_invoices']),
                     'next_billing_date' => $nextBillingFormatted,
                     'due_days_label' => "+{$dueDays} hari",
-                    'due_date' => $nextBillingFormatted,
+                    'due_date' => $resolvedDueDate,
                     'latest_invoice' => $recentInvoices->first(),
                 ],
                 'recent_invoices' => $recentInvoices,
@@ -533,14 +543,35 @@ class CustomerApiController extends Controller
         try {
             $gateways = app(PaymentGatewaySettingsService::class)->getAll();
             foreach ($gateways as $k => $g) {
-                if (($g['enabled'] ?? false) && !in_array($k, ['manual_transfer', 'bca_va', 'ewallet'])) {
+                if (!empty($g['enabled'])) {
                     $activeGateways[] = [
                         'key' => $k,
                         'name' => $g['name'] ?? $g['label'] ?? ucfirst($k),
+                        'category' => in_array($k, ['manual_transfer', 'manual_ewallet']) ? 'manual' : 'online',
+                        'bank_accounts' => $g['bank_accounts'] ?? [],
+                        'providers' => $g['providers'] ?? [],
+                        'channels' => $g['enabled_channels'] ?? [],
                     ];
                 }
             }
         } catch (\Throwable $e) {}
+
+        $hasManual = collect($activeGateways)->contains(fn($g) => $g['key'] === 'manual_transfer');
+        if (!$hasManual) {
+            $activeGateways[] = [
+                'key' => 'manual_transfer',
+                'name' => 'Transfer Bank (Manual)',
+                'category' => 'manual',
+                'bank_accounts' => [],
+                'providers' => [],
+                'channels' => [],
+            ];
+        }
+
+        $branch = $customer?->branch;
+        $companyWhatsapp = Setting::getValue('company.whatsapp') ?: Setting::getValue('company.phone') ?: $branch?->phone ?: '6281234567890';
+        $companyPhone = Setting::getValue('company.phone') ?: $companyWhatsapp;
+        $companyName = Setting::getValue('company.name') ?: $branch?->name ?: config('app.name', 'dsBilling');
 
         return response()->json([
             'success' => true,
@@ -549,11 +580,11 @@ class CustomerApiController extends Controller
                 'invoice_number' => $inv->invoice_number,
                 'period' => $inv->created_at ? $inv->created_at->translatedFormat('F Y') : '-',
                 'total_amount' => (int) $inv->total_amount,
-                'paid_amount' => (int) $inv->paid_amount,
-                'remaining_amount' => max(0, (int) ($inv->total_amount - $inv->paid_amount)),
+                'paid_amount' => (int) ($inv->paid_amount ?? 0),
+                'remaining_amount' => max(0, (int) ($inv->total_amount - ($inv->paid_amount ?? 0))),
                 'status' => $inv->status,
-                'due_date' => $inv->due_date ? (string) $inv->due_date : null,
-                'created_at' => $inv->created_at?->toIso8601String(),
+                'due_date' => $inv->due_date ? (is_string($inv->due_date) ? $inv->due_date : $inv->due_date->format('d M Y')) : null,
+                'created_at' => $inv->created_at?->format('d M Y') ?? (string) $inv->created_at,
                 'items' => collect($inv->items)->map(fn($item) => [
                     'id' => $item->id,
                     'description' => $item->description,
@@ -570,6 +601,9 @@ class CustomerApiController extends Controller
                     'paid_at' => $p->paid_at ? (string) $p->paid_at : null,
                 ]),
                 'available_gateways' => $activeGateways,
+                'admin_whatsapp' => $companyWhatsapp,
+                'admin_phone' => $companyPhone,
+                'company_name' => $companyName,
             ],
         ]);
     }
@@ -601,13 +635,58 @@ class CustomerApiController extends Controller
             return response()->json(['success' => false, 'message' => 'Tagihan ini sudah lunas.'], 400);
         }
 
-        $amountIdr = (int) max(0, (float)$inv->total_amount - (float)$inv->paid_amount);
+        $amountIdr = (int) max(0, (float)$inv->total_amount - (float)($inv->paid_amount ?? 0));
 
         if ($amountIdr <= 0) {
             return response()->json(['success' => false, 'message' => 'Tagihan tidak memiliki sisa pembayaran.'], 400);
         }
 
-        $gatewayKey = trim($request->input('gateway'));
+        $gatewayKey = strtolower(trim((string)$request->input('gateway', 'manual_transfer')));
+
+        $branch = $customer?->branch;
+        $companyWhatsapp = Setting::getValue('company.whatsapp') ?: Setting::getValue('company.phone') ?: $branch?->phone ?: '6281234567890';
+        $companyName = Setting::getValue('company.name') ?: $branch?->name ?: config('app.name', 'dsBilling');
+        $cleanPhone = preg_replace('/[^0-9]/', '', $companyWhatsapp);
+        if (str_starts_with($cleanPhone, '0')) {
+            $cleanPhone = '62' . substr($cleanPhone, 1);
+        }
+
+        if (in_array($gatewayKey, ['manual_transfer', 'manual', 'bank_transfer', 'manual_ewallet'])) {
+            $settingsService = app(PaymentGatewaySettingsService::class);
+            $manualTransferCfg = $settingsService->get('manual_transfer') ?? [];
+            $manualEwalletCfg = $settingsService->get('manual_ewallet') ?? [];
+            $bankAccounts = $manualTransferCfg['bank_accounts'] ?? [];
+            $ewalletProviders = $manualEwalletCfg['providers'] ?? [];
+
+            $waMessage = "Halo {$companyName}, saya ingin konfirmasi pembayaran tagihan:\n\n" .
+                         "No. Tagihan: {$inv->invoice_number}\n" .
+                         "Pelanggan: {$customer->name} (#{$customer->code})\n" .
+                         "Total: Rp " . number_format($amountIdr, 0, ',', '.') . "\n" .
+                         "Metode: " . ($gatewayKey === 'manual_ewallet' ? 'Transfer e-Wallet' : 'Transfer Bank') . "\n\n" .
+                         "Mohon bantuannya untuk memverifikasi pembayaran saya. Terima kasih.";
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Instruksi pembayaran manual berhasil dimuat.',
+                'data' => [
+                    'gateway' => $gatewayKey,
+                    'payment_mode' => 'manual',
+                    'amount' => $amountIdr,
+                    'invoice_number' => $inv->invoice_number,
+                    'bank_accounts' => $bankAccounts,
+                    'ewallet_providers' => $ewalletProviders,
+                    'whatsapp_number' => $cleanPhone,
+                    'whatsapp_message' => $waMessage,
+                    'whatsapp_url' => 'https://api.whatsapp.com/send?phone=' . $cleanPhone . '&text=' . urlencode($waMessage),
+                    'instructions' => [
+                        'Silakan transfer tepat sejumlah Rp ' . number_format($amountIdr, 0, ',', '.') . ' ke rekening yang tertera.',
+                        'Simpan bukti transfer / struk transaksi.',
+                        'Klik tombol Konfirmasi WhatsApp untuk mengirim bukti pembayaran ke Admin.',
+                    ],
+                ],
+            ]);
+        }
+
         $orchestrator = app(PaymentOrchestrationService::class);
 
         try {
@@ -643,11 +722,24 @@ class CustomerApiController extends Controller
                 ],
             ]);
         } catch (\Throwable $e) {
-            Log::error("[CustomerApiController::payInvoice] Error: " . $e->getMessage());
+            Log::error("[CustomerApiController::payInvoice] Gateway error: " . $e->getMessage());
+            $waMessage = "Halo Admin {$companyName}, saya ingin membayar tagihan #{$inv->invoice_number} sebesar Rp " . number_format($amountIdr, 0, ',', '.') . " melalui transfer manual. Mohon info rekening pembayaran.";
             return response()->json([
-                'success' => false,
-                'message' => 'Gagal memproses pembayaran: ' . $e->getMessage(),
-            ], 500);
+                'success' => true,
+                'message' => 'Layanan pembayaran online sedang offline. Silakan lakukan pembayaran melalui transfer manual dan konfirmasi ke admin via WhatsApp.',
+                'data' => [
+                    'gateway' => 'manual_transfer',
+                    'payment_mode' => 'manual',
+                    'amount' => $amountIdr,
+                    'invoice_number' => $inv->invoice_number,
+                    'whatsapp_number' => $cleanPhone,
+                    'whatsapp_url' => 'https://api.whatsapp.com/send?phone=' . $cleanPhone . '&text=' . urlencode($waMessage),
+                    'instructions' => [
+                        'Gateway online sedang dalam pemeliharaan.',
+                        'Silakan hubungi admin via WhatsApp untuk mendapatkan rekening tujuan transfer.',
+                    ],
+                ],
+            ]);
         }
     }
 
@@ -1524,7 +1616,7 @@ class CustomerApiController extends Controller
     public function requestChangePlan(Request $request): JsonResponse
     {
         $request->validate([
-            'plan_id' => 'required|exists:service_profiles,id',
+            'plan_id' => 'required',
             'reason' => 'nullable|string|max:500',
         ]);
 
@@ -1535,35 +1627,69 @@ class CustomerApiController extends Controller
             return response()->json(['success' => false, 'message' => 'Data pelanggan tidak ditemukan.'], 404);
         }
 
-        $newPlan = \App\Models\ISP\ServiceProfile::find($request->input('plan_id'));
+        $newPlan = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find($request->input('plan_id'));
+        if (!$newPlan) {
+            return response()->json(['success' => false, 'message' => 'Paket layanan yang dipilih tidak ditemukan.'], 404);
+        }
+
         $data = $this->dashboardService->getDashboardData($customer->id);
         $currentPlan = $data['service_profile'];
+
+        if (!$currentPlan) {
+            $custService = CustomerService::withoutGlobalScopes()
+                ->where('customer_id', $customer->id)
+                ->whereNotNull('service_profile_id')
+                ->first();
+            if ($custService?->service_profile_id) {
+                $currentPlan = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find($custService->service_profile_id);
+            }
+        }
 
         if ($currentPlan && $currentPlan->id === $newPlan->id) {
             return response()->json(['success' => false, 'message' => 'Anda sudah menggunakan paket ini.'], 422);
         }
 
-        $changeType = 'Perubahan';
-        if ($currentPlan) {
-            $changeType = ($newPlan->base_price > $currentPlan->base_price) ? 'Upgrade' : 'Downgrade';
-        }
+        $currentPrice = (int) ($currentPlan?->price ?? $currentPlan?->base_price ?? $currentPlan?->reseller_price ?? 0);
+        $newPrice = (int) ($newPlan->price ?? $newPlan->base_price ?? $newPlan->reseller_price ?? 0);
+        $changeType = ($newPrice >= $currentPrice) ? 'Upgrade' : 'Downgrade';
 
         $reason = trim((string) $request->input('reason', '-'));
 
-        Notification::create([
-            'uuid' => (string) Str::uuid(),
-            'recipient_id' => 1,
-            'title' => "[{$changeType} Paket] {$customer->name}",
-            'message' => "Pelanggan {$customer->name} (#{$customer->code}) mengajukan {$changeType} paket dari \"{$currentPlan?->name}\" ke \"{$newPlan->name}\". Alasan: {$reason}",
-            'type' => 'system',
-            'status' => 'pending',
-            'created_by' => $user->id,
-            'updated_by' => $user->id,
-        ]);
+        // 1. Create In-App Notification (Resilient against foreign key / missing user)
+        try {
+            $adminUser = User::whereIn('role', ['admin', 'superadmin', 'owner', 'administrator'])->first() ?? User::first();
+            $recipientId = $adminUser?->id ?? $user->id;
+
+            Notification::create([
+                'uuid' => (string) Str::uuid(),
+                'recipient_id' => $recipientId,
+                'title' => "[Pengajuan {$changeType} Paket] {$customer->name}",
+                'message' => "Pelanggan {$customer->name} (#{$customer->code}) mengajukan {$changeType} paket dari \"{$currentPlan?->name}\" ke \"{$newPlan->name}\". Alasan: {$reason}",
+                'type' => 'system',
+                'status' => 'pending',
+                'created_by' => $user->id,
+                'updated_by' => $user->id,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning("[requestChangePlan] Notification error: " . $e->getMessage());
+        }
+
+        // 2. Create Support Ticket (Helpdesk / Service Ticket)
+        try {
+            $this->supportService->createTicket($customer->id, [
+                'title' => "Pengajuan {$changeType} Paket ke {$newPlan->name}",
+                'description' => "Pelanggan {$customer->name} (#{$customer->code}) mengajukan {$changeType} paket layanan dari \"{$currentPlan?->name}\" ke \"{$newPlan->name}\".\nAlasan: {$reason}",
+                'category' => 'service',
+                'priority' => 'normal',
+                'photos' => [],
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning("[requestChangePlan] Ticket error: " . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,
-            'message' => "Permintaan {$changeType} paket ke \"{$newPlan->name}\" berhasil dikirim! Tim kami akan segera memproses dalam 1x24 jam.",
+            'message' => "Permintaan {$changeType} paket ke \"{$newPlan->name}\" berhasil dikirim! Tim operasional kami akan segera memproses dalam 1x24 jam.",
         ]);
     }
 

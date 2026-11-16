@@ -185,12 +185,17 @@ class CustomerDashboardService
             $serviceProfile = $pppoeUser?->serviceProfile ?? $hotspotUser?->serviceProfile ?? null;
         }
 
-        $activeInvoices = Invoice::where('customer_id', $customerId)
+        $activeInvoices = Invoice::withoutGlobalScopes()
+            ->where('customer_id', $customerId)
             ->where('status', '!=', 'paid')
-            ->whereRaw('total_amount > paid_amount')
+            ->where(function ($q) {
+                $q->whereNull('paid_amount')
+                  ->orWhereRaw('total_amount > COALESCE(paid_amount, 0)');
+            })
             ->get();
-        $recentInvoices = Invoice::where('customer_id', $customerId)
-            ->latest()
+        $recentInvoices = Invoice::withoutGlobalScopes()
+            ->where('customer_id', $customerId)
+            ->latest('id')
             ->limit(5)
             ->get();
 
@@ -198,6 +203,8 @@ class CustomerDashboardService
         $usageStats = $this->calculateUsageStats($pppoeUser, $hotspotUser);
 
         $subscription = \App\Models\Billing\Subscription::where('customer_id', $customerId)->where('status', 'active')->first();
+
+        $calcOutstanding = max(0, (float)$activeInvoices->sum('total_amount') - (float)$activeInvoices->sum('paid_amount'));
 
         return [
             'next_billing_date' => $subscription ? $subscription->next_billing_date : null,
@@ -209,7 +216,7 @@ class CustomerDashboardService
             'active_invoices' => $activeInvoices,
             'recent_invoices' => $recentInvoices,
             'internet_status' => $this->determineInternetStatus($pppoeUser, $hotspotUser, $primaryService),
-            'total_outstanding' => $activeInvoices->sum('total_amount') - $activeInvoices->sum('paid_amount'),
+            'total_outstanding' => $calcOutstanding,
             'usage_stats' => $usageStats,
         ];
     }
