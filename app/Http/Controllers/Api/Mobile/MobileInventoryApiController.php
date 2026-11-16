@@ -77,12 +77,44 @@ class MobileInventoryApiController extends Controller
             ];
         });
 
-        // Also query assigned assets/tools for the technician
+        // Also query assigned assets/tools for the technician and format as compatible inventory items for Android APK
         $tools = \App\Models\Inventory\Asset::with(['category', 'warehouse'])
             ->where('assigned_to_id', $user->id)
             ->where('status', 'in_use')
             ->orderBy('id', 'desc')
             ->get();
+
+        $toolCustodyItems = $tools->map(function (\App\Models\Inventory\Asset $a) {
+            $categoryName = $a->category?->name ?? 'Alat Kerja & Perkakas';
+            $condLabel = match ($a->condition) {
+                'good' => 'Kondisi Baik',
+                'fair' => 'Cukup',
+                'damaged' => 'Rusak Ringan',
+                'maintenance' => 'Perlu Servis',
+                default => 'Baik',
+            };
+
+            return [
+                'id' => (int) (800000 + $a->id),
+                'uuid' => (string) ($a->code ?: 'TOOL-' . $a->id),
+                'item_id' => (int) $a->id,
+                'item_name' => (string) ($a->name . ' [' . ($a->code ?: 'ASET') . ']'),
+                'sku' => (string) ($a->code ?: 'TOOL'),
+                'category' => (string) $categoryName,
+                'unit' => 'unit',
+                'quantity' => 1.0,
+                'used_quantity' => 0.0,
+                'returned_quantity' => 0.0,
+                'available_quantity' => 1.0,
+                'is_serialized' => !empty($a->serial_number),
+                'serial_number' => $a->serial_number ?: null,
+                'status' => 'in_use',
+                'notes' => 'Alat Kerja Operasional: ' . $condLabel . ($a->description ? ' (' . $a->description . ')' : ''),
+                'created_at' => $a->assigned_at?->toIso8601String() ?? $a->created_at?->toIso8601String(),
+            ];
+        });
+
+        $combinedData = $formatted->concat($toolCustodyItems)->values();
 
         $formattedTools = $tools->map(function (\App\Models\Inventory\Asset $a) {
             return [
@@ -109,12 +141,12 @@ class MobileInventoryApiController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $formatted,
+            'data' => $combinedData,
             'tools' => $formattedTools,
             'summary' => [
-                'total_items' => $custodies->count(),
-                'total_units' => $formatted->sum('available_quantity'),
-                'serialized_items' => $formatted->where('is_serialized', true)->count(),
+                'total_items' => $combinedData->count(),
+                'total_units' => $combinedData->sum('available_quantity'),
+                'serialized_items' => $combinedData->where('is_serialized', true)->count(),
                 'total_tools' => $formattedTools->count(),
             ],
         ]);
