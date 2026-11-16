@@ -356,15 +356,18 @@ class WanManager extends Component
         $this->formPassword = ''; // Password selalu kosong demi keamanan
 
         // Set formMode based on connection type
-        if ($wan['type'] === 'PPPoE' || str_contains($wan['connection_type'] ?? '', 'PPPoE_Routed') || !empty($wan['username'])) {
-            $this->formMode = 'pppoe_route';
-            $this->formType = 'PPPoE';
-        } elseif ($wan['connection_type'] === 'PPPoE_Bridged') {
+        $connTypeUpper = strtoupper($wan['connection_type'] ?? '');
+        $nameUpper = strtoupper($wan['name'] ?? '');
+
+        if ($connTypeUpper === 'PPPOE_BRIDGED' || (str_contains($nameUpper, 'BRIDGE') && str_contains($fullPath, 'WANPPPConnection') && empty($wan['username']))) {
             $this->formMode = 'bridge_ppp';
             $this->formType = 'PPPoE_Bridged';
-        } elseif ($wan['connection_type'] === 'IP_Bridged' || str_contains($wan['name'], '_B_')) {
+        } elseif ($connTypeUpper === 'IP_BRIDGED' || str_contains($nameUpper, '_B_') || (str_contains($nameUpper, 'BRIDGE') && str_contains($fullPath, 'WANIPConnection'))) {
             $this->formMode = 'bridge_ip';
             $this->formType = 'IP_Bridged';
+        } elseif ($wan['type'] === 'PPPoE' || str_contains($connTypeUpper, 'PPPOE_ROUTED') || !empty($wan['username'])) {
+            $this->formMode = 'pppoe_route';
+            $this->formType = 'PPPoE';
         } else {
             $this->formMode = 'dhcp_route';
             $this->formType = 'IP_Routed';

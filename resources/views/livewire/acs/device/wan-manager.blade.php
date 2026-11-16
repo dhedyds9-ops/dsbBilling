@@ -170,7 +170,7 @@
                                         <div class="ml-2.5">
                                             <span class="block text-xs font-bold text-slate-900 dark:text-slate-100">WAN Bridge (Slot WAN PPP)</span>
                                             <span class="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                                Conn Mode: <code class="text-amber-600">PPPoE_Bridged</code>. Dial PPPoE diteruskan ke Router / Mikrotik.
+                                                Conn Mode: <code class="text-amber-600">PPPoE_Bridged</code>. Dial PPPoE / Bridge Hotspot diteruskan ke Mikrotik.
                                             </span>
                                         </div>
                                     </label>
