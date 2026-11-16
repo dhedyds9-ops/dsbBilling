@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10109,
-        'latest_version_name' => '1.1.9',
+        'latest_version_code' => 10110,
+        'latest_version_name' => '1.1.10',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'http://localhost') . '/downloads/dsbilling-mobile-release.apk',
-        'release_notes' => "dsBilling Staff & Teknisi v1.1.9:\n- Tahap 4: Deteksi seluruh Port PON OLT (bukan hanya PON 1) saat scan modem unconfigured\n- Sanitasi cerdas Serial Number untuk mencegah teks status OLT terbaca sebagai SN\n- Tahap 5: Auto-detection vendor/model ONT (ZTE F609, Huawei, FiberHome, C-Data) & SSID Wi-Fi bawaan WINETS-XXXX\n- Tahap 1: Filter ketat akun tamu/voucher hotspot dari dialog pencarian pelanggan terdaftar\n- Tahap 1: Ekstraksi otomatis kontak telepon/WA dan alamat dari catatan SPK lapangan\n- Sinkronisasi otomatis pemotongan stok/custody barang teknisi & reseller saat aktivasi selesai.",
+        'release_notes' => "dsBilling Staff & Teknisi v1.1.10:\n- Speedtest WiFiman Akurat: Internet Node menampilkan real Public IP & ISP tanpa data dummy\n- Access Point Node: Menampilkan default gateway aktif jaringan yang dipakai\n- Device Node: Menampilkan nama model perangkat fisik asli dan IP lokal akurat\n- Network Latency Live Ping: Pengukuran latensi real-time ke Google, Facebook, X, Gateway, YouTube, TikTok, WhatsApp & Mobile Legends\n- Auto Server Detection: Otomatis mendeteksi node server ISP riil\n- Struk Thermal Bluetooth: Menampilkan logo company web dan nama brand ISP\n- Header Pill Wilayah: Menyederhanakan tampilan indikator hanya menampilkan nama wilayah operasional\n- Diagnosa GenieACS: Perbaikan notifikasi error/snackbar mengambang di atas navbar dan perbaikan otorisasi Summon teknisi.",
     ],
     'customer' => [
         'latest_version_code' => 10105,

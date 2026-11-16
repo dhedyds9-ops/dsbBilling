@@ -365,11 +365,16 @@ class CustomerApiController extends Controller
             'created_at' => $inv->created_at?->format('d M Y') ?? (string) $inv->created_at,
         ]);
 
-        $companyName = Setting::getValue('company.name', config('app.name', 'WINETS ID'));
-        $companyPhone = Setting::getValue('company.phone', '081234567890');
+        $branch = $customer?->branch;
+        $host = request()->getHost();
+        $subdomain = explode('.', $host)[0];
+        $defaultTenantName = ($subdomain && !in_array($subdomain, ['localhost', '127', 'dsbilling', 'www'])) ? ucfirst($subdomain) : config('app.name', 'dsBilling');
+
+        $companyName = Setting::getValue('company.name') ?: $branch?->name ?: $defaultTenantName;
+        $companyPhone = Setting::getValue('company.phone') ?: Setting::getValue('company.whatsapp') ?: $branch?->phone ?: null;
         $companyWhatsapp = Setting::getValue('company.whatsapp') ?: $companyPhone;
         $companyLogo = Setting::getValue('company.logo_url') ?: Setting::getValue('company.logo') ?: asset('images/logo.png');
-        $companyEmail = Setting::getValue('company.email', 'cs@ispprovider.com');
+        $companyEmail = Setting::getValue('company.email') ?: Setting::getValue('company.support_email') ?: $branch?->email ?: ('cs@' . (str_contains($host, '.') ? $host : 'dsbilling.id'));
         $dueDays = (int) Setting::getValue('billing.invoice_due_days', 7);
         $nextBillingFormatted = $data['next_billing_date'] ? Carbon::parse($data['next_billing_date'])->translatedFormat('d M Y') : null;
 
@@ -1326,24 +1331,31 @@ class CustomerApiController extends Controller
      */
     public function contactAdmin(Request $request): JsonResponse
     {
-        $companyName = Setting::getValue('company.name', 'dsBilling ISP');
-        $companyPhone = Setting::getValue('company.phone', '081234567890');
-        $companyWhatsapp = Setting::getValue('company.whatsapp') ?: $companyPhone;
-        $companyLogo = Setting::getValue('company.logo_url') ?: Setting::getValue('company.logo') ?: asset('images/logo.png');
-        $companyEmail = Setting::getValue('company.email', 'cs@ispprovider.com');
-
-        $cleanPhone = preg_replace('/[^0-9]/', '', (string)$companyWhatsapp);
-        if (str_starts_with($cleanPhone, '0')) {
-            $cleanPhone = '62' . substr($cleanPhone, 1);
-        }
-
         $user = $request->user();
         $customer = $this->getAuthenticatedCustomer($user);
-        $custName = urlencode($customer?->name ?? $user->name);
-        $custCode = urlencode($customer?->code ?? '-');
+        $branch = $customer?->branch;
 
-        $message = urlencode("Halo Admin {$companyName}, saya {$custName} (ID: {$custCode}) ingin bertanya perihal layanan internet saya.");
-        $waUrl = "https://wa.me/{$cleanPhone}?text={$message}";
+        $host = request()->getHost();
+        $subdomain = explode('.', $host)[0];
+        $defaultTenantName = ($subdomain && !in_array($subdomain, ['localhost', '127', 'dsbilling', 'www'])) ? ucfirst($subdomain) : config('app.name', 'dsBilling');
+
+        $companyName = Setting::getValue('company.name') ?: $branch?->name ?: $defaultTenantName;
+        $companyPhone = Setting::getValue('company.phone') ?: Setting::getValue('company.whatsapp') ?: $branch?->phone ?: null;
+        $companyWhatsapp = Setting::getValue('company.whatsapp') ?: $companyPhone;
+        $companyLogo = Setting::getValue('company.logo_url') ?: Setting::getValue('company.logo') ?: asset('images/logo.png');
+        $companyEmail = Setting::getValue('company.email') ?: Setting::getValue('company.support_email') ?: $branch?->email ?: ('cs@' . (str_contains($host, '.') ? $host : 'dsbilling.id'));
+
+        $waUrl = null;
+        if (!empty($companyWhatsapp)) {
+            $cleanPhone = preg_replace('/[^0-9]/', '', (string)$companyWhatsapp);
+            if (str_starts_with($cleanPhone, '0')) {
+                $cleanPhone = '62' . substr($cleanPhone, 1);
+            }
+            $custName = urlencode($customer?->name ?? $user->name);
+            $custCode = urlencode($customer?->code ?? '-');
+            $message = urlencode("Halo Admin {$companyName}, saya {$custName} (ID: {$custCode}) ingin bertanya perihal layanan internet saya.");
+            $waUrl = "https://wa.me/{$cleanPhone}?text={$message}";
+        }
 
         return response()->json([
             'success' => true,
