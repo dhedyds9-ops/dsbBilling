@@ -209,7 +209,6 @@ class MenuRegistry
                             ['label' => 'Data ODP', 'route' => 'isp.odps.index', 'active' => 'isp.odps.*', 'permission' => 'odp.view'],
                             ['label' => 'Data POP', 'route' => 'isp.pops.index', 'active' => 'isp.pops.*', 'permission' => 'pop.view'],
                             ['label' => 'Data Vendor', 'route' => 'isp.vendors.index', 'active' => 'isp.vendors.*', 'permission' => 'vendor.view'],
-                            ['label' => 'Aset Jaringan & Alat', 'route' => 'inventory.assets.index', 'active' => 'inventory.assets.*', 'permission' => 'network.view'],
                         ]
                     ],
                     [
