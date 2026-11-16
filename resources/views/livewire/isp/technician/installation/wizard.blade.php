@@ -269,11 +269,13 @@
                         <div>
                             <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Owner / Reseller (Opsional)</label>
                             <x-ds-searchable-select
-                                wire:model="new_customer_reseller_id"
+                                wire:model.live="new_customer_reseller_id"
                                 strategy="local"
                                 :options="$resellersOptions"
                                 placeholder="-- Pilih Owner / Reseller (Default: Kantor Pusat / HQ) --"
                                 search-placeholder="Cari nama atau email reseller..."
+                                :selected-label="$this->selectedResellerLabel"
+                                :selected-sublabel="$this->selectedResellerSublabel"
                             />
                             <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
                                 Pilih Mitra / Reseller jika pemasangan ini untuk pelanggan mitra, atau kosongkan jika milik Kantor Pusat (HQ).
@@ -370,11 +372,13 @@
                                     <div class="mt-2.5">
                                         <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">Tautkan ke Owner / Reseller (Opsional)</label>
                                         <x-ds-searchable-select
-                                            wire:model="new_customer_reseller_id"
+                                            wire:model.live="new_customer_reseller_id"
                                             strategy="local"
                                             :options="$resellersOptions"
                                             placeholder="-- Tautkan ke Owner / Reseller (Default: HQ) --"
                                             search-placeholder="Cari reseller..."
+                                            :selected-label="$this->selectedResellerLabel"
+                                            :selected-sublabel="$this->selectedResellerSublabel"
                                         />
                                     </div>
                                 @endif

@@ -44,6 +44,11 @@
     $isLivewire = !empty($wireModel);
     $componentId = $id ?? ($wireModel ? 'ds-select-' . preg_replace('/[^a-zA-Z0-9_-]/', '-', $wireModel) : 'ds-select-' . substr(md5($placeholder . $searchAction . ($label ?? '')), 0, 10));
 
+    $initialVal = $attributes->get('value');
+    if (($initialVal === null || $initialVal === '') && $isLivewire && isset($this) && isset($this->{$wireModel})) {
+        $initialVal = (string) $this->{$wireModel};
+    }
+
     // Normalize options for local strategy
     $normalizedOptions = [];
     if (!empty($options)) {
@@ -68,7 +73,7 @@
     x-data="dsSearchableSelect({
         strategy: '{{ $strategy }}',
         wireModel: '{{ $wireModel }}',
-        initialValue: '{{ addslashes($attributes->get('value', '')) }}',
+        initialValue: '{{ addslashes((string) ($initialVal ?? '')) }}',
         options: {{ Js::from($normalizedOptions) }},
         searchAction: '{{ $searchAction }}',
         searchable: {{ $searchable ? 'true' : 'false' }},
@@ -78,13 +83,9 @@
         maxResults: {{ (int) $maxResults }},
         placeholder: '{{ addslashes($placeholder) }}',
         searchPlaceholder: '{{ addslashes($searchPlaceholder) }}',
-        selectedLabel: '{{ addslashes($selectedLabel ?? '') }}',
-        selectedSublabel: '{{ addslashes($selectedSublabel ?? '') }}',
+        selectedLabel: '{{ addslashes((string) ($selectedLabel ?? '')) }}',
+        selectedSublabel: '{{ addslashes((string) ($selectedSublabel ?? '')) }}',
     })"
-    @if($isLivewire)
-        wire:model="{{ $wireModel }}"
-        x-modelable="value"
-    @endif
     @keydown.escape.stop="close()"
     @click.outside="close()"
 >
@@ -290,6 +291,7 @@
             init() {
                 this.allLocalOptions = Array.isArray(config.options) ? JSON.parse(JSON.stringify(config.options)) : [];
                 this.options = this.allLocalOptions;
+                this.value = config.initialValue || null;
 
                 if (config.selectedLabel) {
                     this.selectedLabel = config.selectedLabel;
@@ -298,8 +300,10 @@
                     this.selectedSublabel = config.selectedSublabel;
                 }
 
-                // Sync initial label
-                this.syncLabelFromValue();
+                // If value exists but label is missing, sync label from options
+                if (this.value && !this.selectedLabel) {
+                    this.syncLabelFromValue();
+                }
 
                 // Watch for external value changes
                 this.$watch('value', (newVal) => {
@@ -319,8 +323,10 @@
 
             syncLabelFromValue() {
                 if (this.value === null || this.value === '' || this.value === undefined) {
-                    this.selectedLabel = '';
-                    this.selectedSublabel = '';
+                    if (!config.selectedLabel || this.value === '') {
+                        this.selectedLabel = '';
+                        this.selectedSublabel = '';
+                    }
                     return;
                 }
 
@@ -331,6 +337,9 @@
                 if (match) {
                     this.selectedLabel = match.label;
                     this.selectedSublabel = match.sublabel || '';
+                } else if (config.selectedLabel && String(this.value) === String(config.initialValue)) {
+                    this.selectedLabel = config.selectedLabel;
+                    this.selectedSublabel = config.selectedSublabel || '';
                 }
             },
 
@@ -379,7 +388,7 @@
                 }
 
                 const q = query.toLowerCase().trim();
-                this.options = this.allLocalOptions
+                const matched = this.allLocalOptions
                     .filter(o =>
                         (o.label && String(o.label).toLowerCase().includes(q)) ||
                         (o.sublabel && String(o.sublabel).toLowerCase().includes(q)) ||
@@ -387,7 +396,12 @@
                     )
                     .slice(0, this.maxResults);
 
-                this.highlightedIndex = this.options.length > 0 ? 0 : -1;
+                if (matched.length > 0 || !this.searchAction) {
+                    this.options = matched;
+                    this.highlightedIndex = this.options.length > 0 ? 0 : -1;
+                } else if (this.searchAction) {
+                    this.filterRemoteDebounced(query);
+                }
             },
 
             filterRemoteDebounced(query) {

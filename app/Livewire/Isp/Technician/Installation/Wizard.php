@@ -1101,19 +1101,8 @@ class Wizard extends Component
     public function searchCustomers(string $query = ''): array
     {
         $q = trim($query);
-        $user = auth()->user();
 
-        $builder = Customer::withoutGlobalScopes();
-
-        // Jika user memiliki branch_id, izinkan pelanggan di cabang tersebut atau pelanggan unassigned
-        if ($user && $user->branch_id && !$user->isSuperAdmin()) {
-            $builder->where(function ($bq) use ($user) {
-                $bq->where('branch_id', $user->branch_id)
-                   ->orWhereNull('branch_id');
-            });
-        }
-
-        return $builder
+        return Customer::withoutGlobalScopes()
             ->when(!empty($q), function ($b) use ($q) {
                 $b->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
@@ -1231,6 +1220,23 @@ class Wizard extends Component
         if (!$c) return null;
         $details = array_filter([$c->phone, $c->code, $c->address ? \Illuminate\Support\Str::limit($c->address, 30) : null]);
         return implode(' • ', $details);
+    }
+
+    public function getSelectedResellerLabelProperty(): ?string
+    {
+        if (!$this->new_customer_reseller_id) return null;
+        $r = User::withoutGlobalScopes()->find($this->new_customer_reseller_id);
+        if (!$r) return null;
+        $branchLabel = !empty($r->branch?->name) ? ' (' . $r->branch->name . ')' : '';
+        return $r->name . $branchLabel;
+    }
+
+    public function getSelectedResellerSublabelProperty(): ?string
+    {
+        if (!$this->new_customer_reseller_id) return null;
+        $r = User::withoutGlobalScopes()->find($this->new_customer_reseller_id);
+        if (!$r) return null;
+        return $r->email ?? ($r->phone ?? 'Mitra Reseller');
     }
 
     public function getSelectedServiceProfileProperty()
@@ -1364,8 +1370,8 @@ class Wizard extends Component
 
         $resellersOptions = \App\Models\User::withoutGlobalScopes()
             ->where(function($q) {
-                $q->whereHas('roles', fn($rq) => $rq->whereIn('name', ['reseller', 'Reseller']))
-                  ->orWhereRaw('UPPER(COALESCE(job_function, "")) = ?', ['RESELLER']);
+                $q->whereHas('roles', fn($rq) => $rq->whereIn('name', ['reseller', 'Reseller', 'mitra', 'Mitra']))
+                  ->orWhereRaw('UPPER(COALESCE(job_function, "")) IN (?, ?)', ['RESELLER', 'SALES']);
             })
             ->with('branch')
             ->orderBy('name')
@@ -1380,15 +1386,24 @@ class Wizard extends Component
             })
             ->toArray();
 
+        if ($this->new_customer_reseller_id) {
+            $exists = collect($resellersOptions)->firstWhere('value', (string) $this->new_customer_reseller_id);
+            if (!$exists) {
+                $r = User::withoutGlobalScopes()->find($this->new_customer_reseller_id);
+                if ($r) {
+                    $branchLabel = !empty($r->branch?->name) ? ' (' . $r->branch->name . ')' : '';
+                    array_unshift($resellersOptions, [
+                        'value' => (string) $r->id,
+                        'label' => $r->name . $branchLabel,
+                        'sublabel' => $r->email ?? ($r->phone ?? 'Mitra Reseller'),
+                    ]);
+                }
+            }
+        }
+
         $customersOptions = Customer::withoutGlobalScopes()
-            ->when($user && $user->branch_id && !$user->isSuperAdmin(), function ($bq) use ($user) {
-                $bq->where(function ($sub) use ($user) {
-                    $sub->where('branch_id', $user->branch_id)
-                       ->orWhereNull('branch_id');
-                });
-            })
             ->latest('id')
-            ->take(100)
+            ->take(150)
             ->get(['id', 'name', 'phone', 'code', 'address'])
             ->map(function ($c) {
                 $name = !empty(trim($c->name)) ? $c->name : 'Pelanggan #' . $c->id;
