@@ -53,7 +53,7 @@
 
         <button type="button" wire:click="$set('filters.status','in_use')" class="text-left bg-white dark:bg-slate-800 p-3.5 rounded-xl border {{ ($filters['status'] ?? 'all') === 'in_use' ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-200 dark:border-slate-700 hover:border-emerald-300' }} shadow-sm transition-all flex items-center justify-between cursor-pointer">
             <div>
-                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Di Lapangan</p>
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Terpasang / Aktif</p>
                 <div class="flex items-baseline gap-1.5 mt-1">
                     <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400">{{ number_format($stats['in_use'] ?? 0) }}</span>
                     <span class="text-xs text-slate-400">In Use</span>
@@ -154,8 +154,8 @@
             {{-- Status Filter --}}
             <select wire:model.live="filters.status" class="pl-2.5 pr-7 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
                 <option value="all">Semua Status</option>
+                <option value="in_use">Terpasang / Beroperasi (In Use)</option>
                 <option value="available">Tersedia di Gudang (Available)</option>
-                <option value="in_use">Di Lapangan / Teknisi (In Use)</option>
                 <option value="maintenance">Dalam Perbaikan (Maintenance)</option>
                 <option value="retired">Afkir / Rusak Total (Retired)</option>
             </select>
@@ -269,7 +269,17 @@
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <span class="px-2.5 py-1 inline-flex items-center gap-1.5 text-xs font-semibold rounded-full {{ $badgeStatus }}">
                                     <span class="w-1.5 h-1.5 rounded-full {{ $asset->status === 'in_use' ? 'bg-emerald-500' : ($asset->status === 'available' ? 'bg-blue-500' : 'bg-rose-500') }}"></span>
-                                    {{ $asset->status === 'in_use' ? 'Di Lapangan' : ($asset->status === 'available' ? 'Di Gudang' : ucfirst($asset->status)) }}
+                                    @if($asset->status === 'in_use')
+                                        {{ $asset->type === 'network' ? 'Aktif di Server' : ($asset->type === 'onu' ? 'Di Pelanggan' : 'Di Lapangan') }}
+                                    @elseif($asset->status === 'available')
+                                        Di Gudang
+                                    @elseif($asset->status === 'maintenance')
+                                        Dalam Perbaikan
+                                    @elseif($asset->status === 'retired')
+                                        Afkir
+                                    @else
+                                        {{ ucfirst($asset->status) }}
+                                    @endif
                                 </span>
                             </td>
 

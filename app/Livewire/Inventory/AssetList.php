@@ -102,7 +102,12 @@ class AssetList extends AdminComponent
                         $asset = Asset::where('code', $code)->first();
                     }
 
-                    $status = ($r->status === 'online' || $r->is_active) ? 'in_use' : 'available';
+                    $isRouterInUse = !empty($r->ip_address) 
+                        || in_array(strtolower((string)$r->status), ['online', 'active', 'warning', 'critical', 'maintenance', 'up', 'running'])
+                        || (bool)$r->is_active
+                        || !empty($r->last_seen_at);
+
+                    $status = $isRouterInUse ? 'in_use' : 'available';
                     $desc = 'Router / MikroTik IP: ' . ($r->ip_address ?: '-') . ($r->description ? ' (' . $r->description . ')' : '');
 
                     if (!$asset) {
@@ -125,7 +130,9 @@ class AssetList extends AdminComponent
                             'category_id' => $asset->category_id ?: $categoryId,
                             'status' => $status,
                             'description' => $desc,
+                            'vendor_id' => $r->vendor_id ?: $asset->vendor_id,
                         ]);
+                        $synced++;
                     }
                 }
             }
@@ -145,7 +152,11 @@ class AssetList extends AdminComponent
                         $asset = Asset::where('code', $code)->first();
                     }
 
-                    $status = ($o->status === 'active') ? 'in_use' : 'available';
+                    $isOltInUse = !empty($o->ip_address)
+                        || in_array(strtolower((string)$o->status), ['active', 'online', 'connected', 'up', 'running'])
+                        || ((int)($o->port_count ?? 0) > 0);
+
+                    $status = $isOltInUse ? 'in_use' : 'available';
                     $desc = 'OLT Server IP: ' . ($o->ip_address ?: '-') . ($o->description ? ' (' . $o->description . ')' : '');
 
                     if (!$asset) {
@@ -168,7 +179,9 @@ class AssetList extends AdminComponent
                             'category_id' => $asset->category_id ?: $categoryId,
                             'status' => $status,
                             'description' => $desc,
+                            'vendor_id' => $o->vendor_id ?: $asset->vendor_id,
                         ]);
+                        $synced++;
                     }
                 }
             }
