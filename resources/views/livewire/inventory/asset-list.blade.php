@@ -4,6 +4,10 @@
 @endsection
 
 <div class="space-y-5 pb-10">
+    @php
+        $user = auth()->user();
+        $canManageAssets = $user && ($user->isSuperAdmin() || $user->isWarehouseAdmin() || $user->hasPermission('inventory.create') || $user->hasPermission('inventory.edit'));
+    @endphp
 
     {{-- SESSION FLASH --}}
     @if(session('success'))
@@ -91,15 +95,17 @@
     <div class="space-y-3 bg-white dark:bg-slate-800 p-3.5 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-700/60">
             <div class="flex flex-wrap items-center gap-2">
-                <button type="button" wire:click="create" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-all cursor-pointer">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add_circle</span>
-                    <span>Tambah Alat / Aset</span>
-                </button>
-                <button type="button" wire:click="syncInstalledOnus(true)" wire:loading.attr="disabled" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-all cursor-pointer" title="Sinkronkan data dari instalasi ONU">
-                    <span class="material-symbols-outlined notranslate text-indigo-500" wire:loading.class="animate-spin" wire:target="syncInstalledOnus" translate="no" style="font-size:18px">sync</span>
-                    <span wire:loading.remove wire:target="syncInstalledOnus">Sinkronkan ONU</span>
-                    <span wire:loading wire:target="syncInstalledOnus">Sinkronisasi...</span>
-                </button>
+                @if($canManageAssets)
+                    <button type="button" wire:click="create" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-all cursor-pointer">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add_circle</span>
+                        <span>Tambah Alat / Aset</span>
+                    </button>
+                    <button type="button" wire:click="syncInstalledOnus(true)" wire:loading.attr="disabled" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-all cursor-pointer" title="Sinkronkan data dari instalasi ONU">
+                        <span class="material-symbols-outlined notranslate text-indigo-500" wire:loading.class="animate-spin" wire:target="syncInstalledOnus" translate="no" style="font-size:18px">sync</span>
+                        <span wire:loading.remove wire:target="syncInstalledOnus">Sinkronkan ONU</span>
+                        <span wire:loading wire:target="syncInstalledOnus">Sinkronisasi...</span>
+                    </button>
+                @endif
             </div>
 
             {{-- SEARCH --}}
@@ -149,6 +155,20 @@
                 <option value="retired">Afkir / Rusak Total (Retired)</option>
             </select>
 
+            {{-- Penanggung Jawab / Teknisi Filter --}}
+            <select wire:model.live="filters.assigned_to" class="pl-2.5 pr-7 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
+                <option value="all">Semua Penanggung Jawab</option>
+                @if(auth()->user())
+                    <option value="{{ auth()->id() }}">⭐ Alat Saya Sendiri</option>
+                @endif
+                <option value="unassigned">Gudang (Belum Diserahkan)</option>
+                @foreach($technicians as $tech)
+                    @if(auth()->id() !== $tech->id)
+                        <option value="{{ $tech->id }}">{{ $tech->name }}</option>
+                    @endif
+                @endforeach
+            </select>
+
             {{-- Per Page --}}
             <select wire:model.live="perPage" class="pl-2.5 pr-7 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer ml-auto">
                 <option value="20">20 / Hal</option>
@@ -157,7 +177,7 @@
                 <option value="all">Semua</option>
             </select>
 
-            @if(($filters['search'] ?? '') !== '' || ($filters['status'] ?? 'all') !== 'all' || ($filters['type'] ?? 'all') !== 'all' || ($filters['category'] ?? 'all') !== 'all')
+            @if(($filters['search'] ?? '') !== '' || ($filters['status'] ?? 'all') !== 'all' || ($filters['type'] ?? 'all') !== 'all' || ($filters['category'] ?? 'all') !== 'all' || ($filters['assigned_to'] ?? 'all') !== 'all')
                 <button type="button" wire:click="resetFilters" title="Reset Filter" class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 text-red-600 dark:text-red-400 rounded-lg text-xs font-semibold transition-colors cursor-pointer">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">close</span>
                     <span>Reset</span>
@@ -208,23 +228,35 @@
                             {{-- ACTIONS --}}
                             <td class="px-4 py-3 whitespace-nowrap text-center">
                                 <div class="flex items-center justify-center gap-1.5">
-                                    {{-- Quick Handover / Return Button --}}
-                                    @if($asset->status === 'available')
-                                        <button type="button" wire:click="openAssignModal('{{ $asset->id }}')" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 transition-colors cursor-pointer" title="Serahkan ke Teknisi (Handover)">
-                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">person_add</span>
-                                        </button>
-                                    @elseif($asset->status === 'in_use')
-                                        <button type="button" wire:click="returnAsset('{{ $asset->id }}')" wire:confirm="Kembalikan alat ini ke gudang?" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 transition-colors cursor-pointer" title="Kembalikan ke Gudang (Return)">
-                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">assignment_return</span>
-                                        </button>
-                                    @endif
+                                    @if($canManageAssets)
+                                        {{-- Quick Handover / Return Button --}}
+                                        @if($asset->status === 'available')
+                                            <button type="button" wire:click="openAssignModal('{{ $asset->id }}')" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 transition-colors cursor-pointer" title="Serahkan ke Teknisi (Handover)">
+                                                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">person_add</span>
+                                            </button>
+                                        @elseif($asset->status === 'in_use')
+                                            <button type="button" wire:click="returnAsset('{{ $asset->id }}')" wire:confirm="Kembalikan alat ini ke gudang?" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 transition-colors cursor-pointer" title="Kembalikan ke Gudang (Return)">
+                                                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">assignment_return</span>
+                                            </button>
+                                        @endif
 
-                                    <button type="button" wire:click="edit('{{ $asset->id }}')" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors cursor-pointer" title="Edit Data">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">edit</span>
-                                    </button>
-                                    <button type="button" wire:click="delete('{{ $asset->id }}')" wire:confirm="Yakin ingin menghapus asset ini?" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer" title="Hapus">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">delete</span>
-                                    </button>
+                                        <button type="button" wire:click="edit('{{ $asset->id }}')" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors cursor-pointer" title="Edit Data">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">edit</span>
+                                        </button>
+                                        <button type="button" wire:click="delete('{{ $asset->id }}')" wire:confirm="Yakin ingin menghapus asset ini?" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer" title="Hapus">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">delete</span>
+                                        </button>
+                                    @else
+                                        {{-- Mode Teknisi --}}
+                                        @if($asset->status === 'in_use' && $asset->assigned_to_id === auth()->id())
+                                            <button type="button" wire:click="returnAsset('{{ $asset->id }}')" wire:confirm="Kembalikan alat ini ke gudang?" class="inline-flex items-center justify-center px-2 py-1 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 transition-colors cursor-pointer text-xs font-semibold gap-1" title="Kembalikan alat ini ke gudang">
+                                                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">assignment_return</span>
+                                                <span>Retur</span>
+                                            </button>
+                                        @else
+                                            <span class="text-xs text-slate-400">View</span>
+                                        @endif
+                                    @endif
                                 </div>
                             </td>
 

@@ -446,6 +446,7 @@ class MenuRegistry
                         'label' => 'Material & Inventaris',
                         'icon' => 'inventory',
                         'items' => [
+                            ['label' => 'Alat Kerja Saya', 'route' => 'inventory.assets.index', 'active' => 'inventory.assets.*'],
                             ['label' => 'Permintaan Material', 'route' => 'inventory.requisitions.index', 'active' => 'inventory.requisitions.*', 'permission' => 'inventory.requisition'],
                             ['label' => 'Stok di Tangan', 'route' => 'inventory.custodies.index', 'active' => 'inventory.custodies.*', 'permission' => 'inventory.custody'],
                             ['label' => 'Catat Pemakaian', 'route' => 'inventory.usage.index', 'active' => 'inventory.usage.*'],

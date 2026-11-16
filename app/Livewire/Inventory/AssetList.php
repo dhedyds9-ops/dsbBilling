@@ -16,6 +16,7 @@ class AssetList extends AdminComponent
         'status' => 'all',
         'warehouse' => 'all',
         'type' => 'all', // all, tool, onu, network, vehicle, other
+        'assigned_to' => 'all',
     ];
 
     public string $sortField = 'created_at';
@@ -68,6 +69,12 @@ class AssetList extends AdminComponent
         parent::mount();
         $this->activeModule = 'inventory';
         $this->activePage = 'assets';
+
+        $user = auth()->user();
+        if ($user && method_exists($user, 'isTechnician') && $user->isTechnician() && !$user->isSuperAdmin() && !$user->isWarehouseAdmin()) {
+            $this->filters['assigned_to'] = (string)$user->id;
+        }
+
         $this->syncInstalledOnus(false);
     }
 
@@ -137,12 +144,18 @@ class AssetList extends AdminComponent
 
     public function resetFilters(): void
     {
+        $user = auth()->user();
+        $defaultAssigned = ($user && method_exists($user, 'isTechnician') && $user->isTechnician() && !$user->isSuperAdmin() && !$user->isWarehouseAdmin())
+            ? (string)$user->id
+            : 'all';
+
         $this->filters = [
             'search' => '',
             'category' => 'all',
             'status' => 'all',
             'warehouse' => 'all',
             'type' => 'all',
+            'assigned_to' => $defaultAssigned,
         ];
         $this->resetPage();
     }
@@ -177,6 +190,14 @@ class AssetList extends AdminComponent
         if (!empty($this->filters['category']) && $this->filters['category'] !== 'all') {
             $query->where('category_id', $this->filters['category']);
         }
+
+        if (!empty($this->filters['assigned_to']) && $this->filters['assigned_to'] !== 'all') {
+            if ($this->filters['assigned_to'] === 'unassigned') {
+                $query->whereNull('assigned_to_id');
+            } else {
+                $query->where('assigned_to_id', $this->filters['assigned_to']);
+            }
+        }
         
         $perPageInt = match ((string) $this->perPage) {
             '50' => 50,
@@ -190,9 +211,11 @@ class AssetList extends AdminComponent
 
     public function getAssetStats(): array
     {
+        $userId = auth()->id();
         return [
             'total' => Asset::count(),
             'tools' => Asset::where('type', 'tool')->count(),
+            'my_tools' => $userId ? Asset::where('assigned_to_id', $userId)->count() : 0,
             'in_use' => Asset::where('status', 'in_use')->count(),
             'available' => Asset::where('status', 'available')->count(),
             'maintenance' => Asset::where('status', 'maintenance')->count(),
