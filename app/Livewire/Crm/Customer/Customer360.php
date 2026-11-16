@@ -652,18 +652,77 @@ class Customer360 extends AdminComponent
         }
 
         $unpaidBill = 0;
-        $earliestDueDate = null;
-        if ($this->getCustomer()->invoices) {
+        $unpaidDueDate = null;
+        $latestPaidDueDate = null;
+        $dueDateType = 'none';
+        $dueDateExplanation = '';
+
+        if ($this->getCustomer()->invoices && $this->getCustomer()->invoices->isNotEmpty()) {
             foreach ($this->getCustomer()->invoices as $inv) {
                 if ($inv->status !== 'paid' && $inv->status !== 'cancelled') {
                     $unpaidBill += (float) $inv->total_amount;
                     if ($inv->due_date) {
-                        if (!$earliestDueDate || $inv->due_date->lt($earliestDueDate)) {
-                            $earliestDueDate = $inv->due_date;
+                        if (!$unpaidDueDate || $inv->due_date->lt($unpaidDueDate)) {
+                            $unpaidDueDate = $inv->due_date;
                         }
                     }
                 }
             }
+
+            $latestPaid = $this->getCustomer()->invoices->where('status', 'paid')
+                ->sortByDesc(fn($i) => $i->due_date ?? $i->issue_date ?? $i->created_at)
+                ->first();
+            if ($latestPaid) {
+                $latestPaidDueDate = $latestPaid->due_date ?? $latestPaid->issue_date;
+            }
+        }
+
+        // Cek juga masa aktif layanan (expires_at) pada customer service / pppoe / hotspot
+        $serviceExpiry = null;
+        if ($this->getCustomer()->customerServices) {
+            foreach ($this->getCustomer()->customerServices as $cs) {
+                $exp = $cs->expires_at ?? $cs->pppoeUser?->expires_at ?? $cs->hotspotUser?->expires_at;
+                if ($exp) {
+                    $expCarbon = is_string($exp) ? \Carbon\Carbon::parse($exp) : $exp;
+                    if (!$serviceExpiry || $expCarbon->gt($serviceExpiry)) {
+                        $serviceExpiry = $expCarbon;
+                    }
+                }
+            }
+        }
+
+        // Tentukan jatuh tempo efektif ($earliestDueDate) dan analisis penjelasannya
+        if ($unpaidBill > 0 && $unpaidDueDate) {
+            $earliestDueDate = $unpaidDueDate;
+            $dueDateType = 'unpaid';
+            $isOverdue = $unpaidDueDate->startOfDay()->lt(now()->startOfDay());
+            $dueDateExplanation = $isOverdue 
+                ? 'Tagihan tertunda melewati jatuh tempo' 
+                : 'Jatuh tempo tagihan belum lunas';
+        } elseif ($latestPaidDueDate) {
+            // Sudah lunas! Hitung jatuh tempo periode berikutnya (Next Billing Cycle)
+            $nextDueDate = $latestPaidDueDate->copy()->addMonth();
+            while ($nextDueDate->lt(now()->startOfDay())) {
+                $nextDueDate->addMonth();
+            }
+
+            if ($serviceExpiry && $serviceExpiry->gt(now())) {
+                $earliestDueDate = $serviceExpiry;
+                $dueDateExplanation = 'Jatuh tempo siklus langganan aktif (Lunas)';
+            } else {
+                $earliestDueDate = $nextDueDate;
+                $dueDateExplanation = 'Jatuh tempo periode berikutnya (Lunas)';
+            }
+            $dueDateType = 'renewal';
+        } elseif ($serviceExpiry) {
+            $earliestDueDate = $serviceExpiry;
+            $dueDateType = 'service_expiry';
+            $dueDateExplanation = 'Masa aktif layanan pelanggan';
+        } else {
+            // Pelanggan baru terdaftar
+            $earliestDueDate = $this->getCustomer()->created_at ? $this->getCustomer()->created_at->copy()->addMonth() : now()->addMonth();
+            $dueDateType = 'new_customer';
+            $dueDateExplanation = 'Estimasi jatuh tempo periode pertama';
         }
 
         $monitoring = [];
@@ -753,7 +812,9 @@ class Customer360 extends AdminComponent
         return view('livewire.crm.customer.customer360', compact(
             'customer', 'monthlyBill', 
             'unpaidBill', 
-            'earliestDueDate', 
+            'earliestDueDate',
+            'dueDateType',
+            'dueDateExplanation',
             'timeline', 
             'activities', 
             'invoices', 

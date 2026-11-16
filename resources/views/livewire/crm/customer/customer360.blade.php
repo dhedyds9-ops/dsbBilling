@@ -65,19 +65,21 @@
             </div>
         </div>
 
-        {{-- Tagihan Belum Dibayar --}}
-        <div class="relative overflow-x-auto rounded-xl border border-rose-200 dark:border-rose-800/60 shadow-md bg-gradient-to-br from-rose-50 to-white dark:from-rose-950/50 dark:to-slate-800 group hover:shadow-lg transition-all">
-            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-red-400 rounded-t-xl"></div>
-            <div class="absolute top-3 right-3 opacity-10 text-rose-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
+        {{-- Tagihan Belum Dibayar / Status Tagihan --}}
+        <div class="relative overflow-x-auto rounded-xl border {{ $unpaidBill > 0 ? 'border-rose-200 dark:border-rose-800/60 bg-gradient-to-br from-rose-50 to-white dark:from-rose-950/50 dark:to-slate-800' : 'border-emerald-200 dark:border-emerald-800/60 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/50 dark:to-slate-800' }} shadow-md group hover:shadow-lg transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 {{ $unpaidBill > 0 ? 'bg-gradient-to-r from-rose-500 to-red-400' : 'bg-gradient-to-r from-emerald-500 to-teal-400' }} rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 {{ $unpaidBill > 0 ? 'text-rose-400' : 'text-emerald-400' }} group-hover:opacity-20 group-hover:scale-110 transition-all">
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">receipt_long</span>
             </div>
             <div class="p-4 pt-5">
-                <h3 class="text-xs font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest mb-2">Tagihan Belum Lunas</h3>
-                <div class="text-2xl font-black text-rose-700 dark:text-rose-300 mb-1">
-                    Rp {{ number_format($unpaidBill, 0, ',', '.') }}
+                <h3 class="text-xs font-bold {{ $unpaidBill > 0 ? 'text-rose-500 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400' }} uppercase tracking-widest mb-2">
+                    {{ $unpaidBill > 0 ? 'Tagihan Belum Lunas' : 'Status Tagihan' }}
+                </h3>
+                <div class="text-2xl font-black {{ $unpaidBill > 0 ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300' }} mb-1">
+                    {{ $unpaidBill > 0 ? 'Rp ' . number_format($unpaidBill, 0, ',', '.') : 'Lunas' }}
                 </div>
                 <div class="text-xs text-slate-500 dark:text-slate-400">
-                    Jatuh tempo: {{ $earliestDueDate ? $earliestDueDate->format('d/m/Y') : '-' }}
+                    {{ $unpaidBill > 0 ? 'Jatuh tempo: ' : 'Jatuh tempo berikutnya: ' }}{{ $earliestDueDate ? $earliestDueDate->format('d/m/Y') : '-' }}
                 </div>
             </div>
         </div>
@@ -400,8 +402,13 @@
                         <span class="text-lg font-bold {{ $unpaidBill > 0 ? 'text-red-600' : 'text-emerald-600' }}">Rp {{ number_format($unpaidBill, 0, ',', '.') }}</span>
                     </div>
                     <div class="flex justify-between items-center py-4">
-                        <span class="text-slate-600 dark:text-slate-400">Jatuh Tempo Terdekat</span>
-                        <span class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ $earliestDueDate ? $earliestDueDate->format('d/m/Y') : '-' }}</span>
+                        <span class="text-slate-600 dark:text-slate-400">{{ $unpaidBill > 0 ? 'Jatuh Tempo Terdekat' : 'Jatuh Tempo Berikutnya' }}</span>
+                        <div class="text-right">
+                            <span class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ $earliestDueDate ? $earliestDueDate->format('d/m/Y') : '-' }}</span>
+                            @if($unpaidBill <= 0 && $earliestDueDate)
+                                <div class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">(Lunas / Periode Aktif)</div>
+                            @endif
+                        </div>
                     </div>
                     <div class="flex justify-between items-center py-4">
                         <span class="text-slate-600 dark:text-slate-400">Metode Pembayaran Terakhir</span>
@@ -412,24 +419,42 @@
             <x-base.card>
                 <x-slot name="header">
                     <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                        <span class="material-symbols-outlined notranslate text-rose-500" translate="no" style="font-size:20px">calendar_today</span>
-                        Jatuh Tempo
+                        <span class="material-symbols-outlined notranslate {{ $unpaidBill > 0 ? 'text-rose-500' : 'text-emerald-500' }}" translate="no" style="font-size:20px">calendar_today</span>
+                        {{ $unpaidBill > 0 ? 'Jatuh Tempo' : 'Jatuh Tempo Berikutnya' }}
                     </h3>
                 </x-slot>
                 <div class="text-center py-4">
                     @if($earliestDueDate)
                         @php 
                             // Hitung selisih hari dengan startOfDay agar dapat angka bulat (integer)
-                            $daysLeft = (int) now()->startOfDay()->diffInDays($earliestDueDate->copy()->startOfDay(), false); 
+                            $daysDiff = (int) now()->startOfDay()->diffInDays($earliestDueDate->copy()->startOfDay(), false); 
                         @endphp
-                        <p class="text-4xl font-black {{ $daysLeft < 3 ? 'text-red-600' : ($daysLeft < 7 ? 'text-orange-600' : 'text-slate-800 dark:text-slate-100') }}">
-                            {{ max(0, $daysLeft) }}
-                        </p>
-                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Hari Lagi</p>
-                        <p class="text-xs text-slate-400 mt-2">{{ $earliestDueDate->format('d/m/Y') }}</p>
+                        @if($unpaidBill > 0 && $daysDiff < 0)
+                            <p class="text-4xl font-black text-rose-600">
+                                {{ abs($daysDiff) }}
+                            </p>
+                            <p class="text-sm font-semibold text-rose-600 mt-1">Hari Terlambat</p>
+                            <span class="inline-flex items-center gap-1 mt-2 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
+                                <span class="material-symbols-outlined notranslate" style="font-size: 14px" translate="no">warning</span>
+                                Belum Lunas
+                            </span>
+                        @else
+                            <p class="text-4xl font-black {{ $unpaidBill > 0 ? ($daysDiff < 3 ? 'text-red-600' : ($daysDiff < 7 ? 'text-orange-600' : 'text-slate-800 dark:text-slate-100')) : 'text-emerald-600 dark:text-emerald-400' }}">
+                                {{ max(0, $daysDiff) }}
+                            </p>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Hari Lagi</p>
+                            <span class="inline-flex items-center gap-1 mt-2 px-2.5 py-0.5 rounded-full text-xs font-bold {{ $unpaidBill > 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' }}">
+                                <span class="material-symbols-outlined notranslate" style="font-size: 14px" translate="no">{{ $unpaidBill > 0 ? 'hourglass_top' : 'check_circle' }}</span>
+                                {{ $unpaidBill > 0 ? 'Menunggu Bayar' : 'Lunas (Periode Aktif)' }}
+                            </span>
+                        @endif
+                        <p class="text-xs text-slate-400 mt-2 font-mono">{{ $earliestDueDate->format('d/m/Y') }}</p>
+                        @if(!empty($dueDateExplanation))
+                            <p class="text-[11px] text-slate-400 mt-1 italic">{{ $dueDateExplanation }}</p>
+                        @endif
                     @else
                         <span class="material-symbols-outlined notranslate text-slate-300" translate="no" style="font-size:40px">check_circle</span>
-                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Tidak ada tagihan jatuh tempo</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Tidak ada data tagihan</p>
                     @endif
                 </div>
             </x-base.card>
@@ -575,7 +600,7 @@
                                             {{ $service->acsDevice->manufacturer ?? 'Unknown Vendor' }} - {{ $service->acsDevice->model ?? 'Unknown Model' }}
                                         </div>
                                         <div class="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                                            IP: {{ $service->acsDevice->ip_address ?? '-' }} | MAC: {{ $service->acsDevice->mac_address ?? '-' }}
+                                            IP: <x-ui.ip-link :ip="$service->acsDevice->ip_address" /> | MAC: {{ $service->acsDevice->mac_address ?? '-' }}
                                         </div>
                                         <div class="text-xs text-slate-400 mt-2 flex items-center gap-1">
                                             <span class="material-symbols-outlined notranslate" style="font-size:14px" translate="no">update</span>
@@ -781,7 +806,7 @@
                     </div>
                     <div class="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
                         <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">IP Address</label>
-                        <span class="font-mono font-semibold text-slate-900 dark:text-slate-100">{{ $mon['ip'] ?? 'Dynamic' }}</span>
+                        <span class="font-mono font-semibold text-slate-900 dark:text-slate-100"><x-ui.ip-link :ip="$mon['ip'] ?? 'Dynamic'" fallback="Dynamic" /></span>
                     </div>
                     <div class="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
                         <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">MAC Address</label>
@@ -990,7 +1015,7 @@
                                 Online (Aktif)
                             </div>
                             <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate mt-0.5" title="IP: {{ $radiusStats['current_session']?->framed_ip_address ?? '-' }}">
-                                IP: {{ $radiusStats['current_session']?->framed_ip_address ?? '-' }}
+                                IP: <x-ui.ip-link :ip="$radiusStats['current_session']?->framed_ip_address" />
                             </div>
                         @else
                             <div class="text-sm font-bold text-slate-600 dark:text-slate-300">
@@ -1136,10 +1161,10 @@
                                     {{-- IP Address & NAS --}}
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         <div class="font-mono font-semibold text-slate-900 dark:text-slate-100">
-                                            {{ $sess->framed_ip_address ?: '-' }}
+                                            <x-ui.ip-link :ip="$sess->framed_ip_address" />
                                         </div>
                                         <div class="text-[11px] text-slate-400 truncate max-w-[150px]" title="{{ $sess->nasDevice?->name ?? $sess->radiusNas?->nas_name ?? $sess->nas_ip_address ?? '-' }}">
-                                            NAS: {{ $sess->nasDevice?->name ?? $sess->radiusNas?->nas_name ?? $sess->nas_ip_address ?? '-' }}
+                                            NAS: <x-ui.ip-link :ip="$sess->nasDevice?->name ?? $sess->radiusNas?->nas_name ?? $sess->nas_ip_address" />
                                         </div>
                                     </td>
 
