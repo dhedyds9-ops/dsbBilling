@@ -43,18 +43,18 @@ class Index extends BaseACSComponent
                     try {
                         $isOnline = false;
 
-                        // 1. Cek last inform (toleransi 10 menit untuk interval standar inform 300 detik)
+                        // 1. Cek last inform (toleransi 15 menit untuk interval standar inform 300-600 detik)
                         if (!empty($d['_lastInform'])) {
                             $lastInform = \Carbon\Carbon::parse($d['_lastInform']);
-                            if (abs($now->diffInMinutes($lastInform)) <= 10) {
+                            if (abs($now->diffInMinutes($lastInform)) <= 15) {
                                 $isOnline = true;
                             }
                         }
 
-                        // 2. Cek IP aktif di MikroTik session (harus ada kontak inform dalam 15 menit)
+                        // 2. Cek IP aktif di MikroTik session (toleransi hingga 45 menit jika PPPoE session aktif)
                         $ip = $d['_ip'] ?? null;
                         if (!$isOnline && !empty($ip) && isset($activeIpFlip[$ip])) {
-                            if (isset($lastInform) && abs($now->diffInMinutes($lastInform)) <= 15) {
+                            if (isset($lastInform) && abs($now->diffInMinutes($lastInform)) <= 45) {
                                 $isOnline = true;
                             }
                         }
@@ -68,7 +68,7 @@ class Index extends BaseACSComponent
                             $updateData['status'] = 'online';
                             $updateData['last_contact'] = $lastInform ?? $now;
                         } else {
-                            // Cek apakah database mencatat link optik ONU aktif di OLT dalam 10 menit terakhir DAN inform masih wajar (<= 30 menit)
+                            // Cek apakah database mencatat link optik ONU aktif di OLT DAN inform masih dalam 60 menit
                             $rec = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
                                 ->where('uuid', $uuid)
                                 ->first(['id', 'ip_address', 'serial_number', 'status']);
@@ -76,11 +76,11 @@ class Index extends BaseACSComponent
                                 $hasActiveOnu = !empty($rec->serial_number) && \App\Models\ISP\Onu::withoutGlobalScopes()
                                     ->where('serial_number', $rec->serial_number)
                                     ->where('status', 'active')
-                                    ->whereNotNull('last_seen_at')
-                                    ->where('last_seen_at', '>=', now()->subMinutes(10))
+                                    ->whereNotNull('rx_power_dbm')
+                                    ->where('rx_power_dbm', '>=', -35.0)
                                     ->exists();
 
-                                if ($hasActiveOnu && isset($lastInform) && abs($now->diffInMinutes($lastInform)) <= 30) {
+                                if ($hasActiveOnu && isset($lastInform) && abs($now->diffInMinutes($lastInform)) <= 60) {
                                     $updateData['status'] = 'online';
                                     $updateData['last_contact'] = $now;
                                 } else {
@@ -388,7 +388,7 @@ class Index extends BaseACSComponent
         }
         
         $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
-        $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) <= 10) ? 'online' : 'offline';
+        $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) <= 20) ? 'online' : 'offline';
 
         // Helper pembersih karakter rusak/non-printable (sering terjadi pada VSOL)
         $cleanSn = function ($val) {
@@ -655,17 +655,17 @@ class Index extends BaseACSComponent
             $hasActiveOnu = false;
             if (!empty($acsDeviceParams['onu_id'])) {
                 $linkedOnu = \App\Models\ISP\Onu::find($acsDeviceParams['onu_id']);
-                if ($linkedOnu && $linkedOnu->status === 'active' && $linkedOnu->last_seen_at && abs(now()->diffInMinutes($linkedOnu->last_seen_at)) <= 10) {
+                if ($linkedOnu && $linkedOnu->status === 'active' && (!empty($linkedOnu->rx_power_dbm) || ($linkedOnu->last_seen_at && abs(now()->diffInMinutes($linkedOnu->last_seen_at)) <= 60))) {
                     $hasActiveOnu = true;
                 }
             } elseif (!empty($serialNumber)) {
                 $matchedOnu = $findOnu($serialNumber, $mac);
-                if ($matchedOnu && $matchedOnu->status === 'active' && $matchedOnu->last_seen_at && abs(now()->diffInMinutes($matchedOnu->last_seen_at)) <= 10) {
+                if ($matchedOnu && $matchedOnu->status === 'active' && (!empty($matchedOnu->rx_power_dbm) || ($matchedOnu->last_seen_at && abs(now()->diffInMinutes($matchedOnu->last_seen_at)) <= 60))) {
                     $hasActiveOnu = true;
                 }
             }
 
-            if ($hasActiveOnu && $lastInform && abs(now()->diffInMinutes($lastInform)) <= 30) {
+            if ($hasActiveOnu && $lastInform && abs(now()->diffInMinutes($lastInform)) <= 60) {
                 $acsDeviceParams['status'] = 'online';
             } else {
                 $acsDeviceParams['status'] = 'offline';

@@ -85,7 +85,19 @@ class AcsEvaluateStaleDevices extends Command
                         continue;
                     }
 
-                    if ($elapsedSeconds <= $onlineThreshold) {
+                    // Dynamic threshold: jika modem terkonfirmasi memiliki sesi PPPoE aktif di MikroTik atau link optik OLT aktif,
+                    // gunakan toleransi inform lebih longgar (hingga 45-60 menit) agar modem dengan interval inform bawaan 30 menit tidak berkedip offline.
+                    $hasActivePppoe = false;
+                    $pppoeUsername = $device->customerService?->pppoeUser?->username;
+                    if ($pppoeUsername) {
+                        $hasActivePppoe = \App\Models\ISP\OnlineSession::where('username', $pppoeUsername)->exists();
+                    }
+                    $hasActiveOnu = $device->onu && $device->onu->status === 'active' && $device->onu->rx_power_dbm !== null && (float)$device->onu->rx_power_dbm >= -35.0;
+
+                    $effectiveOnlineThreshold = ($hasActivePppoe || $hasActiveOnu) ? max($onlineThreshold, 2700) : $onlineThreshold; // 45 menit jika PPPoE/OLT aktif
+                    $effectiveOfflineThreshold = ($hasActivePppoe || $hasActiveOnu) ? max($offlineThreshold, 3600) : $offlineThreshold; // 60 menit jika PPPoE/OLT aktif
+
+                    if ($elapsedSeconds <= $effectiveOnlineThreshold) {
                         // Recent Inform -> Automatically recover to ONLINE!
                         if ($device->status !== 'online') {
                             $oldStatus = $device->status;
@@ -106,7 +118,7 @@ class AcsEvaluateStaleDevices extends Command
                                     ->update(['last_seen_at' => $informTime]);
                             }
                         }
-                    } elseif ($elapsedSeconds > $offlineThreshold) {
+                    } elseif ($elapsedSeconds > $effectiveOfflineThreshold) {
                         // Passed offline threshold -> Mark offline
                         if ($device->status !== 'offline') {
                             $oldStatus = $device->status;
@@ -127,7 +139,7 @@ class AcsEvaluateStaleDevices extends Command
 
                             $this->notifyStatusChange($device, 'offline', $now, $stateEngine, $oldStatus);
                         }
-                    } elseif ($elapsedSeconds > $onlineThreshold && $device->status !== 'stale') {
+                    } elseif ($elapsedSeconds > $effectiveOnlineThreshold && $device->status !== 'stale') {
                         // Passed online threshold but within offline tolerance -> Mark stale
                         $oldStatus = $device->status;
                         $device->update(['status' => 'stale']);
