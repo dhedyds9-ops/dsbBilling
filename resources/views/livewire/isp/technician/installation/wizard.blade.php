@@ -700,24 +700,112 @@
         @endif
 
         @if($currentStep === 4)
-            <h3 class="text-base font-black mb-4 text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">settings_input_component</span> OLT & PON
-            </h3>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-black text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">settings_input_component</span> OLT & Port PON
+                </h3>
+                <span class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
+                    Auto-Discovery
+                </span>
+            </div>
+
             <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">OLT Server</label>
-                    <select wire:model="olt_id" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
-                        <option value="">-- Pilih OLT --</option>
-                        @foreach($olts as $olt)
-                            <option value="{{ $olt->id }}">{{ $olt->name }} ({{ $olt->ip_address }})</option>
-                        @endforeach
-                    </select>
+                    <div class="relative">
+                        <select wire:model.live="olt_id" class="w-full pl-10 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none transition-colors">
+                            <option value="">-- Pilih OLT --</option>
+                            @foreach($olts as $olt)
+                                <option value="{{ $olt->id }}">{{ $olt->name }} ({{ $olt->ip_address }})</option>
+                            @endforeach
+                        </select>
+                        <span class="material-symbols-outlined absolute left-3 top-3 text-slate-400 text-lg pointer-events-none notranslate" translate="no">dns</span>
+                    </div>
                     @error('olt_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
+
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">PON Port</label>
-                    <input type="number" wire:model="pon_port" min="1" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-center font-bold text-lg dark:bg-slate-900 dark:text-slate-100" placeholder="1">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">PON Port (Nomor Port OLT)</label>
+                    <div class="relative">
+                        <input type="number" wire:model.live.debounce.300ms="pon_port" min="1" class="w-full pl-10 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 outline-none" placeholder="Contoh: 1">
+                        <span class="material-symbols-outlined absolute left-3 top-3 text-slate-400 text-lg pointer-events-none notranslate" translate="no">hub</span>
+                    </div>
                     @error('pon_port') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                {{-- Fitur Pindai / Deteksi SN Unconfigured Otomatis dari OLT --}}
+                <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                        <div>
+                            <span class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-indigo-500 text-base notranslate" translate="no">radar</span>
+                                Deteksi SN ONT di OLT (Unconfigured / Autofind)
+                            </span>
+                            <p class="text-[11px] text-slate-400">Pindai modem ONT yang baru dicolok kabel fiber agar Serial Number langsung terdeteksi tanpa ketik manual.</p>
+                        </div>
+                        <button type="button" 
+                                wire:click="detectUnregisteredOnus" 
+                                wire:loading.attr="disabled"
+                                @if(empty($olt_id)) disabled @endif
+                                class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer">
+                            <span wire:loading.remove wire:target="detectUnregisteredOnus" class="material-symbols-outlined text-base notranslate" translate="no">search</span>
+                            <span wire:loading wire:target="detectUnregisteredOnus" class="inline-block animate-spin material-symbols-outlined text-base notranslate" translate="no">progress_activity</span>
+                            <span wire:loading.remove wire:target="detectUnregisteredOnus">Pindai SN di OLT</span>
+                            <span wire:loading wire:target="detectUnregisteredOnus">Sedang Memindai...</span>
+                        </button>
+                    </div>
+
+                    @if(!empty($oltScanMessage))
+                        <div class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2 mt-2 animate-fadeIn">
+                            <span class="material-symbols-outlined text-amber-500 text-base shrink-0 mt-0.5 notranslate" translate="no">info</span>
+                            <span>{{ $oltScanMessage }}</span>
+                        </div>
+                    @endif
+
+                    {{-- Daftar ONT Unconfigured Terdeteksi --}}
+                    @if(!empty($discoveredOnus))
+                        <div class="mt-3 space-y-2 animate-fadeIn">
+                            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                                <span>Ditemukan {{ count($discoveredOnus) }} ONT Baru pada OLT:</span>
+                                @if(!empty($onu_sn))
+                                    <span class="text-emerald-600 dark:text-emerald-400 font-bold text-[11px] flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-xs notranslate" translate="no">check_circle</span>
+                                        SN Dipilih: {{ $onu_sn }}
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                @foreach($discoveredOnus as $disc)
+                                    @php
+                                        $discSn = $disc['serial_number'] ?? '';
+                                        $discPon = $disc['pon_port'] ?? 1;
+                                        $isThisSelected = !empty($onu_sn) && strtoupper($onu_sn) === strtoupper($discSn);
+                                    @endphp
+                                    <div class="p-3 rounded-xl border transition-all flex items-center justify-between gap-3 {{ $isThisSelected ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 ring-2 ring-emerald-500/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 hover:border-indigo-300' }}">
+                                        <div class="min-w-0">
+                                            <div class="font-mono font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                                                <span class="material-symbols-outlined text-indigo-500 text-base notranslate" translate="no">router</span>
+                                                <span class="truncate">{{ $discSn }}</span>
+                                            </div>
+                                            <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
+                                                <span class="font-semibold text-slate-700 dark:text-slate-300">PON {{ $discPon }}</span>
+                                                <span>•</span>
+                                                <span>Vendor: {{ $disc['vendor_oui'] ?? substr($discSn, 0, 4) }}</span>
+                                                @if(!empty($disc['source']) && $disc['source'] === 'inventory')
+                                                    <span class="text-[10px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.2 rounded text-slate-600 dark:text-slate-300">Gudang</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <button type="button"
+                                                wire:click="selectDiscoveredOnu('{{ $discSn }}', {{ $discPon }})"
+                                                class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer {{ $isThisSelected ? 'bg-emerald-600 text-white shadow-xs' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs' }}">
+                                            {{ $isThisSelected ? 'Dipilih ✓' : 'Gunakan' }}
+                                        </button>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
         @endif
@@ -726,7 +814,18 @@
             <h3 class="text-base font-black mb-1 text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">qr_code_scanner</span> Registrasi ONU
             </h3>
-            <p class="text-slate-400 text-xs mb-4">Ketik manual atau gunakan kamera HP untuk scan Serial Number (SN).</p>
+            <p class="text-slate-400 text-xs mb-4">Ketik manual, pilih dari deteksi OLT pada tahap sebelumnya, atau gunakan kamera HP untuk scan Serial Number (SN).</p>
+
+            @if(!empty($onu_sn))
+                <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between gap-2 mb-4 animate-fadeIn">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-emerald-600 text-lg notranslate" translate="no">verified</span>
+                        <span>SN Terisi Otomatis: <strong class="font-mono text-sm">{{ $onu_sn }}</strong> (Port PON {{ $pon_port ?? 1 }})</span>
+                    </div>
+                    <button type="button" wire:click="$set('onu_sn', '')" class="text-[11px] text-emerald-700 hover:text-red-500 font-bold underline cursor-pointer">Ganti SN</button>
+                </div>
+            @endif
+
             <div class="space-y-4" x-data="{
                 scannerOpen: false,
                 html5QrcodeScanner: null,
@@ -776,7 +875,7 @@
                 <div class="relative flex gap-2" x-show="!scannerOpen">
                     <div class="relative flex-1">
                         <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:22px">barcode</span>
-                        <input type="text" wire:model="onu_sn" class="w-full pl-12 pr-4 py-4 font-mono text-xl font-black tracking-widest border-2 border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 uppercase" placeholder="ZTEG1234..." autofocus>
+                        <input type="text" wire:model.live.debounce.300ms="onu_sn" class="w-full pl-12 pr-4 py-4 font-mono text-xl font-black tracking-widest border-2 border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 uppercase" placeholder="ZTEG1234..." autofocus>
                     </div>
                     <button type="button" @click="startScanner" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-4 flex flex-col items-center justify-center transition-colors shadow-md">
                         <span class="material-symbols-outlined" style="font-size:24px">photo_camera</span>

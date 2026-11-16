@@ -44,6 +44,11 @@ class Wizard extends Component
     public $onu_vendor_id;
     public $onu_model;
 
+    // Deteksi ONT Unconfigured dari OLT
+    public array $discoveredOnus = [];
+    public bool $isScanningOlt = false;
+    public string $oltScanMessage = '';
+
     public $custom_username = '';
     public $custom_password = '';
 
@@ -501,6 +506,91 @@ class Wizard extends Component
                 $this->wifi_ssid = 'WINETS-' . substr($sn, -4);
             }
         }
+    }
+
+    public function updatedOltId($value)
+    {
+        $this->discoveredOnus = [];
+        $this->oltScanMessage = '';
+    }
+
+    public function detectUnregisteredOnus(): void
+    {
+        $this->discoveredOnus = [];
+        $this->oltScanMessage = '';
+
+        if (empty($this->olt_id)) {
+            $this->oltScanMessage = 'Pilih OLT terlebih dahulu sebelum memindai.';
+            return;
+        }
+
+        $olt = Olt::withoutGlobalScopes()->find($this->olt_id);
+        if (!$olt) {
+            $this->oltScanMessage = 'Data OLT tidak ditemukan di sistem.';
+            return;
+        }
+
+        $discovered = [];
+        try {
+            $registry = app(\App\Services\Adapters\Provisioning\OltRegistry::class);
+            $driver = $registry->forOlt($olt);
+            $rawDiscovered = $driver->discoverUnregisteredOnus();
+            if (is_array($rawDiscovered) && !empty($rawDiscovered)) {
+                $discovered = $rawDiscovered;
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("[Wizard::detectUnregisteredOnus] OLT {$olt->id} discovery: " . $e->getMessage());
+            $this->oltScanMessage = 'Peringatan koneksi OLT: ' . $e->getMessage();
+        }
+
+        // Filter jika pon_port sudah diisi teknisi
+        $targetPort = !empty($this->pon_port) ? (int) $this->pon_port : null;
+        if ($targetPort !== null && !empty($discovered)) {
+            $filtered = array_values(array_filter($discovered, function ($item) use ($targetPort) {
+                return isset($item['pon_port']) && (int) $item['pon_port'] === $targetPort;
+            }));
+            if (!empty($filtered)) {
+                $discovered = $filtered;
+            }
+        }
+
+        // Brownfield / Offline Inventory Fallback jika belum ada ont unconfigured realtime
+        if (empty($discovered)) {
+            $dbQuery = \App\Models\ISP\Onu::withoutGlobalScopes()
+                ->where('olt_id', $olt->id)
+                ->whereIn('provision_status', ['unprovisioned', 'pending', 'new']);
+            if ($targetPort !== null) {
+                $dbQuery->where('pon_port', $targetPort);
+            }
+            $dbOnus = $dbQuery->limit(10)->get();
+            foreach ($dbOnus as $dbOnu) {
+                $discovered[] = [
+                    'pon_port' => (int) ($dbOnu->pon_port ?: $targetPort ?: 1),
+                    'onu_id' => (int) ($dbOnu->onu_id_on_olt ?: 1),
+                    'serial_number' => strtoupper($dbOnu->serial_number),
+                    'vendor_oui' => strtoupper(substr($dbOnu->serial_number, 0, 4)),
+                    'source' => 'inventory',
+                ];
+            }
+        }
+
+        $this->discoveredOnus = $discovered;
+
+        if (empty($this->discoveredOnus)) {
+            $this->oltScanMessage = 'Tidak ditemukan ONT unconfigured (autofind) pada OLT ini. Pastikan modem ONT sudah terhubung ke kabel fiber dan lampu PON menyala.';
+        } else {
+            $this->oltScanMessage = '';
+        }
+    }
+
+    public function selectDiscoveredOnu(string $sn, ?int $ponPort = null): void
+    {
+        $cleanSn = strtoupper(trim($sn));
+        $this->onu_sn = $cleanSn;
+        if (!empty($ponPort)) {
+            $this->pon_port = (string) $ponPort;
+        }
+        $this->updatedOnuSn($cleanSn);
     }
 
     public function nextStep()
@@ -1104,6 +1194,10 @@ class Wizard extends Component
         $q = trim($query);
 
         return Customer::withoutGlobalScopes()
+            ->whereRaw('LOWER(name) NOT LIKE ?', ['guest%'])
+            ->whereRaw('LOWER(code) NOT LIKE ?', ['gst-%'])
+            ->whereRaw('LOWER(name) NOT LIKE ?', ['tamu%'])
+            ->whereRaw('LOWER(name) NOT LIKE ?', ['voucher%'])
             ->when(!empty($q), function ($b) use ($q) {
                 $b->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
@@ -1402,7 +1496,11 @@ class Wizard extends Component
             }
         }
 
-        $customersQuery = Customer::withoutGlobalScopes();
+        $customersQuery = Customer::withoutGlobalScopes()
+            ->whereRaw('LOWER(name) NOT LIKE ?', ['guest%'])
+            ->whereRaw('LOWER(code) NOT LIKE ?', ['gst-%'])
+            ->whereRaw('LOWER(name) NOT LIKE ?', ['tamu%'])
+            ->whereRaw('LOWER(name) NOT LIKE ?', ['voucher%']);
         $customerSearchTerm = trim((string) $this->customer_search);
         if ($customerSearchTerm !== '') {
             $like = '%' . $customerSearchTerm . '%';
