@@ -112,8 +112,8 @@ class Create extends AdminComponent
                 'branch_id'   => null,
             ];
 
-            // Generate customer code
-            $code = $this->customer_code ?: $this->generateCustomerCode();
+            // Generate customer code (pastikan unik secara global lintas reseller & cabang)
+            $code = \App\Services\CRM\CustomerCodeGenerator::ensureUnique($this->customer_code);
 
             $result = $provisioningService->activatePPPoEService(array_merge([
                 'name'               => $this->name,

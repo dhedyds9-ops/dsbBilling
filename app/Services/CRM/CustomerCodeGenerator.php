@@ -10,38 +10,89 @@ class CustomerCodeGenerator
     public static function generate(): string
     {
         $prefix = date("Ymd");
-        
-        // Cari kode tertinggi yang sudah pernah dipakai untuk prefix hari ini (termasuk record yang di-soft-delete)
-        $latestCustomerCode = Customer::withTrashed()
+        $prefixLen = strlen($prefix);
+
+        // Ambil seluruh kode dengan prefix hari ini secara global (tanpa terhalang HasResellerScope / HasBranchScope)
+        $customerCodes = Customer::withoutGlobalScopes()
+            ->withTrashed()
             ->where('code', 'like', $prefix . '%')
-            ->orderBy('code', 'desc')
-            ->value('code');
+            ->pluck('code');
 
-        $latestUserCode = User::where('customer_code', 'like', $prefix . '%')
-            ->orderBy('customer_code', 'desc')
-            ->value('customer_code');
+        $userCodes = User::withoutGlobalScopes()
+            ->where('customer_code', 'like', $prefix . '%')
+            ->pluck('customer_code');
 
-        $highestCode = max((string)$latestCustomerCode, (string)$latestUserCode);
+        $usernames = User::withoutGlobalScopes()
+            ->where('username', 'like', $prefix . '%')
+            ->pluck('username');
 
-        if (!empty($highestCode) && str_starts_with($highestCode, $prefix)) {
-            $lastSequence = (int) substr($highestCode, strlen($prefix));
-            $count = $lastSequence + 1;
-        } else {
-            $count = max(
-                User::where('customer_code', 'like', $prefix . '%')->count(),
-                Customer::withTrashed()->where('code', 'like', $prefix . '%')->count()
-            ) + 1;
+        $maxSequence = 0;
+
+        foreach ($customerCodes->concat($userCodes)->concat($usernames) as $existingCode) {
+            if (!is_string($existingCode) || !str_starts_with($existingCode, $prefix)) {
+                continue;
+            }
+            $suffix = substr($existingCode, $prefixLen);
+            if ($suffix !== '' && ctype_digit($suffix)) {
+                $seq = (int) $suffix;
+                if ($seq > $maxSequence) {
+                    $maxSequence = $seq;
+                }
+            }
         }
-        
+
+        $count = $maxSequence + 1;
+
         do {
-            $candidate = $prefix . str_pad((string)$count, 2, "0", STR_PAD_LEFT);
-            $exists = User::where("customer_code", $candidate)->exists() 
-                   || Customer::withTrashed()->where("code", $candidate)->exists();
+            $candidate = $prefix . str_pad((string) $count, 2, "0", STR_PAD_LEFT);
+            $exists = self::codeExists($candidate);
             if ($exists) {
                 $count++;
             }
         } while ($exists);
 
         return $candidate;
+    }
+
+    /**
+     * Pastikan kode yang diberikan belum terpakai secara global.
+     * Jika kosong atau sudah dipakai, otomatis buat kode baru berikutnya.
+     */
+    public static function ensureUnique(?string $code = null): string
+    {
+        $clean = $code ? trim($code) : '';
+        if ($clean !== '' && !self::codeExists($clean)) {
+            return $clean;
+        }
+
+        return self::generate();
+    }
+
+    /**
+     * Cek apakah kode sudah dipakai di tabel customers (termasuk soft-deleted & lintas reseller/cabang)
+     * atau di tabel users (customer_code / username).
+     */
+    public static function codeExists(string $code): bool
+    {
+        $lower = strtolower(trim($code));
+        if ($lower === '') {
+            return false;
+        }
+
+        $inUsers = User::withoutGlobalScopes()
+            ->where(function ($q) use ($lower) {
+                $q->whereRaw('LOWER(customer_code) = ?', [$lower])
+                  ->orWhereRaw('LOWER(username) = ?', [$lower]);
+            })
+            ->exists();
+
+        if ($inUsers) {
+            return true;
+        }
+
+        return Customer::withoutGlobalScopes()
+            ->withTrashed()
+            ->whereRaw('LOWER(code) = ?', [$lower])
+            ->exists();
     }
 }

@@ -86,10 +86,7 @@ class Create extends AdminComponent
         }
 
         try {
-            $code = $this->customer_code;
-            if (empty($code)) {
-                $code = \App\Services\CRM\CustomerCodeGenerator::generate();
-            }
+            $code = \App\Services\CRM\CustomerCodeGenerator::ensureUnique($this->customer_code);
 
             $ownershipData = [
                 'reseller_id' => $this->reseller_id ?: null,

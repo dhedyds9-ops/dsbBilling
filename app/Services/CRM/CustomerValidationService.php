@@ -173,9 +173,9 @@ class CustomerValidationService
             }
         }
 
-        // 4. Validasi ID Pelanggan (code) jika diisi manual
-        if ($code) {
-            $codeQ = Customer::withoutGlobalScopes()->whereRaw('LOWER(code) = ?', [strtolower(trim($code))]);
+        // 4. Validasi ID Pelanggan (code) hanya jika diisi manual secara eksplisit
+        if ($code && !empty($data['is_manual_code'])) {
+            $codeQ = Customer::withoutGlobalScopes()->withTrashed()->whereRaw('LOWER(code) = ?', [strtolower(trim($code))]);
             if ($excludeCustomerId) $codeQ->where('id', '!=', $excludeCustomerId);
             if ($codeQ->exists()) {
                 throw new \InvalidArgumentException("ID Pelanggan '{$code}' sudah digunakan. Setiap pelanggan harus memiliki ID yang unik.");

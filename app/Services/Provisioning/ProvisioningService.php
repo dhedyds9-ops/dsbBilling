@@ -446,7 +446,7 @@ class ProvisioningService
             if ($customer) {
                 // Pastikan user portal login tersedia jika belum ada
                 if (empty($customer->user_id)) {
-                    $code = $customer->code ?: ($data['customer_code'] ?? \App\Services\CRM\CustomerCodeGenerator::generate());
+                    $code = $customer->code ?: \App\Services\CRM\CustomerCodeGenerator::ensureUnique($data['customer_code'] ?? null);
                     if (empty($customer->code)) {
                         $customer->update(['code' => $code]);
                     }
@@ -515,7 +515,7 @@ class ProvisioningService
         }
 
         if (!$customer) {
-            $generatedCode = $data['customer_code'] ?? \App\Services\CRM\CustomerCodeGenerator::generate();
+            $generatedCode = \App\Services\CRM\CustomerCodeGenerator::ensureUnique($data['customer_code'] ?? null);
 
             // Create user portal login
             $user = \App\Models\User::create([
@@ -550,7 +550,7 @@ class ProvisioningService
         } else {
             // Jika customer yang ditemukan adalah Guest Voucher, upgrade menjadi regular customer
             if ($isGuest) {
-                $newCode = $data['customer_code'] ?? \App\Services\CRM\CustomerCodeGenerator::generate();
+                $newCode = \App\Services\CRM\CustomerCodeGenerator::ensureUnique($data['customer_code'] ?? null);
                 $customer->update([
                     'code' => $newCode,
                     'name' => $data['name'],
@@ -596,7 +596,7 @@ class ProvisioningService
 
             // Jika customer sudah ada tapi belum punya akun login portal, buatkan sekarang
             if (empty($customer->user_id)) {
-                $code = $customer->code ?: ($data['customer_code'] ?? \App\Services\CRM\CustomerCodeGenerator::generate());
+                $code = $customer->code ?: \App\Services\CRM\CustomerCodeGenerator::ensureUnique($data['customer_code'] ?? null);
                 if (empty($customer->code)) {
                     $customer->update(['code' => $code]);
                 }
