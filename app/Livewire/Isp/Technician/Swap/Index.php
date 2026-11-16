@@ -362,9 +362,40 @@ class Index extends Component
     {
         $user = Auth::user();
 
-        // Ambil stok ONT teknisi dari support_maintenance_materials
         $ontMaterials = collect();
-        if (Schema::hasTable('support_maintenance_materials')) {
+
+        // 1. Utamakan stok ONT dari Enterprise InventoryCustody milik teknisi
+        if ($user && Schema::hasTable('inventory_custodies')) {
+            $custodies = \App\Models\Inventory\InventoryCustody::withoutGlobalScopes()
+                ->with(['item', 'itemSerial'])
+                ->where('holder_id', $user->id)
+                ->where('status', 'in_custody')
+                ->whereRaw('(quantity - used_quantity - returned_quantity) > 0')
+                ->whereHas('item', function ($q) {
+                    $q->where('name', 'like', '%ONU%')
+                      ->orWhere('name', 'like', '%ONT%')
+                      ->orWhere('name', 'like', '%Modem%')
+                      ->orWhere('sku', 'like', '%ONU%')
+                      ->orWhere('sku', 'like', '%ONT%');
+                })
+                ->get();
+
+            foreach ($custodies as $c) {
+                $avail = max(0, (int) ((float) $c->quantity - (float) $c->used_quantity - (float) $c->returned_quantity));
+                $snSuffix = $c->itemSerial?->serial_number ? " [SN: {$c->itemSerial->serial_number}]" : '';
+                $ontMaterials->push((object) [
+                    'id' => $c->id,
+                    'name' => ($c->item?->name ?? 'Modem ONT') . $snSuffix,
+                    'sku' => $c->item?->sku ?? 'ONT',
+                    'stock' => $avail,
+                    'unit' => $c->item?->unit ?? 'unit',
+                    'source' => 'custody',
+                ]);
+            }
+        }
+
+        // 2. Fallback / penggabungan dengan support_maintenance_materials untuk backward compatibility
+        if ($ontMaterials->isEmpty() && Schema::hasTable('support_maintenance_materials')) {
             $ontMaterials = DB::table('support_maintenance_materials')
                 ->where(function ($q) {
                     $q->where('category', 'Perangkat Aktif')

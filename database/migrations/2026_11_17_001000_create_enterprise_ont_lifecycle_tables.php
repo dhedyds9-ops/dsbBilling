@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -27,6 +28,22 @@ return new class extends Migration
                     $table->unsignedBigInteger('audited_by')->nullable()->after('audited_at');
                 }
             });
+
+            // Normalisasi status legacy tanpa merusak histori
+            DB::table('onus')->where('status', 'dismantled_good')->update([
+                'status' => 'dismantled',
+                'condition' => 'good',
+                'operational_status' => 'offline',
+            ]);
+            DB::table('onus')->where('status', 'dismantled_damaged')->update([
+                'status' => 'dismantled',
+                'condition' => 'damaged',
+                'operational_status' => 'offline',
+            ]);
+            DB::table('onus')->where('status', 'online')->update([
+                'status' => 'active',
+                'operational_status' => 'online',
+            ]);
         }
 
         // 2. Create onu_histories table for full ONT lifecycle tracking & idempotency
@@ -71,26 +88,41 @@ return new class extends Migration
     public function down(): void
     {
         if (Schema::hasTable('work_orders')) {
-            Schema::table('work_orders', function (Blueprint $table) {
-                if (Schema::hasColumn('work_orders', 'source_id')) {
-                    $table->dropColumn('source_id');
-                }
-                if (Schema::hasColumn('work_orders', 'source_type')) {
-                    $table->dropColumn('source_type');
-                }
-            });
+            if (Schema::hasColumn('work_orders', 'source_id')) {
+                try {
+                    Schema::table('work_orders', fn (Blueprint $t) => $t->dropIndex(['source_id']));
+                } catch (\Throwable $e) {}
+                Schema::table('work_orders', fn (Blueprint $t) => $t->dropColumn('source_id'));
+            }
+            if (Schema::hasColumn('work_orders', 'source_type')) {
+                try {
+                    Schema::table('work_orders', fn (Blueprint $t) => $t->dropIndex(['source_type']));
+                } catch (\Throwable $e) {}
+                Schema::table('work_orders', fn (Blueprint $t) => $t->dropColumn('source_type'));
+            }
         }
 
-        Schema::dropIfExists('onu_histories');
+        // Jangan menghapus tabel onu_histories jika sudah berisi histori operasional!
+        if (Schema::hasTable('onu_histories')) {
+            $hasOperationalHistory = DB::table('onu_histories')->exists();
+            if (!$hasOperationalHistory) {
+                Schema::dropIfExists('onu_histories');
+            }
+        }
 
         if (Schema::hasTable('onus')) {
-            Schema::table('onus', function (Blueprint $table) {
-                foreach (['audited_by', 'audited_at', 'operational_status', 'audit_status', 'condition'] as $col) {
-                    if (Schema::hasColumn('onus', $col)) {
-                        $table->dropColumn($col);
-                    }
+            foreach (['operational_status', 'audit_status', 'condition'] as $indexedCol) {
+                if (Schema::hasColumn('onus', $indexedCol)) {
+                    try {
+                        Schema::table('onus', fn (Blueprint $t) => $t->dropIndex([$indexedCol]));
+                    } catch (\Throwable $e) {}
                 }
-            });
+            }
+            foreach (['audited_by', 'audited_at', 'operational_status', 'audit_status', 'condition'] as $col) {
+                if (Schema::hasColumn('onus', $col)) {
+                    Schema::table('onus', fn (Blueprint $t) => $t->dropColumn($col));
+                }
+            }
         }
     }
 };

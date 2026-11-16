@@ -13,6 +13,7 @@ use App\Models\Support\Ticket;
 use App\Models\User;
 use App\Models\Workforce\WorkOrder;
 use App\Services\Inventory\StockMutationService;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -25,21 +26,93 @@ class OntLifecycleService
     ) {}
 
     /**
+     * Normalisasi transaction_id agar aman untuk unique index (maks 90 karakter sehingga aman ditambah suffix '-OUT').
+     */
+    protected function normalizeTransactionId(?string $rawTxId): ?string
+    {
+        if ($rawTxId === null) {
+            return null;
+        }
+        $clean = trim($rawTxId);
+        if ($clean === '') {
+            return null;
+        }
+        return substr($clean, 0, 90);
+    }
+
+    /**
+     * Eksekusi transaksi dengan proteksi idempotensi penuh (termasuk tangkapan duplicate-key akibat race condition paralel).
+     */
+    protected function runIdempotentTransaction(?string $txId, callable $callback): array
+    {
+        if ($txId) {
+            $existing = OnuHistory::withoutGlobalScopes()
+                ->where('transaction_id', $txId)
+                ->first();
+            if ($existing && !empty($existing->payload)) {
+                return array_merge($existing->payload, ['idempotent_replay' => true]);
+            }
+        }
+
+        try {
+            return DB::transaction(function () use ($txId, $callback) {
+                if ($txId) {
+                    $inTxExisting = OnuHistory::withoutGlobalScopes()
+                        ->where('transaction_id', $txId)
+                        ->lockForUpdate()
+                        ->first();
+                    if ($inTxExisting && !empty($inTxExisting->payload)) {
+                        return array_merge($inTxExisting->payload, ['idempotent_replay' => true]);
+                    }
+                }
+
+                return $callback();
+            });
+        } catch (QueryException $qe) {
+            $msg = $qe->getMessage();
+            $isUniqueViolation = str_contains($msg, 'UNIQUE constraint failed')
+                || str_contains($msg, 'Duplicate entry')
+                || in_array($qe->getCode(), ['23000', '23505', 23000, 1062, 19], true);
+
+            if ($txId && $isUniqueViolation) {
+                $committed = OnuHistory::withoutGlobalScopes()
+                    ->where('transaction_id', $txId)
+                    ->first();
+                if ($committed && !empty($committed->payload)) {
+                    return array_merge($committed->payload, ['idempotent_replay' => true]);
+                }
+            }
+
+            throw $qe;
+        }
+    }
+
+    /**
+     * Hitung ulang jumlah port aktif pada ODP (hanya menghitung ONU dengan status = 'active').
+     */
+    public function recalculateOdpUsedPorts(?int $odpId): void
+    {
+        if (!$odpId) {
+            return;
+        }
+
+        $odp = Odp::withoutGlobalScopes()->find($odpId);
+        if ($odp) {
+            $activeCount = Onu::withoutGlobalScopes()
+                ->where('odp_id', $odp->id)
+                ->where('status', Onu::STATUS_ACTIVE)
+                ->count();
+            $odp->update(['used_port_count' => $activeCount]);
+        }
+    }
+
+    /**
      * 1. SENSUS (Field Audit ONU & ODP)
      * Tidak memaksa operational_status menjadi 'online' kecuali ada sinyal riil dari OLT/ACS.
      */
     public function recordSensus(array $data, User $actor): array
     {
-        $txId = !empty($data['transaction_id']) ? trim((string) $data['transaction_id']) : null;
-
-        if ($txId) {
-            $existingHistory = OnuHistory::withoutGlobalScopes()
-                ->where('transaction_id', $txId)
-                ->first();
-            if ($existingHistory && !empty($existingHistory->payload)) {
-                return array_merge($existingHistory->payload, ['idempotent_replay' => true]);
-            }
-        }
+        $txId = $this->normalizeTransactionId($data['transaction_id'] ?? null);
 
         $sn = strtoupper(trim((string) ($data['onu_sn'] ?? $data['serial_number'] ?? '')));
         if ($sn === '') {
@@ -55,7 +128,7 @@ class OntLifecycleService
         $latitude = $data['latitude'] ?? null;
         $longitude = $data['longitude'] ?? null;
 
-        return DB::transaction(function () use (
+        return $this->runIdempotentTransaction($txId, function () use (
             $txId,
             $sn,
             $isTitipan,
@@ -83,24 +156,27 @@ class OntLifecycleService
                 ?? ($odpId ? Odp::withoutGlobalScopes()->where('id', $odpId)->value('branch_id') : null)
                 ?? 1;
 
-            // Cek apakah SN sedang aktif digunakan oleh pelanggan lain
+            // Cek apakah SN sedang aktif digunakan oleh pelanggan lain (baik mode reguler maupun mode Titipan!)
             $existingOnu = Onu::withoutGlobalScopes()
                 ->where('serial_number', $sn)
                 ->lockForUpdate()
                 ->first();
 
-            if ($existingOnu && !$isTitipan && $customer) {
-                $activeOtherCs = CustomerService::withoutGlobalScopes()
+            if ($existingOnu) {
+                $activeOtherCsQuery = CustomerService::withoutGlobalScopes()
                     ->where('onu_id', $existingOnu->id)
                     ->where('status', 'active')
-                    ->where('customer_id', '!=', $customer->id)
-                    ->with('customer')
-                    ->first();
+                    ->with('customer');
 
+                if (!$isTitipan && $customer) {
+                    $activeOtherCsQuery->where('customer_id', '!=', $customer->id);
+                }
+
+                $activeOtherCs = $activeOtherCsQuery->first();
                 if ($activeOtherCs) {
                     $otherName = $activeOtherCs->customer?->name ?? ('Pelanggan #' . $activeOtherCs->customer_id);
                     throw new \InvalidArgumentException(
-                        "ONU SN {$sn} sedang aktif digunakan oleh pelanggan lain ({$otherName}). Tidak dapat dialihkan secara sepihak."
+                        "ONU SN {$sn} sedang aktif digunakan oleh pelanggan ({$otherName}). Tidak dapat dialihkan secara sepihak."
                     );
                 }
             }
@@ -178,12 +254,12 @@ class OntLifecycleService
                 ], $onuData));
             }
 
+            // Rekalkulasi port ODP lama (jika pindah ODP) dan ODP baru
+            if ($oldOdpId && (int) $oldOdpId !== (int) $odpId) {
+                $this->recalculateOdpUsedPorts((int) $oldOdpId);
+            }
             if ($odpId) {
-                $odp = Odp::withoutGlobalScopes()->find($odpId);
-                if ($odp) {
-                    $count = Onu::withoutGlobalScopes()->where('odp_id', $odp->id)->count();
-                    $odp->update(['used_port_count' => $count]);
-                }
+                $this->recalculateOdpUsedPorts((int) $odpId);
             }
 
             if ($customer && !$isTitipan) {
@@ -256,16 +332,7 @@ class OntLifecycleService
      */
     public function executeSwap(array $data, User $actor): array
     {
-        $txId = !empty($data['transaction_id']) ? trim((string) $data['transaction_id']) : null;
-
-        if ($txId) {
-            $existingHistory = OnuHistory::withoutGlobalScopes()
-                ->where('transaction_id', $txId)
-                ->first();
-            if ($existingHistory && !empty($existingHistory->payload)) {
-                return array_merge($existingHistory->payload, ['idempotent_replay' => true]);
-            }
-        }
+        $txId = $this->normalizeTransactionId($data['transaction_id'] ?? null);
 
         $oldSn = strtoupper(trim((string) ($data['old_serial_number'] ?? '')));
         $newSn = strtoupper(trim((string) ($data['new_serial_number'] ?? '')));
@@ -277,7 +344,7 @@ class OntLifecycleService
             throw new \InvalidArgumentException('Serial Number baru tidak boleh sama dengan Serial Number lama.');
         }
 
-        return DB::transaction(function () use ($txId, $oldSn, $newSn, $data, $actor) {
+        return $this->runIdempotentTransaction($txId, function () use ($txId, $oldSn, $newSn, $data, $actor) {
             $oldOnu = null;
             if (!empty($data['old_onu_id'])) {
                 $oldOnu = Onu::withoutGlobalScopes()->lockForUpdate()->find($data['old_onu_id']);
@@ -287,6 +354,14 @@ class OntLifecycleService
 
             if ($oldOnu && $oldSn === '') {
                 $oldSn = (string) $oldOnu->serial_number;
+            }
+
+            // Proteksi Concurrent Swap & APK lama tanpa transaction_id:
+            // Jika ONT lama sudah berstatus 'replaced', tolak agar tidak terjadi mutasi stok ganda!
+            if ($oldOnu && $oldOnu->status === Onu::STATUS_REPLACED) {
+                throw new \InvalidArgumentException(
+                    "Perangkat ONT lama {$oldSn} sudah berstatus replaced (diganti). Operasi dibatalkan untuk mencegah mutasi stok ganda."
+                );
             }
 
             // Reseller / Tenant boundary check
@@ -328,6 +403,10 @@ class OntLifecycleService
                 ->first();
 
             if ($existingNewOnu && (!$oldOnu || $existingNewOnu->id !== $oldOnu->id)) {
+                if ($existingNewOnu->status === Onu::STATUS_DAMAGED || $existingNewOnu->condition === Onu::CONDITION_DAMAGED) {
+                    throw new \InvalidArgumentException("SN {$newSn} tercatat dalam kondisi rusak (damaged) dan tidak dapat dipasang.");
+                }
+
                 $otherActive = CustomerService::withoutGlobalScopes()
                     ->where('onu_id', $existingNewOnu->id)
                     ->where('status', 'active')
@@ -351,8 +430,29 @@ class OntLifecycleService
 
             $branchId = $oldOnu?->branch_id ?? $customer?->branch_id ?? $actor->branch_id ?? 1;
 
-            // 1. Update ONT Lama -> status 'replaced'
+            // 1. Mutasi Stok terlebih dahulu via StockMutationService (agar jika Inventory Shortage, langsung gagal sebelum mengubah ONT)
+            $ticketId = !empty($data['ticket_id']) ? (int) $data['ticket_id'] : null;
+            $workOrderId = !empty($data['work_order_id']) ? (int) $data['work_order_id'] : null;
+
+            $stockResult = $this->stockMutationService->recordOntSwap(
+                technicianId: $actor->id,
+                oldSn: $oldSn ?: 'ONT-LAMA',
+                newSn: $newSn,
+                oldCondition: $oldCondition,
+                customerId: $customerId,
+                ticketId: $ticketId,
+                workOrderId: $workOrderId,
+                supportMaterialId: !empty($data['selected_material_id']) ? (int) $data['selected_material_id'] : null,
+                oldModel: $oldOnu?->model ?: 'ONT GPON',
+                newModel: !empty($data['new_model']) ? (string) $data['new_model'] : ($oldOnu?->model ?: 'ONT GPON'),
+                opticalPower: $opticalPower !== null ? (string) $opticalPower : null,
+                notes: "Penyebab swap: {$reason}. " . ($notes ? "Catatan: {$notes}" : ''),
+                enforceStock: (bool) ($data['enforce_stock'] ?? false)
+            );
+
+            // 2. Update ONT Lama -> status 'replaced'
             $oldOnuPrevStatus = $oldOnu?->status ?? 'active';
+            $oldOdpId = $oldOnu?->odp_id;
             if ($oldOnu) {
                 $oldOnu->status = Onu::STATUS_REPLACED;
                 $oldOnu->condition = $oldCondition;
@@ -365,7 +465,7 @@ class OntLifecycleService
                 $oldOnu->save();
             }
 
-            // 2. Buat atau Update ONT Baru -> status 'active'
+            // 3. Buat atau Update ONT Baru -> status 'active'
             $newOnuPrevStatus = $existingNewOnu?->status ?? Onu::STATUS_SPARE;
             $newOnuPrevOltId = $existingNewOnu?->olt_id;
             $newOnuPrevOdpId = $existingNewOnu?->odp_id;
@@ -417,7 +517,15 @@ class OntLifecycleService
                 . now()->format('d/m/Y H:i') . " oleh {$actor->name}. Alasan: {$reason}";
             $targetOnu->save();
 
-            // 3. Re-bind CustomerService ke ONT Baru
+            // Rekalkulasi port ODP jika ada perubahan
+            if ($oldOdpId) {
+                $this->recalculateOdpUsedPorts((int) $oldOdpId);
+            }
+            if ($targetOnu->odp_id && (int) $targetOnu->odp_id !== (int) $oldOdpId) {
+                $this->recalculateOdpUsedPorts((int) $targetOnu->odp_id);
+            }
+
+            // 4. Re-bind CustomerService ke ONT Baru
             if ($customerService) {
                 $customerService->update([
                     'onu_id' => $targetOnu->id,
@@ -425,7 +533,7 @@ class OntLifecycleService
                 ]);
             }
 
-            // 4. Update ACSDevice
+            // 5. Update ACSDevice
             if (Schema::hasTable('acs_devices')) {
                 if ($oldSn !== '') {
                     ACSDevice::withoutGlobalScopes()->where('serial_number', $oldSn)->update([
@@ -444,26 +552,7 @@ class OntLifecycleService
                 }
             }
 
-            // 5. Mutasi Stok via StockMutationService
-            $ticketId = !empty($data['ticket_id']) ? (int) $data['ticket_id'] : null;
-            $workOrderId = !empty($data['work_order_id']) ? (int) $data['work_order_id'] : null;
-
-            $stockResult = $this->stockMutationService->recordOntSwap(
-                technicianId: $actor->id,
-                oldSn: $oldSn ?: 'ONT-LAMA',
-                newSn: $newSn,
-                oldCondition: $oldCondition,
-                customerId: $customerId,
-                ticketId: $ticketId,
-                workOrderId: $workOrderId,
-                supportMaterialId: !empty($data['selected_material_id']) ? (int) $data['selected_material_id'] : null,
-                oldModel: $oldOnu?->model ?: 'ONT GPON',
-                newModel: $targetOnu->model ?: 'ONT GPON',
-                opticalPower: $opticalPower !== null ? (string) $opticalPower : null,
-                notes: "Penyebab swap: {$reason}. " . ($notes ? "Catatan: {$notes}" : '')
-            );
-
-            // 6. Provisioning GenieACS (Synchronous + Outbox Queue Fallback)
+            // 6. Provisioning GenieACS (Synchronous + Outbox Queue Retry Fallback)
             $acsProvisionStatus = 'pending';
             $pppoeUsername = $data['pppoe_username']
                 ?? $customerService?->pppoeUser?->username
@@ -488,6 +577,7 @@ class OntLifecycleService
                 $targetOnu->update(['provision_status' => 'queued']);
             } else {
                 try {
+                    $targetOnu->update(['provision_status' => 'processing']);
                     $genieService = app(GenieAcsProvisioningService::class);
                     $acsResult = $genieService->provisionOnt($targetOnu, $provisionOptions);
                     $acsProvisionStatus = $acsResult['status'] ?? 'pending';
@@ -498,11 +588,16 @@ class OntLifecycleService
                         ]);
                     } elseif ($acsProvisionStatus === 'waiting_device') {
                         $targetOnu->update(['provision_status' => 'waiting_device']);
+                        ProvisionOntLifecycleJob::dispatch($targetOnu->id, $provisionOptions)->delay(now()->addSeconds(30));
+                    } else {
+                        $targetOnu->update(['provision_status' => 'failed']);
+                        ProvisionOntLifecycleJob::dispatch($targetOnu->id, $provisionOptions)->delay(now()->addSeconds(30));
                     }
                 } catch (\Throwable $acsEx) {
                     Log::warning('[OntLifecycleService] GenieACS Provisioning during Swap ONT warning: ' . $acsEx->getMessage());
                     $acsProvisionStatus = 'failed';
                     $targetOnu->update(['provision_status' => 'failed']);
+                    ProvisionOntLifecycleJob::dispatch($targetOnu->id, $provisionOptions)->delay(now()->addSeconds(30));
                 }
             }
 
@@ -607,7 +702,7 @@ class OntLifecycleService
                     'condition' => $oldCondition,
                     'old_olt_id' => $oldOnu->olt_id,
                     'new_olt_id' => $oldOnu->olt_id,
-                    'old_odp_id' => $oldOnu->odp_id,
+                    'old_odp_id' => $oldOdpId,
                     'new_odp_id' => $oldOnu->odp_id,
                     'activity' => 'swap_out',
                     'technician_id' => $actor->id,
@@ -649,18 +744,9 @@ class OntLifecycleService
      */
     public function executeDismantle(array $data, User $actor): array
     {
-        $txId = !empty($data['transaction_id']) ? trim((string) $data['transaction_id']) : null;
+        $txId = $this->normalizeTransactionId($data['transaction_id'] ?? null);
 
-        if ($txId) {
-            $existingHistory = OnuHistory::withoutGlobalScopes()
-                ->where('transaction_id', $txId)
-                ->first();
-            if ($existingHistory && !empty($existingHistory->payload)) {
-                return array_merge($existingHistory->payload, ['idempotent_replay' => true]);
-            }
-        }
-
-        return DB::transaction(function () use ($txId, $data, $actor) {
+        return $this->runIdempotentTransaction($txId, function () use ($txId, $data, $actor) {
             $onu = null;
             if (!empty($data['onu_id'])) {
                 $onu = Onu::withoutGlobalScopes()->lockForUpdate()->find($data['onu_id']);
@@ -673,12 +759,21 @@ class OntLifecycleService
                 throw new \Illuminate\Database\Eloquent\ModelNotFoundException('Perangkat ONT tidak ditemukan.');
             }
 
+            $sn = (string) $onu->serial_number;
+
+            // Proteksi Concurrent Dismantle & APK lama tanpa transaction_id:
+            // Jika ONT sudah berstatus 'dismantled', tolak agar tidak terjadi penambahan stok ganda!
+            if (in_array($onu->status, [Onu::STATUS_DISMANTLED, 'dismantled_good', 'dismantled_damaged'], true)) {
+                throw new \InvalidArgumentException(
+                    "Perangkat ONT {$sn} sudah berstatus dismantled (dicabut). Operasi dibatalkan untuk mencegah mutasi stok ganda."
+                );
+            }
+
             $userResellerId = $actor->getEffectiveResellerId();
             if ($userResellerId && $onu->reseller_id && (int) $onu->reseller_id !== (int) $userResellerId) {
                 throw new \RuntimeException('Akses ditolak: Perangkat ONT bukan milik reseller/tenant Anda.');
             }
 
-            $sn = (string) $onu->serial_number;
             $oldStatus = $onu->status;
             $oldOltId = $onu->olt_id;
             $oldOdpId = $onu->odp_id;
@@ -712,6 +807,11 @@ class OntLifecycleService
                 . " oleh {$actor->name}. Alasan: {$reason}. Kondisi: {$normalizedCond}";
             $onu->updated_by = $actor->id;
             $onu->save();
+
+            // Rekalkulasi port ODP lama karena ONT telah dicabut dari ODP tersebut
+            if ($oldOdpId) {
+                $this->recalculateOdpUsedPorts((int) $oldOdpId);
+            }
 
             // 2. Lepaskan ikatan di CustomerService
             if ($customerService) {

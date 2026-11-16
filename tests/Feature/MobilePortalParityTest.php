@@ -233,10 +233,12 @@ class MobilePortalParityTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.status', 'dismantled_good')
+            ->assertJsonPath('data.status', 'dismantled')
+            ->assertJsonPath('data.condition', 'good')
             ->assertJsonPath('data.device_condition', 'good');
 
-        $this->assertEquals('dismantled_good', $onu->fresh()->status);
+        $this->assertEquals('dismantled', $onu->fresh()->status);
+        $this->assertEquals('good', $onu->fresh()->condition);
     }
 
     public function test_technician_can_view_monthly_payroll_slips(): void

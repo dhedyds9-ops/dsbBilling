@@ -1680,10 +1680,16 @@ class MobileNetworkApiController extends Controller
         $oldSn = strtoupper(trim($validated['old_serial_number']));
         $newSn = strtoupper(trim($validated['new_serial_number']));
 
-        $oldOnu = Onu::withoutGlobalScopes()->where('serial_number', $oldSn)->firstOrFail();
+        $oldOnu = Onu::withoutGlobalScopes()->where('serial_number', $oldSn)->first();
+        if (!$oldOnu && empty($validated['transaction_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => "Perangkat ONT lama ({$oldSn}) tidak ditemukan.",
+            ], 404);
+        }
 
         $userResellerId = $user->getEffectiveResellerId();
-        if ($userResellerId && $oldOnu->reseller_id && (int) $oldOnu->reseller_id !== (int) $userResellerId) {
+        if ($userResellerId && $oldOnu && $oldOnu->reseller_id && (int) $oldOnu->reseller_id !== (int) $userResellerId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Akses ditolak: Perangkat ONT bukan milik reseller/tenant Anda.'
@@ -1692,7 +1698,7 @@ class MobileNetworkApiController extends Controller
 
         try {
             $result = app(\App\Services\ISP\OntLifecycleService::class)->executeSwap(array_merge($validated, [
-                'old_onu_id' => $oldOnu->id,
+                'old_onu_id' => $oldOnu?->id,
                 'old_serial_number' => $oldSn,
                 'new_serial_number' => $newSn,
             ]), $user);
@@ -1766,24 +1772,31 @@ class MobileNetworkApiController extends Controller
             ], 403);
         }
 
-        $result = app(\App\Services\ISP\OntLifecycleService::class)->executeDismantle(array_merge($validated, [
-            'onu_id' => $onu->id,
-            'serial_number' => $sn,
-        ]), $user);
+        try {
+            $result = app(\App\Services\ISP\OntLifecycleService::class)->executeDismantle(array_merge($validated, [
+                'onu_id' => $onu->id,
+                'serial_number' => $sn,
+            ]), $user);
 
-        return response()->json([
-            'success' => true,
-            'message' => "Perangkat ONT {$sn} berhasil ditarik (Dismantle).",
-            'data' => [
-                'serial_number' => $result['serial_number'],
-                'status' => $result['status'],
-                'condition' => $result['condition'],
-                'device_condition' => $result['device_condition'],
-                'checklist' => $result['checklist'],
-                'customer_id' => $result['customer_id'],
-                'ticket_resolved' => $result['ticket_resolved'],
-                'idempotent_replay' => $result['idempotent_replay'] ?? false,
-            ],
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => "Perangkat ONT {$sn} berhasil ditarik (Dismantle).",
+                'data' => [
+                    'serial_number' => $result['serial_number'],
+                    'status' => $result['status'],
+                    'condition' => $result['condition'],
+                    'device_condition' => $result['device_condition'],
+                    'checklist' => $result['checklist'],
+                    'customer_id' => $result['customer_id'],
+                    'ticket_resolved' => $result['ticket_resolved'],
+                    'idempotent_replay' => $result['idempotent_replay'] ?? false,
+                ],
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
     }
 }
