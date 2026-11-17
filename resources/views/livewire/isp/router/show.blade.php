@@ -500,14 +500,21 @@
                           </h3>
                           <div class="relative">
                               <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]" translate="no">search</span>
-                              <input type="text" wire:model.live="searchPpp" placeholder="Cari username atau IP..." class="pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 w-64">
+                              <input type="text" wire:model.live.debounce.300ms="searchPpp" placeholder="Cari username, IP, atau MAC..." class="pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 w-72">
                           </div>
                       </div>
                       @php
     $filteredPppActive = collect($pppActive ?? [])->filter(function($session) use ($searchPpp) {
-        if (empty($searchPpp)) return true;
-        return stripos($session['name'] ?? '', $searchPpp) !== false || stripos($session['address'] ?? '', $searchPpp) !== false;
-    })->all();
+        if (empty(trim($searchPpp))) return true;
+        $term = trim($searchPpp);
+        $cleanTerm = str_replace([':', '-', '.'], '', strtolower($term));
+        $mac = $session['caller_id'] ?? $session['caller-id'] ?? $session['mac_address'] ?? '';
+        $cleanMac = str_replace([':', '-', '.'], '', strtolower($mac));
+        return stripos($session['name'] ?? '', $term) !== false 
+            || stripos($session['address'] ?? '', $term) !== false
+            || stripos($mac, $term) !== false
+            || (!empty($cleanTerm) && stripos($cleanMac, $cleanTerm) !== false);
+    })->values()->all();
 @endphp
                     <div class="overflow-x-auto relative">
                         <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
@@ -516,11 +523,12 @@
                                     <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Username</th>
                                     <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">IP Address</th>
                                     <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">MAC Address</th>
-                                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Uptime</th><th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th></tr>
-<th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Uptime</th>
+                                    <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
+                                </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
-                                @forelse($pppActive as $session)
+                                @forelse($filteredPppActive as $session)
                                     <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="flex items-center gap-3">
@@ -531,9 +539,13 @@
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono"><x-ui.ip-link :ip="$session['address'] ?? null" /></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono">{{ $session['caller-id'] ?? '-' }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono font-medium">{{ $session['caller_id'] ?? $session['caller-id'] ?? $session['mac_address'] ?? '-' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{{ $session['uptime'] ?? '-' }}</td>
-<td class="px-6 py-4 whitespace-nowrap text-right"><button wire:click="disconnectPpp('{{ $session['name'] }}')" wire:confirm="Yakin ingin kick user ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors" title="Kick"><span class="material-symbols-outlined notranslate text-[18px]" translate="no">power_settings_new</span></button></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                                            <button wire:click="disconnectPpp('{{ $session['name'] }}')" wire:confirm="Yakin ingin kick user ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer" title="Kick">
+                                                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">power_settings_new</span>
+                                            </button>
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
@@ -823,41 +835,178 @@
 
                 <!-- DHCP Leases -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
-                        <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <span class="material-symbols-outlined notranslate text-blue-500 text-[20px]" translate="no">list_alt</span>
-                            DHCP Leases
-                        </h3>
+                    <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined notranslate text-blue-500 text-[22px]" translate="no">list_alt</span>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 dark:text-white">DHCP Leases</h3>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Daftar alokasi IP Address yang sedang aktif pada DHCP Server router</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                @if(!empty($dhcpSearchIp) || !empty($dhcpSearchMac) || !empty($dhcpFilterServer) || !empty($searchDhcp))
+                                    <button type="button" wire:click="resetDhcpFilters" class="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 rounded-lg transition-colors flex items-center gap-1 cursor-pointer">
+                                        <span class="material-symbols-outlined text-[16px] notranslate" translate="no">close</span>
+                                        Reset Filter
+                                    </button>
+                                @endif
+                                @php
+                                    $filteredDhcpLeases = collect($dhcpLeases ?? [])->filter(function($lease) use ($dhcpSearchIp, $dhcpSearchMac, $dhcpFilterServer, $searchDhcp) {
+                                        if (!empty($dhcpFilterServer) && ($lease['server'] ?? '') !== $dhcpFilterServer) {
+                                            return false;
+                                        }
+                                        if (!empty(trim($dhcpSearchIp))) {
+                                            $ip = $lease['address'] ?? '';
+                                            if (stripos($ip, trim($dhcpSearchIp)) === false) {
+                                                return false;
+                                            }
+                                        }
+                                        if (!empty(trim($dhcpSearchMac))) {
+                                            $searchMac = str_replace([':', '-', '.'], '', strtolower(trim($dhcpSearchMac)));
+                                            $mac = $lease['mac-address'] ?? $lease['mac'] ?? '';
+                                            $cleanMac = str_replace([':', '-', '.'], '', strtolower($mac));
+                                            if (stripos($mac, trim($dhcpSearchMac)) === false && (!empty($searchMac) && stripos($cleanMac, $searchMac) === false)) {
+                                                return false;
+                                            }
+                                        }
+                                        if (!empty(trim($searchDhcp))) {
+                                            $q = trim($searchDhcp);
+                                            $cleanQ = str_replace([':', '-', '.'], '', strtolower($q));
+                                            $mac = $lease['mac-address'] ?? '';
+                                            $cleanMac = str_replace([':', '-', '.'], '', strtolower($mac));
+                                            $matches = stripos($lease['address'] ?? '', $q) !== false
+                                                || stripos($mac, $q) !== false
+                                                || (!empty($cleanQ) && stripos($cleanMac, $cleanQ) !== false)
+                                                || stripos($lease['server'] ?? '', $q) !== false
+                                                || stripos($lease['host-name'] ?? '', $q) !== false
+                                                || stripos($lease['comment'] ?? '', $q) !== false;
+                                            if (!$matches) {
+                                                return false;
+                                            }
+                                        }
+                                        return true;
+                                    })->values()->all();
+                                @endphp
+                                <span class="text-xs font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800/60">
+                                    {{ count($filteredDhcpLeases) }} / {{ count($dhcpLeases ?? []) }} Leases
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Baris Filter MAC, IP Address, DHCP Server, & Pencarian -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2">
+                            <!-- Filter IP Address -->
+                            <div class="relative">
+                                <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]" translate="no">hub</span>
+                                <input type="text" wire:model.live.debounce.300ms="dhcpSearchIp" placeholder="Filter IP Address..." class="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-mono bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+
+                            <!-- Filter MAC Address -->
+                            <div class="relative">
+                                <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]" translate="no">fingerprint</span>
+                                <input type="text" wire:model.live.debounce.300ms="dhcpSearchMac" placeholder="Filter MAC Address..." class="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-mono bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+
+                            <!-- Filter DHCP Server -->
+                            <div class="relative">
+                                <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]" translate="no">dns</span>
+                                <select wire:model.live="dhcpFilterServer" class="w-full pl-9 pr-8 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-medium bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer">
+                                    <option value="">Semua DHCP Server</option>
+                                    @php
+                                        $serverOptions = collect($dhcpServers ?? [])->pluck('name')->filter()->unique()->values();
+                                        if ($serverOptions->isEmpty()) {
+                                            $serverOptions = collect($dhcpLeases ?? [])->pluck('server')->filter()->unique()->values();
+                                        }
+                                    @endphp
+                                    @foreach($serverOptions as $srvName)
+                                        <option value="{{ $srvName }}">{{ $srvName }}</option>
+                                    @endforeach
+                                </select>
+                                <span class="material-symbols-outlined notranslate absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px] pointer-events-none" translate="no">expand_more</span>
+                            </div>
+
+                            <!-- Pencarian Cepat -->
+                            <div class="relative">
+                                <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]" translate="no">search</span>
+                                <input type="text" wire:model.live.debounce.300ms="searchDhcp" placeholder="Cari hostname / note..." class="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                        </div>
                     </div>
+
                     <div class="overflow-x-auto relative">
                         <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                             <thead class="bg-slate-50 dark:bg-slate-800/80">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Address</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Address / Hostname</th>
                                     <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">MAC Address</th>
-                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Server</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">DHCP Server</th>
                                     <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tipe</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Expires / Sisa Waktu</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
-                                @forelse($dhcpLeases ?? [] as $lease)
-                                    <tr class="hover:bg-slate-50 dark:bg-slate-900/50">
-                                        <td class="px-6 py-3 text-slate-900 dark:text-slate-100 font-mono text-[13px] font-bold">{{ $lease['address'] ?? '-' }}</td>
-                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono text-[13px]">{{ $lease['mac-address'] ?? '-' }}</td>
-                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400">{{ $lease['server'] ?? '-' }}</td>
+                                @forelse($filteredDhcpLeases as $lease)
+                                    <tr class="hover:bg-slate-50 dark:bg-slate-900/50 transition-colors">
                                         <td class="px-6 py-3">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ ($lease['status'] ?? '') === 'bound' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800' }}">
+                                            <div class="font-mono text-[13px] font-bold text-slate-900 dark:text-slate-100">
+                                                <x-ui.ip-link :ip="$lease['address'] ?? null" />
+                                            </div>
+                                            @if(!empty($lease['host-name']))
+                                                <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+                                                    <span class="material-symbols-outlined text-[13px] text-slate-400 notranslate" translate="no">devices</span>
+                                                    <span>{{ $lease['host-name'] }}</span>
+                                                </div>
+                                            @endif
+                                            @if(!empty($lease['comment']))
+                                                <div class="text-[10px] text-slate-400 italic">{{ $lease['comment'] }}</div>
+                                            @endif
+                                        </td>
+                                        <td class="px-6 py-3 text-slate-700 dark:text-slate-300 font-mono text-[13px] font-medium">{{ $lease['mac-address'] ?? '-' }}</td>
+                                        <td class="px-6 py-3">
+                                            <span class="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                                {{ $lease['server'] ?? '-' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-3">
+                                            @php
+                                                $status = strtolower((string)($lease['status'] ?? ''));
+                                            @endphp
+                                            <span class="px-2.5 py-1 inline-flex text-xs font-semibold rounded-full {{ $status === 'bound' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60' : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' }}">
                                                 {{ $lease['status'] ?? '-' }}
                                             </span>
                                         </td>
+                                        <td class="px-6 py-3 text-xs">
+                                            @if(($lease['dynamic'] ?? 'true') === 'true')
+                                                <span class="text-blue-600 dark:text-blue-400 font-semibold">Dynamic</span>
+                                            @else
+                                                <span class="text-amber-600 dark:text-amber-400 font-semibold">Static</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-6 py-3 text-xs text-slate-500 dark:text-slate-400">
+                                            {{ $lease['expires-after'] ?? $lease['last-seen'] ?? '-' }}
+                                        </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="4" class="px-6 py-6 text-center text-slate-500 dark:text-slate-400">Tidak ada DHCP Leases.</td></tr>
+                                    <tr>
+                                        <td colspan="6" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                                            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 mb-3">
+                                                <span class="material-symbols-outlined text-slate-400 notranslate" translate="no">search_off</span>
+                                            </div>
+                                            <p class="text-sm font-medium">Tidak ada data DHCP Leases yang cocok.</p>
+                                            @if(!empty($dhcpSearchIp) || !empty($dhcpSearchMac) || !empty($dhcpFilterServer) || !empty($searchDhcp))
+                                                <button type="button" wire:click="resetDhcpFilters" class="mt-2 text-xs text-blue-600 hover:underline cursor-pointer font-bold">
+                                                    Reset semua filter
+                                                </button>
+                                            @endif
+                                        </td>
+                                    </tr>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
-            </div>
+                </div>
         </div>
         @elseif($activeTab === 'firewall')
             <div class="space-y-6" x-data="{ subTab: 'filter' }">

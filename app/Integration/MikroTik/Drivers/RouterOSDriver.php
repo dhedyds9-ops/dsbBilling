@@ -236,7 +236,9 @@ class RouterOSDriver implements RouterOSDriverInterface
                 $stats[] = [
                     'name' => $session['name'] ?? 'unknown',
                     'service' => $session['service'] ?? 'unknown',
-                    'caller_id' => $session['caller-id'] ?? null,
+                    'caller_id' => $session['caller-id'] ?? ($session['caller_id'] ?? null),
+                    'caller-id' => $session['caller-id'] ?? ($session['caller_id'] ?? null),
+                    'mac_address' => $session['caller-id'] ?? ($session['caller_id'] ?? null),
                     'address' => $session['address'] ?? 'unknown',
                     'uptime' => $session['uptime'] ?? 'unknown',
                     'bytes_in' => $session['bytes-in'] ?? 0,

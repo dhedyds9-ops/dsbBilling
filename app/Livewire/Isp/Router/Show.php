@@ -25,7 +25,15 @@ class Show extends BaseNetworkComponent
     public $pppProfiles = [];
     public $pppSecrets = [];
     public $vpnServers = [];
-    public string $searchPpp = '';
+    public string $searchPpp = '';
+    #[\Livewire\Attributes\Url(as: 'dhcp_mac')]
+    public string $dhcpSearchMac = '';
+    #[\Livewire\Attributes\Url(as: 'dhcp_ip')]
+    public string $dhcpSearchIp = '';
+    #[\Livewire\Attributes\Url(as: 'dhcp_server')]
+    public string $dhcpFilterServer = '';
+    #[\Livewire\Attributes\Url(as: 'dhcp_search')]
+    public string $searchDhcp = '';
     public string $searchHotspot = '';
         public $dhcpServers = [];
     public $dhcpLeases = [];
@@ -238,7 +246,15 @@ class Show extends BaseNetworkComponent
         $this->showProvisioningModal = true;
     }
 
-        public function disconnectPpp($username)
+    public function resetDhcpFilters(): void
+    {
+        $this->dhcpSearchMac = '';
+        $this->dhcpSearchIp = '';
+        $this->dhcpFilterServer = '';
+        $this->searchDhcp = '';
+    }
+
+    public function disconnectPpp($username)
     {
         try {
             $service = app(\App\Integration\MikroTik\Services\RouterOSService::class);
