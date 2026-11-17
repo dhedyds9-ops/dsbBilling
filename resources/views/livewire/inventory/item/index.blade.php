@@ -190,7 +190,7 @@
 
     {{-- MODAL TAMBAH / EDIT BARANG --}}
     @if($showFormModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+        <div class="fixed inset-0 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn" style="z-index: 9990;">
             <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-lg w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
                 <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                     <h3 class="text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -305,8 +305,8 @@
 
     {{-- MODAL DAFTAR SERIAL NUMBER UNIT --}}
     @if($showSerialsModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-3xl w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+        <div class="fixed inset-0 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn" style="z-index: 9990;">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-3xl w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto relative z-10">
                 {{-- Modal Header --}}
                 <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                     <div>
@@ -639,8 +639,8 @@
 
     {{-- MODAL HUBUNGKAN / PASANG KE PELANGGAN --}}
     @if($showAssignCustomerModal)
-        <div class="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-lg w-full space-y-4 shadow-2xl">
+        <div class="fixed inset-0 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fadeIn" style="z-index: 9999;">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-lg w-full space-y-4 shadow-2xl relative z-10">
                 <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                     <div>
                         <h3 class="text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">

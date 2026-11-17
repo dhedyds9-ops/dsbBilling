@@ -50,10 +50,19 @@ class ResellerSwapOntTest extends TestCase
         ]);
         $reseller->roles()->attach($resellerRole->id);
 
+        $customer = \App\Models\CRM\Customer::create([
+            'name' => 'Budi Santoso',
+            'code' => 'CUST-0099',
+            'phone' => '08123456789',
+            'reseller_id' => $reseller->id,
+            'branch_id' => $branch->id,
+        ]);
+
         $this->actingAs($reseller);
 
         \Livewire\Livewire::test(\App\Livewire\ResellerPortal\Network\SwapOnt::class)
-            ->set('searchQuery', 'Pelanggan')
-            ->assertStatus(200);
+            ->set('searchQuery', 'Budi')
+            ->assertStatus(200)
+            ->assertSee('Budi Santoso');
     }
 }

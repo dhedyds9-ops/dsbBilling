@@ -438,10 +438,29 @@ class Index extends Component
 
     public function openAssignCustomerModal(int $serialId)
     {
-        $serial = ItemSerial::with(['customer', 'onu.customerService.customer'])->findOrFail($serialId);
+        $serial = ItemSerial::findOrFail($serialId);
         $this->assigningSerialId = $serial->id;
         $this->assigningSerialNumber = $serial->serial_number;
-        $this->assignCustomerId = $serial->customer_id ?? ($serial->onu?->customerService?->customer_id ?? null);
+
+        $customerId = $serial->customer_id;
+        if (!$customerId && !empty($serial->serial_number)) {
+            try {
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()
+                    ->where('serial_number', $serial->serial_number)
+                    ->first();
+                if ($onu) {
+                    $cs = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                        ->where('onu_id', $onu->id)
+                        ->latest('id')
+                        ->first();
+                    $customerId = $cs?->customer_id;
+                }
+            } catch (\Throwable $e) {
+                // Abaikan kesalahan relasi opsional
+            }
+        }
+
+        $this->assignCustomerId = $customerId;
         $this->assignCustomerSearch = '';
         $this->showAssignCustomerModal = true;
     }
@@ -599,8 +618,17 @@ class Index extends Component
                     });
                 })
                 ->orderBy('name')
-                ->limit(30)
+                ->limit(50)
                 ->get();
+
+            if ($this->assignCustomerId && !$customersList->contains('id', $this->assignCustomerId)) {
+                $selectedCust = \App\Models\CRM\Customer::withoutGuests()
+                    ->select('id', 'name', 'phone')
+                    ->find($this->assignCustomerId);
+                if ($selectedCust) {
+                    $customersList->prepend($selectedCust);
+                }
+            }
         }
 
         $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();

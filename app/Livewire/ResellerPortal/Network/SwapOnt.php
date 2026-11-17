@@ -124,7 +124,6 @@ class SwapOnt extends AdminComponent
         $query = Customer::withoutGlobalScopes()
             ->where(function ($sub) use ($q) {
                 $sub->where('name', 'like', "%{$q}%")
-                    ->orWhere('customer_code', 'like', "%{$q}%")
                     ->orWhere('code', 'like', "%{$q}%")
                     ->orWhere('phone', 'like', "%{$q}%")
                     ->orWhere('address', 'like', "%{$q}%")
