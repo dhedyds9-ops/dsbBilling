@@ -645,14 +645,21 @@
     </h3>
     <div class="relative">
         <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]" translate="no">search</span>
-        <input type="text" wire:model.live="searchHotspot" placeholder="Cari username atau IP..." class="pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 w-64">
+        <input type="text" wire:model.live.debounce.300ms="searchHotspot" placeholder="Cari username, IP, atau MAC..." class="pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 w-72">
     </div>
 </div>
 @php
     $filteredHotspotActive = collect($hotspotActive ?? [])->filter(function($session) use ($searchHotspot) {
-        if (empty($searchHotspot)) return true;
-        return stripos($session['user'] ?? '', $searchHotspot) !== false || stripos($session['address'] ?? '', $searchHotspot) !== false || stripos($session['mac-address'] ?? '', $searchHotspot) !== false;
-    })->all();
+        if (empty(trim($searchHotspot))) return true;
+        $term = trim($searchHotspot);
+        $cleanTerm = str_replace([':', '-', '.'], '', strtolower($term));
+        $mac = $session['mac_address'] ?? $session['mac-address'] ?? $session['mac'] ?? '';
+        $cleanMac = str_replace([':', '-', '.'], '', strtolower($mac));
+        return stripos($session['user'] ?? ($session['name'] ?? ''), $term) !== false 
+            || stripos($session['address'] ?? ($session['ip'] ?? ''), $term) !== false 
+            || stripos($mac, $term) !== false
+            || (!empty($cleanTerm) && stripos($cleanMac, $cleanTerm) !== false);
+    })->values()->all();
 @endphp
                     <div class="overflow-x-auto relative">
                         <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
@@ -662,7 +669,7 @@
                                     <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">IP Address</th>
                                     <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">MAC Address</th>
                                     <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Uptime</th>
-<th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
+                                    <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
@@ -677,9 +684,13 @@
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono"><x-ui.ip-link :ip="$session['address'] ?? $session['ip'] ?? null" /></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono">{{ $session['mac-address'] ?? $session['mac'] ?? '-' }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono font-medium">{{ $session['mac_address'] ?? $session['mac-address'] ?? $session['mac'] ?? '-' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{{ $session['uptime'] ?? '-' }}</td>
-<td class="px-6 py-4 whitespace-nowrap text-right"><button wire:click="disconnectHotspot('{{ $session['user'] ?? $session['mac-address'] }}')" wire:confirm="Yakin ingin kick user ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors" title="Kick"><span class="material-symbols-outlined notranslate text-[18px]" translate="no">power_settings_new</span></button></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                                            <button wire:click="disconnectHotspot('{{ $session['user'] ?? ($session['mac_address'] ?? ($session['mac-address'] ?? '')) }}')" wire:confirm="Yakin ingin kick user ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer" title="Kick">
+                                                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">power_settings_new</span>
+                                            </button>
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>

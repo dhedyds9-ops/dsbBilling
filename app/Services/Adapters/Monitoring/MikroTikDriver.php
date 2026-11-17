@@ -276,15 +276,21 @@ class MikroTikDriver implements DeviceMonitorInterface
                 
                 $stats = [];
                 foreach ($active as $session) {
+                    $mac = $session['mac-address'] ?? ($session['mac_address'] ?? ($session['mac'] ?? null));
                     $stats[] = [
-                        'user' => $session['user'] ?? 'unknown',
-                        'mac_address' => $session['mac-address'] ?? 'unknown',
-                        'address' => $session['address'] ?? 'unknown',
-                        'server' => $session['server'] ?? 'unknown',
-                        'login_by' => $session['login-by'] ?? 'unknown',
-                        'uptime' => $session['uptime'] ?? 'unknown',
-                        'bytes_in' => $session['bytes-in'] ?? 0,
-                        'bytes_out' => $session['bytes-out'] ?? 0,
+                        'user' => $session['user'] ?? ($session['name'] ?? 'unknown'),
+                        'mac_address' => $mac,
+                        'mac-address' => $mac,
+                        'mac' => $mac,
+                        'address' => $session['address'] ?? ($session['ip'] ?? 'unknown'),
+                        'server' => $session['server'] ?? '-',
+                        'login_by' => $session['login-by'] ?? ($session['login_by'] ?? '-'),
+                        'login-by' => $session['login-by'] ?? ($session['login_by'] ?? '-'),
+                        'uptime' => $session['uptime'] ?? '-',
+                        'bytes_in' => $session['bytes-in'] ?? ($session['bytes_in'] ?? 0),
+                        'bytes-in' => $session['bytes-in'] ?? ($session['bytes_in'] ?? 0),
+                        'bytes_out' => $session['bytes-out'] ?? ($session['bytes_out'] ?? 0),
+                        'bytes-out' => $session['bytes-out'] ?? ($session['bytes_out'] ?? 0),
                     ];
                 }
                 
