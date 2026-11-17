@@ -213,7 +213,8 @@ class Index extends Component
             'inboundItems.*.quantity.min' => 'Jumlah barang harus lebih dari 0.',
         ]);
 
-        // Validasi serial numbers untuk barang berserial
+        // Validasi serial numbers untuk barang berserial (opsional saat inbound, bisa dilengkapi kemudian)
+        $hasPendingSerials = false;
         foreach ($this->inboundItems as $idx => $row) {
             $item = Item::find($row['item_id']);
             if ($item && $item->is_serialized) {
@@ -221,15 +222,21 @@ class Index extends Component
                 $snList = array_values(array_filter(array_map('trim', preg_split('/[\r\n,]+/', $rawSerials))));
                 $qty = (int) $row['quantity'];
 
-                if (count($snList) !== $qty) {
-                    $this->addError("inboundItems.{$idx}.serials_raw", "Barang '{$item->name}' memerlukan {$qty} Serial Number yang valid. Terdeteksi: " . count($snList) . " SN.");
-                    return;
+                if (!empty($snList)) {
+                    if (count($snList) > $qty) {
+                        $this->addError("inboundItems.{$idx}.serials_raw", "Jumlah Serial Number (" . count($snList) . " SN) melebihi kuantitas penerimaan ({$qty} unit).");
+                        return;
+                    }
+
+                    // Cek duplikasi di input
+                    if (count($snList) !== count(array_unique($snList))) {
+                        $this->addError("inboundItems.{$idx}.serials_raw", "Terdapat Serial Number duplikat pada baris '{$item->name}'.");
+                        return;
+                    }
                 }
 
-                // Cek duplikasi di input
-                if (count($snList) !== count(array_unique($snList))) {
-                    $this->addError("inboundItems.{$idx}.serials_raw", "Terdapat Serial Number duplikat pada baris '{$item->name}'.");
-                    return;
+                if (count($snList) < $qty) {
+                    $hasPendingSerials = true;
                 }
             }
         }
@@ -316,6 +323,11 @@ class Index extends Component
             $msg = $this->editInboundId
                 ? "Data penerimaan barang masuk {$this->editInboundNumber} dan saldo stok gudang berhasil diperbarui."
                 : 'Penerimaan barang masuk berhasil disimpan dan stok gudang telah diperbarui.';
+
+            if ($hasPendingSerials) {
+                $msg .= ' Perangkat berserial yang belum diinput SN dapat didaftarkan kapan saja melalui menu Master Item atau Detail Gudang.';
+            }
+
             session()->flash('success', $msg);
             $this->showCreateModal = false;
             $this->resetCreateForm();

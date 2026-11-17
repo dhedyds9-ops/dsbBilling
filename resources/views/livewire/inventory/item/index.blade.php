@@ -306,19 +306,181 @@
     {{-- MODAL DAFTAR SERIAL NUMBER UNIT --}}
     @if($showSerialsModal)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-2xl w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-3xl w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+                {{-- Modal Header --}}
                 <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                     <div>
                         <h3 class="text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                             <span class="material-symbols-outlined text-purple-600">devices</span>
                             <span>Unit Serial: {{ $selectedItemNameForSerials }}</span>
                         </h3>
-                        <p class="text-[11px] text-slate-400">Daftar fisik unit dan status pelacakan individual.</p>
+                        <p class="text-[11px] text-slate-400">Daftar fisik unit perangkat, status pelacakan individual, dan registrasi Serial Number.</p>
                     </div>
-                    <button wire:click="$set('showSerialsModal', false)" type="button" class="text-slate-400 hover:text-slate-600">
+                    <button wire:click="$set('showSerialsModal', false)" type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
+
+                {{-- Flash Notifications --}}
+                @if(session()->has('serial_success'))
+                    <div class="p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 rounded-xl text-xs flex items-center gap-2 animate-fadeIn">
+                        <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-sm">check_circle</span>
+                        <span>{{ session('serial_success') }}</span>
+                    </div>
+                @endif
+                @if(session()->has('serial_error'))
+                    <div class="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 rounded-xl text-xs flex items-center gap-2 animate-fadeIn">
+                        <span class="material-symbols-outlined text-rose-600 dark:text-rose-400 text-sm">error</span>
+                        <span>{{ session('serial_error') }}</span>
+                    </div>
+                @endif
+
+                {{-- Summary Stats & Add Action Bar --}}
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-700/60">
+                    <div class="flex items-center gap-3 text-xs">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-500 dark:text-slate-400">Total Stok Fisik:</span>
+                            <span class="font-bold text-slate-800 dark:text-slate-200 px-2 py-0.5 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">{{ $totalStockForSelectedItem }}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-500 dark:text-slate-400">SN di Gudang:</span>
+                            <span class="font-bold text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800">{{ $totalSerialsInWarehouse }}</span>
+                        </div>
+                    </div>
+
+                    <button type="button"
+                            wire:click="toggleAddSerialSection"
+                            class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer
+                                   {{ $showAddSerialSection ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200' : 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/20' }}">
+                        <span class="material-symbols-outlined text-sm">{{ $showAddSerialSection ? 'expand_less' : 'add_circle' }}</span>
+                        <span>{{ $showAddSerialSection ? 'Tutup Form Tambah' : 'Tambah Unit Serial' }}</span>
+                    </button>
+                </div>
+
+                {{-- Alert jika ada selisih stok fisik vs serial terdaftar --}}
+                @if($totalStockForSelectedItem > $totalSerialsInWarehouse)
+                    <div class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                        <span class="material-symbols-outlined text-amber-600 text-base shrink-0 mt-0.5">info</span>
+                        <div>
+                            <strong>Perhatian:</strong> Terdapat <strong>{{ $totalStockForSelectedItem - $totalSerialsInWarehouse }} unit</strong> stok fisik di gudang yang belum memiliki Serial Number (SN). Anda dapat mendaftarkan nomor serial unit tersebut di bawah ini agar dapat dilacak dan didistribusikan ke teknisi atau pelanggan.
+                        </div>
+                    </div>
+                @endif
+
+                {{-- FORM EXPANDABLE TAMBAH SERIAL NUMBER --}}
+                @if($showAddSerialSection)
+                    <div class="p-4 bg-purple-50/50 dark:bg-purple-950/20 border-2 border-purple-300 dark:border-purple-800/80 rounded-2xl space-y-3 animate-fadeIn">
+                        <div class="flex items-center justify-between pb-2 border-b border-purple-200/60 dark:border-purple-800/50">
+                            <span class="text-xs font-black text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm">qr_code_scanner</span>
+                                <span>Pendaftaran Serial Number Baru</span>
+                            </span>
+
+                            {{-- Mode Switcher: Satuan vs Massal --}}
+                            <div class="inline-flex p-0.5 bg-purple-100 dark:bg-purple-900/60 rounded-xl text-[11px] font-bold">
+                                <button type="button"
+                                        wire:click="$set('serialInputMode', 'single')"
+                                        class="px-2.5 py-1 rounded-lg transition {{ $serialInputMode === 'single' ? 'bg-white dark:bg-purple-700 text-purple-900 dark:text-white shadow-xs' : 'text-purple-600 dark:text-purple-300 hover:text-purple-900' }}">
+                                    Input Satuan
+                                </button>
+                                <button type="button"
+                                        wire:click="$set('serialInputMode', 'bulk')"
+                                        class="px-2.5 py-1 rounded-lg transition {{ $serialInputMode === 'bulk' ? 'bg-white dark:bg-purple-700 text-purple-900 dark:text-white shadow-xs' : 'text-purple-600 dark:text-purple-300 hover:text-purple-900' }}">
+                                    Input Massal (Bulk)
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Warehouse Selection --}}
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Gudang Penyimpanan <span class="text-rose-500">*</span>
+                            </label>
+                            <select wire:model="serialWarehouseId"
+                                    class="w-full text-xs py-2 px-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-purple-500">
+                                <option value="">-- Pilih Gudang Tujuan --</option>
+                                @foreach($warehouses as $wh)
+                                    <option value="{{ $wh->id }}">{{ $wh->name }} (Cabang: {{ $wh->branch->name ?? 'Pusat' }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- MODE SATUAN (SINGLE) --}}
+                        @if($serialInputMode === 'single')
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                        Serial Number (SN) <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="text"
+                                           wire:model="newSerialNumber"
+                                           @keydown.enter.prevent="$wire.saveSerial()"
+                                           placeholder="Contoh: ZTEGC1234567 / ALCL12345"
+                                           class="w-full text-xs font-mono uppercase py-2 px-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                        MAC Address (Opsional)
+                                    </label>
+                                    <input type="text"
+                                           wire:model="newMacAddress"
+                                           @keydown.enter.prevent="$wire.saveSerial()"
+                                           placeholder="Contoh: AA:BB:CC:DD:EE:FF"
+                                           class="w-full text-xs font-mono uppercase py-2 px-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-purple-500">
+                                </div>
+                            </div>
+                        @else
+                            {{-- MODE MASSAL (BULK) --}}
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                    Daftar Serial Number (1 per baris, atau format SN,MAC) <span class="text-rose-500">*</span>
+                                </label>
+                                <textarea wire:model="bulkSerials"
+                                          rows="4"
+                                          placeholder="Paste daftar SN dari Excel / Notepad di sini:&#10;ZTEGC1234567&#10;ZTEGC1234568,AA:BB:CC:DD:EE:01&#10;ZTEGC1234569"
+                                          class="w-full text-xs font-mono py-2 px-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-purple-500"></textarea>
+                                <p class="text-[10px] text-slate-400 mt-1">Sistem otomatis mengabaikan baris kosong dan mendeteksi duplikasi.</p>
+                            </div>
+                        @endif
+
+                        {{-- Metadata Row: Kondisi & Catatan --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Kondisi Fisik</label>
+                                <select wire:model="serialCondition"
+                                        class="w-full text-xs py-2 px-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                                    <option value="good">Bagus / Baru (Good)</option>
+                                    <option value="needs_check">Perlu Pengecekan (Needs Check)</option>
+                                    <option value="damaged">Rusak (Damaged)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Tambahan (Opsional)</label>
+                                <input type="text"
+                                       wire:model="serialNotes"
+                                       placeholder="Misal: Unboxing batch 1, Segel utuh..."
+                                       class="w-full text-xs py-2 px-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                            </div>
+                        </div>
+
+                        {{-- Sync Checkbox & Action Button --}}
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2">
+                            <label class="inline-flex items-center gap-2 cursor-pointer text-xs text-slate-600 dark:text-slate-300">
+                                <input type="checkbox" wire:model="autoSyncStock" class="rounded text-purple-600 focus:ring-purple-500">
+                                <span>Sinkronkan saldo stok gudang jika jumlah serial fisik bertambah</span>
+                            </label>
+
+                            <button type="button"
+                                    wire:click="saveSerial"
+                                    wire:loading.attr="disabled"
+                                    class="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer">
+                                <span wire:loading.remove wire:target="saveSerial" class="material-symbols-outlined text-sm">save</span>
+                                <span wire:loading wire:target="saveSerial" class="animate-spin material-symbols-outlined text-sm">progress_activity</span>
+                                <span>Simpan Serial Unit</span>
+                            </button>
+                        </div>
+                    </div>
+                @endif
 
                 {{-- Search & Barcode Scanner Controls --}}
                 <div x-data="serialScanner()" class="space-y-3">
@@ -363,40 +525,73 @@
                     </div>
                 </div>
 
+                {{-- Table Serials --}}
                 <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
                     <table class="w-full text-left text-xs">
                         <thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase text-[10px]">
                             <tr>
-                                <th class="px-3 py-2">Serial Number</th>
-                                <th class="px-3 py-2">Lokasi / Gudang</th>
-                                <th class="px-3 py-2">Pemegang / Pelanggan</th>
-                                <th class="px-3 py-2">Status</th>
+                                <th class="px-3 py-2.5">Serial Number</th>
+                                <th class="px-3 py-2.5">MAC Address</th>
+                                <th class="px-3 py-2.5">Lokasi / Gudang</th>
+                                <th class="px-3 py-2.5">Status & Pemegang</th>
+                                <th class="px-3 py-2.5">Kondisi</th>
+                                <th class="px-3 py-2.5 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                             @forelse($serials as $sn)
-                                <tr>
-                                    <td class="px-3 py-2 font-mono font-bold text-slate-900 dark:text-slate-100">{{ $sn->serial_number }}</td>
-                                    <td class="px-3 py-2 text-slate-600 dark:text-slate-300">{{ $sn->warehouse->name ?? '-' }}</td>
-                                    <td class="px-3 py-2">
-                                        @if($sn->customer)
-                                            <span class="text-indigo-600 dark:text-indigo-400 font-bold">Pelanggan: {{ $sn->customer->name }}</span>
-                                        @elseif($sn->custodian)
-                                            <span class="text-amber-600 dark:text-amber-400 font-bold">Pegang: {{ $sn->custodian->name }}</span>
-                                        @else
-                                            <span class="text-slate-400">-</span>
-                                        @endif
+                                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition">
+                                    <td class="px-3 py-2.5 font-mono font-bold text-slate-900 dark:text-slate-100">
+                                        {{ $sn->serial_number }}
                                     </td>
-                                    <td class="px-3 py-2">
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold
-                                            {{ $sn->status === 'installed' ? 'bg-emerald-100 text-emerald-700' : ($sn->status === 'in_warehouse' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700') }}">
-                                            {{ str_replace('_', ' ', strtoupper($sn->status)) }}
+                                    <td class="px-3 py-2.5 font-mono text-slate-500 dark:text-slate-400">
+                                        {{ $sn->mac_address ?: '-' }}
+                                    </td>
+                                    <td class="px-3 py-2.5 text-slate-600 dark:text-slate-300">
+                                        {{ $sn->warehouse->name ?? '-' }}
+                                    </td>
+                                    <td class="px-3 py-2.5">
+                                        <div class="flex flex-col gap-0.5">
+                                            <span class="inline-block w-fit px-1.5 py-0.5 rounded text-[10px] font-bold
+                                                {{ $sn->status === 'installed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : ($sn->status === 'in_warehouse' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300') }}">
+                                                {{ str_replace('_', ' ', strtoupper($sn->status)) }}
+                                            </span>
+                                            @if($sn->customer)
+                                                <span class="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold">Pelanggan: {{ $sn->customer->name }}</span>
+                                            @elseif($sn->custodian)
+                                                <span class="text-[11px] text-amber-600 dark:text-amber-400 font-bold">Pegang: {{ $sn->custodian->name }}</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-3 py-2.5">
+                                        <span class="text-[11px] font-medium
+                                            {{ $sn->condition === 'good' ? 'text-emerald-600 dark:text-emerald-400' : ($sn->condition === 'needs_check' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400') }}">
+                                            {{ $sn->condition === 'good' ? 'Bagus' : ($sn->condition === 'needs_check' ? 'Perlu Cek' : 'Rusak') }}
                                         </span>
+                                    </td>
+                                    <td class="px-3 py-2.5 text-center">
+                                        @if($sn->status === 'in_warehouse')
+                                            <button type="button"
+                                                    wire:click="deleteSerial({{ $sn->id }})"
+                                                    wire:confirm="Yakin ingin menghapus Serial Number '{{ $sn->serial_number }}' dari gudang?"
+                                                    class="p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                                                    title="Hapus Serial Number">
+                                                <span class="material-symbols-outlined text-sm">delete</span>
+                                            </button>
+                                        @else
+                                            <span class="text-slate-300 dark:text-slate-600" title="Tidak dapat dihapus karena sudah beredar/terpasang">-</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="py-6 text-center text-slate-400">Belum ada unit serial terdaftar untuk barang ini.</td>
+                                    <td colspan="6" class="py-8 text-center text-slate-400">
+                                        <div class="flex flex-col items-center justify-center gap-1.5">
+                                            <span class="material-symbols-outlined text-3xl text-slate-300 dark:text-slate-600">inventory_2</span>
+                                            <span>Belum ada unit serial terdaftar untuk barang ini.</span>
+                                            <span class="text-[11px] text-slate-400">Klik tombol <strong>"Tambah Unit Serial"</strong> di atas untuk mendaftarkan serial perangkat.</span>
+                                        </div>
+                                    </td>
                                 </tr>
                             @endforelse
                         </tbody>

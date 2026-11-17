@@ -4,7 +4,11 @@ namespace App\Livewire\Inventory\Item;
 
 use App\Models\Inventory\Item;
 use App\Models\Inventory\ItemSerial;
+use App\Models\Inventory\Warehouse;
+use App\Models\Inventory\InventoryStock;
+use App\Models\Inventory\InventoryStockMutation;
 use App\Models\Master\Branch;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -35,11 +39,20 @@ class Index extends Component
     public bool $is_active = true;
     public ?int $branch_id = null;
 
-    // Modal Detail Serial
+    // Modal Detail Serial & Tambah Unit
     public bool $showSerialsModal = false;
     public ?int $selectedItemIdForSerials = null;
     public string $selectedItemNameForSerials = '';
     public string $serialSearch = '';
+    public bool $showAddSerialSection = false;
+    public string $serialInputMode = 'single'; // 'single' or 'bulk'
+    public ?int $serialWarehouseId = null;
+    public string $newSerialNumber = '';
+    public string $newMacAddress = '';
+    public string $bulkSerials = '';
+    public string $serialCondition = 'good'; // good, needs_check, damaged
+    public string $serialNotes = '';
+    public bool $autoSyncStock = true;
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -194,11 +207,226 @@ class Index extends Component
 
     public function openSerialsModal(int $itemId)
     {
-        $item = Item::findOrFail($itemId);
+        $item = Item::with('stocks')->findOrFail($itemId);
         $this->selectedItemIdForSerials = $item->id;
         $this->selectedItemNameForSerials = $item->name;
         $this->serialSearch = '';
+        $this->showAddSerialSection = false;
+        $this->serialInputMode = 'single';
+        $this->newSerialNumber = '';
+        $this->newMacAddress = '';
+        $this->bulkSerials = '';
+        $this->serialCondition = 'good';
+        $this->serialNotes = '';
+
+        // Default gudang: ambil dari stok gudang yang ada kuantitasnya, atau gudang aktif pertama
+        $stockWithQty = $item->stocks()->where('quantity', '>', 0)->first();
+        if ($stockWithQty) {
+            $this->serialWarehouseId = $stockWithQty->warehouse_id;
+        } else {
+            $firstWarehouse = Warehouse::where('is_active', true)->first() ?? Warehouse::first();
+            $this->serialWarehouseId = $firstWarehouse?->id;
+        }
+
         $this->showSerialsModal = true;
+    }
+
+    public function toggleAddSerialSection()
+    {
+        $this->showAddSerialSection = !$this->showAddSerialSection;
+    }
+
+    public function saveSerial()
+    {
+        if (!$this->selectedItemIdForSerials) {
+            session()->flash('serial_error', 'Pilih barang terlebih dahulu.');
+            return;
+        }
+
+        $item = Item::findOrFail($this->selectedItemIdForSerials);
+
+        if (!$this->serialWarehouseId) {
+            session()->flash('serial_error', 'Gudang penyimpanan wajib dipilih.');
+            return;
+        }
+
+        $warehouse = Warehouse::findOrFail($this->serialWarehouseId);
+
+        if ($this->serialInputMode === 'single') {
+            $sn = strtoupper(trim($this->newSerialNumber));
+            if (empty($sn)) {
+                session()->flash('serial_error', 'Serial Number tidak boleh kosong.');
+                return;
+            }
+
+            // Cek apakah SN sudah ada di database untuk item ini
+            $exists = ItemSerial::where('serial_number', $sn)->where('item_id', $item->id)->exists();
+            if ($exists) {
+                session()->flash('serial_error', "Serial Number '{$sn}' sudah terdaftar untuk barang ini.");
+                return;
+            }
+
+            $mac = !empty($this->newMacAddress) ? strtoupper(trim($this->newMacAddress)) : null;
+
+            DB::transaction(function () use ($item, $warehouse, $sn, $mac) {
+                ItemSerial::create([
+                    'item_id' => $item->id,
+                    'warehouse_id' => $warehouse->id,
+                    'branch_id' => $warehouse->branch_id ?? $item->branch_id,
+                    'serial_number' => $sn,
+                    'mac_address' => $mac,
+                    'status' => 'in_warehouse',
+                    'condition' => $this->serialCondition ?: 'good',
+                    'notes' => $this->serialNotes ?: 'Didaftarkan langsung via Master Item',
+                    'created_by' => auth()->id(),
+                    'updated_by' => auth()->id(),
+                ]);
+
+                if ($this->autoSyncStock) {
+                    $this->reconcileWarehouseStock($warehouse->id, $item->id, "Pendaftaran Unit SN {$sn}");
+                }
+            });
+
+            $this->newSerialNumber = '';
+            $this->newMacAddress = '';
+            $this->serialNotes = '';
+            session()->flash('serial_success', "Berhasil menambahkan Serial Number '{$sn}' ke gudang {$warehouse->name}.");
+        } else {
+            // Mode Bulk / Multi-Line
+            $raw = trim($this->bulkSerials);
+            if (empty($raw)) {
+                session()->flash('serial_error', 'Daftar Serial Number tidak boleh kosong.');
+                return;
+            }
+
+            $lines = preg_split('/[\r\n]+/', $raw);
+            $added = 0;
+            $duplicates = 0;
+            $skipped = 0;
+
+            DB::transaction(function () use ($item, $warehouse, $lines, &$added, &$duplicates, &$skipped) {
+                $seenInBatch = [];
+
+                foreach ($lines as $line) {
+                    $line = trim($line);
+                    if (empty($line)) continue;
+
+                    // Support format: "SN" atau "SN,MAC" atau "SN;MAC" atau "SN TAB MAC"
+                    $parts = preg_split('/[,\t;]+/', $line);
+                    $sn = strtoupper(trim($parts[0] ?? ''));
+                    $mac = isset($parts[1]) && !empty(trim($parts[1])) ? strtoupper(trim($parts[1])) : null;
+
+                    if (empty($sn)) {
+                        $skipped++;
+                        continue;
+                    }
+
+                    if (isset($seenInBatch[$sn])) {
+                        $duplicates++;
+                        continue;
+                    }
+                    $seenInBatch[$sn] = true;
+
+                    // Cek duplikasi di database
+                    if (ItemSerial::where('serial_number', $sn)->where('item_id', $item->id)->exists()) {
+                        $duplicates++;
+                        continue;
+                    }
+
+                    ItemSerial::create([
+                        'item_id' => $item->id,
+                        'warehouse_id' => $warehouse->id,
+                        'branch_id' => $warehouse->branch_id ?? $item->branch_id,
+                        'serial_number' => $sn,
+                        'mac_address' => $mac,
+                        'status' => 'in_warehouse',
+                        'condition' => $this->serialCondition ?: 'good',
+                        'notes' => $this->serialNotes ?: 'Didaftarkan massal via Master Item',
+                        'created_by' => auth()->id(),
+                        'updated_by' => auth()->id(),
+                    ]);
+
+                    $added++;
+                }
+
+                if ($this->autoSyncStock && $added > 0) {
+                    $this->reconcileWarehouseStock($warehouse->id, $item->id, "Pendaftaran {$added} Unit SN Massal");
+                }
+            });
+
+            $this->bulkSerials = '';
+            $this->serialNotes = '';
+
+            $msg = "Pendaftaran selesai: {$added} SN berhasil ditambahkan ke gudang {$warehouse->name}.";
+            if ($duplicates > 0) {
+                $msg .= " ({$duplicates} SN diabaikan karena sudah terdaftar).";
+            }
+            session()->flash('serial_success', $msg);
+        }
+    }
+
+    private function reconcileWarehouseStock(int $warehouseId, int $itemId, string $actionReason): void
+    {
+        $physicalCount = ItemSerial::withoutGlobalScopes()
+            ->where('warehouse_id', $warehouseId)
+            ->where('item_id', $itemId)
+            ->where('status', 'in_warehouse')
+            ->count();
+
+        $stock = InventoryStock::withoutGlobalScopes()
+            ->where('warehouse_id', $warehouseId)
+            ->where('item_id', $itemId)
+            ->lockForUpdate()
+            ->first();
+
+        $currentQty = $stock ? (float) $stock->quantity : 0.0;
+
+        if ($physicalCount > $currentQty) {
+            $warehouse = Warehouse::withoutGlobalScopes()->find($warehouseId);
+            $qtyDiff = $physicalCount - $currentQty;
+
+            if ($stock) {
+                $stock->update(['quantity' => $physicalCount]);
+            } else {
+                InventoryStock::create([
+                    'warehouse_id' => $warehouseId,
+                    'item_id' => $itemId,
+                    'quantity' => $physicalCount,
+                    'reserved_quantity' => 0,
+                    'branch_id' => $warehouse?->branch_id,
+                ]);
+            }
+
+            InventoryStockMutation::create([
+                'warehouse_id' => $warehouseId,
+                'item_id' => $itemId,
+                'type' => 'inbound',
+                'qty_in' => $qtyDiff,
+                'qty_out' => 0,
+                'balance_before' => $currentQty,
+                'balance_after' => $physicalCount,
+                'reference_type' => 'serial_registration',
+                'reference_id' => null,
+                'notes' => "Penyesuaian stok fisik: {$actionReason}",
+                'actor_id' => auth()->id(),
+                'branch_id' => $warehouse?->branch_id,
+                'created_at' => now(),
+            ]);
+        }
+    }
+
+    public function deleteSerial(int $serialId)
+    {
+        $serial = ItemSerial::findOrFail($serialId);
+
+        if ($serial->status !== 'in_warehouse') {
+            session()->flash('serial_error', "Gagal menghapus! Serial '{$serial->serial_number}' tidak berstatus in_warehouse ({$serial->status}) atau sudah terpasang/didistribusikan.");
+            return;
+        }
+
+        $sn = $serial->serial_number;
+        $serial->delete();
+        session()->flash('serial_success', "Serial Number '{$sn}' berhasil dihapus dari daftar.");
     }
 
     private function resetForm()
@@ -261,7 +489,19 @@ class Index extends Component
 
         // Data Serials jika modal serial aktif
         $serials = collect();
+        $selectedItem = null;
+        $totalStockForSelectedItem = 0;
+        $totalSerialsInWarehouse = 0;
+
         if ($this->showSerialsModal && $this->selectedItemIdForSerials) {
+            $selectedItem = Item::with('stocks.warehouse')->find($this->selectedItemIdForSerials);
+            if ($selectedItem) {
+                $totalStockForSelectedItem = (float) $selectedItem->stocks->sum('quantity');
+                $totalSerialsInWarehouse = ItemSerial::where('item_id', $this->selectedItemIdForSerials)
+                    ->where('status', 'in_warehouse')
+                    ->count();
+            }
+
             $sq = trim($this->serialSearch);
             $serials = ItemSerial::with(['warehouse', 'custodian', 'customer'])
                 ->where('item_id', $this->selectedItemIdForSerials)
@@ -275,6 +515,7 @@ class Index extends Component
                 ->paginate(10, ['*'], 'serialPage');
         }
 
+        $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();
         $branches = Branch::where('is_active', true)->orderBy('name')->get();
 
         $vendorBrands = \App\Models\ISP\Vendor::where('status', 'active')->orderBy('name')->pluck('name')->toArray();
@@ -305,6 +546,10 @@ class Index extends Component
             'items' => $items,
             'serials' => $serials,
             'branches' => $branches,
+            'warehouses' => $warehouses,
+            'selectedItem' => $selectedItem,
+            'totalStockForSelectedItem' => $totalStockForSelectedItem,
+            'totalSerialsInWarehouse' => $totalSerialsInWarehouse,
             'brandList' => $brandList,
             'categories' => $categories,
             'itemId' => $this->itemId,

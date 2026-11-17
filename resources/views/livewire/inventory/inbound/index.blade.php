@@ -322,7 +322,7 @@
                                             @if(!empty($row['is_serialized']))
                                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold border border-indigo-200 dark:border-indigo-800">
                                                     <span class="material-symbols-outlined text-[12px] notranslate" translate="no">qr_code</span>
-                                                    <span>Wajib Lacak SN</span>
+                                                    <span>Tracking Unit SN</span>
                                                 </span>
                                             @endif
                                         </div>
@@ -423,7 +423,7 @@
                                                         <h5 class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
                                                             <span>Input / Scan Serial Number (SN)</span>
                                                         </h5>
-                                                        <p class="text-[10px] text-slate-400">Scan barcode kardus/perangkat atau paste langsung dari Excel</p>
+                                                        <p class="text-[10px] text-slate-400">Scan barcode sekarang, atau simpan dulu dan lengkapi SN nanti di Master Item</p>
                                                     </div>
                                                 </div>
 
