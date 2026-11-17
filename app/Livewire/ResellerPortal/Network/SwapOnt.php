@@ -5,6 +5,10 @@ namespace App\Livewire\ResellerPortal\Network;
 use App\Livewire\AdminComponent;
 use App\Models\CRM\Customer;
 use App\Models\Customer\CustomerService;
+use App\Models\Inventory\InventoryCustody;
+use App\Models\Inventory\InventoryUsage;
+use App\Models\Inventory\InventoryUsageItem;
+use App\Models\Inventory\Item;
 use App\Models\ISP\Onu;
 use App\Models\ISP\Vendor;
 use App\Models\Support\Ticket;
@@ -55,6 +59,16 @@ class SwapOnt extends AdminComponent
     public string $oldPonPort = '';
     public string $oldOdpName = '';
     public ?float $oldRxPower = null;
+
+    // Mode Penggantian: 'ont' = Ganti Unit Modem (Swap ONT), 'accessory' = Ganti Adaptor / Aksesoris Saja (Modem Tetap)
+    public string $swapMode = 'ont';
+
+    // Aksesoris / Material Input (Ketika swapMode = 'accessory')
+    public string $accessoryType = 'adaptor'; // 'adaptor', 'fatcore', 'patchcord', 'other'
+    public ?int $selectedAccessoryItemId = null;
+    public float $accessoryQuantity = 1.0;
+    public string $accessoryReason = 'Adaptor Rusak / Tidak Menyala (Mati Total)';
+    public string $accessoryNotes = '';
 
     // New ONT Inputs
     public string $newSerialNumber = '';
@@ -404,6 +418,137 @@ class SwapOnt extends AdminComponent
         }
     }
 
+    public function executeAccessoryReplacement()
+    {
+        $this->validate([
+            'selectedCustomerId' => 'required',
+            'accessoryType' => 'required|string',
+            'accessoryQuantity' => 'required|numeric|min:0.1',
+            'accessoryReason' => 'required|string',
+        ], [
+            'selectedCustomerId.required' => 'Pilih pelanggan yang akan diganti aksesorisnya.',
+            'accessoryType.required' => 'Pilih jenis aksesoris yang diganti.',
+            'accessoryQuantity.required' => 'Jumlah aksesoris wajib diisi.',
+            'accessoryQuantity.min' => 'Jumlah minimal 0.1.',
+            'accessoryReason.required' => 'Alasan penggantian wajib dipilih.',
+        ]);
+
+        $customer = $this->customer;
+        if (!$customer) {
+            session()->flash('error', 'Pelanggan tidak valid.');
+            return;
+        }
+
+        $user = Auth::user();
+        $this->isProcessing = true;
+
+        try {
+            $qtyNeeded = (float) $this->accessoryQuantity;
+            $matType = strtolower(trim($this->accessoryType));
+            $targetItemId = $this->selectedAccessoryItemId;
+            $snClean = $this->oldSerialNumber ?: ($this->oldOnu?->serial_number ?? '');
+
+            // 1. Cari custody match di tangan reseller
+            $custody = null;
+            if ($targetItemId) {
+                $custody = InventoryCustody::withoutGlobalScopes()
+                    ->where('holder_id', $user->id)
+                    ->where('item_id', $targetItemId)
+                    ->where('status', 'in_custody')
+                    ->whereRaw('(CAST(quantity AS REAL) - CAST(COALESCE(used_quantity, 0) AS REAL) - CAST(COALESCE(returned_quantity, 0) AS REAL)) >= ' . (float) $qtyNeeded)
+                    ->first();
+            }
+
+            if (!$custody) {
+                $custody = InventoryCustody::withoutGlobalScopes()
+                    ->where('holder_id', $user->id)
+                    ->where('status', 'in_custody')
+                    ->whereHas('item', function ($q) use ($matType) {
+                        if ($matType === 'adaptor') {
+                            $q->where('name', 'like', '%Adaptor%')->orWhere('sku', 'like', '%ADP%')->orWhere('name', 'like', '%Power%');
+                        } elseif (in_array($matType, ['fatcore', 'fast_connector', 'connector', 'fc'])) {
+                            $q->where('name', 'like', '%Fast Connector%')->orWhere('name', 'like', '%Fatcore%')->orWhere('name', 'like', '%Konektor%');
+                        } elseif (in_array($matType, ['patchcord', 'dropcore', 'kabel', 'dc'])) {
+                            $q->where('name', 'like', '%Patchcord%')->orWhere('name', 'like', '%Dropcore%')->orWhere('name', 'like', '%Drop Core%');
+                        }
+                    })
+                    ->whereRaw('(CAST(quantity AS REAL) - CAST(COALESCE(used_quantity, 0) AS REAL) - CAST(COALESCE(returned_quantity, 0) AS REAL)) >= ' . (float) $qtyNeeded)
+                    ->first();
+            }
+
+            $item = $custody?->item;
+            if (!$item) {
+                if ($targetItemId) {
+                    $item = Item::withoutGlobalScopes()->find($targetItemId);
+                } else {
+                    $item = Item::withoutGlobalScopes()
+                        ->where(function ($q) use ($matType) {
+                            if ($matType === 'adaptor') {
+                                $q->where('name', 'like', '%Adaptor%')->orWhere('sku', 'like', '%ADP%');
+                            } elseif (in_array($matType, ['fatcore', 'fast_connector', 'connector', 'fc'])) {
+                                $q->where('name', 'like', '%Fast Connector%')->orWhere('name', 'like', '%Fatcore%')->orWhere('name', 'like', '%Konektor%');
+                            } elseif (in_array($matType, ['patchcord', 'dropcore', 'kabel', 'dc'])) {
+                                $q->where('name', 'like', '%Patchcord%')->orWhere('name', 'like', '%Dropcore%');
+                            }
+                        })
+                        ->first();
+                }
+            }
+
+            $matLabel = match($matType) {
+                'adaptor' => 'Adaptor 12V',
+                'fatcore' => 'Fast Connector (Fatcore)',
+                'patchcord' => 'Patchcord Fiber Optic',
+                default => $item?->name ?? 'Aksesoris ONT',
+            };
+
+            DB::transaction(function () use ($user, $customer, $custody, $item, $qtyNeeded, $snClean, $matLabel) {
+                if ($custody) {
+                    $newUsed = (float) $custody->used_quantity + $qtyNeeded;
+                    $isFullyUsed = ($newUsed + (float) $custody->returned_quantity) >= (float) $custody->quantity;
+                    $custody->update([
+                        'used_quantity' => $newUsed,
+                        'status' => $isFullyUsed ? 'used' : 'in_custody',
+                        'customer_id' => $customer->id,
+                    ]);
+                }
+
+                $snTag = $snClean !== '' ? " [SN Modem: {$snClean}]" : '';
+                $notes = "Penggantian {$matLabel} ({$this->accessoryReason}). " . ($this->accessoryNotes ?: '') . "{$snTag} oleh Reseller: {$user->name}";
+
+                $usage = InventoryUsage::create([
+                    'uuid' => (string) Str::uuid(),
+                    'usage_number' => 'USG-REP-' . strtoupper(Str::random(8)),
+                    'technician_id' => $user->id,
+                    'customer_id' => $customer->id,
+                    'ticket_id' => $this->ticket?->id,
+                    'work_order_type' => 'repair_replacement',
+                    'usage_date' => now()->toDateString(),
+                    'notes' => $notes,
+                    'branch_id' => $customer->branch_id ?? $user->branch_id,
+                ]);
+
+                InventoryUsageItem::create([
+                    'usage_id' => $usage->id,
+                    'custody_id' => $custody?->id,
+                    'item_id' => $item?->id ?? ($custody?->item_id ?? 1),
+                    'item_serial_id' => $custody?->item_serial_id,
+                    'quantity' => $qtyNeeded,
+                    'notes' => $notes,
+                ]);
+            });
+
+            $this->completedSummary = "Penggantian {$matLabel} sebanyak {$qtyNeeded} unit berhasil dicatat untuk pelanggan [{$customer->name}]. Modem [{$snClean}] tetap aktif tanpa perubahan konfigurasi.";
+            $this->swapCompleted = true;
+
+            session()->flash('success', $this->completedSummary);
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal memproses penggantian aksesoris: ' . $e->getMessage());
+        } finally {
+            $this->isProcessing = false;
+        }
+    }
+
     public function resetForm()
     {
         $this->reset([
@@ -411,8 +556,13 @@ class SwapOnt extends AdminComponent
             'oldSerialNumber', 'oldModel', 'oldVendor', 'oldMacAddress', 'oldPppoeUsername',
             'oldPppoePassword', 'oldWifiSsid', 'oldWifiPassword', 'newSerialNumber',
             'newModel', 'newMacAddress', 'newWifiSsid', 'newWifiPassword', 'opticalPower',
-            'notes', 'photoBefore', 'photoAfter', 'swapCompleted', 'completedSummary'
+            'notes', 'photoBefore', 'photoAfter', 'swapCompleted', 'completedSummary',
+            'accessoryNotes', 'selectedAccessoryItemId'
         ]);
+        $this->swapMode = 'ont';
+        $this->accessoryType = 'adaptor';
+        $this->accessoryQuantity = 1.0;
+        $this->accessoryReason = 'Adaptor Rusak / Tidak Menyala (Mati Total)';
         $this->opticalPower = '-20.5';
         $this->replacementReason = 'Modem Rusak / Tidak Menyala';
         $this->transaction_id = 'SWAP-' . (string) Str::uuid();
@@ -422,33 +572,52 @@ class SwapOnt extends AdminComponent
     {
         $user = Auth::user();
         $ontMaterials = collect();
+        $availableAdaptorStock = 0;
+        $availableFatcoreStock = 0;
+        $availablePatchcordStock = 0;
+        $custodyAccessories = collect();
 
-        // 1. Stok ONT dari InventoryCustody milik reseller/staf
+        // 1. Stok ONT & Aksesoris dari InventoryCustody milik reseller/staf
         if ($user && Schema::hasTable('inventory_custodies')) {
-            $custodies = \App\Models\Inventory\InventoryCustody::withoutGlobalScopes()
+            $allCustodies = InventoryCustody::withoutGlobalScopes()
                 ->with(['item', 'itemSerial'])
                 ->where('holder_id', $user->id)
                 ->where('status', 'in_custody')
-                ->whereRaw('(quantity - used_quantity - returned_quantity) > 0')
-                ->whereHas('item', function ($q) {
-                    $q->where('name', 'like', '%ONU%')
-                      ->orWhere('name', 'like', '%ONT%')
-                      ->orWhere('name', 'like', '%Modem%')
-                      ->orWhere('sku', 'like', '%ONU%')
-                      ->orWhere('sku', 'like', '%ONT%');
-                })
+                ->whereRaw('(CAST(quantity AS REAL) - CAST(COALESCE(used_quantity, 0) AS REAL) - CAST(COALESCE(returned_quantity, 0) AS REAL)) > 0')
                 ->get();
 
-            foreach ($custodies as $c) {
+            foreach ($allCustodies as $c) {
                 $avail = max(0, (int) ((float) $c->quantity - (float) $c->used_quantity - (float) $c->returned_quantity));
-                $snSuffix = $c->itemSerial?->serial_number ? " [SN: {$c->itemSerial->serial_number}]" : '';
-                $ontMaterials->push((object) [
+                $name = strtolower($c->item?->name ?? '');
+                $sku = strtolower($c->item?->sku ?? '');
+
+                if (str_contains($name, 'onu') || str_contains($name, 'ont') || str_contains($name, 'modem') || str_contains($sku, 'onu') || str_contains($sku, 'ont')) {
+                    $snSuffix = $c->itemSerial?->serial_number ? " [SN: {$c->itemSerial->serial_number}]" : '';
+                    $ontMaterials->push((object) [
+                        'id' => $c->id,
+                        'name' => ($c->item?->name ?? 'Modem ONT') . $snSuffix,
+                        'sku' => $c->item?->sku ?? 'ONT',
+                        'stock' => $avail,
+                        'unit' => $c->item?->unit ?? 'unit',
+                        'source' => 'custody',
+                    ]);
+                }
+
+                if (str_contains($name, 'adaptor') || str_contains($name, 'power') || str_contains($sku, 'adp')) {
+                    $availableAdaptorStock += $avail;
+                } elseif (str_contains($name, 'fast') || str_contains($name, 'connector') || str_contains($name, 'fatcore')) {
+                    $availableFatcoreStock += $avail;
+                } elseif (str_contains($name, 'patchcord') || str_contains($name, 'dropcore') || str_contains($name, 'drop core')) {
+                    $availablePatchcordStock += $avail;
+                }
+
+                $custodyAccessories->push((object) [
                     'id' => $c->id,
-                    'name' => ($c->item?->name ?? 'Modem ONT') . $snSuffix,
-                    'sku' => $c->item?->sku ?? 'ONT',
-                    'stock' => $avail,
+                    'item_id' => $c->item_id,
+                    'name' => $c->item?->name ?? 'Material',
+                    'sku' => $c->item?->sku ?? '-',
                     'unit' => $c->item?->unit ?? 'unit',
-                    'source' => 'custody',
+                    'stock' => $avail,
                 ]);
             }
         }
@@ -468,6 +637,10 @@ class SwapOnt extends AdminComponent
 
         return view('livewire.reseller-portal.network.swap-ont', [
             'ontMaterials' => $ontMaterials,
+            'availableAdaptorStock' => $availableAdaptorStock,
+            'availableFatcoreStock' => $availableFatcoreStock,
+            'availablePatchcordStock' => $availablePatchcordStock,
+            'custodyAccessories' => $custodyAccessories,
         ]);
     }
 }
