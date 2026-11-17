@@ -148,7 +148,7 @@ class OpnameDashboardAndReportsTest extends TestCase
             ->assertSee('Patch Cord SC-UPC 3 Meter')
             ->call('setTab', 'mutations')
             ->assertSet('activeTab', 'mutations')
-            ->assertSee('INBOUND')
+            ->assertSee('Barang Masuk')
             ->call('setTab', 'custody')
             ->assertSet('activeTab', 'custody');
     }

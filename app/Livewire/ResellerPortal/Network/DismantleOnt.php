@@ -26,6 +26,8 @@ class DismantleOnt extends AdminComponent
     #[Url]
     public ?int $ticket_id = null;
 
+    public bool $embedded = false;
+
     // Search and Selection
     public string $searchQuery = '';
     public array $searchResults = [];

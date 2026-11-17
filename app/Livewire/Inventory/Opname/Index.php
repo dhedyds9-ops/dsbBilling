@@ -52,7 +52,55 @@ class Index extends Component
 
     public function mount()
     {
+        $this->ensureOpnameTablesExist();
         $this->opnameDate = date('Y-m-d');
+    }
+
+    protected function ensureOpnameTablesExist(): void
+    {
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('inventory_stock_opnames')) {
+                \Illuminate\Support\Facades\Schema::create('inventory_stock_opnames', function (\Illuminate\Database\Schema\Blueprint $table) {
+                    $table->id();
+                    $table->uuid('uuid')->unique();
+                    $table->string('opname_number', 50)->unique()->index();
+                    $table->unsignedBigInteger('warehouse_id')->index();
+                    $table->unsignedBigInteger('branch_id')->nullable()->index();
+                    $table->string('status', 30)->default('draft')->index();
+                    $table->date('opname_date')->index();
+                    $table->text('notes')->nullable();
+                    $table->unsignedBigInteger('created_by')->nullable()->index();
+                    $table->unsignedBigInteger('approved_by')->nullable()->index();
+                    $table->timestamp('approved_at')->nullable();
+                    $table->timestamps();
+                });
+            }
+
+            if (!\Illuminate\Support\Facades\Schema::hasTable('inventory_stock_opname_items')) {
+                \Illuminate\Support\Facades\Schema::create('inventory_stock_opname_items', function (\Illuminate\Database\Schema\Blueprint $table) {
+                    $table->id();
+                    $table->unsignedBigInteger('opname_id')->index();
+                    $table->unsignedBigInteger('item_id')->index();
+                    $table->decimal('system_quantity', 12, 2)->default(0);
+                    $table->decimal('physical_quantity', 12, 2)->default(0);
+                    $table->decimal('difference_quantity', 12, 2)->default(0);
+                    $table->string('adjustment_reason', 100)->nullable();
+                    $table->text('notes')->nullable();
+                    $table->timestamps();
+                });
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Auto-create inventory_stock_opnames error: ' . $e->getMessage());
+        }
+    }
+
+    public function exportExcel()
+    {
+        $filename = 'stok-opname-' . date('Ymd-His') . '.xlsx';
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\Inventory\OpnameExport($this->search, $this->warehouseFilter, $this->statusFilter),
+            $filename
+        );
     }
 
     public function updatingSearch()
@@ -192,27 +240,35 @@ class Index extends Component
 
     public function render()
     {
-        $query = InventoryStockOpname::with(['warehouse', 'creator', 'items'])
-            ->latest('id');
+        $this->ensureOpnameTablesExist();
 
-        if ($this->search) {
-            $query->where('opname_number', 'like', "%{$this->search}%");
-        }
-        if ($this->warehouseFilter) {
-            $query->where('warehouse_id', $this->warehouseFilter);
-        }
-        if ($this->statusFilter) {
-            $query->where('status', $this->statusFilter);
+        try {
+            $query = InventoryStockOpname::with(['warehouse', 'creator', 'items'])
+                ->latest('id');
+
+            if ($this->search) {
+                $query->where('opname_number', 'like', "%{$this->search}%");
+            }
+            if ($this->warehouseFilter) {
+                $query->where('warehouse_id', $this->warehouseFilter);
+            }
+            if ($this->statusFilter) {
+                $query->where('status', $this->statusFilter);
+            }
+
+            $perPageInt = match ((string) $this->perPage) {
+                '50' => 50,
+                '100' => 100,
+                'all' => max(1, (clone $query)->count()),
+                default => 20,
+            };
+
+            $opnames = $query->paginate($perPageInt);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Opname render error: ' . $e->getMessage());
+            $opnames = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 20);
         }
 
-        $perPageInt = match ((string) $this->perPage) {
-            '50' => 50,
-            '100' => 100,
-            'all' => max(1, (clone $query)->count()),
-            default => 20,
-        };
-
-        $opnames = $query->paginate($perPageInt);
         $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();
 
         return view('livewire.inventory.opname.index', [

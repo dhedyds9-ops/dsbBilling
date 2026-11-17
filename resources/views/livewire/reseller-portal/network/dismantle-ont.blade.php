@@ -14,8 +14,10 @@
         </div>
     @endif
 
-    {{-- Header Card --}}
-    <div class="bg-gradient-to-r from-rose-700 via-pink-700 to-indigo-800 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+    @if(!$embedded)
+    {{-- Header Card (Hanya muncul jika diakses langsung, disembunyikan jika di-embed dalam tab Swap) --}}
+    <div style="background: linear-gradient(135deg, #be123c 0%, #be185d 50%, #4338ca 100%); color: #ffffff;"
+         class="rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
         <div class="absolute -right-4 -bottom-6 opacity-10 pointer-events-none">
             <span class="material-symbols-outlined text-9xl">power_off</span>
         </div>
@@ -37,6 +39,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     @if($isCompleted)
         {{-- SUKSES DISMANTLE VIEW --}}

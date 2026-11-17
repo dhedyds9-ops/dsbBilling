@@ -10,8 +10,16 @@
                 Rekonsiliasi berkala stok fisik gudang terhadap saldo sistem dan penyesuaian selisih otomatis.
             </p>
         </div>
-        <div>
-            <button wire:click="openCreateModal" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm transition">
+        <div class="flex items-center gap-2">
+            <button wire:click="exportExcel" type="button"
+                    wire:loading.attr="disabled"
+                    class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm transition cursor-pointer"
+                    title="Download Data Stok Opname ke Format Excel (.xlsx)">
+                <span wire:loading.remove wire:target="exportExcel" class="material-symbols-outlined text-sm">download</span>
+                <span wire:loading wire:target="exportExcel" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                <span>Export Excel</span>
+            </button>
+            <button wire:click="openCreateModal" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm transition cursor-pointer">
                 <span class="material-symbols-outlined text-sm">add</span>
                 <span>Mulai Sesi Opname Baru</span>
             </button>

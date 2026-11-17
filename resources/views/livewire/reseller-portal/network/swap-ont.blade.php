@@ -15,7 +15,8 @@
     @endif
 
     {{-- Header Card --}}
-    <div class="bg-gradient-to-r from-teal-600 via-emerald-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+    <div style="background: linear-gradient(135deg, #0d9488 0%, #0e7490 50%, #4338ca 100%); color: #ffffff;"
+         class="rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
         <div class="absolute -right-4 -bottom-6 opacity-10 pointer-events-none">
             <span class="material-symbols-outlined text-9xl">sync_alt</span>
         </div>
@@ -57,7 +58,7 @@
     @if($tab === 'dismantle')
         {{-- VIEW TAB: CABUT ONT (DISMANTLE) --}}
         <div class="animate-fadeIn">
-            <livewire:reseller-portal.network.dismantle-ont :customer_id="$customer_id" :onu_id="$onu_id" :ticket_id="$ticket_id" :key="'dismantle-' . ($onu_id ?? $customer_id ?? 'tab')" />
+            <livewire:reseller-portal.network.dismantle-ont :customer_id="$customer_id" :onu_id="$onu_id" :ticket_id="$ticket_id" :embedded="true" :key="'dismantle-' . ($onu_id ?? $customer_id ?? 'tab')" />
         </div>
     @else
         {{-- VIEW TAB: GANTI (SWAP / AKSESORIS) --}}
