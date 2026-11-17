@@ -455,7 +455,7 @@ class SwapOnt extends AdminComponent
                     ->where('holder_id', $user->id)
                     ->where('item_id', $targetItemId)
                     ->where('status', 'in_custody')
-                    ->whereRaw('(CAST(quantity AS REAL) - CAST(COALESCE(used_quantity, 0) AS REAL) - CAST(COALESCE(returned_quantity, 0) AS REAL)) >= ' . (float) $qtyNeeded)
+                    ->whereRaw('(quantity - COALESCE(used_quantity, 0) - COALESCE(returned_quantity, 0)) >= ' . (float) $qtyNeeded)
                     ->first();
             }
 
@@ -464,15 +464,17 @@ class SwapOnt extends AdminComponent
                     ->where('holder_id', $user->id)
                     ->where('status', 'in_custody')
                     ->whereHas('item', function ($q) use ($matType) {
-                        if ($matType === 'adaptor') {
-                            $q->where('name', 'like', '%Adaptor%')->orWhere('sku', 'like', '%ADP%')->orWhere('name', 'like', '%Power%');
-                        } elseif (in_array($matType, ['fatcore', 'fast_connector', 'connector', 'fc'])) {
-                            $q->where('name', 'like', '%Fast Connector%')->orWhere('name', 'like', '%Fatcore%')->orWhere('name', 'like', '%Konektor%');
-                        } elseif (in_array($matType, ['patchcord', 'dropcore', 'kabel', 'dc'])) {
-                            $q->where('name', 'like', '%Patchcord%')->orWhere('name', 'like', '%Dropcore%')->orWhere('name', 'like', '%Drop Core%');
-                        }
+                        $q->where(function ($sub) use ($matType) {
+                            if ($matType === 'adaptor') {
+                                $sub->where('name', 'like', '%Adaptor%')->orWhere('sku', 'like', '%ADP%')->orWhere('name', 'like', '%Power%');
+                            } elseif (in_array($matType, ['fatcore', 'fast_connector', 'connector', 'fc'])) {
+                                $sub->where('name', 'like', '%Fast Connector%')->orWhere('name', 'like', '%Fatcore%')->orWhere('name', 'like', '%Konektor%');
+                            } elseif (in_array($matType, ['patchcord', 'dropcore', 'kabel', 'dc'])) {
+                                $sub->where('name', 'like', '%Patchcord%')->orWhere('name', 'like', '%Dropcore%')->orWhere('name', 'like', '%Drop Core%');
+                            }
+                        });
                     })
-                    ->whereRaw('(CAST(quantity AS REAL) - CAST(COALESCE(used_quantity, 0) AS REAL) - CAST(COALESCE(returned_quantity, 0) AS REAL)) >= ' . (float) $qtyNeeded)
+                    ->whereRaw('(quantity - COALESCE(used_quantity, 0) - COALESCE(returned_quantity, 0)) >= ' . (float) $qtyNeeded)
                     ->first();
             }
 
@@ -583,7 +585,7 @@ class SwapOnt extends AdminComponent
                 ->with(['item', 'itemSerial'])
                 ->where('holder_id', $user->id)
                 ->where('status', 'in_custody')
-                ->whereRaw('(CAST(quantity AS REAL) - CAST(COALESCE(used_quantity, 0) AS REAL) - CAST(COALESCE(returned_quantity, 0) AS REAL)) > 0')
+                ->whereRaw('(quantity - COALESCE(used_quantity, 0) - COALESCE(returned_quantity, 0)) > 0')
                 ->get();
 
             foreach ($allCustodies as $c) {

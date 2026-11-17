@@ -93,6 +93,7 @@ class ResellerSwapOntTest extends TestCase
             'category' => 'Aksesoris',
             'type' => 'non-serialized',
             'unit' => 'unit',
+            'branch_id' => $branch->id,
         ]);
 
         $custody = \App\Models\Inventory\InventoryCustody::create([
@@ -103,6 +104,7 @@ class ResellerSwapOntTest extends TestCase
             'returned_quantity' => 0,
             'status' => 'in_custody',
             'assigned_date' => now()->toDateString(),
+            'branch_id' => $branch->id,
         ]);
 
         $this->actingAs($reseller);
