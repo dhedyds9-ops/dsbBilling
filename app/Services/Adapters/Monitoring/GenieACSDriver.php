@@ -495,6 +495,18 @@ class GenieACSDriver
         }
     }
 
+    public function deleteObject(string $deviceId, string $objectName): bool
+    {
+        try {
+            $realDeviceId = $this->resolveDeviceId($deviceId);
+            $payload = ['name' => 'deleteObject', 'objectName' => $objectName];
+            $response = $this->postTaskWithFallback($realDeviceId, $payload, true);
+            return $response->successful();
+        } catch (\Throwable $e) {
+            throw new Exception("Gagal menghapus objek di GenieACS: " . $e->getMessage(), 0, $e);
+        }
+    }
+
     public function provisionPppoe(string $deviceId, string $username, string $password, ?string $vlanId = null): bool
     {
         try {

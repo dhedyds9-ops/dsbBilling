@@ -998,4 +998,52 @@ JS;
             session()->flash('error', 'Gagal summon modem: ' . $e->getMessage());
         }
     }
+
+    public function deleteWan($fullPath)
+    {
+        $wan = collect($this->wanConnections)->firstWhere('fullPath', $fullPath);
+        if (!$wan) {
+            session()->flash('error', 'Koneksi WAN tidak ditemukan.');
+            return;
+        }
+
+        $svcUpper = strtoupper($wan['service_list'] ?? '');
+        $nameUpper = strtoupper($wan['name'] ?? '');
+        $vlanVal = (int) ($wan['vlan'] ?? 0);
+
+        if (str_contains($svcUpper, 'TR069') || str_contains($nameUpper, 'TR069') || $vlanVal === 99) {
+            session()->flash('error', 'Koneksi TR-069 dilindungi dan tidak boleh dihapus agar modem tidak kehilangan akses ke GenieACS.');
+            return;
+        }
+
+        $wanName = $wan['name'] ?? 'WAN';
+
+        try {
+            $driver = new GenieACSDriver();
+
+            $script = <<<JS
+const now = Date.now();
+declare("{$fullPath}.Enable", {value: now}, {value: false});
+declare("{$fullPath}", null, {path: 0});
+JS;
+
+            $cleanId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $this->device->uuid);
+            $provName = "temp_del_wan_" . $cleanId;
+            $driver->upsertProvision($provName, $script);
+            $driver->addProvisionTask($this->device->uuid, $provName);
+
+            try {
+                $driver->deleteObject($this->device->uuid, $fullPath);
+            } catch (\Throwable) {}
+
+            $this->wanConnections = collect($this->wanConnections)
+                ->reject(fn($w) => $w['fullPath'] === $fullPath)
+                ->values()
+                ->all();
+
+            session()->flash('success', "Perintah hapus koneksi WAN '{$wanName}' berhasil dikirim ke antrean GenieACS. Jika belum terhapus di modem, klik 'Reboot Modem' atau 'Summon'.");
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal menghapus koneksi WAN: ' . $e->getMessage());
+        }
+    }
 }

@@ -160,4 +160,63 @@ class GenieAcsWanManagerTest extends TestCase
             ->call('rebootDevice')
             ->assertSee('Perintah reboot berhasil dikirim');
     }
+
+    public function test_delete_wan_dispatches_task_and_removes_from_list(): void
+    {
+        Http::fake([
+            '*/provisions/*' => Http::response([], 200),
+            '*/devices/*/tasks*' => Http::response(['_id' => 'del_task_1'], 200),
+        ]);
+
+        $testWan = [
+            'key' => 'WANConnectionDevice.3.WANIPConnection.1',
+            'parentPath' => 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3',
+            'fullPath' => 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANIPConnection.1',
+            'name' => '3_INTERNET_R_VID_105',
+            'type' => 'IP_Routed',
+            'mode_label' => 'IP Route (DHCP)',
+            'vlan' => 105,
+            'nat' => true,
+            'service_list' => 'INTERNET',
+            'port_bind' => '',
+            'username' => '',
+            'password' => '',
+        ];
+
+        Livewire::actingAs($this->admin)
+            ->test(WanManager::class, ['device' => $this->device])
+            ->set('showWanModal', true)
+            ->set('isLoading', false)
+            ->set('wanConnections', [$testWan])
+            ->call('deleteWan', 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANIPConnection.1')
+            ->assertSee('Perintah hapus koneksi WAN')
+            ->assertSet('wanConnections', []);
+    }
+
+    public function test_delete_wan_protects_tr069_connection(): void
+    {
+        $tr069Wan = [
+            'key' => 'WANConnectionDevice.2.WANIPConnection.1',
+            'parentPath' => 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2',
+            'fullPath' => 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANIPConnection.1',
+            'name' => '2_TR069_R_VID_99',
+            'type' => 'IP_Routed',
+            'mode_label' => 'IP Route (DHCP)',
+            'vlan' => 99,
+            'nat' => true,
+            'service_list' => 'TR069',
+            'port_bind' => '',
+            'username' => '',
+            'password' => '',
+        ];
+
+        Livewire::actingAs($this->admin)
+            ->test(WanManager::class, ['device' => $this->device])
+            ->set('showWanModal', true)
+            ->set('isLoading', false)
+            ->set('wanConnections', [$tr069Wan])
+            ->call('deleteWan', 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANIPConnection.1')
+            ->assertSee('Koneksi TR-069 dilindungi')
+            ->assertCount('wanConnections', 1);
+    }
 }

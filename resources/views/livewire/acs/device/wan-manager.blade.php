@@ -125,9 +125,28 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-right">
-                                        <button wire:click="editWan('{{ $wan['fullPath'] }}')" class="px-2.5 py-1 text-xs font-semibold text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 rounded hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors">
-                                            Edit Profil
-                                        </button>
+                                        <div class="flex items-center justify-end gap-1.5">
+                                            <button wire:click="editWan('{{ $wan['fullPath'] }}')" class="px-2.5 py-1 text-xs font-semibold text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 rounded hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors">
+                                                Edit Profil
+                                            </button>
+                                            @php
+                                                $isTr069 = str_contains(strtoupper($wan['service_list'] ?? ''), 'TR069') 
+                                                    || str_contains(strtoupper($wan['name'] ?? ''), 'TR069')
+                                                    || ((int)($wan['vlan'] ?? 0) === 99);
+                                            @endphp
+                                            @if(!$isTr069)
+                                                <button wire:click="deleteWan('{{ $wan['fullPath'] }}')" 
+                                                        wire:confirm="Apakah Anda yakin ingin menghapus koneksi WAN '{{ $wan['name'] }}'? Perintah penghapusan akan dikirim ke modem."
+                                                        class="px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-rose-800 dark:text-rose-400 dark:hover:text-rose-300 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                                        title="Hapus Koneksi WAN ini">
+                                                    Hapus
+                                                </button>
+                                            @else
+                                                <span class="px-2 py-0.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 rounded cursor-not-allowed" title="Koneksi TR-069 dilindungi dan tidak boleh dihapus">
+                                                    Terkunci
+                                                </span>
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                                 @empty
