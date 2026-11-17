@@ -631,10 +631,12 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/odcs', \App\Livewire\ResellerPortal\Network\Odc\Index::class)->name('odcs.index');
             Route::get('/odps', \App\Livewire\ResellerPortal\Network\Odp\Index::class)->name('odps.index');
             Route::get('/swap-ont', \App\Livewire\ResellerPortal\Network\SwapOnt::class)->name('swap-ont');
+            Route::get('/dismantle-ont', \App\Livewire\ResellerPortal\Network\DismantleOnt::class)->name('dismantle-ont');
         });
 
-        // Shortcut langsung ke Ganti ONT
+        // Shortcut langsung ke Ganti & Cabut ONT
         Route::get('/swap-ont', \App\Livewire\ResellerPortal\Network\SwapOnt::class)->name('swap-ont');
+        Route::get('/dismantle-ont', \App\Livewire\ResellerPortal\Network\DismantleOnt::class)->name('dismantle-ont');
 
         // Alias shortcut untuk ACS device detail di portal reseller
         Route::get('/acs-devices/{id}', \App\Livewire\ResellerPortal\Network\AcsDevice\Show::class)->name('acs-devices.show');

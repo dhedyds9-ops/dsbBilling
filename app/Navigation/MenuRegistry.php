@@ -510,9 +510,10 @@ class MenuRegistry
                             ['label' => 'Data OLT', 'route' => 'reseller-portal.network.olts.index', 'active' => 'reseller-portal.network.olts.*', 'permission' => 'olt.view'],
                             ['label' => 'Data ODC', 'route' => 'reseller-portal.network.odcs.index', 'active' => 'reseller-portal.network.odcs.*', 'permission' => 'odc.view'],
                             ['label' => 'Data ODP', 'route' => 'reseller-portal.network.odps.index', 'active' => 'reseller-portal.network.odps.*', 'permission' => 'odp.view'],
-                            ['label' => 'Data ONU', 'route' => 'reseller-portal.network.onus.index', 'active' => 'reseller-portal.network.onus.*', 'permission' => ['onu.view', 'olt.view']],
-                            ['label' => 'Devices GenieACS', 'route' => 'reseller-portal.network.acs-devices.index', 'active' => 'reseller-portal.network.acs-devices.*', 'permission' => ['onu.view', 'olt.view']],
-                            ['label' => 'Ganti ONT (Swap)', 'route' => 'reseller-portal.network.swap-ont', 'active' => ['reseller-portal.network.swap-ont*', 'reseller-portal.swap-ont*'], 'permission' => ['onu.view', 'olt.view']],
+                            ['label' => 'Data ONU', 'route' => 'reseller-portal.network.onus.index', 'active' => 'reseller-portal.network.onus.*'],
+                            ['label' => 'Devices GenieACS', 'route' => 'reseller-portal.network.acs-devices.index', 'active' => 'reseller-portal.network.acs-devices.*'],
+                            ['label' => 'Ganti ONT (Swap)', 'route' => 'reseller-portal.network.swap-ont', 'active' => ['reseller-portal.network.swap-ont*', 'reseller-portal.swap-ont*']],
+                            ['label' => 'Cabut ONT (Dismantle)', 'route' => 'reseller-portal.network.dismantle-ont', 'active' => ['reseller-portal.network.dismantle-ont*', 'reseller-portal.dismantle-ont*']],
                         ]
                     ],
                     [
@@ -540,6 +541,7 @@ class MenuRegistry
                         'items' => [
                             ['label' => 'Permintaan Barang', 'route' => 'inventory.requisitions.index', 'active' => 'inventory.requisitions.*'],
                             ['label' => 'Stok di Tangan', 'route' => 'inventory.custodies.index', 'active' => 'inventory.custodies.*'],
+                            ['label' => 'Servis & Ganti Alat', 'route' => 'reseller-portal.network.swap-ont', 'active' => ['reseller-portal.network.swap-ont*', 'reseller-portal.swap-ont*']],
                             ['label' => 'Panduan & SOP Material', 'route' => 'inventory.guide.index', 'active' => 'inventory.guide.*'],
                         ]
                     ],

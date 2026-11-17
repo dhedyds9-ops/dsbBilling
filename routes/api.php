@@ -227,6 +227,7 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::get('/requisitions', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'requisitions'])->name('requisitions.index');
             Route::post('/requisitions/{id}/approve', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'approveRequisition'])->where('id', '\d+')->name('requisitions.approve');
             Route::post('/custody/transfer', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'transferCustody'])->name('custody.transfer');
+            Route::post('/customer-usage', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'recordCustomerUsage'])->name('customer-usage');
             Route::post('/returns', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'returnItems'])->name('returns.create');
         });
 

@@ -158,15 +158,44 @@ class MobileInventoryTest extends TestCase
                     ['item_id' => $this->itemCable->id, 'quantity' => 300, 'notes' => 'Tarik jalur ODP'],
                 ],
                 'notes' => 'Permintaan material tim 1 pagi',
+                'requisition_type' => 'dispatch_request',
             ]);
 
         $response->assertStatus(200)
             ->assertJson(['success' => true])
-            ->assertJsonPath('data.items_count', 2);
+            ->assertJsonPath('data.items_count', 2)
+            ->assertJsonPath('data.requisition_type', 'dispatch_request');
 
         $this->assertDatabaseHas('inventory_requisitions', [
             'requester_id' => $this->technician1->id,
             'status' => 'pending',
+            'requisition_type' => 'dispatch_request',
+        ]);
+    }
+
+    public function test_technician_can_create_procurement_request_for_out_of_stock_item(): void
+    {
+        $token = $this->technician1->createToken('test-mobile-token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->postJson('/api/mobile/inventory/requisitions', [
+                'items' => [
+                    ['item_id' => $this->itemOnt->id, 'quantity' => 20, 'notes' => 'Mohon restock untuk persiapan PSB bulan depan'],
+                ],
+                'notes' => 'Pengadaan tambahan ONT',
+                'requisition_type' => 'procurement_request',
+                'urgency' => 'urgent',
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson(['success' => true])
+            ->assertJsonPath('data.requisition_type', 'procurement_request');
+
+        $this->assertDatabaseHas('inventory_requisitions', [
+            'requester_id' => $this->technician1->id,
+            'status' => 'pending',
+            'requisition_type' => 'procurement_request',
+            'urgency' => 'urgent',
         ]);
     }
 
@@ -325,6 +354,86 @@ class MobileInventoryTest extends TestCase
         $this->assertDatabaseHas('inventory_custodies', [
             'id' => $custody->id,
             'returned_quantity' => 1,
+        ]);
+    }
+
+    public function test_reseller_can_record_customer_material_usage_for_repair(): void
+    {
+        $resellerRole = Role::firstOrCreate(['name' => 'reseller'], ['display_name' => 'Reseller', 'guard_name' => 'web']);
+
+        $reseller = User::factory()->create([
+            'name' => 'Mitra Reseller 1',
+            'email' => 'reseller1@dsbilling.test',
+            'job_function' => 'RESELLER',
+            'branch_id' => $this->branch->id,
+            'is_active' => true,
+        ]);
+        $reseller->roles()->attach($resellerRole->id);
+
+        $customer = \App\Models\CRM\Customer::create([
+            'code' => 'CUST-0099',
+            'name' => 'Pelanggan Binaan Reseller',
+            'phone' => '08123456789',
+            'address' => 'Jl. Merdeka No. 1',
+            'status' => 'active',
+            'branch_id' => $this->branch->id,
+            'reseller_id' => $reseller->id,
+        ]);
+
+        $itemAdaptor = Item::create([
+            'uuid' => (string) Str::uuid(),
+            'sku' => 'MAT-ADP-12V1A',
+            'name' => 'Adaptor ONT 12V 1A',
+            'category' => 'Aksesoris',
+            'unit' => 'unit',
+            'is_serialized' => false,
+            'is_active' => true,
+            'branch_id' => $this->branch->id,
+        ]);
+
+        $custody = InventoryCustody::create([
+            'uuid' => (string) Str::uuid(),
+            'item_id' => $itemAdaptor->id,
+            'holder_id' => $reseller->id,
+            'holder_type' => 'reseller',
+            'quantity' => 5,
+            'used_quantity' => 0,
+            'returned_quantity' => 0,
+            'status' => 'in_custody',
+            'branch_id' => $this->branch->id,
+        ]);
+
+        $token = $reseller->createToken('test-reseller-token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->postJson('/api/mobile/inventory/customer-usage', [
+                'customer_id' => $customer->id,
+                'item_id' => $itemAdaptor->id,
+                'quantity' => 1,
+                'notes' => 'Ganti adaptor mati tersambar petir',
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'customer_id' => $customer->id,
+                    'item_id' => $itemAdaptor->id,
+                    'quantity_used' => 1,
+                    'remaining_custody' => 4,
+                ],
+            ]);
+
+        $this->assertDatabaseHas('inventory_usages', [
+            'technician_id' => $reseller->id,
+            'customer_id' => $customer->id,
+            'work_order_type' => 'repair_replacement',
+        ]);
+
+        $this->assertDatabaseHas('inventory_custodies', [
+            'id' => $custody->id,
+            'used_quantity' => 1,
+            'status' => 'in_custody',
         ]);
     }
 }

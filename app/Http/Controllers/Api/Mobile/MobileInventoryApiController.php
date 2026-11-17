@@ -3,14 +3,19 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\CRM\Customer;
+use App\Models\Customer\CustomerService;
 use App\Models\Inventory\InventoryCustody;
 use App\Models\Inventory\InventoryCustodyTransfer;
 use App\Models\Inventory\InventoryRequisition;
 use App\Models\Inventory\InventoryRequisitionItem;
 use App\Models\Inventory\InventoryReturn;
 use App\Models\Inventory\InventoryReturnItem;
+use App\Models\Inventory\InventoryUsage;
+use App\Models\Inventory\InventoryUsageItem;
 use App\Models\Inventory\Item;
 use App\Models\Inventory\Warehouse;
+use App\Models\ISP\Onu;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -310,6 +315,8 @@ class MobileInventoryApiController extends Controller
             'items.*.notes' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:500',
             'warehouse_id' => 'nullable|integer',
+            'requisition_type' => 'nullable|string|in:dispatch_request,procurement_request',
+            'urgency' => 'nullable|string|in:normal,urgent,scheduled',
         ]);
 
         $warehouseId = $request->input('warehouse_id');
@@ -330,15 +337,45 @@ class MobileInventoryApiController extends Controller
             $warehouseId = $warehouse->id;
         }
 
+        // Cek stok fisik jika tipe adalah dispatch_request (pengambilan langsung)
+        $reqType = $request->input('requisition_type');
+        if (!$reqType) {
+            // Auto-detect: Jika salah satu barang stoknya 0, arahkan ke procurement_request
+            $hasOutOfStock = false;
+            foreach ($request->input('items') as $line) {
+                $itemId = (int)$line['item_id'];
+                $itemObj = Item::find($itemId);
+                $stk = \App\Models\Inventory\InventoryStock::where('warehouse_id', $warehouseId)->where('item_id', $itemId)->first();
+                $qtyStock = (float)($stk?->quantity ?? 0.0);
+                if ($itemObj && $itemObj->is_serialized) {
+                    $serialCount = (float) \App\Models\Inventory\ItemSerial::where('item_id', $itemId)
+                        ->where('warehouse_id', $warehouseId)
+                        ->where('status', 'in_warehouse')
+                        ->count();
+                    $qtyStock = max($qtyStock, $serialCount);
+                }
+                if ($qtyStock < (float)$line['quantity']) {
+                    $hasOutOfStock = true;
+                    break;
+                }
+            }
+            $reqType = $hasOutOfStock ? 'procurement_request' : 'dispatch_request';
+        }
+
         DB::beginTransaction();
         try {
+            $isProcurement = ($reqType === 'procurement_request');
+            $requesterType = $user->isReseller() ? 'reseller' : 'technician';
+
             $requisition = InventoryRequisition::create([
                 'uuid' => (string) Str::uuid(),
+                'requisition_type' => $reqType,
+                'urgency' => $request->input('urgency', 'normal'),
                 'requester_id' => $user->id,
-                'requester_type' => 'technician',
+                'requester_type' => $requesterType,
                 'warehouse_id' => $warehouseId,
                 'branch_id' => $user->branch_id,
-                'distribution_method' => 'direct_technician',
+                'distribution_method' => $user->isReseller() ? 'pickup_reseller' : 'direct_technician',
                 'status' => 'pending',
                 'notes' => $request->input('notes'),
             ]);
@@ -354,12 +391,17 @@ class MobileInventoryApiController extends Controller
 
             DB::commit();
 
+            $label = $isProcurement
+                ? "Permohonan pengadaan material (Restock)"
+                : "Permintaan pengambilan material";
+
             return response()->json([
                 'success' => true,
-                'message' => "Permintaan material {$requisition->requisition_number} berhasil diajukan.",
+                'message' => "{$label} {$requisition->requisition_number} berhasil diajukan ke admin gudang.",
                 'data' => [
                     'id' => $requisition->id,
                     'requisition_number' => $requisition->requisition_number,
+                    'requisition_type' => $requisition->requisition_type,
                     'status' => $requisition->status,
                     'items_count' => count($request->input('items')),
                     'created_at' => $requisition->created_at?->toIso8601String(),
@@ -397,12 +439,19 @@ class MobileInventoryApiController extends Controller
             $query->where('status', $request->input('status'));
         }
 
+        if ($request->filled('requisition_type')) {
+            $query->where('requisition_type', $request->input('requisition_type'));
+        }
+
         $list = $query->limit(50)->get();
 
         $formatted = $list->map(fn(InventoryRequisition $r) => [
             'id' => $r->id,
             'uuid' => $r->uuid,
             'requisition_number' => $r->requisition_number,
+            'requisition_type' => $r->requisition_type ?? 'dispatch_request',
+            'requisition_type_label' => ($r->requisition_type === 'procurement_request' ? 'Permohonan Pengadaan' : 'Pengambilan Barang'),
+            'urgency' => $r->urgency ?? 'normal',
             'status' => $r->status,
             'requester_name' => $r->requester?->name,
             'approver_name' => $r->approver?->name,
@@ -677,5 +726,170 @@ class MobileInventoryApiController extends Controller
                 'message' => 'Gagal memproses pengembalian barang: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Catat pemakaian material untuk perbaikan/penggantian alat non-serial (Adaptor, Fatcore/Fast Connector, Patchcord, Kabel Dropcore).
+     * Dapat dilakukan oleh Teknisi maupun Reseller langsung dari stok tangan (custody).
+     * Mendukung pencarian pelanggan langsung via Serial Number (SN) modem yang sedang terpasang di lokasi.
+     */
+    public function recordCustomerUsage(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'serial_number' => 'nullable|string|max:100',
+            'onu_sn' => 'nullable|string|max:100',
+            'customer_id' => 'nullable|integer',
+            'item_id' => 'nullable|integer',
+            'material_type' => 'nullable|string|max:50',
+            'quantity' => 'nullable|numeric|min:0.01',
+            'notes' => 'nullable|string|max:500',
+            'ticket_id' => 'nullable|integer',
+        ]);
+
+        $user = $request->user();
+        $customer = null;
+        $snClean = strtoupper(trim((string) ($request->input('serial_number') ?? $request->input('onu_sn') ?? '')));
+
+        if ($snClean !== '') {
+            $onu = Onu::withoutGlobalScopes()->where('serial_number', $snClean)->first();
+            if ($onu) {
+                $service = CustomerService::withoutGlobalScopes()->where('onu_id', $onu->id)->latest('id')->first();
+                if ($service && $service->customer_id) {
+                    $customer = Customer::withoutGlobalScopes()->find($service->customer_id);
+                }
+                if (!$customer && $onu->customer_id) {
+                    $customer = Customer::withoutGlobalScopes()->find($onu->customer_id);
+                }
+            }
+            if (!$customer) {
+                $itemSerial = \App\Models\Inventory\ItemSerial::withoutGlobalScopes()->where('serial_number', $snClean)->first();
+                if ($itemSerial && $itemSerial->customer_id) {
+                    $customer = Customer::withoutGlobalScopes()->find($itemSerial->customer_id);
+                }
+            }
+        }
+
+        if (!$customer && !empty($validated['customer_id'])) {
+            $customer = Customer::withoutGlobalScopes()->find((int) $validated['customer_id']);
+        }
+
+        if (!$customer) {
+            return response()->json([
+                'success' => false,
+                'message' => $snClean !== ''
+                    ? "Perangkat ONT dengan SN {$snClean} tidak terhubung ke pelanggan aktif manapun."
+                    : 'ID Pelanggan atau SN Modem ONT wajib diisi.',
+            ], 422);
+        }
+
+        // Scope check untuk Reseller: hanya boleh pelanggan binaan sendiri
+        if ($user->isReseller()) {
+            $effectiveResellerId = $user->getEffectiveResellerId();
+            if ($customer->reseller_id && (int) $customer->reseller_id !== (int) $effectiveResellerId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak: Pelanggan bukan binaan reseller Anda.',
+                ], 403);
+            }
+        }
+
+        // Resolusi material_type jika item_id tidak dikirim langsung (misal pilih 'adaptor' / 'fatcore' / 'patchcord')
+        $targetItemId = !empty($validated['item_id']) ? (int) $validated['item_id'] : null;
+        if (!$targetItemId && !empty($validated['material_type'])) {
+            $matType = strtolower(trim($validated['material_type']));
+            $custodyMatch = InventoryCustody::withoutGlobalScopes()
+                ->where('holder_id', $user->id)
+                ->where('status', 'in_custody')
+                ->whereHas('item', function ($q) use ($matType) {
+                    if ($matType === 'adaptor') {
+                        $q->where('name', 'like', '%Adaptor%')->orWhere('sku', 'like', '%ADP%');
+                    } elseif (in_array($matType, ['fatcore', 'fast_connector', 'connector', 'fc'])) {
+                        $q->where('name', 'like', '%Fast Connector%')->orWhere('name', 'like', '%Fatcore%')->orWhere('name', 'like', '%Konektor%');
+                    } elseif (in_array($matType, ['patchcord', 'dropcore', 'kabel', 'dc'])) {
+                        $q->where('name', 'like', '%Patchcord%')->orWhere('name', 'like', '%Dropcore%')->orWhere('name', 'like', '%Drop Core%');
+                    }
+                })
+                ->whereRaw('(CAST(quantity AS REAL) - CAST(COALESCE(used_quantity, 0) AS REAL) - CAST(COALESCE(returned_quantity, 0) AS REAL)) > 0')
+                ->first();
+            if ($custodyMatch) {
+                $targetItemId = $custodyMatch->item_id;
+            }
+        }
+
+        if (!$targetItemId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Material atau jenis barang (Adaptor / Fatcore / Patchcord) tidak ditemukan atau belum dipilih.',
+            ], 422);
+        }
+
+        // Cek stok custody di tangan pemohon (teknisi / reseller)
+        $qtyNeeded = !empty($validated['quantity']) ? (float) $validated['quantity'] : 1.0;
+        $custody = InventoryCustody::withoutGlobalScopes()
+            ->where('holder_id', $user->id)
+            ->where('item_id', $targetItemId)
+            ->where('status', 'in_custody')
+            ->whereRaw('(CAST(quantity AS REAL) - CAST(COALESCE(used_quantity, 0) AS REAL) - CAST(COALESCE(returned_quantity, 0) AS REAL)) >= ' . (float) $qtyNeeded)
+            ->lockForUpdate()
+            ->first();
+
+        if (!$custody) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stok material tidak mencukupi di tangan (custody) Anda.',
+            ], 422);
+        }
+
+        $item = $custody->item ?? Item::withoutGlobalScopes()->find($targetItemId);
+
+        return DB::transaction(function () use ($user, $customer, $custody, $item, $qtyNeeded, $validated, $snClean) {
+            // 1. Potong stok custody
+            $newUsed = (float) $custody->used_quantity + $qtyNeeded;
+            $isFullyUsed = ($newUsed + (float) $custody->returned_quantity) >= (float) $custody->quantity;
+            $custody->update([
+                'used_quantity' => $newUsed,
+                'status' => $isFullyUsed ? 'used' : 'in_custody',
+                'customer_id' => $customer->id,
+            ]);
+
+            // 2. Buat record InventoryUsage
+            $snTag = $snClean !== '' ? " [SN Modem: {$snClean}]" : '';
+            $usage = InventoryUsage::create([
+                'uuid' => (string) Str::uuid(),
+                'usage_number' => 'USG-REP-' . strtoupper(Str::random(8)),
+                'technician_id' => $user->id,
+                'customer_id' => $customer->id,
+                'ticket_id' => $validated['ticket_id'] ?? null,
+                'work_order_type' => 'repair_replacement',
+                'usage_date' => now()->toDateString(),
+                'notes' => ($validated['notes'] ?? 'Penggantian material perbaikan') . "{$snTag} oleh {$user->name}",
+                'branch_id' => $customer->branch_id ?? $user->branch_id,
+            ]);
+
+            // 3. Buat InventoryUsageItem
+            $usageItem = InventoryUsageItem::create([
+                'usage_id' => $usage->id,
+                'custody_id' => $custody->id,
+                'item_id' => $item?->id ?? $targetItemId,
+                'item_serial_id' => $custody->item_serial_id,
+                'quantity' => $qtyNeeded,
+                'notes' => ($validated['notes'] ?? 'Penggantian material perbaikan') . $snTag,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Material '{$item?->name}' ({$qtyNeeded} {$item?->unit}) berhasil dicatat untuk pelanggan {$customer->name}.",
+                'data' => [
+                    'usage_number' => $usage->usage_number,
+                    'customer_id' => $customer->id,
+                    'customer_name' => $customer->name,
+                    'serial_number' => $snClean ?: null,
+                    'item_id' => $item?->id,
+                    'item_name' => $item?->name,
+                    'quantity_used' => $qtyNeeded,
+                    'remaining_custody' => max(0, (float) $custody->quantity - $newUsed - (float) $custody->returned_quantity),
+                ],
+            ]);
+        });
     }
 }

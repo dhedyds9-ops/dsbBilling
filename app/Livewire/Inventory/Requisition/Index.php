@@ -18,11 +18,19 @@ class Index extends Component
 
     public string $search = '';
     public string $statusFilter = ''; // all, pending, approved, rejected, dispatched
+    public string $typeFilter = ''; // all, dispatch_request, procurement_request
     public string $warehouseFilter = '';
     public string|int $perPage = 20;
 
+    // Marketplace / Tabs
+    public string $activeTab = 'list'; // 'list' (Riwayat) or 'catalog' (Katalog Marketplace Gudang)
+    public string $catalogSearch = '';
+    public string $catalogCategory = '';
+
     // Modal Form Permintaan
     public bool $showCreateModal = false;
+    public string $requisition_type = 'dispatch_request'; // dispatch_request (Ready Stock) or procurement_request (Restock/Pengadaan)
+    public string $urgency = 'normal'; // normal, urgent
     public ?int $warehouse_id = null;
     public string $distribution_method = 'pickup_reseller'; // pickup_reseller (Metode A), direct_technician (Metode B)
     public ?int $customer_id = null;
@@ -42,7 +50,9 @@ class Index extends Component
     protected $queryString = [
         'search' => ['except' => ''],
         'statusFilter' => ['except' => ''],
+        'typeFilter' => ['except' => ''],
         'warehouseFilter' => ['except' => ''],
+        'activeTab' => ['except' => 'list'],
         'perPage' => ['except' => 20],
         'page' => ['except' => 1],
     ];
@@ -65,6 +75,26 @@ class Index extends Component
     public function updatingWarehouseFilter()
     {
         $this->resetPage();
+    }
+
+    public function updatingTypeFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingCatalogSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingCatalogCategory()
+    {
+        $this->resetPage();
+    }
+
+    public function setTab(string $tab)
+    {
+        $this->activeTab = $tab;
     }
 
     public function canUserCreateRequisition(): bool
@@ -115,9 +145,56 @@ class Index extends Component
         $this->showCreateModal = true;
     }
 
+    public function openCreateForStock(int $itemId)
+    {
+        if (!$this->canUserCreateRequisition()) {
+            session()->flash('error', 'Administrator dan Admin Gudang tidak diperkenankan membuat pengajuan permintaan baru.');
+            return;
+        }
+
+        $this->resetCreateForm();
+        $wh = Warehouse::active()->first();
+        if ($wh) {
+            $this->warehouse_id = $wh->id;
+        }
+
+        $item = Item::find($itemId);
+        $stockQty = 0;
+        if ($item && $wh) {
+            $stk = \App\Models\Inventory\InventoryStock::where('warehouse_id', $wh->id)->where('item_id', $item->id)->first();
+            $stockQty = (float)($stk?->quantity ?? 0);
+            if ($item->is_serialized) {
+                $sc = (float) \App\Models\Inventory\ItemSerial::where('item_id', $item->id)
+                    ->where('warehouse_id', $wh->id)
+                    ->where('status', 'in_warehouse')
+                    ->count();
+                $stockQty = max($stockQty, $sc);
+            }
+        }
+
+        $this->requisition_type = ($stockQty > 0) ? 'dispatch_request' : 'procurement_request';
+        $this->requisitionItems = [
+            [
+                'item_id' => $itemId,
+                'quantity' => 1,
+                'unit' => $item?->unit ?? 'pcs',
+                'notes' => '',
+            ]
+        ];
+
+        if (auth()->user()?->isReseller()) {
+            $this->work_order_type = 'stock_topup';
+            $this->distribution_method = 'pickup_reseller';
+        }
+
+        $this->showCreateModal = true;
+    }
+
     public function resetCreateForm()
     {
         $this->warehouse_id = null;
+        $this->requisition_type = 'dispatch_request';
+        $this->urgency = 'normal';
         $this->distribution_method = 'pickup_reseller';
         $this->customer_id = null;
         $this->work_order_type = auth()->user()?->isReseller() ? 'stock_topup' : 'psb';
@@ -157,6 +234,21 @@ class Index extends Component
             if ($itemId) {
                 $item = Item::find($itemId);
                 $this->requisitionItems[$index]['unit'] = $item?->unit ?? 'unit';
+
+                if ($this->warehouse_id) {
+                    $stk = \App\Models\Inventory\InventoryStock::where('warehouse_id', $this->warehouse_id)->where('item_id', $itemId)->first();
+                    $qtyStock = (float)($stk?->quantity ?? 0.0);
+                    if ($item && $item->is_serialized) {
+                        $serialCount = (float) \App\Models\Inventory\ItemSerial::where('item_id', $itemId)
+                            ->where('warehouse_id', $this->warehouse_id)
+                            ->where('status', 'in_warehouse')
+                            ->count();
+                        $qtyStock = max($qtyStock, $serialCount);
+                    }
+                    if ($qtyStock <= 0) {
+                        $this->requisition_type = 'procurement_request';
+                    }
+                }
             } else {
                 $this->requisitionItems[$index]['unit'] = 'unit';
             }
@@ -181,6 +273,8 @@ class Index extends Component
 
         $this->validate([
             'warehouse_id' => 'required|exists:warehouses,id',
+            'requisition_type' => 'required|in:dispatch_request,procurement_request',
+            'urgency' => 'required|in:normal,urgent',
             'distribution_method' => 'required|in:pickup_reseller,direct_technician',
             'work_order_type' => 'required|in:stock_topup,psb,maintenance,other',
             'designated_technician_id' => 'nullable|exists:users,id',
@@ -191,7 +285,8 @@ class Index extends Component
             'requisitionItems.*.quantity' => 'required|numeric|min:0.01',
         ], [
             'warehouse_id.required' => 'Gudang asal wajib dipilih.',
-            'work_order_type.required' => 'Jenis pengajuan wajib dipilih.',
+            'requisition_type.required' => 'Jenis pengajuan wajib dipilih.',
+            'work_order_type.required' => 'Jenis peruntukan wajib dipilih.',
             'requisitionItems.required' => 'Minimal harus ada 1 barang yang diminta.',
             'requisitionItems.*.item_id.required' => 'Barang pada setiap baris wajib dipilih.',
             'requisitionItems.*.quantity.min' => 'Jumlah barang harus lebih besar dari 0.',
@@ -199,6 +294,30 @@ class Index extends Component
 
         $warehouse = Warehouse::findOrFail($this->warehouse_id);
         $user = auth()->user();
+
+        // Validasi ketersediaan stok fisik jika tipe adalah dispatch_request (Pengambilan Barang Ready)
+        if ($this->requisition_type === 'dispatch_request') {
+            foreach ($this->requisitionItems as $line) {
+                $itemId = (int)$line['item_id'];
+                $itemObj = Item::find($itemId);
+                $stk = \App\Models\Inventory\InventoryStock::where('warehouse_id', $warehouse->id)->where('item_id', $itemId)->first();
+                $qtyStock = (float)($stk?->quantity ?? 0.0);
+                if ($itemObj && $itemObj->is_serialized) {
+                    $serialCount = (float) \App\Models\Inventory\ItemSerial::where('item_id', $itemId)
+                        ->where('warehouse_id', $warehouse->id)
+                        ->where('status', 'in_warehouse')
+                        ->count();
+                    $qtyStock = max($qtyStock, $serialCount);
+                }
+
+                if ($qtyStock < (float)$line['quantity']) {
+                    $unit = $itemObj?->unit ?? 'unit';
+                    $name = $itemObj?->name ?? 'Barang';
+                    $this->addError('requisitionItems', "Stok fisik '{$name}' di {$warehouse->name} tidak mencukupi (Tersedia: {$qtyStock} {$unit}, diminta: {$line['quantity']} {$unit}). Silakan ubah jenis pengajuan menjadi 'Permohonan Pengadaan Barang Baru (Restock)' jika membutuhkan barang baru dari vendor.");
+                    return;
+                }
+            }
+        }
 
         $requesterType = 'internal';
         if ($user) {
@@ -214,10 +333,13 @@ class Index extends Component
         $customerId = ($this->work_order_type === 'stock_topup') ? null : $this->customer_id;
 
         try {
+            $isProcurement = ($this->requisition_type === 'procurement_request');
             DB::transaction(function () use ($warehouse, $requesterType, $user, $designatedTechId, $customerId) {
                 $req = InventoryRequisition::create([
                     'requester_id' => $user->id,
                     'requester_type' => $requesterType,
+                    'requisition_type' => $this->requisition_type,
+                    'urgency' => $this->urgency,
                     'warehouse_id' => $warehouse->id,
                     'branch_id' => $warehouse->branch_id,
                     'distribution_method' => $this->distribution_method,
@@ -239,7 +361,11 @@ class Index extends Component
                 }
             });
 
-            session()->flash('success', 'Permintaan barang berhasil diajukan dan menunggu persetujuan gudang/manager.');
+            $successMsg = $isProcurement
+                ? 'Permohonan pengadaan barang (Restock) berhasil diajukan dan diteruskan ke Admin Gudang/Manajemen untuk pemesanan vendor.'
+                : 'Permintaan pengambilan barang berhasil diajukan dan menunggu persetujuan/pengeluaran barang oleh Admin Gudang.';
+
+            session()->flash('success', $successMsg);
             $this->showCreateModal = false;
             $this->resetCreateForm();
         } catch (\Throwable $e) {
@@ -282,7 +408,12 @@ class Index extends Component
             'approved_at' => now(),
         ]);
 
-        session()->flash('success', "Permintaan No. {$req->requisition_number} telah disetujui. Siap untuk pengeluaran barang (dispatch).");
+        $isProcurement = ($req->requisition_type === 'procurement_request');
+        $successMsg = $isProcurement
+            ? "Permohonan Pengadaan No. {$req->requisition_number} telah disetujui. Silakan tindak lanjuti pembelian/inbound dari vendor."
+            : "Permintaan No. {$req->requisition_number} telah disetujui. Siap untuk pengeluaran barang (dispatch).";
+
+        session()->flash('success', $successMsg);
         $this->showApprovalModal = false;
         $this->selectedRequisitionId = null;
     }
@@ -388,6 +519,10 @@ class Index extends Component
             $query->where('status', $this->statusFilter);
         }
 
+        if (!empty($this->typeFilter)) {
+            $query->where('requisition_type', $this->typeFilter);
+        }
+
         if (!empty($this->warehouseFilter)) {
             $query->where('warehouse_id', $this->warehouseFilter);
         }
@@ -402,6 +537,40 @@ class Index extends Component
         $requisitions = $query->paginate($perPageInt);
         $warehouses = Warehouse::active()->orderBy('name')->get();
         $availableItems = Item::active()->orderBy('name')->get();
+
+        $targetWarehouseId = $this->warehouse_id ?: ($warehouses->first()?->id ?? null);
+        $catalogStockMap = [];
+        if ($targetWarehouseId) {
+            $stocks = \App\Models\Inventory\InventoryStock::where('warehouse_id', $targetWarehouseId)->get()->keyBy('item_id');
+            $serials = \App\Models\Inventory\ItemSerial::where('warehouse_id', $targetWarehouseId)->where('status', 'in_warehouse')
+                ->selectRaw('item_id, count(*) as count')->groupBy('item_id')->pluck('count', 'item_id');
+            foreach ($availableItems as $ai) {
+                $base = (float)($stocks[$ai->id]->quantity ?? 0);
+                if ($ai->is_serialized) {
+                    $serialCount = (float)($serials[$ai->id] ?? 0);
+                    $base = max($base, $serialCount);
+                }
+                $catalogStockMap[$ai->id] = $base;
+            }
+        }
+
+        // Query katalog untuk Marketplace
+        $catalogItemsQuery = Item::active()->orderBy('name');
+        if (!empty($this->catalogSearch)) {
+            $cs = '%' . trim($this->catalogSearch) . '%';
+            $catalogItemsQuery->where(function ($q) use ($cs) {
+                $q->where('name', 'like', $cs)
+                    ->orWhere('sku', 'like', $cs)
+                    ->orWhere('brand', 'like', $cs)
+                    ->orWhere('model', 'like', $cs);
+            });
+        }
+        if (!empty($this->catalogCategory)) {
+            $catalogItemsQuery->where('category', $this->catalogCategory);
+        }
+        $catalogItems = $catalogItemsQuery->get();
+        $categories = Item::active()->whereNotNull('category')->distinct()->pluck('category')->sort()->values();
+
         $customers = Customer::query()
             ->whereRaw("LOWER(COALESCE(name, '')) NOT LIKE 'guest%'")
             ->whereRaw("LOWER(COALESCE(code, '')) NOT LIKE 'gst-%'")
@@ -445,6 +614,13 @@ class Index extends Component
             'requisitions' => $requisitions,
             'warehouses' => $warehouses,
             'availableItems' => $availableItems,
+            'catalogItems' => $catalogItems,
+            'catalogStockMap' => $catalogStockMap,
+            'categories' => $categories,
+            'targetWarehouseId' => $targetWarehouseId,
+            'activeTab' => $this->activeTab,
+            'requisition_type' => $this->requisition_type,
+            'urgency' => $this->urgency,
             'warehouseStocks' => $warehouseStocks,
             'customers' => $customers,
             'technicians' => $technicians,

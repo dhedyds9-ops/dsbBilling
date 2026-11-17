@@ -1282,8 +1282,8 @@ class StockMutationService
                 if ($newSerial->custodian_id !== null && (int) $newSerial->custodian_id !== (int) $technicianId) {
                     throw new \InvalidArgumentException("SN {$newSnClean} berada di stok/custody teknisi lain.");
                 }
-                if ($newSerial->status !== 'in_custody_technician' || (int) $newSerial->custodian_id !== (int) $technicianId) {
-                    throw new \InvalidArgumentException("SN {$newSnClean} tidak tersedia di custody teknisi yang bertugas (status: {$newSerial->status}).");
+                if (!in_array($newSerial->status, ['in_custody_technician', 'in_custody_reseller'], true) || (int) $newSerial->custodian_id !== (int) $technicianId) {
+                    throw new \InvalidArgumentException("SN {$newSnClean} tidak tersedia di custody Anda (status: {$newSerial->status}).");
                 }
             }
 
@@ -1457,16 +1457,22 @@ class StockMutationService
                     ->lockForUpdate()
                     ->first();
 
+                $isResellerActor = $techUser && ($techUser->isReseller() || !empty($techUser->reseller_id));
+                $returnedStatus = $normalizedOldCond === 'good'
+                    ? ($isResellerActor ? 'in_custody_reseller' : 'in_custody_technician')
+                    : 'damaged';
+                $actorCustodianType = $isResellerActor ? 'reseller' : 'technician';
+
                 if (!$oldSerial && $defaultOntItem) {
                     $oldSerial = ItemSerial::withoutGlobalScopes()->create([
                         'uuid' => (string) \Illuminate\Support\Str::uuid(),
                         'item_id' => $defaultOntItem->id,
                         'serial_number' => $oldSnClean,
-                        'status' => $normalizedOldCond === 'good' ? 'in_custody_technician' : 'damaged',
+                        'status' => $returnedStatus,
                         'condition' => $normalizedOldCond,
                         'customer_id' => null,
                         'custodian_id' => $technicianId,
-                        'custodian_type' => 'technician',
+                        'custodian_type' => $actorCustodianType,
                         'ticket_id' => $ticketId,
                         'branch_id' => $branchId,
                         'notes' => "Ditarik via Swap ONT digantikan oleh {$newSnClean}",
@@ -1475,11 +1481,11 @@ class StockMutationService
                     ]);
                 } elseif ($oldSerial) {
                     $oldSerial->update([
-                        'status' => $normalizedOldCond === 'good' ? 'in_custody_technician' : 'damaged',
+                        'status' => $returnedStatus,
                         'condition' => $normalizedOldCond,
                         'customer_id' => null,
                         'custodian_id' => $technicianId,
-                        'custodian_type' => 'technician',
+                        'custodian_type' => $actorCustodianType,
                         'ticket_id' => $ticketId,
                         'notes' => "Ditarik via Swap ONT digantikan oleh {$newSnClean}",
                         'updated_by' => $technicianId,
@@ -1494,7 +1500,7 @@ class StockMutationService
                         ->first();
 
                     if ($normalizedOldCond === 'good') {
-                        // Kembalikan ONT lama yang bagus ke InventoryCustody teknisi (+1 available)
+                        // Kembalikan ONT lama yang bagus ke InventoryCustody pemegang (+1 available)
                         if ($oldCustody) {
                             $oldCustody->update([
                                 'used_quantity' => max(0, (float) $oldCustody->used_quantity - 1),
@@ -1507,7 +1513,7 @@ class StockMutationService
                                 'item_id' => $oldSerial->item_id,
                                 'item_serial_id' => $oldSerial->id,
                                 'holder_id' => $technicianId,
-                                'holder_type' => 'technician',
+                                'holder_type' => $actorCustodianType,
                                 'quantity' => 1,
                                 'used_quantity' => 0,
                                 'returned_quantity' => 0,
@@ -1606,6 +1612,12 @@ class StockMutationService
                 ->lockForUpdate()
                 ->first();
 
+            $isResellerHolder = $techUser && ($techUser->isReseller() || !empty($techUser->reseller_id));
+            $dismantledStatus = $normalizedCond === 'good'
+                ? ($isResellerHolder ? 'in_custody_reseller' : 'in_custody_technician')
+                : 'damaged';
+            $custodianType = $isResellerHolder ? 'reseller' : 'technician';
+
             if (!$serial && \Illuminate\Support\Facades\Schema::hasTable('items')) {
                 $defaultOntItem = Item::withoutGlobalScopes()
                     ->where(function ($q) {
@@ -1631,13 +1643,13 @@ class StockMutationService
                     'uuid' => (string) \Illuminate\Support\Str::uuid(),
                     'item_id' => $defaultOntItem->id,
                     'serial_number' => $snClean,
-                    'status' => $normalizedCond === 'good' ? 'in_custody_technician' : 'damaged',
+                    'status' => $dismantledStatus,
                     'condition' => $normalizedCond,
                     'customer_id' => null,
                     'installation_id' => null,
                     'ticket_id' => $ticketId,
                     'custodian_id' => $technicianId,
-                    'custodian_type' => 'technician',
+                    'custodian_type' => $custodianType,
                     'branch_id' => $branchId,
                     'notes' => $notes ?: "Ditarik (Dismantle) dalam kondisi {$normalizedCond}",
                     'created_by' => $technicianId,
@@ -1645,13 +1657,13 @@ class StockMutationService
                 ]);
             } elseif ($serial) {
                 $serial->update([
-                    'status' => $normalizedCond === 'good' ? 'in_custody_technician' : 'damaged',
+                    'status' => $dismantledStatus,
                     'condition' => $normalizedCond,
                     'customer_id' => null,
                     'installation_id' => null,
                     'ticket_id' => $ticketId,
                     'custodian_id' => $technicianId,
-                    'custodian_type' => 'technician',
+                    'custodian_type' => $custodianType,
                     'notes' => $notes ?: "Ditarik (Dismantle) dalam kondisi {$normalizedCond}",
                     'updated_by' => $technicianId,
                 ]);
@@ -1677,7 +1689,7 @@ class StockMutationService
                             'item_id' => $serial->item_id,
                             'item_serial_id' => $serial->id,
                             'holder_id' => $technicianId,
-                            'holder_type' => 'technician',
+                            'holder_type' => $custodianType,
                             'quantity' => 1,
                             'used_quantity' => 0,
                             'returned_quantity' => 0,

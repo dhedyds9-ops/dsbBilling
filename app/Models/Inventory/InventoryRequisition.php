@@ -21,6 +21,8 @@ class InventoryRequisition extends Model
     protected $fillable = [
         'uuid',
         'requisition_number',
+        'requisition_type',
+        'urgency',
         'requester_id',
         'requester_type',
         'warehouse_id',
@@ -121,5 +123,15 @@ class InventoryRequisition extends Model
     public function custodies(): HasMany
     {
         return $this->hasMany(InventoryCustody::class, 'requisition_id');
+    }
+
+    public function isProcurementRequest(): bool
+    {
+        return $this->requisition_type === 'procurement_request';
+    }
+
+    public function isDispatchRequest(): bool
+    {
+        return $this->requisition_type === 'dispatch_request' || empty($this->requisition_type);
     }
 }

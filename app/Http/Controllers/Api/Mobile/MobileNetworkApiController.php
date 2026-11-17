@@ -640,9 +640,24 @@ class MobileNetworkApiController extends Controller
         }
 
         // Kebijakan Keamanan Jaringan & Anti-Perangkat Liar (Parity 100% dengan Web Installation Wizard)
-        // Teknisi lapangan WAJIB memiliki penugasan Work Order / SPK PSB yang sah sebelum mengaktivasi ONT
+        // Teknisi lapangan WAJIB memiliki penugasan Work Order / SPK PSB yang sah sebelum mengaktivasi ONT.
+        // Reseller yang memasang mandiri diizinkan untuk pelanggan binaannya tanpa mewajibkan SPK internal teknisi.
         $workOrderId = $validated['work_order_id'] ?? null;
-        if (!$isAdmin && empty($workOrderId)) {
+        $customerId = $validated['customer_id'] ?? null;
+        $isReseller = $user && $user->isReseller();
+
+        if ($isReseller) {
+            $effectiveResellerId = $user->getEffectiveResellerId();
+            if ($customerId) {
+                $checkCust = Customer::withoutGlobalScopes()->find((int) $customerId);
+                if ($checkCust && $checkCust->reseller_id && (int) $checkCust->reseller_id !== (int) $effectiveResellerId) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Aktivasi ditolak: Pelanggan ini bukan bagian dari pelanggan binaan/reseller Anda.',
+                    ], 403);
+                }
+            }
+        } elseif (!$isAdmin && empty($workOrderId)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Aktivasi Pasang ONT ditolak: Teknisi lapangan wajib mengaitkan pemasangan dengan Surat Perintah Kerja (SPK) atau Tiket PSB resmi yang sah.',

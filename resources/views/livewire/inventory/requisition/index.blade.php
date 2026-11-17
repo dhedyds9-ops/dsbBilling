@@ -3,11 +3,11 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
             <h1 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
-                <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-3xl">assignment_add</span>
-                <span>Permintaan Barang (Requisitions)</span>
+                <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-3xl">storefront</span>
+                <span>Permintaan & Katalog Barang Gudang</span>
             </h1>
             <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Alur pengajuan material oleh Reseller, Pengurus, atau Teknisi untuk PSB dan maintenance pelanggan.
+                Katalog ketersediaan material gudang ala marketplace untuk pengambilan barang ready atau permohonan pengadaan (restock).
             </p>
         </div>
 
@@ -15,7 +15,7 @@
             <button wire:click="openCreateModal" type="button"
                     class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all">
                 <span class="material-symbols-outlined text-sm">add</span>
-                <span>Ajukan Permintaan Baru</span>
+                <span>Buat Pengajuan Baru</span>
             </button>
         @endif
     </div>
@@ -34,249 +34,422 @@
         </div>
     @endif
 
-    {{-- Filter Card --}}
-    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-xs">
-        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-            <div class="relative flex-1 min-w-[260px]">
-                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
-                <input wire:model.live.debounce.300ms="search" type="text"
-                       placeholder="Cari no permintaan, nama pelanggan, keterangan..."
-                       class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 placeholder:text-slate-400">
-            </div>
+    {{-- Tab Navigation Bar (Marketplace vs Riwayat) --}}
+    <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700/80 pb-2">
+        <button wire:click="setTab('list')" type="button"
+                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all {{ $activeTab === 'list' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
+            <span class="material-symbols-outlined text-base">format_list_bulleted</span>
+            <span>Riwayat Pengajuan</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] {{ $activeTab === 'list' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300' }}">
+                {{ $requisitions->total() }}
+            </span>
+        </button>
 
-            <div class="flex flex-wrap items-center gap-3">
-                <div class="min-w-[210px] flex-1 sm:flex-initial">
-                    <select wire:model.live="warehouseFilter"
-                            class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 cursor-pointer">
-                        <option value="">Semua Gudang Asal</option>
-                        @foreach($warehouses as $wh)
-                            <option value="{{ $wh->id }}">{{ $wh->name }}</option>
-                        @endforeach
-                    </select>
+        <button wire:click="setTab('catalog')" type="button"
+                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all {{ $activeTab === 'catalog' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
+            <span class="material-symbols-outlined text-base">storefront</span>
+            <span>Katalog Stok Gudang (Marketplace)</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] {{ $activeTab === 'catalog' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300' }}">
+                {{ $catalogItems->count() }}
+            </span>
+        </button>
+    </div>
+
+    {{-- TAB 1: RIWAYAT PENGAJUAN (TABLE VIEW) --}}
+    @if($activeTab === 'list')
+        {{-- Filter Card --}}
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-xs">
+            <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+                <div class="relative flex-1 min-w-[240px]">
+                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+                    <input wire:model.live.debounce.300ms="search" type="text"
+                           placeholder="Cari no pengajuan, pelanggan, catatan..."
+                           class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 placeholder:text-slate-400">
                 </div>
 
-                <div class="min-w-[210px] flex-1 sm:flex-initial">
-                    <select wire:model.live="statusFilter"
-                            class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 cursor-pointer">
-                        <option value="">Semua Status</option>
-                        <option value="pending">Menunggu Persetujuan</option>
-                        <option value="approved">Telah Disetujui</option>
-                        <option value="dispatched">Telah Dikeluarkan</option>
-                        <option value="rejected">Ditolak</option>
-                    </select>
-                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="min-w-[190px] flex-1 sm:flex-initial">
+                        <select wire:model.live="typeFilter"
+                                class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 cursor-pointer font-medium">
+                            <option value="">Semua Jenis Pengajuan</option>
+                            <option value="dispatch_request">Ambil Barang Ready</option>
+                            <option value="procurement_request">Permohonan Pengadaan (Restock)</option>
+                        </select>
+                    </div>
 
-                <div class="min-w-[130px] flex-1 sm:flex-initial">
-                    <select wire:model.live="perPage"
-                            class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-slate-100 cursor-pointer font-medium">
-                        <option value="20">20 / Hal</option>
-                        <option value="50">50 / Hal</option>
-                        <option value="100">100 / Hal</option>
-                        <option value="all">All (Semua)</option>
-                    </select>
+                    <div class="min-w-[190px] flex-1 sm:flex-initial">
+                        <select wire:model.live="warehouseFilter"
+                                class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 cursor-pointer">
+                            <option value="">Semua Gudang Asal</option>
+                            @foreach($warehouses as $wh)
+                                <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="min-w-[180px] flex-1 sm:flex-initial">
+                        <select wire:model.live="statusFilter"
+                                class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 cursor-pointer">
+                            <option value="">Semua Status</option>
+                            <option value="pending">Menunggu Persetujuan</option>
+                            <option value="approved">Telah Disetujui</option>
+                            <option value="dispatched">Telah Dikeluarkan</option>
+                            <option value="rejected">Ditolak</option>
+                        </select>
+                    </div>
+
+                    <div class="min-w-[120px] flex-1 sm:flex-initial">
+                        <select wire:model.live="perPage"
+                                class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-slate-100 cursor-pointer font-medium">
+                            <option value="20">20 / Hal</option>
+                            <option value="50">50 / Hal</option>
+                            <option value="100">100 / Hal</option>
+                            <option value="all">Semua</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    {{-- Requisitions Table --}}
-    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-xs overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="border-b border-slate-200 dark:border-slate-700/80 bg-slate-50/75 dark:bg-slate-900/40 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        <th class="py-3 px-4">No. Permintaan</th>
-                        <th class="py-3 px-4">Pemohon</th>
-                        <th class="py-3 px-4">Metode Distribusi</th>
-                        <th class="py-3 px-4">Pelanggan & Pekerjaan</th>
-                        <th class="py-3 px-4">Teknisi Ditunjuk</th>
-                        <th class="py-3 px-4">Nama / Rincian Barang</th>
-                        <th class="py-3 px-4">Status</th>
-                        <th class="py-3 px-4 text-right">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-xs sm:text-sm">
-                    @forelse($requisitions as $req)
-                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition-colors">
-                            <td class="py-3.5 px-4">
-                                <div class="font-mono font-bold text-slate-800 dark:text-slate-200 text-xs">
-                                    {{ $req->requisition_number }}
-                                </div>
-                                <div class="text-[11px] text-slate-400">
-                                    {{ $req->created_at->format('d/m/Y H:i') }}
-                                </div>
-                            </td>
-                            <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
-                                <div class="font-semibold">{{ $req->requester?->name ?? '-' }}</div>
-                                <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                                    {{ $req->requester_type }}
-                                </span>
-                            </td>
-                            <td class="py-3.5 px-4">
-                                @if($req->distribution_method === 'pickup_reseller')
-                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
-                                        <span class="material-symbols-outlined text-xs">store</span>
-                                        Metode A: Reseller Ambil
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
-                                        <span class="material-symbols-outlined text-xs">local_shipping</span>
-                                        Metode B: Gudang ke Teknisi
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
-                                <div class="font-semibold text-slate-900 dark:text-slate-100">
-                                    {{ $req->customer?->name ?? ($req->work_order_type === 'stock_topup' ? 'Stok Cadangan Reseller' : 'Stok Operasional') }}
-                                </div>
-                                @php
-                                    $woLabel = match($req->work_order_type) {
-                                        'stock_topup' => 'Pengisian Stok Reseller',
-                                        'psb' => 'Pemasangan Baru (PSB)',
-                                        'maintenance' => 'Maintenance',
-                                        'other' => 'Operasional Lainnya',
-                                        default => strtoupper($req->work_order_type ?? '-')
-                                    };
-                                    $woColor = match($req->work_order_type) {
-                                        'stock_topup' => 'text-amber-600 dark:text-amber-400 font-bold',
-                                        'psb' => 'text-emerald-600 dark:text-emerald-400 font-semibold',
-                                        default => 'text-slate-500 font-medium'
-                                    };
-                                @endphp
-                                <div class="text-[11px] {{ $woColor }}">{{ $woLabel }}</div>
-                            </td>
-                            <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
-                                @if($req->designatedTechnician)
-                                    <div class="font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-xs">engineering</span>
-                                        <span>{{ $req->designatedTechnician->name }}</span>
+        {{-- Requisitions Table --}}
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-xs overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-200 dark:border-slate-700/80 bg-slate-50/75 dark:bg-slate-900/40 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            <th class="py-3 px-4">No. Pengajuan</th>
+                            <th class="py-3 px-4">Pemohon</th>
+                            <th class="py-3 px-4">Metode Distribusi</th>
+                            <th class="py-3 px-4">Pelanggan & Peruntukan</th>
+                            <th class="py-3 px-4">Teknisi Ditunjuk</th>
+                            <th class="py-3 px-4">Rincian Barang</th>
+                            <th class="py-3 px-4">Status</th>
+                            <th class="py-3 px-4 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-xs sm:text-sm">
+                        @forelse($requisitions as $req)
+                            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition-colors">
+                                <td class="py-3.5 px-4">
+                                    <div class="font-mono font-bold text-slate-800 dark:text-slate-200 text-xs">
+                                        {{ $req->requisition_number }}
                                     </div>
+                                    <div class="text-[11px] text-slate-400">
+                                        {{ $req->created_at->format('d/m/Y H:i') }}
+                                    </div>
+                                    @if($req->isProcurementRequest())
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 mt-1">
+                                            <span class="material-symbols-outlined text-[11px]">shopping_bag</span>
+                                            <span>Minta Pengadaan</span>
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 mt-1">
+                                            <span class="material-symbols-outlined text-[11px]">local_shipping</span>
+                                            <span>Ambil Ready</span>
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
+                                    <div class="font-semibold">{{ $req->requester?->name ?? '-' }}</div>
+                                    <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                        {{ $req->requester_type }}
+                                    </span>
+                                </td>
+                                <td class="py-3.5 px-4">
+                                    @if($req->distribution_method === 'pickup_reseller')
+                                        <span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                                            <span class="material-symbols-outlined text-xs">store</span>
+                                            Metode A: Reseller Ambil
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
+                                            <span class="material-symbols-outlined text-xs">local_shipping</span>
+                                            Metode B: Gudang ke Teknisi
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
+                                    <div class="font-semibold text-slate-900 dark:text-slate-100">
+                                        {{ $req->customer?->name ?? ($req->work_order_type === 'stock_topup' ? 'Stok Cadangan Reseller' : 'Stok Operasional') }}
+                                    </div>
+                                    @php
+                                        $woLabel = match($req->work_order_type) {
+                                            'stock_topup' => 'Pengisian Stok Reseller',
+                                            'psb' => 'Pemasangan Baru (PSB)',
+                                            'maintenance' => 'Maintenance',
+                                            'other' => 'Operasional Lainnya',
+                                            default => strtoupper($req->work_order_type ?? '-')
+                                        };
+                                        $woColor = match($req->work_order_type) {
+                                            'stock_topup' => 'text-amber-600 dark:text-amber-400 font-bold',
+                                            'psb' => 'text-emerald-600 dark:text-emerald-400 font-semibold',
+                                            default => 'text-slate-500 font-medium'
+                                        };
+                                    @endphp
+                                    <div class="text-[11px] {{ $woColor }}">{{ $woLabel }}</div>
+                                </td>
+                                <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
+                                    @if($req->designatedTechnician)
+                                        <div class="font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-xs">engineering</span>
+                                            <span>{{ $req->designatedTechnician->name }}</span>
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-slate-400 italic flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-xs">person</span>
+                                            <span>Dipegang Reseller</span>
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="py-3.5 px-4">
+                                    <div class="space-y-1">
+                                        @forelse($req->items->take(2) as $ri)
+                                            <div class="flex items-center gap-1.5 text-xs text-slate-800 dark:text-slate-200">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                                                <span class="font-bold truncate max-w-[200px]">{{ $ri->item?->name ?? 'Item #' . $ri->item_id }}</span>
+                                                <span class="font-mono text-[11px] text-emerald-700 dark:text-emerald-400 font-bold shrink-0">
+                                                    {{ (float)$ri->quantity_requested }} {{ $ri->item?->unit ?? 'unit' }}
+                                                </span>
+                                            </div>
+                                        @empty
+                                            <span class="text-xs text-slate-400 italic">Tidak ada item</span>
+                                        @endforelse
+                                        @if($req->items->count() > 2)
+                                            <span class="inline-block text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                                                +{{ $req->items->count() - 2 }} barang lainnya
+                                            </span>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="py-3.5 px-4">
+                                    @php
+                                        $badge = match($req->status) {
+                                            'pending' => 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800',
+                                            'approved' => 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800',
+                                            'dispatched' => 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800',
+                                            'received' => 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-400 dark:border-teal-800',
+                                            'rejected' => 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800',
+                                            default => 'bg-slate-100 text-slate-700 border-slate-200'
+                                        };
+                                        $lbl = match($req->status) {
+                                            'pending' => 'Menunggu Approval',
+                                            'approved' => 'Disetujui',
+                                            'dispatched' => 'Telah Dikeluarkan',
+                                            'received' => 'Diterima Pemohon',
+                                            'rejected' => 'Ditolak',
+                                            default => ucfirst($req->status)
+                                        };
+                                    @endphp
+                                    <span class="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-md border text-[11px] {{ $badge }}">
+                                        {{ $lbl }}
+                                    </span>
+                                </td>
+                                <td class="py-3.5 px-4 text-right">
+                                    <div class="inline-flex items-center gap-1.5">
+                                        <button wire:click="showDetail({{ $req->id }})"
+                                                class="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg transition-colors"
+                                                title="Lihat Detail">
+                                            <span class="material-symbols-outlined text-sm">visibility</span>
+                                        </button>
+
+                                        {{-- Tombol Approval untuk Petugas Gudang / Manager --}}
+                                        @if($canManageWarehouse && !$isReseller)
+                                            @if($req->status === 'pending' && $req->requester_id !== auth()->id())
+                                                <button wire:click="openApprovalModal({{ $req->id }})"
+                                                        class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-xs">
+                                                    <span class="material-symbols-outlined text-xs">done</span>
+                                                    <span>Proses</span>
+                                                </button>
+                                            @endif
+
+                                            @if($req->status === 'approved')
+                                                @if($req->isProcurementRequest())
+                                                    <a href="{{ route('inventory.inbounds.index') }}"
+                                                       class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-xs"
+                                                       title="Tindak lanjuti pembelian barang / Inbound dari vendor">
+                                                        <span class="material-symbols-outlined text-xs">add_shopping_cart</span>
+                                                        <span>Inbound</span>
+                                                    </a>
+                                                @else
+                                                    <a href="{{ route('inventory.dispatches.index', ['requisition_id' => $req->id]) }}"
+                                                       class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-xs">
+                                                        <span class="material-symbols-outlined text-xs">local_shipping</span>
+                                                        <span>Dispatch</span>
+                                                    </a>
+                                                @endif
+                                            @endif
+                                        @endif
+
+                                        {{-- Tombol Konfirmasi Terima untuk Reseller / Teknisi --}}
+                                        @if(($isReseller || $isTechnician) && $req->status === 'dispatched' && ($req->requester_id === auth()->id() || $req->designated_technician_id === auth()->id()))
+                                            <button wire:click="confirmReceipt({{ $req->id }})"
+                                                    class="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-xs animate-pulse"
+                                                    title="Konfirmasi bahwa fisik barang telah Anda terima dari Gudang">
+                                                <span class="material-symbols-outlined text-xs">inventory_2</span>
+                                                <span>Terima</span>
+                                            </button>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" class="py-12 text-center text-slate-400">
+                                    <div class="flex flex-col items-center justify-center gap-2">
+                                        <span class="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600">assignment</span>
+                                        <p class="text-sm font-medium">Belum ada data pengajuan barang.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="text-xs text-slate-500 dark:text-slate-400">
+                    Menampilkan <span class="font-bold text-slate-700 dark:text-slate-200">{{ $requisitions->firstItem() ?? 0 }}</span> - <span class="font-bold text-slate-700 dark:text-slate-200">{{ $requisitions->lastItem() ?? 0 }}</span> dari total <span class="font-bold text-slate-700 dark:text-slate-200">{{ $requisitions->total() }}</span> data
+                </div>
+                <div>
+                    {{ $requisitions->links() }}
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- TAB 2: KATALOG STOK GUDANG (MARKETPLACE GRID VIEW) --}}
+    @if($activeTab === 'catalog')
+        <div class="space-y-4">
+            {{-- Search & Filter Toolbar --}}
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-xs">
+                <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                    <div class="relative flex-1 min-w-[260px]">
+                        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+                        <input wire:model.live.debounce.300ms="catalogSearch" type="text"
+                               placeholder="Cari barang di katalog (nama, SKU, merk, model)..."
+                               class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200 placeholder:text-slate-400">
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="min-w-[190px]">
+                            <select wire:model.live="catalogCategory"
+                                    class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200 cursor-pointer font-medium">
+                                <option value="">Semua Kategori</option>
+                                @foreach($categories as $cat)
+                                    <option value="{{ $cat }}">{{ $cat }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="min-w-[200px]">
+                            <select wire:model.live="warehouse_id"
+                                    class="w-full py-2.5 px-3.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 text-blue-900 dark:text-blue-200 cursor-pointer font-bold">
+                                @foreach($warehouses as $wh)
+                                    <option value="{{ $wh->id }}">Stok: {{ $wh->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Marketplace Grid Cards --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                @forelse($catalogItems as $item)
+                    @php
+                        $stk = $catalogStockMap[$item->id] ?? 0.0;
+                        $isReady = $stk > 0;
+                    @endphp
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl border transition-all duration-200 flex flex-col justify-between p-4 shadow-xs {{ $isReady ? 'border-slate-200 dark:border-slate-700/80 hover:border-emerald-400 hover:shadow-md' : 'border-rose-200/80 dark:border-rose-900/40 bg-rose-50/10' }}">
+                        <div class="space-y-3">
+                            {{-- Top Badges: Category & Stock Status --}}
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 truncate max-w-[120px]">
+                                    {{ $item->category ?? 'General' }}
+                                </span>
+                                @if($isReady)
+                                    <span class="inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        <span>Ready: {{ number_format($stk, 0) }} {{ $item->unit }}</span>
+                                    </span>
                                 @else
-                                    <span class="text-xs text-slate-400 italic flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-xs">person</span>
-                                        <span>Dipegang Reseller</span>
+                                    <span class="inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                                        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                                        <span>Stok Habis (0 {{ $item->unit }})</span>
                                     </span>
                                 @endif
-                            </td>
-                            <td class="py-3.5 px-4">
-                                <div class="space-y-1">
-                                    @forelse($req->items->take(2) as $ri)
-                                        <div class="flex items-center gap-1.5 text-xs text-slate-800 dark:text-slate-200">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                                            <span class="font-bold truncate max-w-[200px]">{{ $ri->item?->name ?? 'Item #' . $ri->item_id }}</span>
-                                            <span class="font-mono text-[11px] text-emerald-700 dark:text-emerald-400 font-bold shrink-0">
-                                                {{ (float)$ri->quantity_requested }} {{ $ri->item?->unit ?? 'unit' }}
-                                            </span>
-                                        </div>
-                                    @empty
-                                        <span class="text-xs text-slate-400 italic">Tidak ada item</span>
-                                    @endforelse
-                                    @if($req->items->count() > 2)
-                                        <span class="inline-block text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
-                                            +{{ $req->items->count() - 2 }} barang lainnya
+                            </div>
+
+                            {{-- Item Info --}}
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100 line-clamp-2 leading-snug">
+                                    {{ $item->name }}
+                                </h3>
+                                <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                    <span class="font-mono">SKU: {{ $item->sku }}</span>
+                                    @if($item->is_serialized)
+                                        <span>•</span>
+                                        <span class="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-0.5">
+                                            <span class="material-symbols-outlined text-xs">qr_code</span>
+                                            Serial
                                         </span>
                                     @endif
                                 </div>
-                            </td>
-                            <td class="py-3.5 px-4">
-                                @php
-                                    $badge = match($req->status) {
-                                        'pending' => 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
-                                        'approved' => 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
-                                        'dispatched' => 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800',
-                                        'received' => 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
-                                        'rejected' => 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800',
-                                        default => 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                                    };
-                                    $lbl = match($req->status) {
-                                        'pending' => 'Menunggu Approval',
-                                        'approved' => 'Disetujui',
-                                        'dispatched' => 'Barang Dikeluarkan',
-                                        'received' => 'Diterima',
-                                        'rejected' => 'Ditolak',
-                                        default => $req->status
-                                    };
-                                @endphp
-                                <span class="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-md border text-[11px] {{ $badge }}">
-                                    {{ $lbl }}
-                                </span>
-                            </td>
-                            <td class="py-3.5 px-4 text-right">
-                                <div class="inline-flex items-center gap-1.5">
-                                    <button wire:click="showDetail({{ $req->id }})"
-                                            class="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg transition-colors"
-                                            title="Lihat Detail">
-                                        <span class="material-symbols-outlined text-sm">visibility</span>
+                            </div>
+                        </div>
+
+                        {{-- Action Button --}}
+                        <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60">
+                            @if($canCreateRequisition)
+                                @if($isReady)
+                                    <button wire:click="openCreateForStock({{ $item->id }})" type="button"
+                                            class="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5">
+                                        <span class="material-symbols-outlined text-sm">shopping_cart</span>
+                                        <span>Ajukan Pengambilan</span>
                                     </button>
-
-                                    {{-- Tombol Proses (Approval) HANYA untuk Petugas Gudang / Manager, BUKAN untuk Reseller atau Teknisi --}}
-                                    @if($canManageWarehouse && !$isReseller)
-                                        @if($req->status === 'pending' && $req->requester_id !== auth()->id())
-                                            <button wire:click="openApprovalModal({{ $req->id }})"
-                                                    class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-xs">
-                                                <span class="material-symbols-outlined text-xs">done</span>
-                                                <span>Proses</span>
-                                            </button>
-                                        @endif
-
-                                        @if($req->status === 'approved')
-                                            <a href="{{ route('inventory.dispatches.index', ['requisition_id' => $req->id]) }}"
-                                               class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-xs">
-                                                <span class="material-symbols-outlined text-xs">local_shipping</span>
-                                                <span>Dispatch</span>
-                                            </a>
-                                        @endif
-                                    @endif
-
-                                    {{-- Tombol Konfirmasi Terima Barang untuk Pemohon (Reseller / Teknisi) saat barang sudah di-dispatch --}}
-                                    @if(($isReseller || $isTechnician) && $req->status === 'dispatched' && ($req->requester_id === auth()->id() || $req->designated_technician_id === auth()->id()))
-                                        <button wire:click="confirmReceipt({{ $req->id }})"
-                                                class="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-xs animate-pulse"
-                                                title="Konfirmasi bahwa fisik barang telah Anda terima dari Gudang">
-                                            <span class="material-symbols-outlined text-xs">inventory_2</span>
-                                            <span>Konfirmasi Terima</span>
-                                        </button>
-                                    @endif
+                                @else
+                                    <button wire:click="openCreateForStock({{ $item->id }})" type="button"
+                                            class="w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5">
+                                        <span class="material-symbols-outlined text-sm">notification_add</span>
+                                        <span>Minta Pengadaan (Restock)</span>
+                                    </button>
+                                @endif
+                            @else
+                                <div class="text-[11px] text-slate-400 text-center italic">
+                                    Admin Gudang Mode
                                 </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="8" class="py-12 text-center text-slate-400">
-                                <div class="flex flex-col items-center justify-center gap-2">
-                                    <span class="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600">assignment</span>
-                                    <p class="text-sm">Belum ada data permintaan barang.</p>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        <div class="p-4 border-t border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div class="text-xs text-slate-500 dark:text-slate-400">
-                Menampilkan <span class="font-bold text-slate-700 dark:text-slate-200">{{ $requisitions->firstItem() ?? 0 }}</span> - <span class="font-bold text-slate-700 dark:text-slate-200">{{ $requisitions->lastItem() ?? 0 }}</span> dari total <span class="font-bold text-slate-700 dark:text-slate-200">{{ $requisitions->total() }}</span> data
-            </div>
-            <div>
-                {{ $requisitions->links() }}
+                            @endif
+                        </div>
+                    </div>
+                @empty
+                    <div class="col-span-full py-12 text-center text-slate-400">
+                        <span class="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600">search_off</span>
+                        <p class="text-sm font-medium mt-2">Tidak ada barang yang cocok dengan pencarian katalog.</p>
+                    </div>
+                @endforelse
             </div>
         </div>
-    </div>
+    @endif
 
-    {{-- MODAL BUAT PERMINTAAN BARANG --}}
+    {{-- MODAL BUAT PENGAJUAN BARANG (PENGAMBILAN ATAU PENGADAAN) --}}
     @if($showCreateModal)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
             <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-2xl w-full p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
                 {{-- Modal Header --}}
                 <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-3.5">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                            <span class="material-symbols-outlined text-xl notranslate" translate="no">assignment_turned_in</span>
+                        <div class="w-10 h-10 rounded-xl {{ $requisition_type === 'procurement_request' ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-600' : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600' }} flex items-center justify-center">
+                            <span class="material-symbols-outlined text-xl notranslate" translate="no">
+                                {{ $requisition_type === 'procurement_request' ? 'add_shopping_cart' : 'assignment_turned_in' }}
+                            </span>
                         </div>
                         <div>
-                            <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Form Permintaan Barang</h3>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">Pengajuan barang material gudang untuk kebutuhan PSB atau maintenance pelanggan.</p>
+                            <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">
+                                {{ $requisition_type === 'procurement_request' ? 'Permohonan Pengadaan Barang Baru (Restock)' : 'Form Pengambilan Barang Ready Gudang' }}
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">
+                                {{ $requisition_type === 'procurement_request' ? 'Ajukan permintaan agar admin gudang membelanjakan stok ke vendor.' : 'Ajukan pengambilan material fisik yang sudah tersedia di gudang.' }}
+                            </p>
                         </div>
                     </div>
                     <button wire:click="$set('showCreateModal', false)" type="button" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
@@ -296,25 +469,52 @@
                 @endif
 
                 <form wire:submit="saveRequisition" class="space-y-4">
-                    {{-- Metode Distribusi Compact Cards --}}
+                    {{-- Pilihan Jenis Pengajuan: Ready vs Restock --}}
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Metode Distribusi Pengambilan Barang *</label>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Tujuan & Jenis Pengajuan *</label>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                            <label class="cursor-pointer p-2.5 rounded-xl border-2 transition-all flex items-start gap-2.5 {{ $distribution_method === 'pickup_reseller' ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/30' : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30' }}">
-                                <input type="radio" wire:model.live="distribution_method" value="pickup_reseller" class="mt-0.5 text-amber-600 focus:ring-amber-500">
+                            <label class="cursor-pointer p-3 rounded-xl border-2 transition-all flex items-start gap-2.5 {{ $requisition_type === 'dispatch_request' ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/30' : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30' }}">
+                                <input type="radio" wire:model.live="requisition_type" value="dispatch_request" class="mt-0.5 text-emerald-600 focus:ring-emerald-500">
                                 <div>
-                                    <div class="font-bold text-slate-900 dark:text-slate-100 text-xs">Metode A: Reseller Ambil Barang</div>
-                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">Gudang ke Reseller, lalu reseller serahkan ke teknisi.</p>
+                                    <div class="font-bold text-slate-900 dark:text-slate-100 text-xs flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-sm text-emerald-600">inventory_2</span>
+                                        <span>1. Ambil Barang Ready</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">Ambil barang yang stok fisiknya sudah ada di gudang.</p>
                                 </div>
                             </label>
 
-                            <label class="cursor-pointer p-2.5 rounded-xl border-2 transition-all flex items-start gap-2.5 {{ $distribution_method === 'direct_technician' ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/30' : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30' }}">
-                                <input type="radio" wire:model.live="distribution_method" value="direct_technician" class="mt-0.5 text-blue-600 focus:ring-blue-500">
+                            <label class="cursor-pointer p-3 rounded-xl border-2 transition-all flex items-start gap-2.5 {{ $requisition_type === 'procurement_request' ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/30' : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30' }}">
+                                <input type="radio" wire:model.live="requisition_type" value="procurement_request" class="mt-0.5 text-amber-600 focus:ring-amber-500">
                                 <div>
-                                    <div class="font-bold text-slate-900 dark:text-slate-100 text-xs">Metode B: Gudang ke Teknisi Langsung</div>
-                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">Atas nama Reseller, tetapi fisik barang diserahkan ke Teknisi.</p>
+                                    <div class="font-bold text-slate-900 dark:text-slate-100 text-xs flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-sm text-amber-600">add_shopping_cart</span>
+                                        <span>2. Permohonan Pengadaan (Restock)</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">Minta pengadaan baru karena stok gudang kosong (0 unit).</p>
                                 </div>
                             </label>
+                        </div>
+                    </div>
+
+                    {{-- Urgency & Distribution Method --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tingkat Urgensi *</label>
+                            <select wire:model.live="urgency" required
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                <option value="normal">Normal (Sesuai Jadwal Rutin)</option>
+                                <option value="urgent">Mendesak / Urgent (Prioritas Tinggi)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Metode Distribusi *</label>
+                            <select wire:model.live="distribution_method" required
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                <option value="pickup_reseller">Metode A: Reseller Ambil ke Gudang</option>
+                                <option value="direct_technician">Metode B: Gudang ke Teknisi Langsung</option>
+                            </select>
                         </div>
                     </div>
 
@@ -331,20 +531,10 @@
                             </select>
                         </div>
 
-                        @if($work_order_type === 'stock_topup')
-                            <div class="sm:col-span-2 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/80 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2.5">
-                                <span class="material-symbols-outlined text-base text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">info</span>
-                                <div>
-                                    <strong class="block font-bold">Mode Pengisian Stok Reseller:</strong>
-                                    <span>Material yang diminta akan diserahkan untuk disimpan sebagai stok operasional Reseller. Penunjukan teknisi dan pelanggan tidak diperlukan saat pengajuan ini.</span>
-                                </div>
-                            </div>
-                        @endif
-
                         <div>
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Gudang Sumber *</label>
                             <select wire:model.live="warehouse_id" required
-                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-bold">
                                 <option value="">-- Pilih Gudang Sumber --</option>
                                 @foreach($warehouses as $wh)
                                     <option value="{{ $wh->id }}">{{ $wh->name }}</option>
@@ -385,7 +575,7 @@
 
                         <div>
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Tambahan (Opsional)</label>
-                            <input wire:model="notes" type="text" placeholder="misal: Pengisian stok modem awal bulan..."
+                            <input wire:model="notes" type="text" placeholder="misal: Mohon segera diadakan untuk 10 PSB minggu ini..."
                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
                         </div>
                     </div>
@@ -395,7 +585,7 @@
                         <div class="flex items-center justify-between">
                             <h4 class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                                 <span class="material-symbols-outlined text-emerald-600 text-base notranslate" translate="no">inventory</span>
-                                <span>Daftar Barang yang Diminta</span>
+                                <span>Daftar Barang yang Diajukan</span>
                             </h4>
                             <button wire:click="addItemRow" type="button"
                                     class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 rounded-xl border border-emerald-200 dark:border-emerald-800 transition-colors">
@@ -405,7 +595,9 @@
                         </div>
 
                         @error('requisitionItems')
-                            <p class="text-xs text-rose-500 font-semibold">{{ $message }}</p>
+                            <div class="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-300 font-medium">
+                                {{ $message }}
+                            </div>
                         @enderror
 
                         <div class="space-y-3">
@@ -431,7 +623,7 @@
                                     </div>
 
                                     <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-start">
-                                        <div class="sm:col-span-5">
+                                        <div class="sm:col-span-6">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Pilih Barang Katalog *</label>
                                             <x-inventory.item-searchable-select
                                                 :availableItems="$availableItems"
@@ -444,33 +636,40 @@
                                             @if(!empty($row['item_id']) && $warehouse_id)
                                                 @php $stockQty = $warehouseStocks[$row['item_id']] ?? 0; @endphp
                                                 @if($stockQty <= 0)
-                                                    <p class="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1 font-medium leading-tight">
-                                                        <span class="material-symbols-outlined text-xs">info</span>
-                                                        <span>Stok gudang sedang kosong (0 {{ $row['unit'] ?? 'unit' }}). Pengajuan akan menunggu pengadaan gudang (Inbound).</span>
-                                                    </p>
+                                                    <div class="text-[11px] text-amber-700 dark:text-amber-400 mt-1.5 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-2">
+                                                        <span class="flex items-center gap-1 font-semibold">
+                                                            <span class="material-symbols-outlined text-xs">warning</span>
+                                                            <span>Stok fisik gudang kosong (0 {{ $row['unit'] ?? 'unit' }}).</span>
+                                                        </span>
+                                                        @if($requisition_type !== 'procurement_request')
+                                                            <button type="button" wire:click="$set('requisition_type', 'procurement_request')" class="text-[10px] font-bold text-amber-900 dark:text-amber-300 underline hover:text-amber-700">
+                                                                Alihkan ke Pengadaan
+                                                            </button>
+                                                        @endif
+                                                    </div>
                                                 @endif
                                             @endif
                                         </div>
 
                                         <div class="sm:col-span-3">
                                             <div class="flex items-center justify-between mb-1">
-                                                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300">Jumlah ({{ $row['unit'] ?? 'unit' }}) *</label>
+                                                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300">Jumlah *</label>
                                                 @if(!empty($row['item_id']) && $warehouse_id)
                                                     @php $currentStock = $warehouseStocks[$row['item_id']] ?? 0; @endphp
                                                     <span class="text-[10px] font-bold {{ $currentStock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500' }}">
-                                                        Stok: {{ $currentStock }} {{ $row['unit'] ?? 'unit' }}
+                                                        Sisa: {{ $currentStock }}
                                                     </span>
                                                 @endif
                                             </div>
-                                            <input wire:model="requisitionItems.{{ $idx }}.quantity" type="number" step="any" min="0.01" required placeholder="1"
-                                                   class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-bold">
+                                            <input type="number" step="0.01" min="0.01" wire:model="requisitionItems.{{ $idx }}.quantity" required
+                                                   class="w-full py-2 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-mono font-bold">
                                             @error("requisitionItems.{$idx}.quantity") <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                                         </div>
 
-                                        <div class="sm:col-span-4">
-                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Keterangan (Opsional)</label>
-                                            <input wire:model="requisitionItems.{{ $idx }}.notes" type="text" placeholder="misal: pasang baru..."
-                                                   class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                        <div class="sm:col-span-3">
+                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Keterangan Baris</label>
+                                            <input type="text" wire:model="requisitionItems.{{ $idx }}.notes" placeholder="e.g. SN tertentu / dropcore"
+                                                   class="w-full py-2 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
                                         </div>
                                     </div>
                                 </div>
@@ -479,15 +678,15 @@
                     </div>
 
                     {{-- Modal Footer --}}
-                    <div class="flex items-center justify-end gap-3 pt-3.5 border-t border-slate-100 dark:border-slate-700/80">
+                    <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-700/80">
                         <button wire:click="$set('showCreateModal', false)" type="button"
-                                class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
                             Batal
                         </button>
-                        <button type="submit" wire:loading.attr="disabled"
-                                class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-md transition-all flex items-center gap-2">
+                        <button type="submit"
+                                class="px-5 py-2.5 rounded-xl {{ $requisition_type === 'procurement_request' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700' }} text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5">
                             <span class="material-symbols-outlined text-sm notranslate" translate="no">send</span>
-                            <span>Kirim Permintaan</span>
+                            <span>{{ $requisition_type === 'procurement_request' ? 'Kirim Permohonan Pengadaan' : 'Kirim Permintaan Pengambilan' }}</span>
                         </button>
                     </div>
                 </form>
@@ -495,7 +694,7 @@
         </div>
     @endif
 
-    {{-- MODAL APPROVAL / REJECTION --}}
+    {{-- MODAL APPROVAL / PROSES GUDANG --}}
     @if($showApprovalModal && $selectedRequisition)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
             <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-lg w-full p-6 space-y-6">
@@ -505,7 +704,7 @@
                             <span class="material-symbols-outlined">rule</span>
                         </div>
                         <div>
-                            <h3 class="text-base font-black text-slate-900 dark:text-slate-100">Persetujuan Permintaan</h3>
+                            <h3 class="text-base font-black text-slate-900 dark:text-slate-100">Persetujuan Pengajuan</h3>
                             <p class="text-xs text-slate-500 font-mono">{{ $selectedRequisition->requisition_number }}</p>
                         </div>
                     </div>
@@ -516,19 +715,25 @@
 
                 <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/80 space-y-2 text-xs">
                     <div class="flex justify-between">
+                        <span class="text-slate-400">Jenis Pengajuan:</span>
+                        <span class="font-bold {{ $selectedRequisition->isProcurementRequest() ? 'text-amber-600' : 'text-emerald-600' }}">
+                            {{ $selectedRequisition->isProcurementRequest() ? 'Permohonan Pengadaan Barang Baru (Restock)' : 'Pengambilan Barang Fisik Ready' }}
+                        </span>
+                    </div>
+                    <div class="flex justify-between">
                         <span class="text-slate-400">Pemohon:</span>
                         <span class="font-bold text-slate-800 dark:text-slate-200">{{ $selectedRequisition->requester?->name }} ({{ $selectedRequisition->requester_type }})</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-slate-400">Pelanggan:</span>
-                        <span class="font-bold text-slate-800 dark:text-slate-200">{{ $selectedRequisition->customer?->name ?? '-' }}</span>
+                        <span class="text-slate-400">Gudang Sumber:</span>
+                        <span class="font-bold text-slate-800 dark:text-slate-200">{{ $selectedRequisition->warehouse?->name }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-slate-400">Teknisi Ditunjuk:</span>
-                        <span class="font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedRequisition->designatedTechnician?->name ?? '-' }}</span>
+                        <span class="text-slate-400">Peruntukan:</span>
+                        <span class="font-bold text-slate-800 dark:text-slate-200">{{ $selectedRequisition->customer?->name ?? 'Stok Cadangan / Operasional' }}</span>
                     </div>
                     <div class="pt-2 border-t border-slate-200 dark:border-slate-700">
-                        <span class="font-bold text-slate-600 dark:text-slate-300 block mb-1">Daftar Barang:</span>
+                        <span class="font-bold text-slate-600 dark:text-slate-300 block mb-1">Daftar Barang yang Diminta:</span>
                         <ul class="space-y-1">
                             @foreach($selectedRequisition->items as $it)
                                 <li class="flex justify-between text-[11px]">
@@ -551,19 +756,19 @@
                 <div class="flex items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-700/80">
                     <button wire:click="rejectRequisition" type="button"
                             class="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-bold transition-colors">
-                        Tolak Permintaan
+                        Tolak Pengajuan
                     </button>
                     <button wire:click="approveRequisition" type="button"
                             class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-sm">check_circle</span>
-                        <span>Setujui Permintaan</span>
+                        <span>Setujui Pengajuan</span>
                     </button>
                 </div>
             </div>
         </div>
     @endif
 
-    {{-- MODAL DETAIL PERMINTAAN --}}
+    {{-- MODAL DETAIL PENGAJUAN --}}
     @if($showDetailModal && $selectedRequisition)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
             <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-2xl w-full p-6 space-y-6">
@@ -574,7 +779,9 @@
                         </div>
                         <div>
                             <h3 class="text-base font-black text-slate-900 dark:text-slate-100">{{ $selectedRequisition->requisition_number }}</h3>
-                            <p class="text-xs text-slate-500">Detail Permintaan Barang</p>
+                            <p class="text-xs text-slate-500">
+                                {{ $selectedRequisition->isProcurementRequest() ? 'Permohonan Pengadaan Barang Baru (Restock)' : 'Pengambilan Barang Fisik Ready' }}
+                            </p>
                         </div>
                     </div>
                     <button wire:click="closeDetailModal" type="button" class="text-slate-400 hover:text-slate-600">
@@ -592,8 +799,10 @@
                         <span class="font-bold text-slate-800 dark:text-slate-200">{{ $selectedRequisition->requester?->name }}</span>
                     </div>
                     <div>
-                        <span class="text-slate-400 block text-[11px]">Teknisi Ditunjuk</span>
-                        <span class="font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedRequisition->designatedTechnician?->name ?? '-' }}</span>
+                        <span class="text-slate-400 block text-[11px]">Jenis</span>
+                        <span class="font-bold {{ $selectedRequisition->isProcurementRequest() ? 'text-amber-600' : 'text-emerald-600' }}">
+                            {{ $selectedRequisition->isProcurementRequest() ? 'Pengadaan (Restock)' : 'Ambil Ready' }}
+                        </span>
                     </div>
                     <div>
                         <span class="text-slate-400 block text-[11px]">Status</span>
