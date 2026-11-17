@@ -692,16 +692,28 @@ JS;
                 $escapedBind = addslashes($bindString);
                 $vlanEnabled = $this->formVlanEnabled ? 'true' : 'false';
 
+                // Cari apakah perangkat sudah memiliki instance WANPPPConnection yang sah (seperti pada WANConnectionDevice.1)
+                $existingPpp = collect($this->wanConnections)->first(function ($w) {
+                    return str_contains($w['fullPath'] ?? '', 'WANPPPConnection');
+                });
+
+                $targetPppPath = $existingPpp['fullPath'] ?? ($parentPath . '.WANPPPConnection.1');
+                
+                // Ekstraksi parent WANConnectionDevice dari target PPP
+                $targetParts = explode('.', $targetPppPath);
+                array_pop($targetParts); array_pop($targetParts);
+                $targetParentPath = implode('.', $targetParts);
+
                 $script = <<<JS
 const now = Date.now();
-let parentPath = "{$parentPath}";
 
-// Disable and remove old conflicting IP/Bridge connection
+// 1. Nonaktifkan koneksi IP lama agar tidak bentrok (jangan deleteObject agar firmware FiberHome/ZTE tidak fault)
 declare("{$this->editFullPath}.Enable", {value: now}, {value: false});
-declare("{$this->editFullPath}", null, {path: 0});
 
-// Activate or create PPP connection on this slot
-let pppPath = parentPath + ".WANPPPConnection.1";
+// 2. Aktifkan dan konfigurasi slot WAN PPP
+let pppPath = "{$targetPppPath}";
+let targetParent = "{$targetParentPath}";
+
 declare(pppPath, {path: 1}, {path: 1});
 declare(pppPath + ".Enable", {value: now}, {value: true});
 declare(pppPath + ".ConnectionType", {value: now}, {value: "{$connType}"});
@@ -712,27 +724,27 @@ if ("{$password}" !== "") {
     declare(pppPath + ".Password", {value: now}, {value: "{$password}"});
 }
 
-// VLAN
+// 3. VLAN Tagging
 if ({$vlanEnabled} && {$vlanId} > 0) {
     if ("{$vendor}".includes("fiberhome")) {
-        declare(parentPath + ".X_FH_WANGponLinkConfig.VLANIDMark", {value: now}, {value: {$vlanId}});
-        declare(parentPath + ".X_FH_WANGponLinkConfig.VLANID", {value: now}, {value: {$vlanId}});
-        declare(parentPath + ".X_FH_WANGponLinkConfig.Mode", {value: now}, {value: 1});
+        declare(targetParent + ".X_FH_WANGponLinkConfig.VLANIDMark", {value: now}, {value: {$vlanId}});
+        declare(targetParent + ".X_FH_WANGponLinkConfig.VLANID", {value: now}, {value: {$vlanId}});
+        declare(targetParent + ".X_FH_WANGponLinkConfig.Mode", {value: now}, {value: 1});
     } else if ("{$vendor}".includes("huawei") || "{$vendor}".includes("ecomtech")) {
-        declare(parentPath + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: {$vlanId}});
-        declare(parentPath + ".WANEthernetLinkConfig.Mode", {value: now}, {value: 2});
+        declare(targetParent + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: {$vlanId}});
+        declare(targetParent + ".WANEthernetLinkConfig.Mode", {value: now}, {value: 2});
         declare(pppPath + ".X_HW_VLAN", {value: now}, {value: {$vlanId}});
     } else if ("{$vendor}".includes("zte")) {
         declare(pppPath + ".X_ZTE-COM_VLANID", {value: now}, {value: {$vlanId}});
         declare(pppPath + ".X_ZTE-COM_VLANEnable", {value: now}, {value: 1});
     } else {
-        declare(parentPath + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: {$vlanId}});
-        declare(parentPath + ".VLANID", {value: now}, {value: {$vlanId}});
+        declare(targetParent + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: {$vlanId}});
+        declare(targetParent + ".VLANID", {value: now}, {value: {$vlanId}});
     }
 } else {
     if ("{$vendor}".includes("huawei") || "{$vendor}".includes("ecomtech")) {
-        declare(parentPath + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: 0});
-        declare(parentPath + ".WANEthernetLinkConfig.Mode", {value: now}, {value: 1});
+        declare(targetParent + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: 0});
+        declare(targetParent + ".WANEthernetLinkConfig.Mode", {value: now}, {value: 1});
     } else if ("{$vendor}".includes("zte")) {
         declare(pppPath + ".X_ZTE-COM_VLANEnable", {value: now}, {value: 0});
         declare(pppPath + ".X_ZTE-COM_VLANID", {value: now}, {value: 0});
