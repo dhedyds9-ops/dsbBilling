@@ -37,6 +37,29 @@ class ResellerSwapOntTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_reseller_can_switch_tabs_between_swap_and_dismantle(): void
+    {
+        $resellerRole = Role::firstOrCreate(['name' => 'reseller'], ['display_name' => 'Reseller', 'guard_name' => 'web']);
+        $branch = Branch::firstOrCreate(['code' => 'BR-RES-TAB'], ['name' => 'Cabang Reseller Tab']);
+
+        $reseller = User::factory()->create([
+            'name' => 'Mitra Reseller Tab',
+            'email' => 'mitra_tab@dsbilling.test',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+        ]);
+        $reseller->roles()->attach($resellerRole->id);
+
+        $this->actingAs($reseller);
+
+        \Livewire\Livewire::test(\App\Livewire\ResellerPortal\Network\SwapOnt::class)
+            ->assertSet('tab', 'swap')
+            ->call('setTab', 'dismantle')
+            ->assertSet('tab', 'dismantle')
+            ->call('setTab', 'swap')
+            ->assertSet('tab', 'swap');
+    }
+
     public function test_reseller_can_search_customers_without_500_error(): void
     {
         $resellerRole = Role::firstOrCreate(['name' => 'reseller'], ['display_name' => 'Reseller', 'guard_name' => 'web']);

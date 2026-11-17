@@ -26,6 +26,9 @@ class SwapOnt extends AdminComponent
 
     // URL Parameters for deep-linking
     #[Url]
+    public string $tab = 'swap'; // 'swap' | 'dismantle'
+
+    #[Url]
     public ?int $customer_id = null;
 
     #[Url]
@@ -101,7 +104,7 @@ class SwapOnt extends AdminComponent
         $this->breadcrumbs = [
             ['label' => 'Reseller Portal', 'url' => route('reseller-portal.dashboard')],
             ['label' => 'Network & GIS', 'url' => route('reseller-portal.network.onus.index')],
-            ['label' => 'Ganti ONT (Swap)', 'url' => '#'],
+            ['label' => 'Ganti & Cabut', 'url' => '#'],
         ];
 
         $this->transaction_id = 'SWAP-' . (string) Str::uuid();
@@ -113,6 +116,11 @@ class SwapOnt extends AdminComponent
         } elseif ($this->ticket_id) {
             $this->loadTicket($this->ticket_id);
         }
+    }
+
+    public function setTab(string $tab): void
+    {
+        $this->tab = in_array($tab, ['swap', 'dismantle']) ? $tab : 'swap';
     }
 
     /**

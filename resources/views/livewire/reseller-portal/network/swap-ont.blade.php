@@ -22,8 +22,8 @@
         <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
                 <span class="px-2.5 py-0.5 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider text-teal-100">Reseller Field Operations</span>
-                <h1 class="text-2xl font-black mt-1 text-white tracking-tight">Ganti ONT Pelanggan (Swap Modem)</h1>
-                <p class="text-sm text-teal-100 mt-1">Ganti modem pelanggan yang rusak dengan ONT baru tanpa perlu setup ulang username PPPoE & Wi-Fi.</p>
+                <h1 class="text-2xl font-black mt-1 text-white tracking-tight">Ganti & Cabut Perangkat</h1>
+                <p class="text-sm text-teal-100 mt-1">Pusat operasional pergantian modem/aksesoris (Swap) dan penarikan perangkat (Dismantle) pelanggan.</p>
             </div>
             <div class="flex items-center gap-2">
                 <a href="{{ route('reseller-portal.network.onus.index') }}" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold backdrop-blur-md border border-white/20 transition-all flex items-center gap-2">
@@ -38,7 +38,30 @@
         </div>
     </div>
 
-    @if($swapCompleted)
+    {{-- TOP MULTI-TAB SWITCHER --}}
+    <div class="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 w-full sm:w-auto self-start">
+        <button type="button"
+                wire:click="setTab('swap')"
+                class="flex-1 sm:flex-initial px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 {{ $tab === 'swap' ? 'bg-teal-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white' }}">
+            <span class="material-symbols-outlined text-base">sync_alt</span>
+            <span>Ganti (Modem / Aksesoris)</span>
+        </button>
+        <button type="button"
+                wire:click="setTab('dismantle')"
+                class="flex-1 sm:flex-initial px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 {{ $tab === 'dismantle' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white' }}">
+            <span class="material-symbols-outlined text-base">delete_sweep</span>
+            <span>Cabut ONT (Dismantle)</span>
+        </button>
+    </div>
+
+    @if($tab === 'dismantle')
+        {{-- VIEW TAB: CABUT ONT (DISMANTLE) --}}
+        <div class="animate-fadeIn">
+            <livewire:reseller-portal.network.dismantle-ont :customer_id="$customer_id" :onu_id="$onu_id" :ticket_id="$ticket_id" :key="'dismantle-' . ($onu_id ?? $customer_id ?? 'tab')" />
+        </div>
+    @else
+        {{-- VIEW TAB: GANTI (SWAP / AKSESORIS) --}}
+        @if($swapCompleted)
         {{-- SUKSES SWAP VIEW --}}
         <div class="bg-white dark:bg-slate-800 rounded-2xl p-8 border border-emerald-300 dark:border-emerald-700 shadow-xl text-center space-y-6 animate-fadeIn max-w-2xl mx-auto">
             <div class="w-20 h-20 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center shadow-inner">
@@ -518,5 +541,6 @@
                 </form>
             </div>
         </div>
+    @endif
     @endif
 </div>
