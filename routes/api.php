@@ -266,6 +266,7 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
         Route::prefix('customers')->name('customers.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'index'])->name('index');
             Route::get('/service-profiles', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'serviceProfiles'])->name('service-profiles');
+            Route::get('/routers', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'routers'])->name('routers');
             Route::post('/', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'store'])->name('store');
             Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'show'])->where('id', '\d+')->name('show');
             Route::get('/{id}/invoices', [\App\Http\Controllers\Api\Mobile\MobileInvoiceApiController::class, 'customerInvoices'])->where('id', '\d+')->name('invoices');

@@ -54,7 +54,36 @@ class MobileCustomerApiController extends Controller
         }
 
         if ($status = $request->input('status')) {
-            $query->where('status', $status);
+            if (in_array(strtolower($status), ['isolir', 'isolated', 'suspend', 'suspended'])) {
+                $query->whereIn('status', ['suspend', 'suspended', 'isolated']);
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        $serviceTypeFilter = strtolower((string) ($request->input('service_type') ?? ''));
+        if ($serviceTypeFilter === 'pppoe') {
+            $query->whereHas('customerServices', function ($cs) {
+                $cs->withoutGlobalScopes()
+                   ->where(function ($sub) {
+                       $sub->whereNotNull('pppoe_user_id')
+                           ->orWhereHas('pppoeUser')
+                           ->orWhereHas('serviceProfile', function ($sp) {
+                               $sp->withoutGlobalScopes()->whereIn(DB::raw('LOWER(service_type)'), ['pppoe', 'broadband', 'combined']);
+                           });
+                   });
+            });
+        } elseif ($serviceTypeFilter === 'hotspot') {
+            $query->whereHas('customerServices', function ($cs) {
+                $cs->withoutGlobalScopes()
+                   ->where(function ($sub) {
+                       $sub->whereNotNull('hotspot_user_id')
+                           ->orWhereHas('hotspotUser')
+                           ->orWhereHas('serviceProfile', function ($sp) {
+                               $sp->withoutGlobalScopes()->whereIn(DB::raw('LOWER(service_type)'), ['hotspot', 'member_hotspot', 'voucher']);
+                           });
+                   });
+            });
         }
 
         $perPage = min(100, max(1, (int) $request->input('per_page', 50)));
@@ -65,6 +94,16 @@ class MobileCustomerApiController extends Controller
             $serviceUsername = $primaryService?->username
                 ?? $primaryService?->pppoeUser?->username
                 ?? $primaryService?->hotspotUser?->username;
+
+            $serviceType = 'pppoe';
+            if ($primaryService?->hotspotUser) {
+                $serviceType = 'hotspot';
+            } elseif ($primaryService?->pppoeUser) {
+                $serviceType = 'pppoe';
+            } elseif ($primaryService) {
+                $raw = strtolower($primaryService->serviceProfile?->service_type ?? '');
+                $serviceType = in_array($raw, ['hotspot', 'member_hotspot', 'voucher']) ? 'hotspot' : 'pppoe';
+            }
 
             return [
                 'id' => $c->id,
@@ -84,6 +123,7 @@ class MobileCustomerApiController extends Controller
                     'status' => $primaryService->status,
                     'profile_name' => $primaryService->serviceProfile->name ?? null,
                     'onu_serial' => $primaryService->onu->serial_number ?? null,
+                    'service_type' => $serviceType,
                 ] : null,
                 'created_at' => $c->created_at?->toIso8601String(),
             ];
@@ -223,6 +263,37 @@ class MobileCustomerApiController extends Controller
     }
 
     /**
+     * Get active routers for NAS selection.
+     */
+    public function routers(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $query = \App\Models\ISP\Router::withoutGlobalScopes(['branch_isolation'])->active();
+
+        if ($user && $user->branch_id && method_exists($user, 'isSuperAdmin') && !$user->isSuperAdmin()) {
+            $query->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
+
+        $records = $query->orderBy('name', 'asc')->get();
+        $data = $records->map(function ($r) {
+            return [
+                'id' => (int) $r->id,
+                'name' => (string) $r->name,
+                'ip_address' => (string) ($r->ip_address ?? ''),
+                'status' => (string) ($r->status ?? 'online'),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
+    }
+
+    /**
      * Create & provision new customer from mobile app.
      */
     public function store(Request $request): JsonResponse
@@ -235,24 +306,44 @@ class MobileCustomerApiController extends Controller
             'email' => 'nullable|email|max:255',
             'address' => 'nullable|string|max:500',
             'username' => 'required|string|max:100',
-            'password' => 'required|string|min:4',
+            'password' => 'required|string|min:3',
+            'login_method' => 'nullable|string|in:username_and_password,username_only',
             'service_profile_id' => 'required|integer|exists:service_profiles,id',
             'router_id' => 'nullable|integer',
             'onu_id' => 'nullable|integer',
+            'onu_serial' => 'nullable|string|max:100',
             'odp_id' => 'nullable|integer',
             'port_number' => 'nullable|integer',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'setup_fee' => 'nullable|numeric',
+            'billing_cycle' => 'nullable|string|in:monthly,prepaid,postpaid',
+            'static_ip' => 'nullable|string|max:45',
+            'mac_address' => 'nullable|string|max:50',
+            'notes' => 'nullable|string|max:1000',
+            'activation_date' => 'nullable|string',
+            'status' => 'nullable|string|in:active,inactive',
         ]);
 
-        $ownerId = $user->getEffectiveResellerId();
+        if (($validated['login_method'] ?? '') === 'username_only') {
+            $validated['password'] = $validated['username'];
+        }
+
+        if (!empty($validated['onu_serial']) && empty($validated['onu_id'])) {
+            $onu = \App\Models\ISP\Onu::withoutGlobalScopes(['branch_isolation'])->where('serial_number', trim($validated['onu_serial']))->first();
+            if ($onu) {
+                $validated['onu_id'] = $onu->id;
+            }
+        }
+
+        $ownerId = $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
 
         $data = array_merge($validated, [
             'reseller_id' => $ownerId,
             'branch_id' => $user->branch_id,
-            'status' => 'active',
-            'billing_cycle' => 'monthly',
+            'status' => $validated['status'] ?? 'active',
+            'billing_cycle' => $validated['billing_cycle'] ?? 'monthly',
+            'setup_fee' => $validated['setup_fee'] ?? 0,
         ]);
 
         try {
@@ -267,7 +358,7 @@ class MobileCustomerApiController extends Controller
         } catch (\Throwable $e) {
             // Fallback manual creation if activation service encounters external dependency failure
             return DB::transaction(function () use ($data, $user, $validated, $e) {
-                $code = 'CUST-' . strtoupper(Str::random(6));
+                $code = \App\Services\CRM\CustomerCodeGenerator::generate();
                 $customer = Customer::create([
                     'code' => $code,
                     'name' => $validated['name'],
@@ -277,8 +368,10 @@ class MobileCustomerApiController extends Controller
                     'latitude' => $validated['latitude'] ?? null,
                     'longitude' => $validated['longitude'] ?? null,
                     'reseller_id' => $data['reseller_id'],
-                    'status' => 'active',
+                    'branch_id' => $data['branch_id'],
+                    'status' => $data['status'],
                     'created_by' => $user->id,
+                    'notes' => $validated['notes'] ?? null,
                 ]);
 
                 return response()->json([
