@@ -318,31 +318,30 @@ class MobileAcsProxyController extends Controller
             $devices = [];
         }
 
-        // Reseller ownership filtering on driver devices
+        // Reseller filtering on driver devices:
+        // Option A: Reseller dapat melihat semua perangkat GenieACS (termasuk unassigned/baru colok),
+        // kecuali perangkat yang sudah terdaftar pada pelanggan Mitra Reseller lain.
         if ($user && $user->hasRole('reseller')) {
             $effectiveResellerId = $user->getEffectiveResellerId() ?: $user->id;
-            $allowedSns = array_values(array_unique(array_filter(array_merge(
-                \App\Models\ACS\ACSDevice::withoutGlobalScopes()->forReseller($user)->pluck('serial_number')->map(fn($s) => strtoupper(trim((string) $s)))->toArray(),
-                \App\Models\ISP\Onu::withoutGlobalScopes()->forReseller($user)->pluck('serial_number')->map(fn($s) => strtoupper(trim((string) $s)))->toArray(),
-                \App\Models\Customer\CustomerService::withoutGlobalScopes()
-                    ->where(function ($csQ) use ($effectiveResellerId) {
-                        $csQ->where('reseller_id', $effectiveResellerId)
-                            ->orWhereHas('customer', fn($q) => $q->where('reseller_id', $effectiveResellerId));
-                    })
-                    ->pluck('onu_serial')
-                    ->map(fn($s) => strtoupper(trim((string) $s)))
-                    ->toArray()
-            ))));
+
+            $otherResellersSns = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                ->whereNotNull('reseller_id')
+                ->where('reseller_id', '!=', $effectiveResellerId)
+                ->pluck('onu_serial')
+                ->filter()
+                ->map(fn($s) => strtoupper(trim((string) $s)))
+                ->unique()
+                ->toArray();
 
             if (!empty($devices)) {
-                $devices = array_values(array_filter($devices, function ($dev) use ($allowedSns) {
+                $devices = array_values(array_filter($devices, function ($dev) use ($otherResellersSns) {
                     $devSn = strtoupper(trim((string) ($dev['serial_number'] ?? ($dev['_id'] ?? ''))));
                     $snToMatch = $devSn;
                     if (str_contains($devSn, '-')) {
                         $parts = explode('-', $devSn);
                         $snToMatch = end($parts);
                     }
-                    return in_array($devSn, $allowedSns, true) || in_array($snToMatch, $allowedSns, true);
+                    return !in_array($devSn, $otherResellersSns, true) && !in_array($snToMatch, $otherResellersSns, true);
                 }));
             }
         }
@@ -368,9 +367,6 @@ class MobileAcsProxyController extends Controller
 
             if ($user && !empty($user->branch_id) && !$user->isSuperAdmin() && !$user->hasRole('administrator')) {
                 $onusQuery->where(function ($q) use ($user) {
-                    $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id');
-                });
-                $acsQuery->where(function ($q) use ($user) {
                     $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id');
                 });
             }
