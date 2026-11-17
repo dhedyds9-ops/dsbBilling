@@ -809,41 +809,27 @@
             </script>
 
         @elseif($activeTab === 'dhcp')
-            <div class="space-y-6">
-                <!-- DHCP Servers -->
-                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
-                        <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <span class="material-symbols-outlined notranslate text-blue-500 text-[20px]" translate="no">lan</span>
-                            DHCP Servers
-                        </h3>
-                    </div>
-                    <div class="overflow-x-auto relative">
-                        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-                            <thead class="bg-slate-50 dark:bg-slate-800/80">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Name</th>
-                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Interface</th>
-                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Address Pool</th>
-                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Lease Time</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
-                                @forelse($dhcpServers ?? [] as $server)
-                                    <tr class="hover:bg-slate-50 dark:bg-slate-900/50">
-                                        <td class="px-6 py-3 text-slate-900 dark:text-slate-100 font-bold">{{ $server['name'] ?? '-' }}</td>
-                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono text-[13px]">{{ $server['interface'] ?? '-' }}</td>
-                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono text-[13px]">{{ $server['address-pool'] ?? '-' }}</td>
-                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400">{{ $server['lease-time'] ?? '-' }}</td>
-                                    </tr>
-                                @empty
-                                    <tr><td colspan="4" class="px-6 py-6 text-center text-slate-500 dark:text-slate-400">Tidak ada DHCP Server.</td></tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+            <div class="space-y-6" x-data="{ subTab: 'leases' }">
+                <!-- Sub Tab Navigation: Leases vs Servers -->
+                <div class="flex gap-4 border-b border-slate-200 dark:border-slate-700 mb-2">
+                    <button @click="subTab = 'leases'" 
+                            :class="subTab === 'leases' ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold' : 'border-transparent text-slate-500 dark:text-slate-400 font-medium hover:text-slate-700 dark:hover:text-slate-300'" 
+                            class="px-4 py-3 border-b-2 text-sm transition-colors flex items-center gap-2 cursor-pointer">
+                        <span class="material-symbols-outlined notranslate text-[18px]" translate="no">list_alt</span>
+                        DHCP Leases
+                        <span class="ml-1 px-2 py-0.5 text-xs rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold">{{ count($dhcpLeases ?? []) }}</span>
+                    </button>
+                    <button @click="subTab = 'servers'" 
+                            :class="subTab === 'servers' ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold' : 'border-transparent text-slate-500 dark:text-slate-400 font-medium hover:text-slate-700 dark:hover:text-slate-300'" 
+                            class="px-4 py-3 border-b-2 text-sm transition-colors flex items-center gap-2 cursor-pointer">
+                        <span class="material-symbols-outlined notranslate text-[18px]" translate="no">lan</span>
+                        DHCP Servers
+                        <span class="ml-1 px-2 py-0.5 text-xs rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">{{ count($dhcpServers ?? []) }}</span>
+                    </button>
                 </div>
 
+                <!-- Sub-tab 1: DHCP Leases -->
+                <div x-show="subTab === 'leases'">
                 <!-- DHCP Leases -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
@@ -1018,7 +1004,47 @@
                         </table>
                     </div>
                 </div>
-        </div>
+                </div>
+
+                <!-- Sub-tab 2: DHCP Servers -->
+                <div x-show="subTab === 'servers'">
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <span class="material-symbols-outlined notranslate text-blue-500 text-[20px]" translate="no">lan</span>
+                                DHCP Servers
+                            </h3>
+                            <span class="text-xs font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800/60">
+                                {{ count($dhcpServers ?? []) }} Server
+                            </span>
+                        </div>
+                        <div class="overflow-x-auto relative">
+                            <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                                <thead class="bg-slate-50 dark:bg-slate-800/80">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Name</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Interface</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Address Pool</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Lease Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+                                    @forelse($dhcpServers ?? [] as $server)
+                                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50">
+                                            <td class="px-6 py-3 text-slate-900 dark:text-slate-100 font-bold">{{ $server['name'] ?? '-' }}</td>
+                                            <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono text-[13px]">{{ $server['interface'] ?? '-' }}</td>
+                                            <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono text-[13px]">{{ $server['address-pool'] ?? '-' }}</td>
+                                            <td class="px-6 py-3 text-slate-500 dark:text-slate-400">{{ $server['lease-time'] ?? '-' }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="4" class="px-6 py-6 text-center text-slate-500 dark:text-slate-400">Tidak ada DHCP Server.</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         @elseif($activeTab === 'firewall')
             <div class="space-y-6" x-data="{ subTab: 'filter' }">
                 <div class="flex gap-4 border-b border-slate-200 dark:border-slate-700 mb-2">
