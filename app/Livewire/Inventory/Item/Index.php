@@ -54,6 +54,13 @@ class Index extends Component
     public string $serialNotes = '';
     public bool $autoSyncStock = true;
 
+    // Modal Pasangkan ke Pelanggan (Assign Customer)
+    public bool $showAssignCustomerModal = false;
+    public ?int $assigningSerialId = null;
+    public string $assigningSerialNumber = '';
+    public ?int $assignCustomerId = null;
+    public string $assignCustomerSearch = '';
+
     protected $queryString = [
         'search' => ['except' => ''],
         'categoryFilter' => ['except' => ''],
@@ -429,6 +436,71 @@ class Index extends Component
         session()->flash('serial_success', "Serial Number '{$sn}' berhasil dihapus dari daftar.");
     }
 
+    public function openAssignCustomerModal(int $serialId)
+    {
+        $serial = ItemSerial::with(['customer', 'onu.customerService.customer'])->findOrFail($serialId);
+        $this->assigningSerialId = $serial->id;
+        $this->assigningSerialNumber = $serial->serial_number;
+        $this->assignCustomerId = $serial->customer_id ?? ($serial->onu?->customerService?->customer_id ?? null);
+        $this->assignCustomerSearch = '';
+        $this->showAssignCustomerModal = true;
+    }
+
+    public function closeAssignCustomerModal()
+    {
+        $this->showAssignCustomerModal = false;
+        $this->assigningSerialId = null;
+        $this->assignCustomerId = null;
+        $this->assignCustomerSearch = '';
+    }
+
+    public function saveAssignCustomer()
+    {
+        if (!$this->assigningSerialId || !$this->assignCustomerId) {
+            session()->flash('serial_error', 'Silakan pilih pelanggan terlebih dahulu.');
+            return;
+        }
+
+        $serial = ItemSerial::findOrFail($this->assigningSerialId);
+        $customer = \App\Models\CRM\Customer::findOrFail($this->assignCustomerId);
+
+        DB::transaction(function () use ($serial, $customer) {
+            // 1. Update status serial menjadi installed
+            $serial->update([
+                'status' => 'installed',
+                'customer_id' => $customer->id,
+                'warehouse_id' => null,
+                'updated_by' => auth()->id(),
+            ]);
+
+            // 2. Jika serial ini berasal dari custody teknisi/reseller, update catatan custody-nya
+            $custody = \App\Models\Inventory\InventoryCustody::where('item_serial_id', $serial->id)
+                ->where('status', 'in_custody')
+                ->latest()
+                ->first();
+
+            if ($custody) {
+                $custody->update([
+                    'used_quantity' => $custody->quantity,
+                    'status' => 'used',
+                    'customer_id' => $customer->id,
+                ]);
+            }
+
+            // 3. Jika ONU ada di data OLT, pasangkan juga ke layanan customer
+            $onu = \App\Models\ISP\Onu::where('serial_number', $serial->serial_number)->first();
+            if ($onu) {
+                $service = \App\Models\Customer\CustomerService::where('customer_id', $customer->id)->latest('id')->first();
+                if ($service) {
+                    $service->update(['onu_id' => $onu->id]);
+                }
+            }
+        });
+
+        session()->flash('serial_success', "Unit SN {$serial->serial_number} berhasil ditandai TERPASANG pada pelanggan {$customer->name}!");
+        $this->closeAssignCustomerModal();
+    }
+
     private function resetForm()
     {
         $this->itemId = null;
@@ -503,7 +575,7 @@ class Index extends Component
             }
 
             $sq = trim($this->serialSearch);
-            $serials = ItemSerial::with(['warehouse', 'custodian', 'customer'])
+            $serials = ItemSerial::with(['warehouse', 'custodian', 'customer', 'onu.olt', 'onu.customerService.customer'])
                 ->where('item_id', $this->selectedItemIdForSerials)
                 ->when(!empty($sq), function ($b) use ($sq) {
                     $b->where(function ($sub) use ($sq) {
@@ -513,6 +585,22 @@ class Index extends Component
                 })
                 ->latest('id')
                 ->paginate(10, ['*'], 'serialPage');
+        }
+
+        $customersList = collect();
+        if ($this->showAssignCustomerModal) {
+            $cs = trim($this->assignCustomerSearch);
+            $customersList = \App\Models\CRM\Customer::withoutGuests()
+                ->select('id', 'name', 'phone')
+                ->when(!empty($cs), function ($q) use ($cs) {
+                    $q->where(function ($sub) use ($cs) {
+                        $sub->where('name', 'like', "%{$cs}%")
+                            ->orWhere('phone', 'like', "%{$cs}%");
+                    });
+                })
+                ->orderBy('name')
+                ->limit(30)
+                ->get();
         }
 
         $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();
@@ -557,6 +645,11 @@ class Index extends Component
             'showSerialsModal' => $this->showSerialsModal,
             'selectedItemNameForSerials' => $this->selectedItemNameForSerials,
             'serialSearch' => $this->serialSearch,
+            'customersList' => $customersList,
+            'showAssignCustomerModal' => $this->showAssignCustomerModal,
+            'assigningSerialNumber' => $this->assigningSerialNumber,
+            'assignCustomerId' => $this->assignCustomerId,
+            'assignCustomerSearch' => $this->assignCustomerSearch,
         ])->layout('layouts.app', ['title' => 'Master Barang - dsBilling']);
     }
 }

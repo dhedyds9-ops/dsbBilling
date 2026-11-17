@@ -561,6 +561,26 @@
                                             @elseif($sn->custodian)
                                                 <span class="text-[11px] text-amber-600 dark:text-amber-400 font-bold">Pegang: {{ $sn->custodian->name }}</span>
                                             @endif
+
+                                            {{-- OLT Live Detection Badge jika ONU terdeteksi di OLT --}}
+                                            @if($sn->onu)
+                                                @php
+                                                    $isOltOnline = $sn->onu->operational_status === 'online' || ($sn->onu->last_seen_at && \Carbon\Carbon::parse($sn->onu->last_seen_at)->gte(now()->subMinutes(15)));
+                                                @endphp
+                                                <div class="mt-1 flex items-center gap-1 text-[10px]">
+                                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold border
+                                                        {{ $isOltOnline ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800' : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700' }}">
+                                                        <span class="w-1.5 h-1.5 rounded-full {{ $isOltOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400' }}"></span>
+                                                        <span>OLT: {{ $sn->onu->olt->name ?? 'Terhubung' }}</span>
+                                                        @if($sn->onu->pon_port)
+                                                            <span>({{ $sn->onu->pon_port }})</span>
+                                                        @endif
+                                                        @if($sn->onu->rx_power_dbm !== null)
+                                                            <span>RX: {{ $sn->onu->rx_power_dbm }} dBm</span>
+                                                        @endif
+                                                    </span>
+                                                </div>
+                                            @endif
                                         </div>
                                     </td>
                                     <td class="px-3 py-2.5">
@@ -570,17 +590,29 @@
                                         </span>
                                     </td>
                                     <td class="px-3 py-2.5 text-center">
-                                        @if($sn->status === 'in_warehouse')
-                                            <button type="button"
-                                                    wire:click="deleteSerial({{ $sn->id }})"
-                                                    wire:confirm="Yakin ingin menghapus Serial Number '{{ $sn->serial_number }}' dari gudang?"
-                                                    class="p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
-                                                    title="Hapus Serial Number">
-                                                <span class="material-symbols-outlined text-sm">delete</span>
-                                            </button>
-                                        @else
-                                            <span class="text-slate-300 dark:text-slate-600" title="Tidak dapat dihapus karena sudah beredar/terpasang">-</span>
-                                        @endif
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            {{-- Tombol Hubungkan / Pasang ke Pelanggan --}}
+                                            @if($sn->status !== 'installed')
+                                                <button type="button"
+                                                        wire:click="openAssignCustomerModal({{ $sn->id }})"
+                                                        class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10px] font-bold transition shadow-xs cursor-pointer"
+                                                        title="Tandai unit ini sudah terpasang pada pelanggan">
+                                                    <span class="material-symbols-outlined text-[13px]">person_add</span>
+                                                    <span>Pasang</span>
+                                                </button>
+                                            @endif
+
+                                            {{-- Tombol Hapus jika masih di gudang --}}
+                                            @if($sn->status === 'in_warehouse')
+                                                <button type="button"
+                                                        wire:click="deleteSerial({{ $sn->id }})"
+                                                        wire:confirm="Yakin ingin menghapus Serial Number '{{ $sn->serial_number }}' dari gudang?"
+                                                        class="p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                                                        title="Hapus Serial Number">
+                                                    <span class="material-symbols-outlined text-sm">delete</span>
+                                                </button>
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
@@ -601,6 +633,71 @@
                 @if($serials instanceof \Illuminate\Pagination\LengthAwarePaginator)
                     <div>{{ $serials->links() }}</div>
                 @endif
+            </div>
+        </div>
+    @endif
+
+    {{-- MODAL HUBUNGKAN / PASANG KE PELANGGAN --}}
+    @if($showAssignCustomerModal)
+        <div class="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-lg w-full space-y-4 shadow-2xl">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div>
+                        <h3 class="text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-indigo-600">how_to_reg</span>
+                            <span>Pasang ke Pelanggan</span>
+                        </h3>
+                        <p class="text-[11px] text-slate-400">Tandai unit SN <strong class="text-indigo-600 dark:text-indigo-400 font-mono">{{ $assigningSerialNumber }}</strong> sebagai terpasang (INSTALLED).</p>
+                    </div>
+                    <button wire:click="closeAssignCustomerModal" type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Cari Nama / No. HP Pelanggan
+                        </label>
+                        <input type="text"
+                               wire:model.live.debounce.250ms="assignCustomerSearch"
+                               placeholder="Ketik nama atau nomor HP pelanggan..."
+                               class="w-full text-xs py-2 px-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Pilih Pelanggan <span class="text-rose-500">*</span>
+                        </label>
+                        <select wire:model="assignCustomerId"
+                                class="w-full text-xs py-2 px-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500">
+                            <option value="">-- Pilih Pelanggan --</option>
+                            @foreach($customersList as $cust)
+                                <option value="{{ $cust->id }}">{{ $cust->name }} ({{ $cust->phone ?: 'Tanpa HP' }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                        💡 <strong>Catatan:</strong> Setelah disimpan, status serial unit otomatis berubah menjadi <span class="font-bold text-emerald-600">INSTALLED</span> dan tanggung jawab unit pada teknisi/gudang otomatis terselesaikan.
+                    </p>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <button type="button"
+                            wire:click="closeAssignCustomerModal"
+                            class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer">
+                        Batal
+                    </button>
+                    <button type="button"
+                            wire:click="saveAssignCustomer"
+                            wire:loading.attr="disabled"
+                            class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer">
+                        <span wire:loading.remove wire:target="saveAssignCustomer" class="material-symbols-outlined text-sm">check</span>
+                        <span wire:loading wire:target="saveAssignCustomer" class="animate-spin material-symbols-outlined text-sm">progress_activity</span>
+                        <span>Simpan & Tandai Terpasang</span>
+                    </button>
+                </div>
             </div>
         </div>
     @endif

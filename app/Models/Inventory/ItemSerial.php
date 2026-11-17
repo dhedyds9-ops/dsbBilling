@@ -85,6 +85,11 @@ class ItemSerial extends Model
         return $this->belongsTo(Branch::class, 'branch_id');
     }
 
+    public function onu(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\ISP\Onu::class, 'serial_number', 'serial_number');
+    }
+
     public function scopeInWarehouse($query)
     {
         return $query->where('status', 'in_warehouse');
