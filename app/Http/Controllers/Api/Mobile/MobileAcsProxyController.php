@@ -27,6 +27,14 @@ class MobileAcsProxyController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
         }
 
+        // Option A: Akun customer diblokir total dari antarmuka GenieACS TR-069
+        if ($user->hasRole('customer') || (method_exists($user, 'isCustomer') && $user->isCustomer())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak: Akun pelanggan tidak memiliki izin untuk mengelola jaringan TR-069.',
+            ], 403);
+        }
+
         // Warehouse staff has zero access to network CPE/ONT operations
         if ($user->hasRole('admin_gudang') || str_contains(strtolower($user->job_title ?? ''), 'gudang')) {
             return response()->json([
@@ -153,7 +161,7 @@ class MobileAcsProxyController extends Controller
         // Must exist in registered database records, or exist in GenieACS for diagnostic operations
         if (!$dbDevice && !$dbOnu) {
             $isDiagnosticOp = in_array($operation, ['summon', 'read', 'ping', 'tasks.view']);
-            if (!$isDiagnosticOp || $user->hasRole('reseller')) {
+            if (!$isDiagnosticOp) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Perangkat ini tidak terdaftar atau berada di luar cakupan izin akun Anda.',

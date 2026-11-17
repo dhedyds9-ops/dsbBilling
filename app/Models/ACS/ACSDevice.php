@@ -78,12 +78,24 @@ class ACSDevice extends Model
     public function scopeForReseller($query, $user = null)
     {
         $user = $user ?? auth()->user();
+
+        // Option A: Akun customer diblokir total dari antarmuka GenieACS TR-069
+        if ($user && ($user->hasRole('customer') || (method_exists($user, 'isCustomer') && $user->isCustomer()))) {
+            return $query->whereRaw('0 = 1');
+        }
+
         if ($user && $user->hasRole('reseller')) {
             $ctx = \App\Services\Auth\ResellerScopeHelper::resolveContext($user);
             $resellerId = $ctx['reseller_id'];
 
             return $query->where(function ($q) use ($user, $ctx, $resellerId) {
-                // 1. Kepemilikan langsung via CustomerService, ONU pelanggan, atau created_by
+                // 1. Unassigned / Baru Colok di GenieACS (Belum terikat ke ONU dan Layanan Pelanggan)
+                $q->where(function ($unassignedQ) {
+                    $unassignedQ->whereNull('acs_devices.customer_service_id')
+                                ->whereNull('acs_devices.onu_id');
+                });
+
+                // 2. Kepemilikan langsung via CustomerService, ONU pelanggan, atau created_by
                 if ($resellerId) {
                     $q->orWhere('acs_devices.created_by', $resellerId)
                       ->orWhereHas('customerService', function ($csQ) use ($resellerId) {
@@ -108,7 +120,7 @@ class ACSDevice extends Model
                       });
                 }
 
-                // 2. Relasi ke ONU / Serial Number / OLT / ODP di wilayah reseller
+                // 3. Relasi ke ONU / Serial Number / OLT / ODP di wilayah reseller
                 //    (mengecualikan device yang sudah terikat ke pelanggan reseller lain)
                 $q->orWhere(function ($terrQ) use ($user, $ctx, $resellerId) {
                     if ($resellerId) {
@@ -117,10 +129,11 @@ class ACSDevice extends Model
 
                     $terrQ->where(function ($linkQ) use ($user, $ctx) {
                         $linkQ->whereHas('onu', function ($onuQ) use ($user) {
-                            $onuQ->forReseller($user);
+                            $onuQ->withoutGlobalScopes(['branch_isolation'])->forReseller($user);
                         })->orWhereIn(
                             'acs_devices.serial_number',
-                            Onu::forReseller($user)
+                            Onu::withoutGlobalScopes(['branch_isolation'])
+                                ->forReseller($user)
                                 ->whereNotNull('onus.serial_number')
                                 ->where('onus.serial_number', '!=', '')
                                 ->select('onus.serial_number')

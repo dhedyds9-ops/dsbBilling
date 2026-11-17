@@ -165,6 +165,24 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         Route::get('/panduan', \App\Livewire\Inventory\Guide\Index::class)->name('guide.index');
     });
 
+    // ==================== GENIEACS (OPTION A: AKSES PENUH UNTUK SEMUA ROLE STAF & RESELLER, KECUALI CUSTOMER) ====================
+    Route::prefix('acs')->name('acs.')->middleware(['role:administrator,manager,admin_gudang,technician,teknisi,noc,customer_service,kasir,reseller'])->group(function () use ($cs) {
+        Route::get('/dashboard', \App\Livewire\ACS\Dashboard::class)->name('dashboard');
+        Route::get('/devices', \App\Livewire\ACS\Device\Index::class)->name('devices.index');
+        Route::get('/devices/{id}/edit', \App\Livewire\ACS\Device\Edit::class)->name('devices.edit');
+        Route::get('/devices/{id}', \App\Livewire\ACS\Device\Show::class)->name('devices.show');
+        Route::get('/tasks', \App\Livewire\ACS\Task\Index::class)->name('tasks.index');
+        Route::get('/alarms', \App\Livewire\ACS\Alarm\Index::class)->name('alarms.index');
+
+        // Pengaturan Sistem & Firmware ACS dibatasi untuk Administrator & Manager
+        Route::middleware(['role:administrator,manager'])->group(function () {
+            Route::get('/firmware', \App\Livewire\ACS\Firmware\Index::class)->name('firmware.index');
+            Route::get('/firmware/create', \App\Livewire\ACS\Firmware\Create::class)->name('firmware.create');
+            Route::get('/firmware/{id}/edit', \App\Livewire\ACS\Firmware\Edit::class)->name('firmware.edit');
+            Route::get('/settings', \App\Livewire\ACS\Settings::class)->name('settings');
+        });
+    });
+
     // ==================== STAFF / ADMIN AREA ====================
     Route::middleware(['role:administrator,manager,admin_gudang'])->group(function () use ($cs) {
 
@@ -389,20 +407,6 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/payment-gateway', \App\Livewire\Pengaturan\PaymentGateway\Index::class)->name('payment-gateway');
             // LoginPage Hotspot: Download template & panduan integrasi
             Route::get('/loginpage', \App\Livewire\Pengaturan\LoginPage\Index::class)->name('loginpage');
-        });
-
-        // === GenieACS (BACKEND ONLY —- Koneksi Perangkat
-        Route::prefix('acs')->name('acs.')->group(function () use ($cs) {
-            Route::get('/dashboard', \App\Livewire\ACS\Dashboard::class)->name('dashboard');
-            Route::get('/devices', \App\Livewire\ACS\Device\Index::class)->name('devices.index');
-                        Route::get('/devices/{id}/edit', \App\Livewire\ACS\Device\Edit::class)->name('devices.edit');
-            Route::get('/devices/{id}', \App\Livewire\ACS\Device\Show::class)->name('devices.show');
-            Route::get('/tasks', \App\Livewire\ACS\Task\Index::class)->name('tasks.index');
-            Route::get('/alarms', \App\Livewire\ACS\Alarm\Index::class)->name('alarms.index');
-            Route::get('/firmware', \App\Livewire\ACS\Firmware\Index::class)->name('firmware.index');
-            Route::get('/firmware/create', \App\Livewire\ACS\Firmware\Create::class)->name('firmware.create');
-            Route::get('/firmware/{id}/edit', \App\Livewire\ACS\Firmware\Edit::class)->name('firmware.edit');
-            Route::get('/settings', \App\Livewire\ACS\Settings::class)->name('settings');
         });
 
         // === GIS (Peta Jaringan & Pelanggan) ===

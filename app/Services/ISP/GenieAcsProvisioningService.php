@@ -430,17 +430,12 @@ JS,
      */
     public function provisionOnt(Onu $onu, array $options = []): array
     {
-        // 1. Tenant & Authorization Check
+        // 1. Tenant & Authorization Check (Option A: Semua role internal staff & reseller dapat mengakses, kecuali customer)
         $currentUser = auth()->user();
         if ($currentUser) {
-            $isGlobalAdmin = $currentUser->hasRole(['administrator', 'superadmin']) 
-                && strtoupper((string)$currentUser->job_function) !== 'TECHNICIAN';
-            
-            if (!$isGlobalAdmin && $currentUser->branch_id && $onu->branch_id) {
-                if ((int)$currentUser->branch_id !== (int)$onu->branch_id) {
-                    Log::warning("SECURITY_VIOLATION: User {$currentUser->id} from branch {$currentUser->branch_id} attempted cross-branch ONT provisioning on ONU {$onu->id} (branch {$onu->branch_id}).");
-                    throw new \Illuminate\Auth\Access\AuthorizationException("Anda tidak memiliki izin untuk mengonfigurasi perangkat di luar cabang Anda.");
-                }
+            if ($currentUser->hasRole('customer') || (method_exists($currentUser, 'isCustomer') && $currentUser->isCustomer())) {
+                Log::warning("SECURITY_VIOLATION: Customer user {$currentUser->id} attempted ONT provisioning on ONU {$onu->id}.");
+                throw new \Illuminate\Auth\Access\AuthorizationException("Pelanggan tidak memiliki izin untuk mengonfigurasi perangkat GenieACS.");
             }
         }
 
