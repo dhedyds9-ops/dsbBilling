@@ -202,9 +202,21 @@
                             <td class="px-5 py-3 font-medium text-slate-800 dark:text-white">{{ $mut->warehouse?->name }}</td>
                             <td class="px-5 py-3 font-medium text-slate-800 dark:text-white">{{ $mut->item?->name }}</td>
                             <td class="px-5 py-3">
+                                @php
+                                    $mutTypeLabel = match($mut->type) {
+                                        'inbound' => 'Barang Masuk',
+                                        'outbound_dispatch' => 'Pengeluaran',
+                                        'return_good' => 'Retur Baik',
+                                        'return_damaged' => 'Retur Rusak',
+                                        'adjustment_in' => 'Penyesuaian (+)',
+                                        'adjustment_out' => 'Penyesuaian (-)',
+                                        'usage' => 'Terpakai',
+                                        default => str_replace('_', ' ', ucfirst($mut->type)),
+                                    };
+                                @endphp
                                 <span class="px-2 py-0.5 rounded text-[10px] font-semibold
                                     {{ in_array($mut->type, ['inbound', 'return_good', 'adjustment_in']) ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300' }}">
-                                    {{ strtoupper(str_replace('_', ' ', $mut->type)) }}
+                                    {{ $mutTypeLabel }}
                                 </span>
                             </td>
                             <td class="px-5 py-3 text-right font-mono font-bold text-emerald-600">
@@ -293,7 +305,7 @@
                         @forelse($custodyData as $cust)
                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-750">
                             <td class="px-5 py-3 font-medium text-slate-800 dark:text-white">{{ $cust->holder?->name }}</td>
-                            <td class="px-5 py-3 text-slate-500 capitalize">{{ $cust->holder_type }}</td>
+                            <td class="px-5 py-3 text-slate-500">{{ $cust->holder_type === 'reseller' ? 'Reseller' : 'Teknisi' }}</td>
                             <td class="px-5 py-3 font-medium text-slate-800 dark:text-white">{{ $cust->item?->name }}</td>
                             <td class="px-5 py-3 text-right font-mono">{{ (float)$cust->quantity }}</td>
                             <td class="px-5 py-3 text-right font-mono text-blue-600 font-bold">{{ (float)$cust->used_quantity }}</td>
@@ -304,7 +316,12 @@
                             <td class="px-5 py-3">
                                 <span class="px-2 py-0.5 rounded text-[10px] font-semibold
                                     {{ $cust->status === 'in_custody' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' : ($cust->status === 'used' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300') }}">
-                                    {{ strtoupper(str_replace('_', ' ', $cust->status)) }}
+                                    {{ match($cust->status) {
+                                        'in_custody' => 'Di Tangan',
+                                        'used' => 'Terpasang',
+                                        'returned' => 'Diretur',
+                                        default => ucfirst($cust->status)
+                                    } }}
                                 </span>
                             </td>
                         </tr>

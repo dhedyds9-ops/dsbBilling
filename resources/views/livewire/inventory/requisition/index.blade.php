@@ -162,8 +162,8 @@
                                 </td>
                                 <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
                                     <div class="font-semibold">{{ $req->requester?->name ?? '-' }}</div>
-                                    <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                                        {{ $req->requester_type }}
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                        {{ $req->requester_type === 'reseller' ? 'Reseller' : 'Teknisi' }}
                                     </span>
                                 </td>
                                 <td class="py-3.5 px-4">
@@ -741,7 +741,7 @@
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-400">Pemohon:</span>
-                        <span class="font-bold text-slate-800 dark:text-slate-200">{{ $selectedRequisition->requester?->name }} ({{ $selectedRequisition->requester_type }})</span>
+                        <span class="font-bold text-slate-800 dark:text-slate-200">{{ $selectedRequisition->requester?->name }} ({{ $selectedRequisition->requester_type === 'reseller' ? 'Reseller' : 'Teknisi' }})</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-400">Gudang Sumber:</span>

@@ -125,8 +125,14 @@
                             </td>
                             <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
                                 <div class="font-medium">{{ $inbound->supplier_name ?: 'Pengadaan Internal' }}</div>
-                                <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                                    {{ $inbound->source_type }}
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                    {{ match($inbound->source_type) {
+                                        'supplier' => 'Supplier',
+                                        'purchase' => 'Beli Langsung',
+                                        'initial_stock' => 'Saldo Awal',
+                                        'transfer' => 'Transfer Gudang',
+                                        default => ucfirst($inbound->source_type)
+                                    } }}
                                 </span>
                             </td>
                             <td class="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-400">

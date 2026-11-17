@@ -142,19 +142,19 @@
                             <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
                                 <div class="font-bold text-slate-900 dark:text-slate-100">{{ $dsp->recipient?->name ?? '-' }}</div>
                                 <span class="text-[10px] uppercase font-bold text-slate-500">
-                                    {{ $dsp->recipient_type }}
+                                    {{ $dsp->recipient_type === 'reseller' ? 'Reseller' : 'Teknisi' }}
                                 </span>
                             </td>
                             <td class="py-3.5 px-4">
                                 @if($dsp->distribution_method === 'pickup_reseller')
-                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800" title="Reseller mengambil barang di gudang">
                                         <span class="material-symbols-outlined text-xs">store</span>
-                                        Metode A
+                                        Ambil Reseller (A)
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
+                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800" title="Gudang langsung serah ke teknisi">
                                         <span class="material-symbols-outlined text-xs">local_shipping</span>
-                                        Metode B
+                                        Teknisi Langsung (B)
                                     </span>
                                 @endif
                             </td>
@@ -629,11 +629,20 @@
                     </div>
                     <div>
                         <span class="text-slate-400 block text-[11px]">Metode Distribusi</span>
-                        <span class="font-bold text-blue-600 dark:text-blue-400">{{ $selectedDispatch->distribution_method }}</span>
+                        <span class="font-bold text-blue-600 dark:text-blue-400">
+                            {{ $selectedDispatch->distribution_method === 'pickup_reseller' ? 'Diambil Reseller (Metode A)' : 'Langsung ke Teknisi (Metode B)' }}
+                        </span>
                     </div>
                     <div>
                         <span class="text-slate-400 block text-[11px]">Status</span>
-                        <span class="font-bold uppercase text-slate-800 dark:text-slate-200">{{ $selectedDispatch->status }}</span>
+                        <span class="font-bold text-slate-800 dark:text-slate-200">
+                            {{ match($selectedDispatch->status) {
+                                'dispatched' => 'Sudah Keluar',
+                                'pending' => 'Menunggu',
+                                'cancelled' => 'Dibatalkan',
+                                default => ucfirst($selectedDispatch->status)
+                            } }}
+                        </span>
                     </div>
                 </div>
 

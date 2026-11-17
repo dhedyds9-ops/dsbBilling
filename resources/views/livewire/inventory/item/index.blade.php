@@ -563,9 +563,19 @@
                                     </td>
                                     <td class="px-3.5 py-3 min-w-[220px]">
                                         <div class="flex flex-col gap-0.5">
-                                            <span class="inline-block w-fit px-1.5 py-0.5 rounded text-[10px] font-bold
+                                            @php
+                                                $snStatusLabel = match($sn->status) {
+                                                    'in_warehouse' => 'Di Gudang',
+                                                    'in_custody' => ($sn->custodian?->hasRole('reseller') ? 'Di Reseller' : 'Di Teknisi'),
+                                                    'installed' => 'Terpasang',
+                                                    'returned' => 'Diretur',
+                                                    'damaged' => 'Rusak',
+                                                    default => str_replace('_', ' ', ucfirst($sn->status)),
+                                                };
+                                            @endphp
+                                            <span class="inline-block w-fit px-2 py-0.5 rounded text-[10px] font-bold
                                                 {{ $sn->status === 'installed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : ($sn->status === 'in_warehouse' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300') }}">
-                                                {{ str_replace('_', ' ', strtoupper($sn->status)) }}
+                                                {{ $snStatusLabel }}
                                             </span>
                                             @if($sn->customer)
                                                 <span class="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold">Pelanggan: {{ $sn->customer->name }}</span>
@@ -661,7 +671,7 @@
                             <span class="material-symbols-outlined text-indigo-600">how_to_reg</span>
                             <span>Pasang ke Pelanggan</span>
                         </h3>
-                        <p class="text-[11px] text-slate-400">Tandai unit SN <strong class="text-indigo-600 dark:text-indigo-400 font-mono">{{ $assigningSerialNumber }}</strong> sebagai terpasang (INSTALLED).</p>
+                        <p class="text-[11px] text-slate-400">Tandai unit SN <strong class="text-indigo-600 dark:text-indigo-400 font-mono">{{ $assigningSerialNumber }}</strong> sebagai terpasang di rumah pelanggan.</p>
                     </div>
                     <button wire:click="closeAssignCustomerModal" type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
                         <span class="material-symbols-outlined">close</span>

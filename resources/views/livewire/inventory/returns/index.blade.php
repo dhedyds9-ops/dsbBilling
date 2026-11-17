@@ -116,8 +116,8 @@
                             </td>
                             <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
                                 <div class="font-bold text-slate-900 dark:text-slate-100">{{ $ret->returner?->name ?? '-' }}</div>
-                                <span class="text-[10px] uppercase font-bold text-slate-400">
-                                    {{ $ret->returner_type }}
+                                <span class="text-[10px] font-bold text-slate-400">
+                                    {{ $ret->returner_type === 'reseller' ? 'Reseller' : 'Teknisi' }}
                                 </span>
                             </td>
                             <td class="py-3.5 px-4">
@@ -154,12 +154,12 @@
                                 @if($ret->status === 'accepted')
                                     <span class="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-md border text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
                                         <span class="material-symbols-outlined text-xs">check_circle</span>
-                                        Diterima / Restocked
+                                        Diterima di Gudang
                                     </span>
                                 @elseif($ret->status === 'pending_qc')
                                     <span class="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-md border text-[11px] bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800">
                                         <span class="material-symbols-outlined text-xs">schedule</span>
-                                        Menunggu QC Gudang
+                                        Menunggu Cek QC
                                     </span>
                                 @else
                                     <span class="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-md border text-[11px] bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800">

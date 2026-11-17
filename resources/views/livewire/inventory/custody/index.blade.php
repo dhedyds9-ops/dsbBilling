@@ -27,9 +27,9 @@
     <div class="p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border border-purple-200 dark:border-purple-800/80 flex items-start gap-3">
         <span class="material-symbols-outlined text-purple-600 dark:text-purple-400 mt-0.5 text-xl">verified_user</span>
         <div class="text-xs space-y-0.5">
-            <span class="font-bold text-purple-900 dark:text-purple-300 block">Company-Owned Inventory with Custody Tracking</span>
+            <span class="font-bold text-purple-900 dark:text-purple-300 block">Titipan Material Operasional</span>
             <p class="text-slate-600 dark:text-slate-400">
-                Material yang telah dikeluarkan dari gudang tetap merupakan aset perusahaan. Barang dicatat sebagai titipan sementara dan baru diakui sebagai biaya terpakai setelah teknisi memverifikasi instalasi aktual di lokasi pelanggan.
+                Material di tangan teknisi atau reseller tetap aset kantor. Tanggung jawab selesai setelah diverifikasi terpasang di pelanggan atau diretur kembali ke gudang.
             </p>
         </div>
     </div>
