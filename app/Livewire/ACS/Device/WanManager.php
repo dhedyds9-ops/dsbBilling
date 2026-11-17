@@ -509,9 +509,18 @@ class WanManager extends Component
                 $natEnabled = 'false';
             }
 
+            $formMode = $this->formMode;
             $username = addslashes($this->formUsername);
             $password = addslashes($this->formPassword);
             $bindString = addslashes($this->generateBindString());
+
+            $credScript = '';
+            if ($this->formMode === 'pppoe_route') {
+                $credScript = <<<CRED
+declare(pppPath + ".Username", {value: now}, {value: "{$username}"});
+declare(pppPath + ".Password", {value: now}, {value: "{$password}"});
+CRED;
+            }
 
             $script = <<<JS
 const now = Date.now();
@@ -625,17 +634,14 @@ if ("{$bindString}" !== "") {
 }
 
 // Credentials (only if PPPoE Route)
-if ("{$formMode}" === "pppoe_route") {
-    declare(pppPath + ".Username", {value: now}, {value: "{$username}"});
-    declare(pppPath + ".Password", {value: now}, {value: "{$password}"});
-}
+{$credScript}
 JS;
 
             $provName = "temp_add_wan_" . $this->device->uuid;
             $driver->upsertProvision($provName, $script);
             $driver->addProvisionTask($this->device->uuid, $provName);
 
-            session()->flash('success', 'Perintah pembuatan WAN (' . $connType . ') berhasil dikirim ke GenieACS. Tunggu modem tersinkronisasi.');
+            session()->flash('success', 'Perintah pembuatan WAN (' . $connType . ') berhasil dikirim ke antrean GenieACS. Modem sedang di-trigger via Connection Request.');
             $this->isCreating = false;
             $this->loadWans();
         } catch (\Throwable $e) {
@@ -690,8 +696,9 @@ JS;
 const now = Date.now();
 let parentPath = "{$parentPath}";
 
-// Disable old IP/Bridge connection
+// Disable and remove old conflicting IP/Bridge connection
 declare("{$this->editFullPath}.Enable", {value: now}, {value: false});
+declare("{$this->editFullPath}", null, {path: 0});
 
 // Activate or create PPP connection on this slot
 let pppPath = parentPath + ".WANPPPConnection.1";
@@ -751,6 +758,16 @@ if ("{$escapedBind}" !== "") {
     } else if ("{$vendor}".includes("zte")) {
         declare(pppPath + ".X_ZTE-COM_LanInterface", {value: now}, {value: "{$escapedBind}"});
         declare(pppPath + ".X_ZTE-COM_PortBind", {value: now}, {value: "{$escapedBind}"});
+        let bindings = declare("InternetGatewayDevice.X_ZTE-COM_PortBinding.*", {path: 1});
+        let bindIdx = 1;
+        for (let b of bindings) {
+            let bIdx = parseInt(b.path.split(".").pop());
+            if (bIdx >= bindIdx) bindIdx = bIdx + 1;
+        }
+        let bindPath = "InternetGatewayDevice.X_ZTE-COM_PortBinding." + bindIdx;
+        declare(bindPath, {path: 1}, {path: 1});
+        declare(bindPath + ".WANInterface", {value: now}, {value: pppPath});
+        declare(bindPath + ".LANInterface", {value: now}, {value: "{$escapedBind}"});
     }
 }
 JS;
@@ -765,6 +782,7 @@ JS;
                         $w['name'] = "1_INTERNET_R_VID_{$vlanId}";
                         $w['type'] = 'PPPoE';
                         $w['mode_label'] = 'PPPoE Route';
+                        $w['connection_type'] = $connType;
                         $w['vlan'] = $vlanId > 0 ? $vlanId : null;
                         $w['nat'] = true;
                         $w['username'] = $this->formUsername;
@@ -774,7 +792,7 @@ JS;
                 }
                 unset($w);
 
-                session()->flash('success', "Task migrasi WAN ke PPPoE (User: {$this->formUsername}, VLAN: " . ($vlanId > 0 ? $vlanId : 'Untagged') . ") berhasil dikirim ke perangkat.");
+                session()->flash('success', "Task migrasi WAN ke PPPoE (User: {$this->formUsername}, VLAN: " . ($vlanId > 0 ? $vlanId : 'Untagged') . ") berhasil dikirim ke antrean GenieACS. Jika konfigurasi belum berubah pada modem, klik tombol 'Reboot Modem' atau 'Summon' agar modem segera mengunduh profil baru.");
                 $this->isEditing = false;
                 return;
             } catch (\Throwable $e) {
@@ -933,6 +951,39 @@ JS;
             }
         } catch (\Throwable $e) {
             session()->flash('error', 'Error: ' . $e->getMessage());
+        }
+    }
+
+    public function rebootDevice()
+    {
+        try {
+            $driver = new GenieACSDriver();
+            $success = $driver->rebootDevice($this->device->uuid);
+            if ($success) {
+                session()->flash('success', 'Perintah reboot berhasil dikirim. Modem akan segera memuat konfigurasi baru.');
+            } else {
+                session()->flash('error', 'Gagal mengirim perintah reboot ke modem.');
+            }
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal reboot: ' . $e->getMessage());
+        }
+    }
+
+    public function summonDevice()
+    {
+        try {
+            $driver = new GenieACSDriver();
+            $res = $driver->summonDeviceResult($this->device->uuid);
+            if ($res['connection_request_success']) {
+                session()->flash('success', 'Trigger Connection Request berhasil diterima modem. Sinkronisasi data dimulai.');
+            } elseif ($res['task_queued']) {
+                session()->flash('info', 'Task refresh telah diantrikan di GenieACS (menunggu modem Inform berikutnya).');
+            } else {
+                session()->flash('warning', 'Modem tidak merespons pemicu Connection Request.');
+            }
+            $this->loadWans();
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal summon modem: ' . $e->getMessage());
         }
     }
 }

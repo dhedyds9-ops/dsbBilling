@@ -498,18 +498,88 @@ class GenieACSDriver
     public function provisionPppoe(string $deviceId, string $username, string $password, ?string $vlanId = null): bool
     {
         try {
-            $payload = [
-                'name' => 'run_provision',
-                'provision' => 'dsBilling_Setup_WAN',
-                'args' => [$username, $password, $vlanId ?? ""]
-            ];
-            $response = $this->postTaskWithFallback($deviceId, $payload, true);
-                
-            if ($response->successful()) {
+            $realDeviceId = $this->resolveDeviceId($deviceId);
+            $cleanId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $realDeviceId);
+            $provName = "temp_pppoe_" . $cleanId;
+
+            $escUser = addslashes($username);
+            $escPass = addslashes($password);
+            $vlanVal = $vlanId ? (int)$vlanId : 0;
+
+            $script = <<<JS
+const now = Date.now();
+let brandDecl = declare("DeviceID.Manufacturer", {value: 1});
+let brand = (brandDecl.value !== undefined) ? brandDecl.value[0] : "";
+let pppPath = "";
+
+let wanConns = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*.Username", {path: 1});
+if (!wanConns.size) {
+    wanConns = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*", {path: 1});
+}
+
+for (let p of wanConns) {
+    pppPath = p.path.replace(".Username", "");
+    break;
+}
+
+if (!pppPath) {
+    let allConns = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*", {path: 1});
+    let maxIdx = 0;
+    let basePath = null;
+    for (let c of allConns) {
+        let idx = parseInt(c.path.split(".").pop());
+        if (idx > maxIdx) maxIdx = idx;
+        let ppps = declare(c.path + ".WANPPPConnection.*", {path: 1});
+        let ips = declare(c.path + ".WANIPConnection.*", {path: 1});
+        if (!ppps.size && !ips.size && !basePath) {
+            basePath = c.path;
+        }
+    }
+    if (!basePath) {
+        basePath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + (maxIdx + 1);
+        declare(basePath, {path: 1}, {path: 1});
+    }
+    pppPath = basePath + ".WANPPPConnection.1";
+    declare(pppPath, {path: 1}, {path: 1});
+}
+
+let connType = (brand.indexOf("FiberHome") !== -1 ? "PPPoE_Routed" : "IP_Routed");
+declare(pppPath + ".Enable", {value: now}, {value: true});
+declare(pppPath + ".ConnectionType", {value: now}, {value: connType});
+declare(pppPath + ".NATEnabled", {value: now}, {value: true});
+declare(pppPath + ".Username", {value: now}, {value: "{$escUser}"});
+declare(pppPath + ".Password", {value: now}, {value: "{$escPass}"});
+declare(pppPath + ".ConnectionTrigger", {value: now}, {value: "AlwaysOn"});
+
+if ({$vlanVal} > 0) {
+    let match = pppPath.match(/WANConnectionDevice\.(\d+)\./);
+    let wanIdx = match ? match[1] : "1";
+    let basePath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx;
+    
+    if (brand.indexOf("ZTE") !== -1) {
+        declare(pppPath + ".X_ZTE-COM_VLANID", {value: now}, {value: {$vlanVal}});
+        declare(pppPath + ".X_ZTE-COM_VLANEnable", {value: now}, {value: 1});
+    } else if (brand.indexOf("Huawei") !== -1 || brand.indexOf("EchoLife") !== -1) {
+        declare(basePath + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: {$vlanVal}});
+        declare(basePath + ".WANEthernetLinkConfig.Mode", {value: now}, {value: 2});
+        declare(pppPath + ".X_HW_VLAN", {value: now}, {value: {$vlanVal}});
+    } else if (brand.indexOf("FiberHome") !== -1) {
+        declare(basePath + ".X_FH_WANGponLinkConfig.VLANIDMark", {value: now}, {value: {$vlanVal}});
+        declare(basePath + ".X_FH_WANGponLinkConfig.VLANID", {value: now}, {value: {$vlanVal}});
+        declare(basePath + ".X_FH_WANGponLinkConfig.Mode", {value: now}, {value: 1});
+    } else {
+        declare(basePath + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: {$vlanVal}});
+        declare(basePath + ".VLANID", {value: now}, {value: {$vlanVal}});
+    }
+}
+JS;
+
+            $this->upsertProvision($provName, $script);
+            $success = $this->addProvisionTask($realDeviceId, $provName);
+            if ($success) {
                 return true;
             }
-            $body = (string)$response->body();
-            throw new Exception("provisionPppoe HTTP {$response->status()}: {$body}");
+            throw new Exception("Gagal mengantrikan task provisions ke GenieACS");
         } catch (Exception $e) {
             throw new Exception("GenieACS PPPoE Provisioning failed: " . $e->getMessage(), 0, $e);
         }
@@ -1333,7 +1403,12 @@ JS;
     public function addProvisionTask(string $deviceId, string $provisionName): bool
     {
         try {
-            $payload = ['name' => 'provision', 'args' => ['provision' => $provisionName]];
+            // In GenieACS (v1.2+ CWMP session engine), task name is 'provisions' (plural)
+            // with array of provision names in 'provisions'.
+            $payload = [
+                'name' => 'provisions',
+                'provisions' => [$provisionName],
+            ];
             $response = $this->postTaskWithFallback($deviceId, $payload, true);
             return $response->successful();
         } catch (\Exception $e) {

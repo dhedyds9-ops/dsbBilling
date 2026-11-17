@@ -47,15 +47,26 @@
                     </div>
                 @else
                     {{-- Active WANs Table Header --}}
-                    <div class="flex justify-between items-center">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                         <div>
                             <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200">Daftar Koneksi WAN Aktif</h4>
                             <p class="text-[11px] text-slate-400">Koneksi WAN yang terkonfigurasi pada perangkat modem ONT saat ini.</p>
                         </div>
-                        <button wire:click="createWan" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-sm transition-colors">
-                            <span class="material-symbols-outlined text-[16px]">add</span>
-                            <span>Tambah WAN Baru</span>
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button wire:click="summonDevice" wire:loading.attr="disabled" class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl transition-colors" title="Kirim Connection Request untuk memicu modem Inform dan mengeksekusi task">
+                                <span class="material-symbols-outlined text-[15px]" wire:loading.remove wire:target="summonDevice">sync</span>
+                                <span class="animate-spin material-symbols-outlined text-[15px]" wire:loading wire:target="summonDevice">progress_activity</span>
+                                <span>Summon / Refresh</span>
+                            </button>
+                            <button wire:click="rebootDevice" wire:confirm="Apakah Anda yakin ingin me-reboot modem sekarang? Modem akan restart dan menerapkan konfigurasi baru." wire:loading.attr="disabled" class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800 rounded-xl transition-colors" title="Restart modem agar konfigurasi baru dimuat">
+                                <span class="material-symbols-outlined text-[15px]">restart_alt</span>
+                                <span>Reboot Modem</span>
+                            </button>
+                            <button wire:click="createWan" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-sm transition-colors">
+                                <span class="material-symbols-outlined text-[16px]">add</span>
+                                <span>Tambah WAN Baru</span>
+                            </button>
+                        </div>
                     </div>
                     
                     {{-- Active WANs Table --}}
@@ -88,7 +99,7 @@
                                         <span class="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border {{ $badgeColor }}">
                                             {{ $wan['mode_label'] ?? $wan['type'] }}
                                         </span>
-                                        @if($wan['connection_type'] && $wan['connection_type'] !== '-')
+                                        @if(!empty($wan['connection_type']) && $wan['connection_type'] !== '-')
                                             <div class="text-[10px] text-slate-400 font-mono mt-0.5">{{ $wan['connection_type'] }}</div>
                                         @endif
                                     </td>

@@ -524,11 +524,7 @@ JS,
             $taskQueued = false;
             try {
                 if ($pppoeUsername !== '') {
-                    $this->driver->postTaskWithFallback($deviceId, [
-                        'name' => 'run_provision',
-                        'provision' => 'dsBilling_Setup_WAN',
-                        'args' => [$pppoeUsername, $pppoePassword, (string)($vlanId ?? '')]
-                    ], false);
+                    $this->driver->provisionPppoe($deviceId, $pppoeUsername, $pppoePassword, $vlanId ? (string)$vlanId : null);
                     $taskQueued = true;
                 }
                 if ($wifiSsid !== '') {
@@ -633,18 +629,16 @@ JS,
         $hotspotSsid = $options['wifi_ssid'] ?? $onu->wifi_ssid ?? \App\Models\Setting::getValue('company.name', 'WINETS.ID');
 
         try {
-            // Pastikan provision script sudah ada di GenieACS
-            if (isset(self::DEFAULT_PROVISIONS['dsBilling_Setup_Hotspot_Bridge'])) {
-                $pConfig = self::DEFAULT_PROVISIONS['dsBilling_Setup_Hotspot_Bridge'];
-                $this->driver->upsertProvision('dsBilling_Setup_Hotspot_Bridge', $pConfig['script'], $pConfig['weight'] ?? 45);
-            }
-
-            $payload = [
-                'name' => 'run_provision',
-                'provision' => 'dsBilling_Setup_Hotspot_Bridge',
-                'args' => [(string) $vlanId, $bindString, $hotspotSsid],
-            ];
-            $this->driver->postTaskWithFallback($deviceId, $payload, true);
+            $cleanId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $deviceId);
+            $provName = "temp_hotspot_" . $cleanId;
+            $rawScript = self::DEFAULT_PROVISIONS['dsBilling_Setup_Hotspot_Bridge']['script'] ?? '';
+            $script = str_replace(
+                ['args[0]', 'args[1]', 'args[2]'],
+                [json_encode((string)$vlanId), json_encode($bindString), json_encode($hotspotSsid)],
+                $rawScript
+            );
+            $this->driver->upsertProvision($provName, $script);
+            $this->driver->addProvisionTask($deviceId, $provName);
 
             Log::info("[GenieACS Provisioning] Queued Hotspot Bridge for ONU {$onu->id} (SN: {$onu->serial_number})", [
                 'device_id' => $deviceId,
