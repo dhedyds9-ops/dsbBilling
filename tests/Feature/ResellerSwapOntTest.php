@@ -36,4 +36,24 @@ class ResellerSwapOntTest extends TestCase
         $response = $this->get('/reseller-portal/network/swap-ont');
         $response->assertOk();
     }
+
+    public function test_reseller_can_search_customers_without_500_error(): void
+    {
+        $resellerRole = Role::firstOrCreate(['name' => 'reseller'], ['display_name' => 'Reseller', 'guard_name' => 'web']);
+        $branch = Branch::firstOrCreate(['code' => 'BR-RES2'], ['name' => 'Cabang Reseller 2']);
+
+        $reseller = User::factory()->create([
+            'name' => 'Mitra Reseller Test 2',
+            'email' => 'mitra_swap2@dsbilling.test',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+        ]);
+        $reseller->roles()->attach($resellerRole->id);
+
+        $this->actingAs($reseller);
+
+        \Livewire\Livewire::test(\App\Livewire\ResellerPortal\Network\SwapOnt::class)
+            ->set('searchQuery', 'Pelanggan')
+            ->assertStatus(200);
+    }
 }
