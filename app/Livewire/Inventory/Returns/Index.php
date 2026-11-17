@@ -242,6 +242,15 @@ class Index extends Component
         $this->selectedReturnId = null;
     }
 
+    public function exportExcel()
+    {
+        $filename = 'retur-barang-returns-' . date('Ymd-His') . '.xlsx';
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\Inventory\ReturnExport($this->search, $this->statusFilter, $this->warehouseFilter),
+            $filename
+        );
+    }
+
     public function render()
     {
         $user = auth()->user();

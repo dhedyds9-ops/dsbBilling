@@ -82,6 +82,32 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public function exportExcel()
+    {
+        if (!$this->warehouseId || !$this->itemId) {
+            session()->flash('error', 'Silakan pilih Gudang dan Barang terlebih dahulu sebelum mengunduh Kartu Stok.');
+            return;
+        }
+
+        $item = Item::find($this->itemId);
+        $wh = Warehouse::find($this->warehouseId);
+        $itemName = $item ? \Illuminate\Support\Str::slug($item->name) : 'barang';
+        $whName = $wh ? \Illuminate\Support\Str::slug($wh->name) : 'gudang';
+
+        $filename = "kartu-stok-{$whName}-{$itemName}-" . date('Ymd-His') . '.xlsx';
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\Inventory\StockCardExport(
+                $this->warehouseId,
+                $this->itemId,
+                $this->typeFilter,
+                $this->dateFrom,
+                $this->dateTo
+            ),
+            $filename
+        );
+    }
+
     public function render()
     {
         $warehouses = Warehouse::active()->orderBy('name')->get();

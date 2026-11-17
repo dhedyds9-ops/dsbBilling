@@ -132,6 +132,15 @@ class Index extends Component
         }
     }
 
+    public function exportExcel()
+    {
+        $filename = 'distribusi-serah-terima-custody-' . date('Ymd-His') . '.xlsx';
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\Inventory\CustodyExport($this->search, $this->holderFilter),
+            $filename
+        );
+    }
+
     public function render()
     {
         $user = auth()->user();

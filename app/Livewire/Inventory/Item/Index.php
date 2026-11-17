@@ -539,6 +539,15 @@ class Index extends Component
         $this->branch_id = null;
     }
 
+    public function exportExcel()
+    {
+        $filename = 'master-barang-' . date('Ymd-His') . '.xlsx';
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\Inventory\ItemExport($this->search, $this->categoryFilter, $this->statusFilter),
+            $filename
+        );
+    }
+
     public function render()
     {
         $q = trim($this->search);

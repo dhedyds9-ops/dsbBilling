@@ -11,11 +11,22 @@
             </p>
         </div>
 
-        <button wire:click="openCreateModal" type="button"
-                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm shadow-indigo-200 dark:shadow-none transition-all">
-            <span class="material-symbols-outlined text-sm">add</span>
-            <span>Tambah Barang Baru</span>
-        </button>
+        <div class="flex items-center gap-2">
+            <button wire:click="exportExcel" type="button"
+                    wire:loading.attr="disabled"
+                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                    title="Download Data Master Barang ke Format Excel (.xlsx)">
+                <span wire:loading.remove wire:target="exportExcel" class="material-symbols-outlined text-sm">download</span>
+                <span wire:loading wire:target="exportExcel" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                <span>Export Excel</span>
+            </button>
+
+            <button wire:click="openCreateModal" type="button"
+                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm shadow-indigo-200 dark:shadow-none transition-all">
+                <span class="material-symbols-outlined text-sm">add</span>
+                <span>Tambah Barang Baru</span>
+            </button>
+        </div>
     </div>
 
     {{-- Flash Messages --}}

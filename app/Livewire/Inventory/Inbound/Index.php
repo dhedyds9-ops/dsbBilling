@@ -413,6 +413,15 @@ class Index extends Component
         }
     }
 
+    public function exportExcel()
+    {
+        $filename = 'barang-masuk-inbound-' . date('Ymd-His') . '.xlsx';
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\Inventory\InboundExport($this->search, $this->warehouseFilter),
+            $filename
+        );
+    }
+
     public function render()
     {
         $query = InventoryInbound::with(['warehouse', 'receiver', 'items.item'])

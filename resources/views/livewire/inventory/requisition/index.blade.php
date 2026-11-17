@@ -11,13 +11,24 @@
             </p>
         </div>
 
-        @if($canCreateRequisition)
-            <button wire:click="openCreateModal" type="button"
-                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all">
-                <span class="material-symbols-outlined text-sm">add</span>
-                <span>Buat Pengajuan Baru</span>
+        <div class="flex items-center gap-2">
+            <button wire:click="exportExcel" type="button"
+                    wire:loading.attr="disabled"
+                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-bold rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs transition-all cursor-pointer"
+                    title="Download Data Permintaan Barang ke Format Excel (.xlsx)">
+                <span wire:loading.remove wire:target="exportExcel" class="material-symbols-outlined text-sm text-emerald-600 dark:text-emerald-400">download</span>
+                <span wire:loading wire:target="exportExcel" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                <span>Export Excel</span>
             </button>
-        @endif
+
+            @if($canCreateRequisition)
+                <button wire:click="openCreateModal" type="button"
+                        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all">
+                    <span class="material-symbols-outlined text-sm">add</span>
+                    <span>Buat Pengajuan Baru</span>
+                </button>
+            @endif
+        </div>
     </div>
 
     {{-- Flash Messages --}}
@@ -272,10 +283,18 @@
                                                     </a>
                                                 @else
                                                     <a href="{{ route('inventory.dispatches.index', ['requisition_id' => $req->id]) }}"
-                                                       class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-xs">
+                                                       class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-xs"
+                                                       title="Keluarkan fisik barang dari gudang">
                                                         <span class="material-symbols-outlined text-xs">local_shipping</span>
                                                         <span>Dispatch</span>
                                                     </a>
+                                                    <button wire:click="openLinkDispatchModal({{ $req->id }})"
+                                                            type="button"
+                                                            class="px-2 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                                                            title="Tautkan jika barang sudah dikeluarkan secara manual di menu Barang Keluar">
+                                                        <span class="material-symbols-outlined text-xs">link</span>
+                                                        <span>Tautkan</span>
+                                                    </button>
                                                 @endif
                                             @endif
                                         @endif
@@ -758,12 +777,85 @@
                             class="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-bold transition-colors">
                         Tolak Pengajuan
                     </button>
-                    <button wire:click="approveRequisition" type="button"
-                            class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5">
-                        <span class="material-symbols-outlined text-sm">check_circle</span>
-                        <span>Setujui Pengajuan</span>
+                    <div class="flex items-center gap-2">
+                        <button wire:click="approveRequisition" type="button"
+                                class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer">
+                            Setujui Saja
+                        </button>
+                        @if(!$selectedRequisition->isProcurementRequest())
+                            <button wire:click="approveAndDispatch" type="button"
+                                    class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer">
+                                <span class="material-symbols-outlined text-sm">local_shipping</span>
+                                <span>Setujui & Buka Dispatch</span>
+                            </button>
+                        @else
+                            <button wire:click="approveRequisition" type="button"
+                                    class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer">
+                                <span class="material-symbols-outlined text-sm">check_circle</span>
+                                <span>Setujui Pengadaan</span>
+                            </button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- MODAL TAUTKAN PENGELUARAN YANG SUDAH ADA (LINK EXISTING DISPATCH) --}}
+    @if($showLinkDispatchModal && $linkingRequisition)
+        <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-lg w-full p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            <span class="material-symbols-outlined">link</span>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-black text-slate-900 dark:text-slate-100">Tautkan Surat Jalan / Dispatch</h3>
+                            <p class="text-xs text-slate-500 font-mono">{{ $linkingRequisition->requisition_number }} &bull; {{ $linkingRequisition->requester?->name }}</p>
+                        </div>
+                    </div>
+                    <button wire:click="closeLinkDispatchModal" type="button" class="text-slate-400 hover:text-slate-600">
+                        <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
+
+                <div class="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+                    💡 Gunakan fitur ini jika barang untuk pengajuan ini <strong>sudah terlanjur dikeluarkan manual</strong> dari menu Barang Keluar tanpa memilih nomor pengajuan.
+                    Sistem akan menautkan Surat Jalan tersebut ke pengajuan ini tanpa memotong stok ulang.
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Pilih Surat Jalan / Dokumen Pengeluaran yang Cocok <span class="text-rose-500">*</span>
+                        </label>
+                        <select wire:model="selectedExistingDispatchId"
+                                class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500">
+                            <option value="">-- Pilih Surat Jalan (Dispatch) --</option>
+                            @foreach($availableDispatchesToLink as $dsp)
+                                <option value="{{ $dsp->id }}">
+                                    {{ $dsp->dispatch_number }} &bull; {{ $dsp->recipient?->name }} ({{ $dsp->recipient_type }}) &bull; {{ $dsp->dispatched_at?->format('d/m/Y H:i') }} &bull; {{ $dsp->items->map(fn($it) => $it->item?->name . ' (' . (float)$it->quantity . ' ' . $it->item?->unit . ')')->implode(', ') }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('selectedExistingDispatchId') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700/80">
+                    <button wire:click="closeLinkDispatchModal" type="button"
+                            class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">
+                        Batal
+                    </button>
+                    <button wire:click="saveLinkDispatch" type="button"
+                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">link</span>
+                        <span>Tautkan & Tandai Dispatched</span>
+                    </button>
+                </div>
+            </div>
+        </div>
             </div>
         </div>
     @endif

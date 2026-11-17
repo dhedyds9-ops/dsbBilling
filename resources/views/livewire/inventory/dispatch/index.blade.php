@@ -11,11 +11,22 @@
             </p>
         </div>
 
-        <button wire:click="openCreateModal" type="button"
-                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all">
-            <span class="material-symbols-outlined text-sm">add</span>
-            <span>Keluarkan Barang Baru</span>
-        </button>
+        <div class="flex items-center gap-2">
+            <button wire:click="exportExcel" type="button"
+                    wire:loading.attr="disabled"
+                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-bold rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs transition-all cursor-pointer"
+                    title="Download Data Barang Keluar ke Format Excel (.xlsx)">
+                <span wire:loading.remove wire:target="exportExcel" class="material-symbols-outlined text-sm text-blue-600 dark:text-blue-400">download</span>
+                <span wire:loading wire:target="exportExcel" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                <span>Export Excel</span>
+            </button>
+
+            <button wire:click="openCreateModal" type="button"
+                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all">
+                <span class="material-symbols-outlined text-sm">add</span>
+                <span>Keluarkan Barang Baru</span>
+            </button>
+        </div>
     </div>
 
     {{-- Flash Messages --}}
@@ -154,11 +165,19 @@
                                 <div class="text-[10px] text-slate-400">Petugas: {{ $dsp->dispatcher?->name ?? 'System' }}</div>
                             </td>
                             <td class="py-3.5 px-4 text-right">
-                                <button wire:click="showDetail({{ $dsp->id }})"
-                                        class="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-lg transition-colors">
-                                    <span class="material-symbols-outlined text-sm">visibility</span>
-                                    <span>Detail</span>
-                                </button>
+                                <div class="inline-flex items-center gap-1.5 justify-end">
+                                    <a href="{{ route('inventory.dispatches.print', $dsp->id) }}" target="_blank"
+                                       class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-semibold text-xs rounded-lg transition-colors border border-blue-200 dark:border-blue-800"
+                                       title="Cetak Surat Jalan (PDF / Print)">
+                                        <span class="material-symbols-outlined text-sm">print</span>
+                                        <span class="hidden sm:inline">Surat Jalan</span>
+                                    </a>
+                                    <button wire:click="showDetail({{ $dsp->id }})"
+                                            class="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-lg transition-colors">
+                                        <span class="material-symbols-outlined text-sm">visibility</span>
+                                        <span>Detail</span>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -216,6 +235,31 @@
                 @endif
 
                 <form wire:submit="saveDispatch" class="space-y-6">
+                    {{-- TAUTKAN KE PERMINTAAN BARANG (SOLUSI B) --}}
+                    <div class="p-3 bg-blue-50/70 dark:bg-blue-950/30 rounded-2xl border border-blue-200 dark:border-blue-800/60 space-y-1.5">
+                        <label class="block text-xs font-bold text-blue-900 dark:text-blue-300 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm">assignment_turned_in</span>
+                                <span>Tautkan ke Permintaan Barang (Requisition)</span>
+                            </span>
+                            @if($selected_requisition_id)
+                                <span class="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-bold">Terhubung</span>
+                            @endif
+                        </label>
+                        <select wire:model.live="selected_requisition_id"
+                                class="w-full py-2 px-3 bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500">
+                            <option value="">-- Pengeluaran Bebas / Tanpa Permintaan Khusus --</option>
+                            @foreach($pendingApprovedRequisitions as $pReq)
+                                <option value="{{ $pReq->id }}">
+                                    {{ $pReq->requisition_number }} &bull; {{ $pReq->requester?->name }} ({{ $pReq->requester_type }}) - {{ $pReq->items->map(fn($it) => $it->item?->name . ' (' . ($it->quantity_approved ?? $it->quantity_requested) . ' ' . $it->item?->unit . ')')->implode(', ') }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-[11px] text-blue-700 dark:text-blue-300">
+                            💡 <strong>Tips:</strong> Jika pengeluaran ini untuk memenuhi permohonan teknisi/reseller yang disetujui, pilih nomor pengajuan di atas. Gudang, penerima, dan daftar barang akan otomatis terisi dan status pengajuan otomatis tuntas (Dispatched).
+                        </p>
+                    </div>
+
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Gudang Asal *</label>
@@ -617,7 +661,12 @@
                     </div>
                 </div>
 
-                <div class="flex justify-end pt-2">
+                <div class="flex items-center justify-between pt-2">
+                    <a href="{{ route('inventory.dispatches.print', $selectedDispatch->id) }}" target="_blank"
+                       class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white transition-colors shadow-xs">
+                        <span class="material-symbols-outlined text-sm">print</span>
+                        <span>Cetak Surat Jalan</span>
+                    </a>
                     <button wire:click="closeDetailModal" type="button"
                             class="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors">
                         Tutup

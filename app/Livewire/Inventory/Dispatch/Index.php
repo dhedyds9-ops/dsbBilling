@@ -223,6 +223,50 @@ class Index extends Component
         }
     }
 
+    public function updatedSelectedRequisitionId($val)
+    {
+        if (!$val) {
+            $this->selected_requisition_id = null;
+            return;
+        }
+
+        $req = InventoryRequisition::with(['items.item', 'requester', 'designatedTechnician', 'customer'])->find($val);
+        if (!$req) return;
+
+        $this->warehouse_id = $req->warehouse_id;
+        $this->distribution_method = $req->distribution_method ?: 'pickup_reseller';
+        $this->customer_id = $req->customer_id;
+
+        if ($req->distribution_method === 'pickup_reseller') {
+            $this->recipient_id = $req->requester_id;
+            $this->recipient_type = $req->requester_type ?: 'reseller';
+        } else {
+            $this->recipient_id = $req->designated_technician_id ?: $req->requester_id;
+            $this->recipient_type = 'technician';
+        }
+
+        $this->dispatchItems = [];
+        foreach ($req->items as $ri) {
+            $approved = $ri->quantity_approved ?? $ri->quantity_requested;
+            $remaining = max(0, $approved - $ri->quantity_dispatched);
+            if ($remaining > 0) {
+                $this->dispatchItems[] = [
+                    'item_id' => $ri->item_id,
+                    'quantity' => $remaining,
+                    'unit' => $ri->item?->unit ?? 'unit',
+                    'is_serialized' => (bool) $ri->item?->is_serialized,
+                    'selected_serials' => [],
+                    'serials_raw' => '',
+                    'notes' => '',
+                ];
+            }
+        }
+
+        if (empty($this->dispatchItems)) {
+            $this->addItemRow();
+        }
+    }
+
     public function updatedDistributionMethod($val)
     {
         if ($val === 'pickup_reseller') {
@@ -491,6 +535,15 @@ class Index extends Component
         $this->selectedDispatchId = null;
     }
 
+    public function exportExcel()
+    {
+        $filename = 'barang-keluar-dispatch-' . date('Ymd-His') . '.xlsx';
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\Inventory\DispatchExport($this->search, $this->warehouseFilter),
+            $filename
+        );
+    }
+
     public function render()
     {
         $query = InventoryDispatch::with(['warehouse', 'recipient', 'dispatcher', 'customer', 'items.item'])
@@ -568,6 +621,12 @@ class Index extends Component
             $selectedDispatch = InventoryDispatch::with(['warehouse', 'recipient', 'dispatcher', 'customer', 'items.item', 'custodies.itemSerial'])->find($this->selectedDispatchId);
         }
 
+        // Pengajuan permohonan berstatus approved yang siap di-dispatch (Solusi B)
+        $pendingApprovedRequisitions = InventoryRequisition::with(['items.item', 'requester', 'designatedTechnician', 'customer'])
+            ->where('status', 'approved')
+            ->latest('id')
+            ->get();
+
         return view('livewire.inventory.dispatch.index', [
             'dispatches' => $dispatches,
             'warehouses' => $warehouses,
@@ -577,6 +636,7 @@ class Index extends Component
             'availableSerials' => $availableSerials,
             'warehouseStocks' => $warehouseStocks,
             'selectedDispatch' => $selectedDispatch,
+            'pendingApprovedRequisitions' => $pendingApprovedRequisitions,
             'showCreateModal' => $this->showCreateModal,
             'showDetailModal' => $this->showDetailModal,
             'dispatchItems' => $this->dispatchItems,

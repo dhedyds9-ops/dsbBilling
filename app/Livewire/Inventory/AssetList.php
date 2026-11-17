@@ -516,6 +516,15 @@ class AssetList extends AdminComponent
         session()->flash('success', 'Aset berhasil dihapus.');
     }
 
+    public function exportExcel()
+    {
+        $filename = 'aset-alat-kerja-' . date('Ymd-His') . '.xlsx';
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\Inventory\AssetExport($this->filters),
+            $filename
+        );
+    }
+
     public function render()
     {
         $categories = class_exists(AssetCategory::class) ? AssetCategory::orderBy('name')->get() : collect();

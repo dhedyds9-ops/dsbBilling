@@ -10,10 +10,18 @@
                 Laporan komprehensif posisi persediaan, arus mutasi logistik, dan custody material ISP.
             </p>
         </div>
-        <div>
+        <div class="flex items-center gap-2">
+            <button wire:click="exportExcel" type="button"
+                    wire:loading.attr="disabled"
+                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm transition cursor-pointer"
+                    title="Download Laporan ke Format Excel (.xlsx)">
+                <span wire:loading.remove wire:target="exportExcel" class="material-symbols-outlined text-sm">download</span>
+                <span wire:loading wire:target="exportExcel" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                <span>Download Excel</span>
+            </button>
             <button onclick="window.print()" class="px-4 py-2 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm transition">
                 <span class="material-symbols-outlined text-sm">print</span>
-                <span>Cetak / Ekspor Laporan</span>
+                <span>Print PDF</span>
             </button>
         </div>
     </div>

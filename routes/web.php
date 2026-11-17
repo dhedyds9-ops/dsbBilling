@@ -450,6 +450,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/inbounds', \App\Livewire\Inventory\Inbound\Index::class)->name('inbounds.index');
             Route::get('/stock-card', \App\Livewire\Inventory\StockCard\Index::class)->name('stock-card.index');
             Route::get('/dispatches', \App\Livewire\Inventory\Dispatch\Index::class)->name('dispatches.index');
+            Route::get('/dispatches/{id}/print', [\App\Http\Controllers\Inventory\DispatchPrintController::class, 'print'])->name('dispatches.print');
             Route::get('/usage', \App\Livewire\Inventory\Usage\Index::class)->name('usage.index');
             Route::get('/returns', \App\Livewire\Inventory\Returns\Index::class)->name('returns.index');
             Route::get('/opnames', \App\Livewire\Inventory\Opname\Index::class)->name('opnames.index');

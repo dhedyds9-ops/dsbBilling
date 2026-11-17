@@ -56,6 +56,40 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public function exportExcel()
+    {
+        if ($this->activeTab === 'stock_position') {
+            $filename = 'laporan-posisi-stok-' . date('Ymd-His') . '.xlsx';
+            return \Maatwebsite\Excel\Facades\Excel::download(
+                new \App\Exports\Inventory\StockPositionExport($this->warehouseId, $this->categoryFilter),
+                $filename
+            );
+        }
+
+        if ($this->activeTab === 'custody') {
+            $filename = 'laporan-custody-material-' . date('Ymd-His') . '.xlsx';
+            return \Maatwebsite\Excel\Facades\Excel::download(
+                new \App\Exports\Inventory\CustodyExport('', '', $this->custodyStatus),
+                $filename
+            );
+        }
+
+        // mutations
+        $whId = $this->mutationWarehouseId ?: Warehouse::where('is_active', true)->value('id');
+        $itemId = Item::active()->value('id');
+        $filename = 'laporan-mutasi-stok-' . date('Ymd-His') . '.xlsx';
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\Inventory\StockCardExport(
+                $whId,
+                $itemId,
+                $this->mutationType,
+                $this->startDate,
+                $this->endDate
+            ),
+            $filename
+        );
+    }
+
     public function render()
     {
         $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();

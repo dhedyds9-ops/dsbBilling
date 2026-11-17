@@ -11,15 +11,26 @@
             </p>
         </div>
 
-        @if($selectedItem && $selectedWarehouse)
-            <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold text-slate-500">Kondisi Stok:</span>
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold {{ $currentPhysicalStock <= ($selectedItem->min_stock ?? 5) ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' }}">
-                    <span class="w-2 h-2 rounded-full {{ $currentPhysicalStock <= ($selectedItem->min_stock ?? 5) ? 'bg-amber-500' : 'bg-emerald-500' }}"></span>
-                    {{ $currentPhysicalStock }} {{ $selectedItem->unit }}
-                </span>
-            </div>
-        @endif
+        <div class="flex items-center gap-3">
+            @if($selectedItem && $selectedWarehouse)
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold text-slate-500">Kondisi Stok:</span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold {{ $currentPhysicalStock <= ($selectedItem->min_stock ?? 5) ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' }}">
+                        <span class="w-2 h-2 rounded-full {{ $currentPhysicalStock <= ($selectedItem->min_stock ?? 5) ? 'bg-amber-500' : 'bg-emerald-500' }}"></span>
+                        {{ $currentPhysicalStock }} {{ $selectedItem->unit }}
+                    </span>
+                </div>
+            @endif
+
+            <button wire:click="exportExcel" type="button"
+                    wire:loading.attr="disabled"
+                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                    title="Download Kartu Stok ke Format Excel (.xlsx)">
+                <span wire:loading.remove wire:target="exportExcel" class="material-symbols-outlined text-sm">download</span>
+                <span wire:loading wire:target="exportExcel" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                <span>Export Excel</span>
+            </button>
+        </div>
     </div>
 
     {{-- Filter & Selection Card --}}

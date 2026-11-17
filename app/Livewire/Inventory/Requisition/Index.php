@@ -47,6 +47,11 @@ class Index extends Component
     // Modal Detail
     public bool $showDetailModal = false;
 
+    // Modal Tautkan Pengeluaran yang Sudah Ada (Link Existing Dispatch)
+    public bool $showLinkDispatchModal = false;
+    public ?int $linkingRequisitionId = null;
+    public ?int $selectedExistingDispatchId = null;
+
     protected $queryString = [
         'search' => ['except' => ''],
         'statusFilter' => ['except' => ''],
@@ -418,6 +423,93 @@ class Index extends Component
         $this->selectedRequisitionId = null;
     }
 
+    public function approveAndDispatch()
+    {
+        if (!$this->selectedRequisitionId) return;
+
+        if (!$this->canUserManageWarehouse()) {
+            abort(403, 'Anda tidak memiliki hak otorisasi untuk memproses persetujuan permintaan barang.');
+        }
+
+        $req = InventoryRequisition::findOrFail($this->selectedRequisitionId);
+        if ($req->requester_id === auth()->id()) {
+            abort(403, 'Anda tidak dapat menyetujui permintaan yang Anda ajukan sendiri.');
+        }
+
+        $req->update([
+            'status' => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+        ]);
+
+        $reqId = $req->id;
+        $reqNo = $req->requisition_number;
+        $this->showApprovalModal = false;
+        $this->selectedRequisitionId = null;
+
+        session()->flash('success', "Permintaan No. {$reqNo} telah disetujui. Membuka form pengeluaran barang (dispatch)...");
+
+        return redirect()->route('inventory.dispatches.index', ['requisition_id' => $reqId]);
+    }
+
+    public function openLinkDispatchModal(int $reqId)
+    {
+        if (!$this->canUserManageWarehouse()) {
+            abort(403, 'Anda tidak memiliki hak otorisasi.');
+        }
+
+        $this->linkingRequisitionId = $reqId;
+        $this->selectedExistingDispatchId = null;
+        $this->showLinkDispatchModal = true;
+    }
+
+    public function closeLinkDispatchModal()
+    {
+        $this->showLinkDispatchModal = false;
+        $this->linkingRequisitionId = null;
+        $this->selectedExistingDispatchId = null;
+    }
+
+    public function saveLinkDispatch()
+    {
+        if (!$this->canUserManageWarehouse()) {
+            abort(403, 'Anda tidak memiliki hak otorisasi.');
+        }
+
+        $this->validate([
+            'linkingRequisitionId' => 'required|exists:inventory_requisitions,id',
+            'selectedExistingDispatchId' => 'required|exists:inventory_dispatches,id',
+        ], [
+            'selectedExistingDispatchId.required' => 'Silakan pilih Surat Jalan / Pengeluaran Barang yang akan ditautkan.',
+        ]);
+
+        $req = InventoryRequisition::with('items')->findOrFail($this->linkingRequisitionId);
+        $dispatch = \App\Models\Inventory\InventoryDispatch::with('items')->findOrFail($this->selectedExistingDispatchId);
+
+        DB::transaction(function () use ($req, $dispatch) {
+            // 1. Tautkan dispatch ke requisition
+            $dispatch->update(['requisition_id' => $req->id]);
+
+            // 2. Tautkan custody yang dibuat oleh dispatch ini
+            \App\Models\Inventory\InventoryCustody::where('dispatch_id', $dispatch->id)
+                ->update(['requisition_id' => $req->id]);
+
+            // 3. Update quantity_dispatched pada requisition items
+            foreach ($dispatch->items as $dItem) {
+                $reqItem = $req->items()->where('item_id', $dItem->item_id)->first();
+                if ($reqItem) {
+                    $reqItem->increment('quantity_dispatched', $dItem->quantity);
+                }
+            }
+
+            // 4. Ubah status requisition menjadi dispatched
+            $req->update(['status' => 'dispatched']);
+        });
+
+        session()->flash('success', "Permintaan No. {$req->requisition_number} berhasil ditautkan ke Surat Jalan No. {$dispatch->dispatch_number}! Status pengajuan kini TELAH DIKELUARKAN (Dispatched).");
+        $this->closeLinkDispatchModal();
+    }
+
     public function rejectRequisition()
     {
         if (!$this->selectedRequisitionId) return;
@@ -484,6 +576,15 @@ class Index extends Component
     {
         $this->showDetailModal = false;
         $this->selectedRequisitionId = null;
+    }
+
+    public function exportExcel()
+    {
+        $filename = 'permintaan-barang-requisitions-' . date('Ymd-His') . '.xlsx';
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\Inventory\RequisitionExport($this->search, $this->statusFilter),
+            $filename
+        );
     }
 
     public function render()
@@ -610,6 +711,37 @@ class Index extends Component
             }
         }
 
+        // Available Dispatches untuk ditautkan (Reconciliation)
+        $availableDispatchesToLink = collect();
+        $linkingRequisition = null;
+        if ($this->showLinkDispatchModal && $this->linkingRequisitionId) {
+            $linkingRequisition = InventoryRequisition::with(['items.item', 'requester'])->find($this->linkingRequisitionId);
+            if ($linkingRequisition) {
+                $availableDispatchesToLink = \App\Models\Inventory\InventoryDispatch::with(['items.item', 'recipient'])
+                    ->where(function ($q) use ($linkingRequisition) {
+                        $q->whereNull('requisition_id')
+                          ->orWhere('requisition_id', $linkingRequisition->id);
+                    })
+                    ->where(function ($q) use ($linkingRequisition) {
+                        if ($linkingRequisition->requester_id) {
+                            $q->where('recipient_id', $linkingRequisition->requester_id)
+                              ->orWhere('recipient_id', $linkingRequisition->designated_technician_id);
+                        }
+                    })
+                    ->latest('id')
+                    ->limit(30)
+                    ->get();
+
+                if ($availableDispatchesToLink->isEmpty()) {
+                    $availableDispatchesToLink = \App\Models\Inventory\InventoryDispatch::with(['items.item', 'recipient'])
+                        ->whereNull('requisition_id')
+                        ->latest('id')
+                        ->limit(20)
+                        ->get();
+                }
+            }
+        }
+
         return view('livewire.inventory.requisition.index', [
             'requisitions' => $requisitions,
             'warehouses' => $warehouses,
@@ -628,6 +760,11 @@ class Index extends Component
             'showCreateModal' => $this->showCreateModal,
             'showApprovalModal' => $this->showApprovalModal,
             'showDetailModal' => $this->showDetailModal,
+            'showLinkDispatchModal' => $this->showLinkDispatchModal,
+            'linkingRequisitionId' => $this->linkingRequisitionId,
+            'linkingRequisition' => $linkingRequisition,
+            'availableDispatchesToLink' => $availableDispatchesToLink,
+            'selectedExistingDispatchId' => $this->selectedExistingDispatchId,
             'requisitionItems' => $this->requisitionItems,
             'distribution_method' => $this->distribution_method,
             'canCreateRequisition' => $this->canUserCreateRequisition(),

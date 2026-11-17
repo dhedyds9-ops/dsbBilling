@@ -10,6 +10,17 @@
                 Pelacakan kepemilikan sementara barang di tangan Reseller dan serah terima ke Teknisi pelaksana.
             </p>
         </div>
+
+        <div>
+            <button wire:click="exportExcel" type="button"
+                    wire:loading.attr="disabled"
+                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                    title="Download Data Distribusi & Serah Terima ke Format Excel (.xlsx)">
+                <span wire:loading.remove wire:target="exportExcel" class="material-symbols-outlined text-sm">download</span>
+                <span wire:loading wire:target="exportExcel" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                <span>Export Excel</span>
+            </button>
+        </div>
     </div>
 
     {{-- Banner Edukasi Custody Tracking --}}
