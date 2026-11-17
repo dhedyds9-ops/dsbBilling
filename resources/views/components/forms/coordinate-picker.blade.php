@@ -16,6 +16,22 @@
             <span>Titik Koordinat Lokasi</span>
         </label>
         <div class="flex items-center gap-1.5">
+            <button type="button" 
+                    @click="useCurrentLocation()" 
+                    :disabled="isLoadingGps"
+                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors cursor-pointer shadow-2xs"
+                    title="Deteksi Titik Koordinat Menggunakan GPS HP / Browser">
+                <template x-if="!isLoadingGps">
+                    <span class="material-symbols-outlined notranslate text-[15px]">my_location</span>
+                </template>
+                <template x-if="isLoadingGps">
+                    <svg class="animate-spin h-3.5 w-3.5 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </template>
+                <span x-text="isLoadingGps ? 'Mencari...' : 'GPS Saya'"></span>
+            </button>
             <a href="{{ url('/network/map') }}" 
                target="_blank" 
                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
@@ -568,6 +584,11 @@
                 this.tempLat = lat.toFixed(7);
                 this.tempLng = lng.toFixed(7);
 
+                if (!this.showModal) {
+                    this.lat = this.tempLat;
+                    this.lng = this.tempLng;
+                }
+
                 if (this.accuracyCircle && this.map) {
                     this.map.removeLayer(this.accuracyCircle);
                     this.accuracyCircle = null;
@@ -609,6 +630,9 @@
                             this.gpsNotice = '<strong>Izin Lokasi Ditolak:</strong> Izinkan akses lokasi pada ikon setelan/gembok di address bar browser Anda.';
                         } else {
                             this.gpsNotice = '<strong>Lokasi Tidak Terdeteksi:</strong> ' + (errFallback.message || err.message) + '. Silakan ketik nama daerah/desa di kotak pencarian atau tempel titik koordinat.';
+                        }
+                        if (!this.showModal) {
+                            alert(errFallback.code === 1 ? 'Izin akses lokasi GPS ditolak oleh browser Anda. Mohon izinkan akses lokasi pada pengaturan browser.' : 'Gagal mendeteksi lokasi GPS: ' + (errFallback.message || err.message));
                         }
                     },
                     { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }

@@ -55,6 +55,17 @@ class CreateHotspot extends AdminComponent
         ];
     }
 
+    public function updatedOdpId($value)
+    {
+        if ($value && (empty($this->latitude) || empty($this->longitude))) {
+            $odp = \App\Models\ISP\Odp::withoutGlobalScopes()->find($value);
+            if ($odp && !empty($odp->latitude) && !empty($odp->longitude)) {
+                $this->latitude = (string) $odp->latitude;
+                $this->longitude = (string) $odp->longitude;
+            }
+        }
+    }
+
     public function save()
     {
         if ($this->login_method === 'username_only') {
@@ -130,6 +141,8 @@ class CreateHotspot extends AdminComponent
                 'phone'              => $this->phone,
                 'email'              => $this->email,
                 'address'            => $this->address,
+                'latitude'           => $this->latitude ?: null,
+                'longitude'          => $this->longitude ?: null,
                 'username'           => $this->username,
                 'password'           => $this->password,
                 'service_profile_id' => $this->service_profile_id,

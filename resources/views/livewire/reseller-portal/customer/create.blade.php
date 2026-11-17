@@ -162,7 +162,7 @@
                         <div>
                             <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Data ODP (Kotak Tiang)</label>
                             <div class="flex gap-2">
-                                <select wire:model="odp_id" 
+                                <select wire:model.live="odp_id" 
                                         class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all dark:bg-slate-900 dark:text-slate-100">
                                     <option value="">-- Pilih ODP --</option>
                                     @foreach($odps as $odp)

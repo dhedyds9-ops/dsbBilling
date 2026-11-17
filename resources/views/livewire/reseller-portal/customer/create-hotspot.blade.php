@@ -61,6 +61,9 @@
                             @error('address') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                         </div>
                         <div class="md:col-span-2">
+                            <x-forms.coordinate-picker latModel="latitude" lngModel="longitude" />
+                        </div>
+                        <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Catatan Khusus</label>
                             <textarea wire:model="notes" placeholder="Catatan tambahan (opsional)" rows="2" 
                                       class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:bg-slate-900 dark:text-slate-100"></textarea>
@@ -159,7 +162,7 @@
                         <div>
                             <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Data ODP (Kotak Tiang)</label>
                             <div class="flex gap-2">
-                                <select wire:model="odp_id" 
+                                <select wire:model.live="odp_id" 
                                         class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all dark:bg-slate-900 dark:text-slate-100">
                                     <option value="">-- Pilih ODP --</option>
                                     @foreach($odps as $odp)
