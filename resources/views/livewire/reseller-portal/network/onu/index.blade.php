@@ -89,6 +89,10 @@
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">settings_remote</span>
                 <span>Devices GenieACS</span>
             </a>
+            <a href="{{ route('reseller-portal.network.swap-ont') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sync_alt</span>
+                <span>Ganti ONT</span>
+            </a>
         </div>
 
         <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 w-full xl:w-auto">
@@ -199,6 +203,9 @@
                                     @if($onu->serial_number)
                                         <a href="{{ route('reseller-portal.network.acs-devices.index', ['search' => $onu->serial_number]) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 transition-colors" title="Kelola TR-069 (GenieACS)">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">settings_remote</span>
+                                        </a>
+                                        <a href="{{ route('reseller-portal.network.swap-ont', ['onu_id' => $onu->id]) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-teal-50 hover:bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:hover:bg-teal-900/50 dark:text-teal-400 transition-colors" title="Ganti / Swap ONT Ini">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sync_alt</span>
                                         </a>
                                     @endif
                                     <button type="button" wire:click="startEditName({{ $onu->id }}, '{{ addslashes((string) $onu->name) }}')" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors cursor-pointer" title="Ubah Nama ONU">

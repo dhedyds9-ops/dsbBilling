@@ -423,6 +423,7 @@ class MenuRegistry
                             ['label' => 'Wizard Instalasi', 'route' => 'technician.installation.wizard', 'active' => 'technician.installation.wizard'],
                             ['label' => 'Scan Barcode ONU', 'route' => 'technician.installation.scan', 'active' => 'technician.installation.scan'],
                             ['label' => 'Register ke OLT', 'route' => 'technician.installation.register', 'active' => 'technician.installation.register'],
+                            ['label' => 'Ganti ONT (Swap)', 'route' => 'technician.swap-ont.index', 'active' => 'technician.swap-ont.*'],
                         ]
                     ],
                     [
@@ -511,6 +512,7 @@ class MenuRegistry
                             ['label' => 'Data ODP', 'route' => 'reseller-portal.network.odps.index', 'active' => 'reseller-portal.network.odps.*', 'permission' => 'odp.view'],
                             ['label' => 'Data ONU', 'route' => 'reseller-portal.network.onus.index', 'active' => 'reseller-portal.network.onus.*', 'permission' => ['onu.view', 'olt.view']],
                             ['label' => 'Devices GenieACS', 'route' => 'reseller-portal.network.acs-devices.index', 'active' => 'reseller-portal.network.acs-devices.*', 'permission' => ['onu.view', 'olt.view']],
+                            ['label' => 'Ganti ONT (Swap)', 'route' => 'reseller-portal.network.swap-ont', 'active' => ['reseller-portal.network.swap-ont*', 'reseller-portal.swap-ont*'], 'permission' => ['onu.view', 'olt.view']],
                         ]
                     ],
                     [
