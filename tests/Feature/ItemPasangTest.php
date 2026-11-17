@@ -118,4 +118,59 @@ class ItemPasangTest extends TestCase
         $this->assertEquals('installed', $serial->fresh()->status);
         $this->assertEquals($customer->id, $serial->fresh()->customer_id);
     }
+
+    public function test_assign_customer_synchronizes_warehouse_stock(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'administrator'], ['display_name' => 'Admin', 'guard_name' => 'web']);
+        $user = User::factory()->create();
+        $user->roles()->attach($role->id);
+        $this->actingAs($user);
+
+        $warehouse = \App\Models\Inventory\Warehouse::create([
+            'name' => 'Gudang Pusat',
+            'code' => 'GD-PUSAT-01',
+            'is_active' => true,
+        ]);
+
+        $item = Item::create([
+            'name' => 'ONT FiberHome',
+            'sku' => 'ONT-FH-01',
+            'category' => 'ONU/ONT',
+            'type' => 'serialized',
+            'unit' => 'unit',
+        ]);
+
+        $stock = \App\Models\Inventory\InventoryStock::create([
+            'warehouse_id' => $warehouse->id,
+            'item_id' => $item->id,
+            'quantity' => 5,
+        ]);
+
+        $serial = ItemSerial::create([
+            'item_id' => $item->id,
+            'serial_number' => 'FHTT12345678',
+            'warehouse_id' => $warehouse->id,
+            'status' => 'in_warehouse',
+            'condition' => 'good',
+        ]);
+
+        $customer = \App\Models\CRM\Customer::create([
+            'name' => 'Dedi Customer',
+            'code' => 'CUST-DEDI-01',
+            'phone' => '087711223344',
+        ]);
+
+        Livewire::test(\App\Livewire\Inventory\Item\Index::class)
+            ->call('openAssignCustomerModal', $serial->id)
+            ->assertSet('showAssignCustomerModal', true)
+            ->set('assignCustomerSearch', 'DEDI')
+            ->set('assignCustomerId', $customer->id)
+            ->call('saveAssignCustomer')
+            ->assertSet('showAssignCustomerModal', false);
+
+        $this->assertEquals('installed', $serial->fresh()->status);
+        $this->assertNull($serial->fresh()->warehouse_id);
+        $this->assertEquals($customer->id, $serial->fresh()->customer_id);
+        $this->assertEquals(4.0, (float) $stock->fresh()->quantity);
+    }
 }

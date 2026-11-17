@@ -438,31 +438,36 @@ class Index extends Component
 
     public function openAssignCustomerModal(int $serialId)
     {
-        $serial = ItemSerial::findOrFail($serialId);
-        $this->assigningSerialId = $serial->id;
-        $this->assigningSerialNumber = $serial->serial_number;
+        try {
+            $serial = ItemSerial::findOrFail($serialId);
+            $this->assigningSerialId = $serial->id;
+            $this->assigningSerialNumber = $serial->serial_number;
 
-        $customerId = $serial->customer_id;
-        if (!$customerId && !empty($serial->serial_number)) {
-            try {
-                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()
-                    ->where('serial_number', $serial->serial_number)
-                    ->first();
-                if ($onu) {
-                    $cs = \App\Models\Customer\CustomerService::withoutGlobalScopes()
-                        ->where('onu_id', $onu->id)
-                        ->latest('id')
+            $customerId = $serial->customer_id;
+            if (!$customerId && !empty($serial->serial_number)) {
+                try {
+                    $onu = \App\Models\ISP\Onu::withoutGlobalScopes()
+                        ->where('serial_number', $serial->serial_number)
                         ->first();
-                    $customerId = $cs?->customer_id;
+                    if ($onu) {
+                        $cs = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                            ->where('onu_id', $onu->id)
+                            ->latest('id')
+                            ->first();
+                        $customerId = $cs?->customer_id;
+                    }
+                } catch (\Throwable $e) {
+                    // Abaikan kesalahan relasi opsional
                 }
-            } catch (\Throwable $e) {
-                // Abaikan kesalahan relasi opsional
             }
-        }
 
-        $this->assignCustomerId = $customerId;
-        $this->assignCustomerSearch = '';
-        $this->showAssignCustomerModal = true;
+            $this->assignCustomerId = $customerId;
+            $this->assignCustomerSearch = '';
+            $this->showAssignCustomerModal = true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('openAssignCustomerModal error: ' . $e->getMessage());
+            session()->flash('serial_error', 'Gagal membuka form pasang: ' . $e->getMessage());
+        }
     }
 
     public function closeAssignCustomerModal()
@@ -480,44 +485,66 @@ class Index extends Component
             return;
         }
 
-        $serial = ItemSerial::findOrFail($this->assigningSerialId);
-        $customer = \App\Models\CRM\Customer::findOrFail($this->assignCustomerId);
+        try {
+            $serial = ItemSerial::findOrFail($this->assigningSerialId);
+            $customer = \App\Models\CRM\Customer::withoutGlobalScopes()->findOrFail($this->assignCustomerId);
 
-        DB::transaction(function () use ($serial, $customer) {
-            // 1. Update status serial menjadi installed
-            $serial->update([
-                'status' => 'installed',
-                'customer_id' => $customer->id,
-                'warehouse_id' => null,
-                'updated_by' => auth()->id(),
-            ]);
+            DB::transaction(function () use ($serial, $customer) {
+                $oldWarehouseId = $serial->warehouse_id;
+                $oldStatus = $serial->status;
 
-            // 2. Jika serial ini berasal dari custody teknisi/reseller, update catatan custody-nya
-            $custody = \App\Models\Inventory\InventoryCustody::where('item_serial_id', $serial->id)
-                ->where('status', 'in_custody')
-                ->latest()
-                ->first();
-
-            if ($custody) {
-                $custody->update([
-                    'used_quantity' => $custody->quantity,
-                    'status' => 'used',
+                // 1. Update status serial menjadi installed
+                $serial->update([
+                    'status' => 'installed',
                     'customer_id' => $customer->id,
+                    'warehouse_id' => null,
+                    'custodian_id' => null,
+                    'updated_by' => auth()->id(),
                 ]);
-            }
 
-            // 3. Jika ONU ada di data OLT, pasangkan juga ke layanan customer
-            $onu = \App\Models\ISP\Onu::where('serial_number', $serial->serial_number)->first();
-            if ($onu) {
-                $service = \App\Models\Customer\CustomerService::where('customer_id', $customer->id)->latest('id')->first();
-                if ($service) {
-                    $service->update(['onu_id' => $onu->id]);
+                // 2. Sinkronkan saldo stok gudang jika unit sebelumnya berstatus in_warehouse
+                if ($oldWarehouseId && $serial->item_id && $oldStatus === 'in_warehouse') {
+                    $stock = \App\Models\Inventory\InventoryStock::where('warehouse_id', $oldWarehouseId)
+                        ->where('item_id', $serial->item_id)
+                        ->first();
+                    if ($stock && $stock->quantity > 0) {
+                        $stock->decrement('quantity', 1);
+                    }
                 }
-            }
-        });
 
-        session()->flash('serial_success', "Unit SN {$serial->serial_number} berhasil ditandai TERPASANG pada pelanggan {$customer->name}!");
-        $this->closeAssignCustomerModal();
+                // 3. Jika serial ini berasal dari custody teknisi/reseller, update catatan custody-nya
+                $custody = \App\Models\Inventory\InventoryCustody::where('item_serial_id', $serial->id)
+                    ->where('status', 'in_custody')
+                    ->latest()
+                    ->first();
+
+                if ($custody) {
+                    $custody->update([
+                        'used_quantity' => $custody->quantity,
+                        'status' => 'used',
+                        'customer_id' => $customer->id,
+                    ]);
+                }
+
+                // 4. Jika ONU ada di data OLT, pasangkan juga ke layanan customer
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $serial->serial_number)->first();
+                if ($onu) {
+                    $service = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                        ->where('customer_id', $customer->id)
+                        ->latest('id')
+                        ->first();
+                    if ($service) {
+                        $service->update(['onu_id' => $onu->id]);
+                    }
+                }
+            });
+
+            session()->flash('serial_success', "Unit SN {$serial->serial_number} berhasil ditandai TERPASANG pada pelanggan {$customer->name}!");
+            $this->closeAssignCustomerModal();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('saveAssignCustomer error: ' . $e->getMessage());
+            session()->flash('serial_error', 'Gagal memasang perangkat: ' . $e->getMessage());
+        }
     }
 
     private function resetForm()
@@ -618,12 +645,14 @@ class Index extends Component
         $customersList = collect();
         if ($this->showAssignCustomerModal) {
             $cs = trim($this->assignCustomerSearch);
-            $customersList = \App\Models\CRM\Customer::withoutGuests()
-                ->select('id', 'name', 'phone')
+            $customersList = \App\Models\CRM\Customer::withoutGlobalScopes()
+                ->withoutGuests()
+                ->select('id', 'name', 'code', 'phone')
                 ->when(!empty($cs), function ($q) use ($cs) {
                     $q->where(function ($sub) use ($cs) {
                         $sub->where('name', 'like', "%{$cs}%")
-                            ->orWhere('phone', 'like', "%{$cs}%");
+                            ->orWhere('phone', 'like', "%{$cs}%")
+                            ->orWhere('code', 'like', "%{$cs}%");
                     });
                 })
                 ->orderBy('name')
@@ -631,8 +660,9 @@ class Index extends Component
                 ->get();
 
             if ($this->assignCustomerId && !$customersList->contains('id', $this->assignCustomerId)) {
-                $selectedCust = \App\Models\CRM\Customer::withoutGuests()
-                    ->select('id', 'name', 'phone')
+                $selectedCust = \App\Models\CRM\Customer::withoutGlobalScopes()
+                    ->withoutGuests()
+                    ->select('id', 'name', 'code', 'phone')
                     ->find($this->assignCustomerId);
                 if ($selectedCust) {
                     $customersList->prepend($selectedCust);

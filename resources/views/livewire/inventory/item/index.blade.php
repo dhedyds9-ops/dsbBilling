@@ -316,8 +316,8 @@
 
     {{-- MODAL DAFTAR SERIAL NUMBER UNIT --}}
     @if($showSerialsModal)
-        <div class="fixed inset-0 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn" style="z-index: 9990;">
-            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-3xl w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto relative z-10">
+        <div class="fixed inset-0 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn" style="z-index: 9990;" wire:click.self="$set('showSerialsModal', false)" @keydown.window.escape="$wire.set('showSerialsModal', false)">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-5xl w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto relative z-10">
                 {{-- Modal Header --}}
                 <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                     <div>
@@ -537,31 +537,31 @@
                 </div>
 
                 {{-- Table Serials --}}
-                <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-                    <table class="w-full text-left text-xs">
-                        <thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase text-[10px]">
+                <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-x-auto shadow-xs">
+                    <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-left text-xs">
+                        <thead class="bg-slate-50 dark:bg-slate-800/80 text-[11px] text-slate-500 uppercase tracking-wider font-bold">
                             <tr>
-                                <th class="px-3 py-2.5">Serial Number</th>
-                                <th class="px-3 py-2.5">MAC Address</th>
-                                <th class="px-3 py-2.5">Lokasi / Gudang</th>
-                                <th class="px-3 py-2.5">Status & Pemegang</th>
-                                <th class="px-3 py-2.5">Kondisi</th>
-                                <th class="px-3 py-2.5 text-center">Aksi</th>
+                                <th class="px-3.5 py-3 whitespace-nowrap">Serial Number</th>
+                                <th class="px-3.5 py-3 whitespace-nowrap">MAC Address</th>
+                                <th class="px-3.5 py-3 whitespace-nowrap">Lokasi / Gudang</th>
+                                <th class="px-3.5 py-3 min-w-[220px]">Status & Pemegang</th>
+                                <th class="px-3.5 py-3 whitespace-nowrap">Kondisi</th>
+                                <th class="px-3.5 py-3 text-center whitespace-nowrap min-w-[140px]">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                             @forelse($serials as $sn)
-                                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition">
-                                    <td class="px-3 py-2.5 font-mono font-bold text-slate-900 dark:text-slate-100">
+                                <tr class="hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition">
+                                    <td class="px-3.5 py-3 font-mono font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
                                         {{ $sn->serial_number }}
                                     </td>
-                                    <td class="px-3 py-2.5 font-mono text-slate-500 dark:text-slate-400">
+                                    <td class="px-3.5 py-3 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
                                         {{ $sn->mac_address ?: '-' }}
                                     </td>
-                                    <td class="px-3 py-2.5 text-slate-600 dark:text-slate-300">
+                                    <td class="px-3.5 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
                                         {{ $sn->warehouse->name ?? '-' }}
                                     </td>
-                                    <td class="px-3 py-2.5">
+                                    <td class="px-3.5 py-3 min-w-[220px]">
                                         <div class="flex flex-col gap-0.5">
                                             <span class="inline-block w-fit px-1.5 py-0.5 rounded text-[10px] font-bold
                                                 {{ $sn->status === 'installed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : ($sn->status === 'in_warehouse' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300') }}">
@@ -584,7 +584,7 @@
                                                         <span class="w-1.5 h-1.5 rounded-full {{ $isOltOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400' }}"></span>
                                                         <span>OLT: {{ $sn->onu->olt->name ?? 'Terhubung' }}</span>
                                                         @if($sn->onu->pon_port)
-                                                            <span>({{ $sn->onu->pon_port }})</span>
+                                                             <span>({{ $sn->onu->pon_port }})</span>
                                                         @endif
                                                         @if($sn->onu->rx_power_dbm !== null)
                                                             <span>RX: {{ $sn->onu->rx_power_dbm }} dBm</span>
@@ -594,21 +594,21 @@
                                             @endif
                                         </div>
                                     </td>
-                                    <td class="px-3 py-2.5">
+                                    <td class="px-3.5 py-3 whitespace-nowrap">
                                         <span class="text-[11px] font-medium
                                             {{ $sn->condition === 'good' ? 'text-emerald-600 dark:text-emerald-400' : ($sn->condition === 'needs_check' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400') }}">
                                             {{ $sn->condition === 'good' ? 'Bagus' : ($sn->condition === 'needs_check' ? 'Perlu Cek' : 'Rusak') }}
                                         </span>
                                     </td>
-                                    <td class="px-3 py-2.5 text-center">
-                                        <div class="flex items-center justify-center gap-1.5">
+                                    <td class="px-3.5 py-3 text-center whitespace-nowrap min-w-[140px]">
+                                        <div class="inline-flex items-center justify-center gap-2">
                                             {{-- Tombol Hubungkan / Pasang ke Pelanggan --}}
                                             @if($sn->status !== 'installed')
                                                 <button type="button"
                                                         wire:click="openAssignCustomerModal({{ $sn->id }})"
-                                                        class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10px] font-bold transition shadow-xs cursor-pointer"
+                                                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-bold transition shadow-xs cursor-pointer whitespace-nowrap"
                                                         title="Tandai unit ini sudah terpasang pada pelanggan">
-                                                    <span class="material-symbols-outlined text-[13px]">person_add</span>
+                                                    <span class="material-symbols-outlined text-[14px]">person_add</span>
                                                     <span>Pasang</span>
                                                 </button>
                                             @endif
@@ -618,9 +618,9 @@
                                                 <button type="button"
                                                         wire:click="deleteSerial({{ $sn->id }})"
                                                         wire:confirm="Yakin ingin menghapus Serial Number '{{ $sn->serial_number }}' dari gudang?"
-                                                        class="p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                                                        class="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
                                                         title="Hapus Serial Number">
-                                                    <span class="material-symbols-outlined text-sm">delete</span>
+                                                    <span class="material-symbols-outlined text-base">delete</span>
                                                 </button>
                                             @endif
                                         </div>
@@ -650,7 +650,10 @@
 
     {{-- MODAL HUBUNGKAN / PASANG KE PELANGGAN --}}
     @if($showAssignCustomerModal)
-        <div class="fixed inset-0 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fadeIn" style="z-index: 9999;">
+        <div class="fixed inset-0 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fadeIn"
+             style="z-index: 9999;"
+             wire:click.self="closeAssignCustomerModal"
+             @keydown.window.escape="$wire.closeAssignCustomerModal()">
             <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-lg w-full space-y-4 shadow-2xl relative z-10">
                 <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                     <div>
@@ -660,19 +663,26 @@
                         </h3>
                         <p class="text-[11px] text-slate-400">Tandai unit SN <strong class="text-indigo-600 dark:text-indigo-400 font-mono">{{ $assigningSerialNumber }}</strong> sebagai terpasang (INSTALLED).</p>
                     </div>
-                    <button wire:click="closeAssignCustomerModal" type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <button wire:click="closeAssignCustomerModal" type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
 
+                @if(session()->has('serial_error'))
+                    <div class="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 rounded-xl text-xs flex items-center gap-2 animate-fadeIn">
+                        <span class="material-symbols-outlined text-rose-600 dark:text-rose-400 text-sm">error</span>
+                        <span>{{ session('serial_error') }}</span>
+                    </div>
+                @endif
+
                 <div class="space-y-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                            Cari Nama / No. HP Pelanggan
+                            Cari Nama / No. HP / Kode Pelanggan
                         </label>
                         <input type="text"
                                wire:model.live.debounce.250ms="assignCustomerSearch"
-                               placeholder="Ketik nama atau nomor HP pelanggan..."
+                               placeholder="Ketik nama, nomor HP, atau kode pelanggan..."
                                class="w-full text-xs py-2 px-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500">
                     </div>
 
@@ -684,7 +694,7 @@
                                 class="w-full text-xs py-2 px-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500">
                             <option value="">-- Pilih Pelanggan --</option>
                             @foreach($customersList as $cust)
-                                <option value="{{ $cust->id }}">{{ $cust->name }} ({{ $cust->phone ?: 'Tanpa HP' }})</option>
+                                <option value="{{ $cust->id }}">[{{ $cust->code ?? ('ID #'.$cust->id) }}] {{ $cust->name }} ({{ $cust->phone ?: 'Tanpa HP' }})</option>
                             @endforeach
                         </select>
                     </div>

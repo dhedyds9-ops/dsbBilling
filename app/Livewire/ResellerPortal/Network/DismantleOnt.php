@@ -87,32 +87,37 @@ class DismantleOnt extends AdminComponent
             return;
         }
 
-        $user = Auth::user();
-        $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
+        try {
+            $user = Auth::user();
+            $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
 
-        $this->searchResults = Onu::withoutGlobalScopes()
-            ->where(function ($sub) use ($q) {
-                $sub->where('serial_number', 'like', "%{$q}%")
-                    ->orWhere('name', 'like', "%{$q}%")
-                    ->orWhere('mac_address', 'like', "%{$q}%")
-                    ->orWhereHas('customerService.customer', function ($cq) use ($q) {
-                        $cq->withoutGlobalScopes()
-                            ->where('name', 'like', "%{$q}%")
-                            ->orWhere('phone', 'like', "%{$q}%")
-                            ->orWhere('code', 'like', "%{$q}%");
+            $this->searchResults = Onu::withoutGlobalScopes()
+                ->where(function ($sub) use ($q) {
+                    $sub->where('serial_number', 'like', "%{$q}%")
+                        ->orWhere('name', 'like', "%{$q}%")
+                        ->orWhere('mac_address', 'like', "%{$q}%")
+                        ->orWhereHas('customerService.customer', function ($cq) use ($q) {
+                            $cq->withoutGlobalScopes()
+                                ->where('name', 'like', "%{$q}%")
+                                ->orWhere('phone', 'like', "%{$q}%")
+                                ->orWhere('code', 'like', "%{$q}%");
+                        });
+                })
+                ->when($effectiveResellerId, function ($sub) use ($effectiveResellerId) {
+                    $sub->where(function ($rq) use ($effectiveResellerId) {
+                        $rq->where('created_by', $effectiveResellerId)
+                            ->orWhereHas('customerService.customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $effectiveResellerId));
                     });
-            })
-            ->when($effectiveResellerId, function ($sub) use ($effectiveResellerId) {
-                $sub->where(function ($rq) use ($effectiveResellerId) {
-                    $rq->where('reseller_id', $effectiveResellerId)
-                        ->orWhereHas('customerService.customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $effectiveResellerId));
-                });
-            })
-            ->whereIn('status', ['active', 'online', 'unregistered'])
-            ->with(['customerService.customer', 'olt', 'odp'])
-            ->limit(10)
-            ->get()
-            ->toArray();
+                })
+                ->whereIn('status', ['active', 'online', 'unregistered'])
+                ->with(['customerService.customer', 'olt', 'odp'])
+                ->limit(10)
+                ->get()
+                ->toArray();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('DismantleOnt search error: ' . $e->getMessage());
+            $this->searchResults = [];
+        }
     }
 
     public function selectOnu(int $onuId)
@@ -130,7 +135,7 @@ class DismantleOnt extends AdminComponent
                 ->first();
 
             $this->customer = $this->customerService?->customer
-                ?? ($this->onu->customer_id ? Customer::withoutGlobalScopes()->find($this->onu->customer_id) : null);
+                ?? ($this->onu->customer ? $this->onu->customer : null);
         }
 
         $this->searchResults = [];

@@ -140,53 +140,65 @@ class SwapOnt extends AdminComponent
             return;
         }
 
-        $resellerId = $this->getResellerId();
+        try {
+            $resellerId = $this->getResellerId();
 
-        // Cari pelanggan terdaftar dengan layanan aktif & ONU (dibatasi scope reseller)
-        $query = Customer::withoutGlobalScopes()
-            ->where(function ($sub) use ($q) {
-                $sub->where('name', 'like', "%{$q}%")
-                    ->orWhere('code', 'like', "%{$q}%")
-                    ->orWhere('phone', 'like', "%{$q}%")
-                    ->orWhere('address', 'like', "%{$q}%")
-                    ->orWhereHas('customerServices.pppoeUser', function ($pu) use ($q) {
-                        $pu->where('username', 'like', "%{$q}%");
-                    })
-                    ->orWhereHas('customerServices.onu', function ($ou) use ($q) {
-                        $ou->where('serial_number', 'like', "%{$q}%")
-                           ->orWhere('mac_address', 'like', "%{$q}%");
-                    });
-            });
+            // Cari pelanggan terdaftar dengan layanan aktif & ONU (dibatasi scope reseller)
+            $query = Customer::withoutGlobalScopes()
+                ->where(function ($sub) use ($q) {
+                    $sub->where('name', 'like', "%{$q}%")
+                        ->orWhere('code', 'like', "%{$q}%")
+                        ->orWhere('phone', 'like', "%{$q}%")
+                        ->orWhere('address', 'like', "%{$q}%")
+                        ->orWhereHas('customerServices', function ($csQ) use ($q) {
+                            $csQ->withoutGlobalScopes()->whereHas('pppoeUser', function ($pu) use ($q) {
+                                $pu->withoutGlobalScopes()->where('username', 'like', "%{$q}%");
+                            });
+                        })
+                        ->orWhereHas('customerServices', function ($csQ) use ($q) {
+                            $csQ->withoutGlobalScopes()->whereHas('onu', function ($ou) use ($q) {
+                                $ou->withoutGlobalScopes()
+                                   ->where('serial_number', 'like', "%{$q}%")
+                                   ->orWhere('mac_address', 'like', "%{$q}%");
+                            });
+                        });
+                });
 
-        // Isolasi Reseller: Reseller hanya dapat mencari pelanggannya sendiri
-        if ($resellerId) {
-            $query->where(function ($resQ) use ($resellerId) {
-                $resQ->where('reseller_id', $resellerId)
-                     ->orWhere('created_by', $resellerId);
-            });
+            // Isolasi Reseller: Reseller hanya dapat mencari pelanggannya sendiri
+            if ($resellerId) {
+                $query->where(function ($resQ) use ($resellerId) {
+                    $resQ->where('reseller_id', $resellerId)
+                         ->orWhere('created_by', $resellerId);
+                });
+            }
+
+            $results = $query->with(['customerServices' => function ($csQ) {
+                $csQ->withoutGlobalScopes()
+                    ->whereNotNull('onu_id')
+                    ->with(['onu.vendor', 'onu.olt', 'onu.odp', 'serviceProfile', 'pppoeUser']);
+            }])
+            ->limit(8)
+            ->get();
+
+            $this->searchResults = $results->map(function ($c) {
+                $cs = $c->customerServices->first();
+                return [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'code' => $c->customer_code ?? $c->code ?? ('CUST-' . $c->id),
+                    'phone' => $c->phone ?? '-',
+                    'address' => $c->address ?? '-',
+                    'package' => $cs?->serviceProfile?->name ?? 'Layanan Aktif',
+                    'pppoe_username' => $cs?->pppoeUser?->username ?? '-',
+                    'onu_id' => $cs?->onu_id,
+                    'onu_sn' => $cs?->onu?->serial_number ?? 'Belum ada ONT',
+                    'onu_model' => $cs?->onu?->model ?? 'ONT',
+                ];
+            })->toArray();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('SwapOnt search error: ' . $e->getMessage());
+            $this->searchResults = [];
         }
-
-        $results = $query->with(['customerServices' => function ($csQ) {
-            $csQ->whereNotNull('onu_id')->with(['onu.vendor', 'onu.olt', 'onu.odp', 'serviceProfile', 'pppoeUser']);
-        }])
-        ->limit(8)
-        ->get();
-
-        $this->searchResults = $results->map(function ($c) {
-            $cs = $c->customerServices->first();
-            return [
-                'id' => $c->id,
-                'name' => $c->name,
-                'code' => $c->customer_code ?? $c->code ?? ('CUST-' . $c->id),
-                'phone' => $c->phone ?? '-',
-                'address' => $c->address ?? '-',
-                'package' => $cs?->serviceProfile?->name ?? 'Layanan Aktif',
-                'pppoe_username' => $cs?->pppoeUser?->username ?? '-',
-                'onu_id' => $cs?->onu_id,
-                'onu_sn' => $cs?->onu?->serial_number ?? 'Belum ada ONT',
-                'onu_model' => $cs?->onu?->model ?? 'ONT',
-            ];
-        })->toArray();
     }
 
     public function loadTicket(int $ticketId)
@@ -259,9 +271,9 @@ class SwapOnt extends AdminComponent
 
         if ($resellerId) {
             $query->where(function ($q) use ($resellerId) {
-                $q->where('reseller_id', $resellerId)
+                $q->where('created_by', $resellerId)
                   ->orWhereHas('customerService.customer', function ($cQ) use ($resellerId) {
-                      $cQ->where('reseller_id', $resellerId);
+                      $cQ->withoutGlobalScopes()->where('reseller_id', $resellerId);
                   });
             });
         }
