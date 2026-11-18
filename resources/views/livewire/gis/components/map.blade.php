@@ -1479,6 +1479,15 @@
         var canManageMap = @json($canManageMap ?? false);
         var canEditCustomer = @json($canEditCustomer ?? false);
 
+        function formatGisPhotoUrl(url) {
+            if (!url || typeof url !== 'string') return '';
+            if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
+            if (url.startsWith('/storage/')) return url;
+            if (url.startsWith('storage/')) return '/' + url;
+            if (url.startsWith('/')) return url;
+            return '/storage/' + url;
+        }
+
         // Initialize map
         // Server Location: -6.800278, 105.939159
         var defaultLat = -6.800278;
@@ -2496,7 +2505,7 @@
                                     <span class="node-kv-value">${olt.address}</span>
                                 </div>` : ''}
                             </div>
-                            ${(olt.photos && olt.photos.length > 0) ? `<div style="margin:8px 0;"><img src="${olt.photos[0]}" style="width:100%;height:90px;object-fit:cover;border-radius:8px;border:1px solid #334155;"></div>` : ''}
+                            ${(olt.photos && olt.photos.length > 0) ? `<div style="margin:8px 0;"><img src="${formatGisPhotoUrl(olt.photos[0])}" onclick="window.open(this.src, '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : ''}
                             ${olt.description ? `<div class="node-note">${olt.description}</div>` : ''}
                             <div class="node-actions">
                                 <button type="button" class="node-btn node-btn-primary btn-edit-olt"><i class="fa fa-pencil-alt"></i> Edit</button>
@@ -2600,7 +2609,7 @@
                                     <span class="node-kv-value text-cyan-400 font-mono">${odcToServerDistance}</span>
                                 </div>
                             </div>
-                            ${(odc.photos && odc.photos.length > 0) ? `<div style="margin:8px 0;"><img src="${odc.photos[0]}" style="width:100%;height:90px;object-fit:cover;border-radius:8px;border:1px solid #334155;"></div>` : ''}
+                            ${(odc.photos && odc.photos.length > 0) ? `<div style="margin:8px 0;"><img src="${formatGisPhotoUrl(odc.photos[0])}" onclick="window.open(this.src, '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : ''}
                             ${odc.description ? `<div class="node-note">${odc.description}</div>` : ''}
                             <div class="node-actions">
                                 <button type="button" class="node-btn node-btn-amber btn-edit-odc"><i class="fa fa-pencil-alt"></i> Edit</button>
@@ -2720,7 +2729,7 @@
                                     <span class="node-kv-value text-cyan-400 font-mono">${odpToOdcDistance}</span>
                                 </div>
                             </div>
-                            ${(odp.photos && odp.photos.length > 0) ? `<div style="margin:8px 0;"><img src="${odp.photos[0]}" style="width:100%;height:90px;object-fit:cover;border-radius:8px;border:1px solid #334155;"></div>` : ''}
+                            ${(odp.photos && odp.photos.length > 0) ? `<div style="margin:8px 0;"><img src="${formatGisPhotoUrl(odp.photos[0])}" onclick="window.open(this.src, '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : ''}
                             ${odp.description ? `<div class="node-note">${odp.description}</div>` : ''}
                             <div class="node-actions">
                                 <button type="button" class="node-btn node-btn-emerald btn-edit-odp"><i class="fa fa-pencil-alt"></i> Edit</button>
@@ -2864,7 +2873,7 @@
                                     <span class="node-kv-value">${closure.region ? closure.region.name : '-'}</span>
                                 </div>
                             </div>
-                            ${(closure.photos && closure.photos.length > 0) ? `<div style="margin:8px 0;"><img src="${closure.photos[0]}" style="width:100%;height:90px;object-fit:cover;border-radius:8px;border:1px solid #334155;"></div>` : ''}
+                            ${(closure.photos && closure.photos.length > 0) ? `<div style="margin:8px 0;"><img src="${formatGisPhotoUrl(closure.photos[0])}" onclick="window.open(this.src, '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : ''}
                             ${closure.description ? `<div class="node-note">${closure.description}</div>` : ''}
                             <div class="node-actions">
                                 <button type="button" class="node-btn node-btn-secondary btn-edit-closure"><i class="fa fa-pencil-alt"></i> Edit</button>

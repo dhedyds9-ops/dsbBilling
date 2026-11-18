@@ -505,6 +505,15 @@
             const closures = allNodes.closures || [];
             const popupOpt = { maxWidth: 320, minWidth: 280, className: 'modern-map-popup' };
 
+            function formatSafePhotoUrl(url) {
+                if (!url || typeof url !== 'string') return '';
+                if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
+                if (url.startsWith('/storage/')) return url;
+                if (url.startsWith('storage/')) return '/' + url;
+                if (url.startsWith('/')) return url;
+                return '/storage/' + url;
+            }
+
             // 1. Render OLT
             olts.forEach(o => {
                 if (!o.latitude || !o.longitude) return;
@@ -515,13 +524,20 @@
                     iconAnchor: [18, 18],
                     popupAnchor: [0, -18]
                 });
-                const photoHtml = (o.photos && o.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${o.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
-                const cardHtml = `
+                const firstPhoto = (o.photos && o.photos.length > 0) ? formatSafePhotoUrl(o.photos[0]) : '';
+                const photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onclick="window.open('${firstPhoto}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : '';
+                const gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + o.latitude + ',' + o.longitude;
+
+                const popupDiv = document.createElement('div');
+                popupDiv.innerHTML = `
                     <div class="network-card">
                         <div class="network-header">
-                            <div class="network-title-group">
-                                <div class="network-title" title="${o.name}">${o.name}</div>
-                                <div class="network-subtitle">${o.code || 'OLT-CORE'}</div>
+                            <div class="network-header-left">
+                                <i class="fa fa-server text-blue-400" style="font-size:14px;"></i>
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${o.name}">${o.name}</div>
+                                    <div class="network-subtitle">${o.code || 'OLT-CORE'}</div>
+                                </div>
                             </div>
                             <span class="network-badge badge-olt">OLT</span>
                         </div>
@@ -534,13 +550,25 @@
                                 </div>
                                 <div class="node-kv">
                                     <span class="node-kv-label">Port PON:</span>
-                                    <span class="node-kv-value text-blue-300 font-bold">${o.pon_port_count || o.port_count || '-'} Port</span>
+                                    <span class="node-kv-value text-blue-300 font-bold">${o.pon_port_count || '-'} Port</span>
                                 </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Model:</span>
+                                    <span class="node-kv-value">${o.model || '-'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Area / Lokasi:</span>
+                                    <span class="node-kv-value">${o.address || '-'}</span>
+                                </div>
+                            </div>
+                            <div class="node-actions">
+                                <a href="${gmapsUrl}" target="_blank" class="node-btn" style="background:#1e293b; color:#cbd5e1; border:1px solid #334155; width:100%;">
+                                    ➔ Buka Rute Google Maps
+                                </a>
                             </div>
                         </div>
                     </div>`;
-                const m = L.marker([o.latitude, o.longitude], { icon, interactive: true }).addTo(backboneLayerGroup).bindPopup(cardHtml, popupOpt);
-                m.on('click', function() { this.openPopup(); });
+                L.marker([o.latitude, o.longitude], { icon, interactive: true }).addTo(backboneLayerGroup).bindPopup(popupDiv, popupOpt);
             });
 
             // 2. Render ODC
@@ -553,13 +581,20 @@
                     iconAnchor: [16, 16],
                     popupAnchor: [0, -16]
                 });
-                const photoHtml = (c.photos && c.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${c.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
-                const cardHtml = `
+                const firstPhoto = (c.photos && c.photos.length > 0) ? formatSafePhotoUrl(c.photos[0]) : '';
+                const photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onclick="window.open('${firstPhoto}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : '';
+                const gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + c.latitude + ',' + c.longitude;
+
+                const popupDiv = document.createElement('div');
+                popupDiv.innerHTML = `
                     <div class="network-card">
                         <div class="network-header">
-                            <div class="network-title-group">
-                                <div class="network-title" title="${c.name}">${c.name}</div>
-                                <div class="network-subtitle">${c.code || 'ODC'}</div>
+                            <div class="network-header-left">
+                                <i class="fa fa-hdd text-amber-400" style="font-size:14px;"></i>
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${c.name}">${c.name}</div>
+                                    <div class="network-subtitle">${c.code || 'ODC-NODE'}</div>
+                                </div>
                             </div>
                             <span class="network-badge badge-odc">ODC</span>
                         </div>
@@ -567,14 +602,43 @@
                             ${photoHtml}
                             <div class="node-panel">
                                 <div class="node-kv">
+                                    <span class="node-kv-label">Uplink OLT:</span>
+                                    <span class="node-kv-value text-sky-400 font-bold">${c.olt_name || 'N/A'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Port PON:</span>
+                                    <span class="node-kv-value font-mono text-emerald-400">${c.pon_port || '-'}</span>
+                                </div>
+                                <div class="node-kv">
                                     <span class="node-kv-label">Kapasitas:</span>
                                     <span class="node-kv-value text-amber-300 font-bold">${c.capacity || 48} Port</span>
                                 </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Area / Lokasi:</span>
+                                    <span class="node-kv-value">${c.address || '-'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Jarak ke OLT:</span>
+                                    <span class="node-kv-value text-cyan-400 font-mono">${c.olt_distance ? c.olt_distance + ' km' : '-'}</span>
+                                </div>
+                            </div>
+                            <div class="node-actions">
+                                <button type="button" class="node-btn btn-upload-photo" style="background:#d97706; color:white;">
+                                    📸 Tambah / Ganti Foto Tiang
+                                </button>
+                                <a href="${gmapsUrl}" target="_blank" class="node-btn" style="background:#1e293b; color:#cbd5e1; border:1px solid #334155;">
+                                    ➔ Rute Maps
+                                </a>
                             </div>
                         </div>
                     </div>`;
-                const m = L.marker([c.latitude, c.longitude], { icon, interactive: true }).addTo(backboneLayerGroup).bindPopup(cardHtml, popupOpt);
-                m.on('click', function() { this.openPopup(); });
+
+                const btnPhoto = popupDiv.querySelector('.btn-upload-photo');
+                if (btnPhoto) {
+                    btnPhoto.onclick = function() { openUploadPhotoModalFromMap('odc', c.id, c.name); };
+                }
+
+                L.marker([c.latitude, c.longitude], { icon, interactive: true }).addTo(backboneLayerGroup).bindPopup(popupDiv, popupOpt);
             });
 
             // 3. Render Closures (Joint Closure FO)
@@ -587,13 +651,20 @@
                     iconAnchor: [13, 13],
                     popupAnchor: [0, -13]
                 });
-                const photoHtml = (jc.photos && jc.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${jc.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
-                const cardHtml = `
+                const firstPhoto = (jc.photos && jc.photos.length > 0) ? formatSafePhotoUrl(jc.photos[0]) : '';
+                const photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onclick="window.open('${firstPhoto}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : '';
+                const gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + jc.latitude + ',' + jc.longitude;
+
+                const popupDiv = document.createElement('div');
+                popupDiv.innerHTML = `
                     <div class="network-card">
                         <div class="network-header">
-                            <div class="network-title-group">
-                                <div class="network-title" title="${jc.name}">${jc.name}</div>
-                                <div class="network-subtitle">${jc.code || 'CLOSURE'}</div>
+                            <div class="network-header-left">
+                                <i class="fa fa-archive text-slate-300" style="font-size:14px;"></i>
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${jc.name}">${jc.name}</div>
+                                    <div class="network-subtitle">${jc.code || 'CLOSURE'}</div>
+                                </div>
                             </div>
                             <span class="network-badge badge-closure">CLOSURE</span>
                         </div>
@@ -605,19 +676,32 @@
                                     <span class="node-kv-value">${jc.type || 'Dome'}</span>
                                 </div>
                                 <div class="node-kv">
-                                    <span class="node-kv-label">Kapasitas:</span>
+                                    <span class="node-kv-label">Kapasitas Core:</span>
                                     <span class="node-kv-value text-teal-300 font-bold">${jc.port_count || 24} Core</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Uplink ODC:</span>
+                                    <span class="node-kv-value text-amber-300">${jc.odc_name || 'N/A'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Area / Lokasi:</span>
+                                    <span class="node-kv-value">${jc.address || '-'}</span>
                                 </div>
                             </div>
                             <div class="node-actions">
-                                <button type="button" onclick="openUploadPhotoModalFromMap('closure', ${jc.id}, '${jc.name}')" class="node-btn" style="background:#0d9488; color:white; width:100%;">
+                                <button type="button" class="node-btn btn-upload-photo" style="background:#0d9488; color:white; width:100%;">
                                     📸 Tambah / Ganti Foto Tiang
                                 </button>
                             </div>
                         </div>
                     </div>`;
-                const m = L.marker([jc.latitude, jc.longitude], { icon, interactive: true }).addTo(backboneLayerGroup).bindPopup(cardHtml, popupOpt);
-                m.on('click', function() { this.openPopup(); });
+
+                const btnPhoto = popupDiv.querySelector('.btn-upload-photo');
+                if (btnPhoto) {
+                    btnPhoto.onclick = function() { openUploadPhotoModalFromMap('closure', jc.id, jc.name); };
+                }
+
+                L.marker([jc.latitude, jc.longitude], { icon, interactive: true }).addTo(backboneLayerGroup).bindPopup(popupDiv, popupOpt);
             });
         }
 
@@ -678,6 +762,7 @@
                 const usedP = Math.max(0, totalP - availP);
                 const pct = Math.min(100, Math.round((usedP / totalP) * 100));
                 const barColor = pct > 90 ? '#ef4444' : (pct > 70 ? '#f59e0b' : '#10b981');
+                const lossDb = totalP == 4 ? 7.2 : (totalP == 8 ? 10.5 : (totalP == 16 ? 13.5 : (totalP == 32 ? 17.0 : 0)));
 
                 const odpIcon = L.divIcon({
                     className: 'custom-icon icon-odp',
@@ -693,14 +778,19 @@
 
                 const distanceText = odp.distance !== null ? (odp.distance + ' km') : '-';
                 const gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + odp.latitude + ',' + odp.longitude;
-                const photoHtml = (odp.photos && odp.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${odp.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
+                const firstPhoto = (odp.photos && odp.photos.length > 0) ? formatSafePhotoUrl(odp.photos[0]) : '';
+                const photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onclick="window.open('${firstPhoto}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : '';
 
-                const cardHtml = `
+                const popupDiv = document.createElement('div');
+                popupDiv.innerHTML = `
                     <div class="network-card">
                         <div class="network-header">
-                            <div class="network-title-group">
-                                <div class="network-title" title="${odp.name}">${odp.name}</div>
-                                <div class="network-subtitle">${odp.code}</div>
+                            <div class="network-header-left">
+                                <i class="fa fa-box text-emerald-400" style="font-size:14px;"></i>
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${odp.name}">${odp.name}</div>
+                                    <div class="network-subtitle">${odp.code || 'ODP-NODE'}</div>
+                                </div>
                             </div>
                             <span class="network-badge badge-odp">ODP</span>
                         </div>
@@ -708,36 +798,58 @@
                             ${photoHtml}
                             <div class="node-panel">
                                 <div class="node-kv">
+                                    <span class="node-kv-label">Splitter Ratio:</span>
+                                    <span class="node-kv-value font-mono text-sky-400 font-bold">1:${totalP} <span class="text-xs text-slate-400 font-normal">(-${lossDb} dB)</span></span>
+                                </div>
+                                <div class="node-kv">
                                     <span class="node-kv-label">Port Terpakai:</span>
-                                    <span class="node-kv-value">${usedP} / ${totalP} (${pct}%)</span>
+                                    <span class="node-kv-value"><b>${usedP}</b> / ${totalP} (${pct}%)</span>
                                 </div>
                                 <div class="node-progress-bg">
                                     <div class="node-progress-bar" style="width: ${pct}%; background: ${barColor};"></div>
                                 </div>
-                                <div class="node-kv" style="margin-top:3px;">
-                                    <span class="node-kv-label">Port Kosong:</span>
+                                <div class="node-kv" style="margin-top:2px;">
+                                    <span class="node-kv-label">Port Tersedia:</span>
                                     <span class="node-kv-value text-emerald-400 font-bold">${availP} Port Siap Pakai</span>
                                 </div>
+                            </div>
+                            <div class="node-panel">
                                 <div class="node-kv">
-                                    <span class="node-kv-label">Jarak dari Posisi:</span>
+                                    <span class="node-kv-label">Uplink ODC:</span>
+                                    <span class="node-kv-value text-amber-300 font-bold">${odp.odc_name || 'N/A'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Area / Lokasi:</span>
+                                    <span class="node-kv-value">${odp.address || '-'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Jarak ke ODC:</span>
+                                    <span class="node-kv-value text-cyan-400 font-mono">${odp.odc_distance ? odp.odc_distance + ' km' : '-'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Posisi Teknisi:</span>
                                     <span class="node-kv-value font-mono text-cyan-300 font-bold">${distanceText}</span>
                                 </div>
                             </div>
                             <div class="node-actions">
-                                <button type="button" onclick="openUploadPhotoModalFromMap('odp', ${odp.id}, '${odp.name}')" class="node-btn" style="background:#0284c7; color:white;">
+                                <button type="button" class="node-btn btn-upload-photo" style="background:#0284c7; color:white;">
                                     📸 Tambah / Ganti Foto Tiang
                                 </button>
                                 <a href="${gmapsUrl}" target="_blank" class="node-btn" style="background:#1e293b; color:#cbd5e1; border:1px solid #334155;">
-                                    ➔ Buka Rute Google Maps
+                                    ➔ Rute Maps
                                 </a>
                             </div>
                         </div>
                     </div>`;
 
-                marker.bindPopup(cardHtml, { maxWidth: 320, minWidth: 280, className: 'modern-map-popup' });
+                const btnPhoto = popupDiv.querySelector('.btn-upload-photo');
+                if (btnPhoto) {
+                    btnPhoto.onclick = function() { openUploadPhotoModalFromMap('odp', odp.id, odp.name); };
+                }
+
+                marker.bindPopup(popupDiv, { maxWidth: 320, minWidth: 280, className: 'modern-map-popup' });
 
                 marker.on('click', function() {
-                    this.openPopup();
                     @this.selectOdp(odp.id);
                 });
             });

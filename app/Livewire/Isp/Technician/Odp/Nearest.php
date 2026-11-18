@@ -70,41 +70,80 @@ class Nearest extends Component
             'id' => $o->id,
             'name' => $o->name,
             'code' => $o->code,
+            'ip_address' => $o->ip_address ?: ($o->host ?: '-'),
+            'model' => $o->model ?: '-',
+            'pon_port_count' => (int)($o->pon_port_count ?: ($o->port_count ?: 8)),
+            'address' => $o->address ?: '-',
             'latitude' => $o->latitude ? (float)$o->latitude : null,
             'longitude' => $o->longitude ? (float)$o->longitude : null,
-            'photos' => $o->photos ?? [],
+            'photos' => array_values(array_filter(array_map(function($p) {
+                if (empty($p)) return null;
+                if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
+                return '/storage/' . ltrim($p, '/');
+            }, (array)($o->photos ?? [])))),
         ])->toArray();
 
-        $odcsQuery = Odc::withoutGlobalScopes();
+        $odcsQuery = Odc::withoutGlobalScopes()->with(['olt:id,name,latitude,longitude']);
         if ($branchId && !$user->isSuperAdmin()) {
             $odcsQuery->where(function ($q) use ($branchId) {
                 $q->where('branch_id', $branchId)->orWhereNull('branch_id')->orWhere('branch_id', 1);
             });
         }
-        $odcs = $odcsQuery->get()->map(fn($o) => [
-            'id' => $o->id,
-            'name' => $o->name,
-            'code' => $o->code,
-            'latitude' => $o->latitude ? (float)$o->latitude : null,
-            'longitude' => $o->longitude ? (float)$o->longitude : null,
-            'photos' => $o->photos ?? [],
-        ])->toArray();
+        $odcs = $odcsQuery->get()->map(function($o) {
+            $oltDist = null;
+            if ($o->olt && $o->olt->latitude && $o->olt->longitude && $o->latitude && $o->longitude) {
+                $oltDist = round($this->calculateHaversine((float)$o->latitude, (float)$o->longitude, (float)$o->olt->latitude, (float)$o->olt->longitude), 2);
+            }
+            return [
+                'id' => $o->id,
+                'name' => $o->name,
+                'code' => $o->code,
+                'capacity' => (int)($o->port_count ?: ($o->capacity ?: 48)),
+                'olt_id' => $o->olt_id,
+                'olt_name' => $o->olt?->name ?? 'OLT Default',
+                'olt_distance' => $oltDist,
+                'pon_port' => $o->pon_port ?? '-',
+                'address' => $o->address ?: ($o->description ?: '-'),
+                'latitude' => $o->latitude ? (float)$o->latitude : null,
+                'longitude' => $o->longitude ? (float)$o->longitude : null,
+                'photos' => array_values(array_filter(array_map(function($p) {
+                    if (empty($p)) return null;
+                    if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
+                    return '/storage/' . ltrim($p, '/');
+                }, (array)($o->photos ?? [])))),
+            ];
+        })->toArray();
 
-        $closuresQuery = JointClosure::withoutGlobalScopes();
+        $closuresQuery = JointClosure::withoutGlobalScopes()->with(['odc:id,name,latitude,longitude']);
         if ($branchId && !$user->isSuperAdmin()) {
             $closuresQuery->where(function ($q) use ($branchId) {
                 $q->where('branch_id', $branchId)->orWhereNull('branch_id')->orWhere('branch_id', 1);
             });
         }
-        $closures = $closuresQuery->get()->map(fn($c) => [
-            'id' => $c->id,
-            'name' => $c->name,
-            'code' => $c->code,
-            'type' => $c->type ?? 'Dome',
-            'latitude' => $c->latitude ? (float)$c->latitude : null,
-            'longitude' => $c->longitude ? (float)$c->longitude : null,
-            'photos' => $c->photos ?? [],
-        ])->toArray();
+        $closures = $closuresQuery->get()->map(function($c) {
+            $odcDist = null;
+            if ($c->odc && $c->odc->latitude && $c->odc->longitude && $c->latitude && $c->longitude) {
+                $odcDist = round($this->calculateHaversine((float)$c->latitude, (float)$c->longitude, (float)$c->odc->latitude, (float)$c->odc->longitude), 2);
+            }
+            return [
+                'id' => $c->id,
+                'name' => $c->name,
+                'code' => $c->code,
+                'type' => $c->type ?? 'Dome',
+                'port_count' => (int)($c->port_count ?: 24),
+                'odc_id' => $c->odc_id,
+                'odc_name' => $c->odc?->name ?? 'N/A',
+                'odc_distance' => $odcDist,
+                'address' => $c->address ?: ($c->description ?: '-'),
+                'latitude' => $c->latitude ? (float)$c->latitude : null,
+                'longitude' => $c->longitude ? (float)$c->longitude : null,
+                'photos' => array_values(array_filter(array_map(function($p) {
+                    if (empty($p)) return null;
+                    if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
+                    return '/storage/' . ltrim($p, '/');
+                }, (array)($c->photos ?? [])))),
+            ];
+        })->toArray();
 
         $this->allNodes = [
             'olts' => $olts,
@@ -284,7 +323,7 @@ class Nearest extends Component
     {
         $user = auth()->user();
 
-        $query = Odp::withoutGlobalScopes()->with(['olt', 'branch'])
+        $query = Odp::withoutGlobalScopes()->with(['olt:id,name', 'odc:id,name,latitude,longitude', 'branch:id,name'])
             ->when($user && $user->branch_id && !$user->isSuperAdmin(), function ($q) use ($user) {
                 $q->where(function ($b) use ($user) {
                     $b->where('branch_id', $user->branch_id)
@@ -306,9 +345,9 @@ class Nearest extends Component
 
         // Filter Port
         if ($this->statusFilter === 'available') {
-            $query->whereRaw('(port_count - used_port_count - reserved_port_count) > 0');
+            $query->whereRaw('(COALESCE(port_count, 8) - COALESCE(used_port_count, 0) - COALESCE(reserved_port_count, 0)) > 0');
         } elseif ($this->statusFilter === 'full') {
-            $query->whereRaw('(port_count - used_port_count - reserved_port_count) <= 0');
+            $query->whereRaw('(COALESCE(port_count, 8) - COALESCE(used_port_count, 0) - COALESCE(reserved_port_count, 0)) <= 0');
         }
 
         $allOdps = $query->get();
@@ -323,6 +362,23 @@ class Nearest extends Component
                 $dist = $this->calculateHaversine((float) $userLat, (float) $userLng, (float) $odp->latitude, (float) $odp->longitude);
             }
 
+            $totalP = (int) ($odp->port_count ?: 8);
+            $usedP = (int) ($odp->used_port_count ?? 0);
+            $reservedP = (int) ($odp->reserved_port_count ?? 0);
+            $availP = max(0, $totalP - $usedP - $reservedP);
+            $occupancy = $totalP > 0 ? round(($usedP / $totalP) * 100, 1) : 0;
+
+            $photos = array_values(array_filter(array_map(function($p) {
+                if (empty($p)) return null;
+                if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
+                return '/storage/' . ltrim($p, '/');
+            }, (array) ($odp->photos ?? []))));
+
+            $odcDist = null;
+            if ($odp->odc && $odp->odc->latitude && $odp->odc->longitude && $odp->latitude && $odp->longitude) {
+                $odcDist = round($this->calculateHaversine((float)$odp->latitude, (float)$odp->longitude, (float)$odp->odc->latitude, (float)$odp->odc->longitude), 2);
+            }
+
             return [
                 'id' => $odp->id,
                 'code' => $odp->code,
@@ -330,13 +386,20 @@ class Nearest extends Component
                 'latitude' => $odp->latitude ? (float) $odp->latitude : null,
                 'longitude' => $odp->longitude ? (float) $odp->longitude : null,
                 'distance' => $dist !== null ? round($dist, 2) : null,
-                'port_count' => (int) $odp->port_count,
-                'used_port_count' => (int) $odp->used_port_count,
-                'available_port_count' => (int) $odp->availablePortCount,
-                'occupancy' => (float) $odp->occupancyPercent,
-                'address' => $odp->address ?: 'Alamat belum diisi',
+                'port_count' => $totalP,
+                'used_port_count' => $usedP,
+                'reserved_port_count' => $reservedP,
+                'available_port_count' => $availP,
+                'occupancy' => $occupancy,
+                'address' => $odp->address ?: ($odp->description ?: 'Alamat belum diisi'),
                 'status' => $odp->status,
                 'olt_name' => $odp->olt?->name ?? 'OLT Default',
+                'odc_id' => $odp->odc_id,
+                'odc_name' => $odp->odc?->name ?? 'N/A',
+                'odc_distance' => $odcDist,
+                'color' => $odp->color ?? 'blue',
+                'cable_no' => $odp->cable_no ?? '-',
+                'photos' => $photos,
             ];
         });
 

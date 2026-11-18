@@ -82,12 +82,90 @@ class Index extends AdminComponent
             })
             ->values();
 
+        $olts = Olt::forReseller()->get()->map(fn($o) => [
+            'id' => $o->id,
+            'name' => $o->name,
+            'code' => $o->code,
+            'ip_address' => $o->ip_address ?: ($o->host ?: '-'),
+            'model' => $o->model ?: '-',
+            'pon_port_count' => (int)($o->pon_port_count ?: ($o->port_count ?: 8)),
+            'address' => $o->address ?: '-',
+            'latitude' => $o->latitude ? (float)$o->latitude : null,
+            'longitude' => $o->longitude ? (float)$o->longitude : null,
+            'photos' => array_values(array_filter(array_map(function($p) {
+                if (empty($p)) return null;
+                if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
+                return '/storage/' . ltrim($p, '/');
+            }, (array)($o->photos ?? [])))),
+        ]);
+
+        $odcs = Odc::forReseller()->with(['olt:id,name,latitude,longitude'])->get()->map(fn($o) => [
+            'id' => $o->id,
+            'name' => $o->name,
+            'code' => $o->code,
+            'capacity' => (int)($o->port_count ?: ($o->capacity ?: 48)),
+            'olt_id' => $o->olt_id,
+            'olt_name' => $o->olt?->name ?? 'OLT Default',
+            'pon_port' => $o->pon_port ?? '-',
+            'address' => $o->address ?: '-',
+            'latitude' => $o->latitude ? (float)$o->latitude : null,
+            'longitude' => $o->longitude ? (float)$o->longitude : null,
+            'photos' => array_values(array_filter(array_map(function($p) {
+                if (empty($p)) return null;
+                if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
+                return '/storage/' . ltrim($p, '/');
+            }, (array)($o->photos ?? [])))),
+        ]);
+
+        $closures = JointClosure::forReseller()->with(['odc:id,name,latitude,longitude'])->get()->map(fn($c) => [
+            'id' => $c->id,
+            'name' => $c->name,
+            'code' => $c->code,
+            'type' => $c->type ?? 'Dome',
+            'port_count' => (int)($c->port_count ?: 24),
+            'odc_id' => $c->odc_id,
+            'odc_name' => $c->odc?->name ?? 'N/A',
+            'address' => $c->address ?: '-',
+            'latitude' => $c->latitude ? (float)$c->latitude : null,
+            'longitude' => $c->longitude ? (float)$c->longitude : null,
+            'photos' => array_values(array_filter(array_map(function($p) {
+                if (empty($p)) return null;
+                if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
+                return '/storage/' . ltrim($p, '/');
+            }, (array)($c->photos ?? [])))),
+        ]);
+
+        $odps = Odp::forReseller()->with(['olt:id,name', 'odc:id,name,latitude,longitude'])->get()->map(function($o) {
+            $totalP = (int)($o->port_count ?: 8);
+            $usedP = (int)($o->used_port_count ?? 0);
+            $reservedP = (int)($o->reserved_port_count ?? 0);
+            $availP = max(0, $totalP - $usedP - $reservedP);
+            return [
+                'id' => $o->id,
+                'name' => $o->name,
+                'code' => $o->code,
+                'port_count' => $totalP,
+                'used_port_count' => $usedP,
+                'available_port_count' => $availP,
+                'odc_id' => $o->odc_id,
+                'odc_name' => $o->odc?->name ?? 'N/A',
+                'address' => $o->address ?: ($o->description ?: '-'),
+                'latitude' => $o->latitude ? (float)$o->latitude : null,
+                'longitude' => $o->longitude ? (float)$o->longitude : null,
+                'photos' => array_values(array_filter(array_map(function($p) {
+                    if (empty($p)) return null;
+                    if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
+                    return '/storage/' . ltrim($p, '/');
+                }, (array)($o->photos ?? [])))),
+            ];
+        });
+
         return view('livewire.reseller-portal.network.map.index', [
             'customers' => $customers,
-            'odps' => Odp::forReseller()->get(),
-            'closures' => JointClosure::forReseller()->get(),
-            'odcs' => Odc::forReseller()->get(),
-            'olts' => Olt::forReseller()->get(),
+            'odps' => $odps,
+            'closures' => $closures,
+            'odcs' => $odcs,
+            'olts' => $olts,
         ]);
     }
 }

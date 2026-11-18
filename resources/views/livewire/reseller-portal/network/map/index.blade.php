@@ -5,6 +5,8 @@
 
 <div class="h-[calc(100vh-100px)] w-full flex flex-col" style="min-height:600px;">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <style>
         .map-smart-toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(0, 229, 255, 0.2); overflow-x: auto; }
         .toolbar-group { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
@@ -324,15 +326,29 @@
         const odps = window.mapData.odps || [];
         const customers = window.mapData.customers || [];
         
+        function formatSafePhotoUrl(url) {
+            if (!url || typeof url !== 'string') return '';
+            if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
+            if (url.startsWith('/storage/')) return url;
+            if (url.startsWith('storage/')) return '/' + url;
+            if (url.startsWith('/')) return url;
+            return '/storage/' + url;
+        }
+
         // 1. Render OLT
         olts.forEach(i => {
             if(i.latitude && i.longitude) {
                 let icon = createUnifiedIcon('olt');
-                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${i.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
-                let cardHtml = `
+                let firstPhoto = (i.photos && i.photos.length > 0) ? formatSafePhotoUrl(i.photos[0]) : '';
+                let photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onclick="window.open('${firstPhoto}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : '';
+                let gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${i.latitude},${i.longitude}`;
+
+                let popupDiv = document.createElement('div');
+                popupDiv.innerHTML = `
                     <div class="network-card">
                         <div class="network-header">
                             <div class="network-header-left">
+                                <i class="fa fa-server text-blue-400" style="font-size:14px;"></i>
                                 <div class="network-title-group">
                                     <div class="network-title" title="${i.name}">${i.name}</div>
                                     <div class="network-subtitle">${i.code || 'OLT-CORE'}</div>
@@ -351,13 +367,26 @@
                                     <span class="node-kv-label">Port PON:</span>
                                     <span class="node-kv-value text-blue-300 font-bold">${i.pon_port_count || i.port_count || '-'} Port</span>
                                 </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Model:</span>
+                                    <span class="node-kv-value">${i.model || '-'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Area / Lokasi:</span>
+                                    <span class="node-kv-value">${i.address || '-'}</span>
+                                </div>
+                            </div>
+                            <div class="node-actions">
+                                <a href="${gmapsUrl}" target="_blank" class="node-btn" style="background:#1e293b; color:#cbd5e1; border:1px solid #334155; width:100%;">
+                                    <i class="fa fa-map-marker-alt text-rose-400"></i> Buka Rute Google Maps
+                                </a>
                             </div>
                         </div>
                     </div>`;
-                let m = window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
+
+                window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
                     .addTo(markersLayer)
-                    .bindPopup(cardHtml, popupOpt);
-                m.on('click', function() { this.openPopup(); });
+                    .bindPopup(popupDiv, popupOpt);
                 bounds.push([i.latitude, i.longitude]);
             }
         });
@@ -366,11 +395,16 @@
         odcs.forEach(i => {
             if(i.latitude && i.longitude) {
                 let icon = createUnifiedIcon('odc');
-                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${i.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
-                let cardHtml = `
+                let firstPhoto = (i.photos && i.photos.length > 0) ? formatSafePhotoUrl(i.photos[0]) : '';
+                let photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onclick="window.open('${firstPhoto}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : '';
+                let gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${i.latitude},${i.longitude}`;
+
+                let popupDiv = document.createElement('div');
+                popupDiv.innerHTML = `
                     <div class="network-card">
                         <div class="network-header">
                             <div class="network-header-left">
+                                <i class="fa fa-hdd text-amber-400" style="font-size:14px;"></i>
                                 <div class="network-title-group">
                                     <div class="network-title" title="${i.name}">${i.name}</div>
                                     <div class="network-subtitle">${i.code || 'ODC'}</div>
@@ -382,17 +416,35 @@
                             ${photoHtml}
                             <div class="node-panel">
                                 <div class="node-kv">
+                                    <span class="node-kv-label">Uplink OLT:</span>
+                                    <span class="node-kv-value text-sky-400 font-bold">${i.olt_name || 'OLT Default'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Port PON:</span>
+                                    <span class="node-kv-value font-mono text-emerald-400">${i.pon_port || '-'}</span>
+                                </div>
+                                <div class="node-kv">
                                     <span class="node-kv-label">Kapasitas:</span>
                                     <span class="node-kv-value text-amber-300 font-bold">${i.capacity || 48} Port</span>
                                 </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Area / Lokasi:</span>
+                                    <span class="node-kv-value">${i.address || '-'}</span>
+                                </div>
+                            </div>
+                            <div class="node-actions">
+                                <a href="${gmapsUrl}" target="_blank" class="node-btn" style="background:#1e293b; color:#cbd5e1; border:1px solid #334155; width:100%;">
+                                    <i class="fa fa-map-marker-alt text-rose-400"></i> Buka Rute Google Maps
+                                </a>
                             </div>
                         </div>
                     </div>`;
-                let m = window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
+
+                window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
                     .addTo(markersLayer)
-                    .bindPopup(cardHtml, popupOpt);
-                m.on('click', function() { this.openPopup(); });
+                    .bindPopup(popupDiv, popupOpt);
                 bounds.push([i.latitude, i.longitude]);
+
                 if(i.olt_id) {
                     let olt = olts.find(o => o.id == i.olt_id);
                     if(olt && olt.latitude && olt.longitude) { window.L.polyline([[olt.latitude, olt.longitude], [i.latitude, i.longitude]], { color: '#6f42c1', weight: 3, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer); }
@@ -404,11 +456,16 @@
         closures.forEach(i => {
             if(i.latitude && i.longitude) {
                 let icon = createUnifiedIcon('closure');
-                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${i.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
-                let cardHtml = `
+                let firstPhoto = (i.photos && i.photos.length > 0) ? formatSafePhotoUrl(i.photos[0]) : '';
+                let photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onclick="window.open('${firstPhoto}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : '';
+                let gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${i.latitude},${i.longitude}`;
+
+                let popupDiv = document.createElement('div');
+                popupDiv.innerHTML = `
                     <div class="network-card">
                         <div class="network-header">
                             <div class="network-header-left">
+                                <i class="fa fa-archive text-slate-300" style="font-size:14px;"></i>
                                 <div class="network-title-group">
                                     <div class="network-title" title="${i.name}">${i.name}</div>
                                     <div class="network-subtitle">${i.code || 'CLOSURE'}</div>
@@ -427,14 +484,28 @@
                                     <span class="node-kv-label">Kapasitas Core:</span>
                                     <span class="node-kv-value text-teal-300 font-bold">${i.port_count || 24} Core</span>
                                 </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Uplink ODC:</span>
+                                    <span class="node-kv-value text-amber-300 font-bold">${i.odc_name || 'N/A'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Area / Lokasi:</span>
+                                    <span class="node-kv-value">${i.address || '-'}</span>
+                                </div>
+                            </div>
+                            <div class="node-actions">
+                                <a href="${gmapsUrl}" target="_blank" class="node-btn" style="background:#1e293b; color:#cbd5e1; border:1px solid #334155; width:100%;">
+                                    <i class="fa fa-map-marker-alt text-rose-400"></i> Buka Rute Google Maps
+                                </a>
                             </div>
                         </div>
                     </div>`;
-                let m = window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
+
+                window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
                     .addTo(markersLayer)
-                    .bindPopup(cardHtml, popupOpt);
-                m.on('click', function() { this.openPopup(); });
+                    .bindPopup(popupDiv, popupOpt);
                 bounds.push([i.latitude, i.longitude]);
+
                 if(i.odc_id) {
                     let odc = odcs.find(o => o.id == i.odc_id);
                     if(odc && odc.latitude && odc.longitude) { window.L.polyline([[odc.latitude, odc.longitude], [i.latitude, i.longitude]], { color: '#0d9488', weight: 2.5, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer); }
@@ -450,15 +521,21 @@
                 let usedP = parseInt(i.used_port_count) || 0;
                 let availP = Math.max(0, totalP - usedP);
                 let pct = Math.min(100, Math.round((usedP / totalP) * 100));
-                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${i.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
                 let barColor = pct > 90 ? '#ef4444' : (pct > 70 ? '#f59e0b' : '#10b981');
-                let cardHtml = `
+                let lossDb = totalP == 4 ? 7.2 : (totalP == 8 ? 10.5 : (totalP == 16 ? 13.5 : (totalP == 32 ? 17.0 : 0)));
+                let firstPhoto = (i.photos && i.photos.length > 0) ? formatSafePhotoUrl(i.photos[0]) : '';
+                let photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onclick="window.open('${firstPhoto}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : '';
+                let gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${i.latitude},${i.longitude}`;
+
+                let popupDiv = document.createElement('div');
+                popupDiv.innerHTML = `
                     <div class="network-card">
                         <div class="network-header">
                             <div class="network-header-left">
+                                <i class="fa fa-box text-emerald-400" style="font-size:14px;"></i>
                                 <div class="network-title-group">
                                     <div class="network-title" title="${i.name}">${i.name}</div>
-                                    <div class="network-subtitle">${i.code}</div>
+                                    <div class="network-subtitle">${i.code || 'ODP-NODE'}</div>
                                 </div>
                             </div>
                             <span class="network-badge badge-odp">ODP</span>
@@ -467,29 +544,44 @@
                             ${photoHtml}
                             <div class="node-panel">
                                 <div class="node-kv">
+                                    <span class="node-kv-label">Splitter Ratio:</span>
+                                    <span class="node-kv-value font-mono text-sky-400 font-bold">1:${totalP} <span class="text-xs text-slate-400 font-normal">(-${lossDb} dB)</span></span>
+                                </div>
+                                <div class="node-kv">
                                     <span class="node-kv-label">Port Terpakai:</span>
-                                    <span class="node-kv-value">${usedP} / ${totalP} (${pct}%)</span>
+                                    <span class="node-kv-value"><b>${usedP}</b> / ${totalP} (${pct}%)</span>
                                 </div>
                                 <div class="node-progress-bg">
                                     <div class="node-progress-bar" style="width: ${pct}%; background: ${barColor};"></div>
                                 </div>
-                                <div class="node-kv" style="margin-top:4px;">
-                                    <span class="node-kv-label">Tersedia:</span>
+                                <div class="node-kv" style="margin-top:2px;">
+                                    <span class="node-kv-label">Port Tersedia:</span>
                                     <span class="node-kv-value text-emerald-400 font-bold">${availP} Port Kosong</span>
                                 </div>
                             </div>
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Uplink ODC:</span>
+                                    <span class="node-kv-value text-amber-300 font-bold">${i.odc_name || 'N/A'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Area / Lokasi:</span>
+                                    <span class="node-kv-value">${i.address || '-'}</span>
+                                </div>
+                            </div>
                             <div class="node-actions">
-                                <a href="https://www.google.com/maps/dir/?api=1&destination=${i.latitude},${i.longitude}" target="_blank" class="node-btn node-btn-secondary" style="width:100%;">
+                                <a href="${gmapsUrl}" target="_blank" class="node-btn node-btn-secondary" style="width:100%;">
                                     <i class="fa fa-map-marker-alt text-rose-400"></i> Rute Maps
                                 </a>
                             </div>
                         </div>
                     </div>`;
-                let m = window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
+
+                window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
                     .addTo(markersLayer)
-                    .bindPopup(cardHtml, popupOpt);
-                m.on('click', function() { this.openPopup(); });
+                    .bindPopup(popupDiv, popupOpt);
                 bounds.push([i.latitude, i.longitude]);
+
                 if(i.odc_id) {
                     let odc = odcs.find(o => o.id == i.odc_id);
                     if(odc && odc.latitude && odc.longitude) { window.L.polyline([[odc.latitude, odc.longitude], [i.latitude, i.longitude]], { color: '#fd7e14', weight: 2, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer); }
@@ -503,10 +595,14 @@
                 let icon = createUnifiedIcon(i.is_online ? 'online' : 'offline');
                 let waNumber = (i.phone || '').replace(/[^0-9]/g, '');
                 if (waNumber.startsWith('0')) { waNumber = '62' + waNumber.substring(1); }
-                let cardHtml = `
+                let gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${i.latitude},${i.longitude}`;
+
+                let popupDiv = document.createElement('div');
+                popupDiv.innerHTML = `
                     <div class="customer-card">
                         <div class="network-header">
                             <div class="network-header-left">
+                                <i class="fa fa-wifi text-sky-400" style="font-size:14px;"></i>
                                 <div class="network-title-group">
                                     <div class="network-title" title="${i.name}">${i.name}</div>
                                     <div class="network-subtitle">ID: ${i.code || i.id}</div>
@@ -533,17 +629,18 @@
                             </div>
                             <div class="node-actions">
                                 ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" class="node-btn node-btn-success"><i class="fab fa-whatsapp"></i> Chat WA</a>` : ''}
-                                <a href="https://www.google.com/maps/dir/?api=1&destination=${i.latitude},${i.longitude}" target="_blank" class="node-btn node-btn-secondary">
+                                <a href="${gmapsUrl}" target="_blank" class="node-btn node-btn-secondary">
                                     <i class="fa fa-map-marker-alt text-rose-400"></i> Maps
                                 </a>
                             </div>
                         </div>
                     </div>`;
-                let m = window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
+
+                window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
                     .addTo(markersLayer)
-                    .bindPopup(cardHtml, popupOpt);
-                m.on('click', function() { this.openPopup(); });
+                    .bindPopup(popupDiv, popupOpt);
                 bounds.push([i.latitude, i.longitude]);
+
                 if(i.odp_id) {
                     let odp = odps.find(o => o.id == i.odp_id);
                     if(odp && odp.latitude && odp.longitude) {
