@@ -113,4 +113,71 @@ class MobileTechnicianCustomerRbacTest extends TestCase
             ->assertJsonPath('customer.id', $customer->id)
             ->assertJsonPath('customer.name', 'Assigned Customer');
     }
+
+    public function test_reseller_can_update_customer_credentials_and_package(): void
+    {
+        $branch = Branch::firstOrCreate(
+            ['code' => 'PST'],
+            ['name' => 'Cabang Pusat']
+        );
+
+        $resellerRole = Role::firstOrCreate(['name' => 'reseller'], ['display_name' => 'Reseller', 'guard_name' => 'web']);
+        $reseller = User::factory()->create([
+            'is_active' => true,
+            'branch_id' => $branch->id,
+        ]);
+        $reseller->roles()->attach($resellerRole->id);
+
+        $customer = Customer::create([
+            'uuid' => (string) Str::uuid(),
+            'name' => 'Customer Before Edit',
+            'code' => '2026110199',
+            'phone' => '081234567899',
+            'branch_id' => $branch->id,
+            'reseller_id' => $reseller->id,
+            'status' => 'active',
+        ]);
+
+        $profileType = \App\Models\ISP\ServiceProfileType::firstOrCreate(
+            ['code' => 'PPPOE'],
+            ['name' => 'PPPoE Profile', 'status' => 'active']
+        );
+
+        $profile = \App\Models\ISP\ServiceProfile::create([
+            'service_profile_type_id' => $profileType->id,
+            'code' => 'PKG-20M',
+            'name' => 'PAKET 20 MBPS',
+            'price' => 150000,
+            'service_type' => 'pppoe',
+        ]);
+
+        $cs = \App\Models\Customer\CustomerService::create([
+            'customer_id' => $customer->id,
+            'username' => 'user_lama',
+            'password' => 'pass_lama',
+            'service_profile_id' => $profile->id,
+            'branch_id' => $branch->id,
+            'reseller_id' => $reseller->id,
+            'status' => 'active',
+        ]);
+
+        // Reseller updates name, phone, username, password, status
+        $response = $this->actingAs($reseller, 'sanctum')
+            ->putJson("/api/mobile/customers/{$customer->id}", [
+                'name' => 'Customer After Edit',
+                'phone' => '089876543210',
+                'username' => 'user_baru',
+                'password' => 'pass_baru123',
+                'status' => 'isolated',
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true);
+
+        $this->assertEquals('Customer After Edit', $customer->fresh()->name);
+        $this->assertEquals('089876543210', $customer->fresh()->phone);
+        $this->assertEquals('suspend', $customer->fresh()->status);
+        $this->assertEquals('user_baru', $cs->fresh()->username);
+        $this->assertEquals('pass_baru123', $cs->fresh()->password);
+    }
 }

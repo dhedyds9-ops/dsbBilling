@@ -1,5 +1,5 @@
 <div class="space-y-4 pb-6">
-    @section('header_title', 'Peta & Cari ODP')
+    @section('header_title', 'Peta Jaringan')
 
     {{-- Header Banner --}}
     <div class="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-4 sm:p-5 rounded-2xl shadow-md">
@@ -97,7 +97,7 @@
         {{-- Peta Leaflet --}}
         <div class="lg:col-span-7 xl:col-span-8">
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden relative">
-                <div id="map" style="height: 520px; width: 100%; z-index: 10;"></div>
+                <div id="map" wire:ignore style="height: 520px; width: 100%; z-index: 10;"></div>
 
                 {{-- Loading Overlay --}}
                 <div wire:loading wire:target="loadNearestOdps, search, radius, statusFilter, setLocation"
@@ -437,6 +437,10 @@
                 updateUserMarker(lat, lng);
                 @this.setLocation(lat, lng);
             });
+
+            setTimeout(() => { if (map) map.invalidateSize(); }, 250);
+            setTimeout(() => { if (map) map.invalidateSize(); }, 800);
+            window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
         }
 
         function renderBackboneNodes() {

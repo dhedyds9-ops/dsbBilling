@@ -114,6 +114,18 @@ $cs = fn() => view('coming-soon');
 // ==================== AUTHENTICATED ROUTES ====================
 Route::middleware(['auth'])->group(function () use ($cs) {
 
+    // Universal route alias for /network/map (redirects according to role)
+    Route::get('/network/map', function () {
+        $user = auth()->user();
+        if ($user->hasRole('technician') || (isset($user->job_function) && $user->job_function === 'TECHNICIAN')) {
+            return redirect()->route('technician.odp.nearest');
+        }
+        if ($user->hasRole('reseller') && !$user->hasAnyRole(['administrator', 'superadmin', 'manager'])) {
+            return redirect()->route('reseller-portal.network.map');
+        }
+        return redirect()->route('gis.map');
+    })->name('network.map');
+
     // ==================== TECHNICIAN PORTAL ====================
     Route::middleware(['role:administrator,manager,technician', 'job_function:TECHNICIAN'])->group(function () {
         Route::get('/technician-portal/dashboard', \App\Livewire\Isp\Technician\Dashboard::class)->name('technician.dashboard');
@@ -134,6 +146,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/technician-portal/installation/register', \App\Livewire\Isp\Technician\Installation\Register::class)->name('technician.installation.register');
             Route::get('/technician-portal/odp/search', \App\Livewire\Isp\Technician\Odp\Search::class)->name('technician.odp.search');
             Route::get('/technician-portal/odp/nearest', \App\Livewire\Isp\Technician\Odp\Nearest::class)->name('technician.odp.nearest');
+            Route::get('/technician-portal/network/map', fn() => redirect()->route('technician.odp.nearest'))->name('technician.network.map');
             Route::get('/technician-portal/material', \App\Livewire\Isp\Technician\Material\Index::class)->name('technician.material.index');
             Route::get('/technician-portal/stock', \App\Livewire\Isp\Technician\Material\Index::class)->name('technician.stock.index');
             Route::get('/technician-portal/swap-ont', \App\Livewire\Isp\Technician\Swap\Index::class)->name('technician.swap-ont.index');
@@ -416,14 +429,6 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/analytics', \App\Livewire\Gis\GisAnalytics::class)->name('analytics');
             Route::get('/customer-map', fn() => redirect()->route('gis.map'))->name('customer-map');
         });
-
-        // Universal route alias for /network/map (redirects according to role)
-        Route::get('/network/map', function () {
-            if (auth()->check() && auth()->user()->hasRole('reseller') && !auth()->user()->hasAnyRole(['administrator', 'superadmin', 'manager'])) {
-                return redirect()->route('reseller-portal.network.map');
-            }
-            return redirect()->route('gis.map');
-        })->name('network.map');
 
         // === GIS Map APIs (for the JS frontend) ===
         Route::prefix('map')->group(function () {

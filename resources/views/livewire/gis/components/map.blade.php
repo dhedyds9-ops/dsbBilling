@@ -3,7 +3,7 @@
         <!-- Toolbar is injected directly into map by JS, so we just need a title or can leave it clean -->
         <div class="px-4 py-3 border-b border-gray-800 flex justify-between items-center bg-[#0a0e1a]/50">
             <h5 class="text-[#00e5ff] font-bold m-0 flex items-center">
-                <i class="bi bi-map mr-2"></i> {{ __('Peta Distribusi & Topologi') }}
+                <i class="bi bi-map mr-2"></i> {{ __('Peta Jaringan') }}
             </h5>
         </div>
 

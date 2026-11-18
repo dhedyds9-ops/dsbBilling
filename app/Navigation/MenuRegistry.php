@@ -204,7 +204,7 @@ class MenuRegistry
                         'label' => 'Infrastruktur Fiber',
                         'icon' => 'hub',
                         'items' => [
-                            ['label' => 'Peta Jaringan (GIS)', 'route' => 'gis.map', 'active' => ['gis.*', 'network.map'], 'permission' => 'gis.view'],
+                            ['label' => 'Peta Jaringan', 'route' => 'gis.map', 'active' => ['gis.*', 'network.map'], 'permission' => 'gis.view'],
                             ['label' => 'Data ODC', 'route' => 'isp.odcs.index', 'active' => 'isp.odcs.*', 'permission' => 'odc.view'],
                             ['label' => 'Data ODP', 'route' => 'isp.odps.index', 'active' => 'isp.odps.*', 'permission' => 'odp.view'],
                             ['label' => 'Data POP', 'route' => 'isp.pops.index', 'active' => 'isp.pops.*', 'permission' => 'pop.view'],
@@ -317,7 +317,7 @@ class MenuRegistry
                             ['label' => 'Router / MikroTik', 'route' => 'noc.routers.index', 'active' => 'noc.routers.*'],
                             ['label' => 'OLT', 'route' => 'noc.olts.index', 'active' => 'noc.olts.*'],
                             ['label' => 'Active Sessions', 'route' => 'noc.pppoe.index', 'active' => 'noc.pppoe.*'],
-                            ['label' => 'Peta Topologi (GIS)', 'route' => 'gis.map', 'active' => ['gis.*', 'network.map']],
+                            ['label' => 'Peta Jaringan', 'route' => 'gis.map', 'active' => ['gis.*', 'network.map']],
                         ]
                     ],
                     [
@@ -358,7 +358,7 @@ class MenuRegistry
                         'icon' => 'public',
                         'items' => [
                             ['label' => 'GIS Dashboard', 'route' => 'gis.index', 'active' => 'gis.index'],
-                            ['label' => 'Live Mapping', 'route' => 'gis.map', 'active' => 'gis.map'],
+                            ['label' => 'Peta Jaringan', 'route' => 'gis.map', 'active' => 'gis.map'],
                             ['label' => 'Analytics', 'route' => 'gis.analytics', 'active' => 'gis.analytics'],
                         ]
                     ],
@@ -431,7 +431,7 @@ class MenuRegistry
                         'icon' => 'share',
                         'items' => [
                             ['label' => 'Pencarian ODP', 'route' => 'technician.odp.search', 'active' => 'technician.odp.search'],
-                            ['label' => 'ODP Terdekat (Maps)', 'route' => 'technician.odp.nearest', 'active' => 'technician.odp.nearest'],
+                            ['label' => 'Peta Jaringan', 'route' => 'technician.odp.nearest', 'active' => ['technician.odp.nearest', 'network.map']],
                         ]
                     ],
                     [
@@ -506,7 +506,7 @@ class MenuRegistry
                         'label' => 'Network & GIS',
                         'icon' => 'public',
                         'items' => [
-                            ['label' => 'Peta Satelit', 'route' => 'reseller-portal.network.map', 'active' => 'reseller-portal.network.map', 'permission' => 'gis.view'],
+                            ['label' => 'Peta Jaringan', 'route' => 'reseller-portal.network.map', 'active' => ['reseller-portal.network.map', 'network.map'], 'permission' => 'gis.view'],
                             ['label' => 'Data OLT', 'route' => 'reseller-portal.network.olts.index', 'active' => 'reseller-portal.network.olts.*', 'permission' => 'olt.view'],
                             ['label' => 'Data ODC', 'route' => 'reseller-portal.network.odcs.index', 'active' => 'reseller-portal.network.odcs.*', 'permission' => 'odc.view'],
                             ['label' => 'Data ODP', 'route' => 'reseller-portal.network.odps.index', 'active' => 'reseller-portal.network.odps.*', 'permission' => 'odp.view'],

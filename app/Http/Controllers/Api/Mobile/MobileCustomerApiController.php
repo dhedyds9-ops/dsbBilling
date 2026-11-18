@@ -108,6 +108,18 @@ class MobileCustomerApiController extends Controller
                 $serviceType = in_array($raw, ['hotspot', 'member_hotspot', 'voucher']) ? 'hotspot' : 'pppoe';
             }
 
+            $profileName = $primaryService?->serviceProfile?->name
+                ?? $primaryService?->pppoeUser?->profile
+                ?? $primaryService?->hotspotUser?->profile
+                ?? null;
+
+            $servicePassword = $primaryService?->password
+                ?? $primaryService?->pppoeUser?->password
+                ?? $primaryService?->hotspotUser?->password
+                ?? null;
+
+            $profileId = $primaryService?->service_profile_id ?? $primaryService?->serviceProfile?->id;
+
             return [
                 'id' => $c->id,
                 'code' => $c->code,
@@ -123,10 +135,15 @@ class MobileCustomerApiController extends Controller
                 'service' => $primaryService ? [
                     'id' => $primaryService->id,
                     'username' => $serviceUsername,
+                    'password' => $servicePassword,
                     'status' => $primaryService->status,
-                    'profile_name' => $primaryService->serviceProfile->name ?? null,
+                    'profile_id' => $profileId,
+                    'profile_name' => $profileName,
                     'onu_serial' => $primaryService->onu->serial_number ?? null,
                     'service_type' => $serviceType,
+                    'ip_address' => $primaryService->ip_address ?? $primaryService->pppoeUser?->ip_address ?? '-',
+                    'mac_address' => $primaryService->onu?->mac_address ?? $primaryService->pppoeUser?->caller_id ?? '-',
+                    'olt_name' => $primaryService->onu?->olt?->name ?? 'OLT-01',
                 ] : null,
                 'created_at' => $c->created_at?->toIso8601String(),
             ];
@@ -213,21 +230,34 @@ class MobileCustomerApiController extends Controller
                 'longitude' => $customer->longitude,
                 'created_at' => $customer->created_at?->toIso8601String(),
                 'services' => $customer->customerServices->map(function (CustomerService $cs) {
+                    $profName = $cs->serviceProfile?->name
+                        ?? $cs->pppoeUser?->profile
+                        ?? $cs->hotspotUser?->profile
+                        ?? null;
+                    $pass = $cs->password
+                        ?? $cs->pppoeUser?->password
+                        ?? $cs->hotspotUser?->password
+                        ?? null;
+                    $stype = $cs->hotspotUser ? 'hotspot' : ($cs->pppoeUser ? 'pppoe' : (in_array(strtolower($cs->serviceProfile?->service_type ?? ''), ['hotspot', 'member_hotspot', 'voucher']) ? 'hotspot' : 'pppoe'));
+
                     return [
                         'id' => $cs->id,
                         'username' => $cs->username,
+                        'password' => $pass,
+                        'service_type' => $stype,
                         'status' => $cs->status,
-                        'profile' => $cs->serviceProfile ? [
-                            'id' => $cs->serviceProfile->id,
-                            'name' => $cs->serviceProfile->name,
-                            'price' => $cs->serviceProfile->price,
-                            'speed' => $cs->serviceProfile->speed_limit,
-                        ] : null,
+                        'profile' => [
+                            'id' => $cs->service_profile_id ?? $cs->serviceProfile?->id,
+                            'name' => $profName,
+                            'price' => $cs->serviceProfile?->price ?? 0,
+                            'speed' => $cs->serviceProfile?->speed_limit,
+                        ],
                         'onu' => $cs->onu ? [
                             'id' => $cs->onu->id,
                             'serial_number' => $cs->onu->serial_number,
                             'model' => $cs->onu->model,
                             'status' => $cs->onu->status,
+                            'mac_address' => $cs->onu->mac_address,
                         ] : null,
                         'odp' => $cs->odp ? [
                             'id' => $cs->odp->id,
@@ -423,5 +453,127 @@ class MobileCustomerApiController extends Controller
                 ], 201);
             });
         }
+    }
+
+    /**
+     * Update customer details, credentials, and package from mobile app.
+     * PUT /api/mobile/customers/{id}
+     */
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+
+        // RBAC: Direct customer update is restricted to Reseller, Administrator, Manager, or CS
+        if ($user && method_exists($user, 'isTechnician') && $user->isTechnician() && !$user->isSuperAdmin() && !$user->hasAnyRole(['administrator', 'manager', 'reseller', 'customer_service'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak: Teknisi tidak memiliki wewenang mengubah data master pelanggan.',
+            ], 403);
+        }
+
+        $query = Customer::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
+            ->with(['customerServices' => function ($q) {
+                $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
+                  ->with(['serviceProfile', 'pppoeUser', 'hotspotUser']);
+            }]);
+
+        $resellerId = $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
+        if ($resellerId) {
+            $query->where(function ($q) use ($resellerId) {
+                $q->where('reseller_id', $resellerId)
+                  ->orWhere('created_by', $resellerId);
+            });
+        } elseif (!empty($user->branch_id)) {
+            $query->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        } elseif (!$user->isSuperAdmin() && !$user->hasRole('administrator')) {
+            $query->whereRaw('1 = 0');
+        }
+
+        $customer = $query->findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'phone' => 'sometimes|required|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:500',
+            'status' => 'nullable|string|in:active,aktif,isolated,isolir,suspend,suspended,inactive,nonaktif',
+            'service_profile_id' => 'nullable|integer|exists:service_profiles,id',
+            'username' => 'nullable|string|max:100',
+            'password' => 'nullable|string|min:3',
+        ]);
+
+        return DB::transaction(function () use ($customer, $validated) {
+            if (isset($validated['name'])) $customer->name = trim($validated['name']);
+            if (isset($validated['phone'])) $customer->phone = trim($validated['phone']);
+            if (isset($validated['email'])) $customer->email = trim($validated['email']);
+            if (isset($validated['address'])) $customer->address = trim($validated['address']);
+
+            if (isset($validated['status'])) {
+                $rawStatus = strtolower($validated['status']);
+                $normalizedStatus = match ($rawStatus) {
+                    'isolated', 'isolir', 'suspend', 'suspended' => 'suspend',
+                    'inactive', 'nonaktif' => 'inactive',
+                    default => 'active',
+                };
+                $customer->status = $normalizedStatus;
+            }
+            $customer->save();
+
+            // Update primary service credentials & profile if provided
+            $primaryService = $customer->customerServices->first();
+            if ($primaryService) {
+                if (!empty($validated['service_profile_id'])) {
+                    $primaryService->service_profile_id = $validated['service_profile_id'];
+                    $profile = ServiceProfile::withoutGlobalScopes()->find($validated['service_profile_id']);
+                    if ($profile && $primaryService->pppoeUser) {
+                        $primaryService->pppoeUser->profile = $profile->name;
+                        $primaryService->pppoeUser->save();
+                    }
+                    if ($profile && $primaryService->hotspotUser) {
+                        $primaryService->hotspotUser->profile = $profile->name;
+                        $primaryService->hotspotUser->save();
+                    }
+                }
+
+                if (!empty($validated['username'])) {
+                    $newUname = trim($validated['username']);
+                    $primaryService->username = $newUname;
+                    if ($primaryService->pppoeUser) {
+                        $primaryService->pppoeUser->username = $newUname;
+                        $primaryService->pppoeUser->save();
+                    }
+                    if ($primaryService->hotspotUser) {
+                        $primaryService->hotspotUser->username = $newUname;
+                        $primaryService->hotspotUser->save();
+                    }
+                }
+
+                if (!empty($validated['password'])) {
+                    $newPass = trim($validated['password']);
+                    $primaryService->password = $newPass;
+                    if ($primaryService->pppoeUser) {
+                        $primaryService->pppoeUser->password = $newPass;
+                        $primaryService->pppoeUser->save();
+                    }
+                    if ($primaryService->hotspotUser) {
+                        $primaryService->hotspotUser->password = $newPass;
+                        $primaryService->hotspotUser->save();
+                    }
+                }
+
+                if (isset($normalizedStatus)) {
+                    $primaryService->status = $normalizedStatus;
+                }
+                $primaryService->save();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data pelanggan dan paket layanan berhasil diperbarui.',
+            ]);
+        });
     }
 }

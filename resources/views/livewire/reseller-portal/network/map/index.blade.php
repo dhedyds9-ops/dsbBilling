@@ -1,9 +1,12 @@
 @section('page_title')
     <span class="material-symbols-outlined notranslate text-[#00e5ff]" translate="no" style="font-size:24px">public</span>
-    <span class="text-lg text-[#00e5ff] font-bold">Peta Topologi (Reseller)</span>
+    <span class="text-lg text-[#00e5ff] font-bold">Peta Jaringan</span>
 @endsection
 
 <div class="h-[calc(100vh-100px)] w-full flex flex-col" style="min-height:600px;">
+    {{-- Leaflet CSS & JS --}}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .map-smart-toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(0, 229, 255, 0.2); overflow-x: auto; }
@@ -38,9 +41,9 @@
     <div class="bg-[#111827] border border-[#00e5ff]/30 rounded-lg shadow-lg flex-1 flex flex-col overflow-hidden">
         <div class="px-4 py-3 border-b border-gray-800 flex justify-between items-center bg-[#0a0e1a]/50">
             <h5 class="text-[#00e5ff] font-bold m-0 flex items-center">
-                <i class="fa fa-map mr-2"></i> Peta Distribusi & Topologi (Wilayah Reseller)
+                <i class="fa fa-map mr-2"></i> Peta Jaringan
             </h5>
-            <div class="text-xs text-slate-400">Read-Only Mode</div>
+            <div class="text-xs text-slate-400">Wilayah Kemitraan Reseller</div>
         </div>
 
         <div class="map-smart-toolbar">
@@ -57,7 +60,7 @@
             </div>
         </div>
 
-        <div id="reseller-map" class="flex-1 w-full bg-[#0a0e1a]" wire:ignore></div>
+        <div id="reseller-map" class="flex-1 w-full bg-[#0a0e1a]" style="min-height:550px; height:100%; width:100%;" wire:ignore></div>
     </div>
 </div>
 
@@ -199,26 +202,6 @@
                 }
             }
         });
-                let html = `
-                    <div style="font-family:Inter,sans-serif;width:230px;font-size:12px;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">
-                            <span style="font-weight:700;color:#34d399;font-size:13px;">ODP: ${i.name}</span>
-                            <span style="font-size:9px;font-weight:700;background:#064e3b;color:#a7f3d0;padding:2px 6px;border-radius:999px;">ODP</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Port Terpakai:</span><span style="color:#f8fafc;font-weight:700;">${usedP} / ${totalP} (${pct}%)</span></div>
-                        <div style="width:100%;height:5px;background:#1e293b;border-radius:999px;margin-bottom:6px;overflow:hidden;">
-                            <div style="width:${pct}%;height:100%;background:${pct > 90 ? '#ef4444' : (pct > 70 ? '#f59e0b' : '#10b981')};"></div>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Port Tersedia:</span><span style="color:#34d399;font-weight:700;">${availP} ONU lagi</span></div>
-                    </div>`;
-                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);
-                bounds.push([i.latitude, i.longitude]);
-                if(i.odc_id) {
-                    let odc = odcs.find(o => o.id == i.odc_id);
-                    if(odc && odc.latitude && odc.longitude) { window.L.polyline([[odc.latitude, odc.longitude], [i.latitude, i.longitude]], { color: '#fd7e14', weight: 2, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer); }
-                }
-            }
-        });
         
         customers.forEach(i => {
             if(i.latitude && i.longitude) {
@@ -246,9 +229,13 @@
             }
         });
         
-        if (bounds.length > 0) { mapInstance.fitBounds(bounds, { padding: [50, 50] }); }
+        if (bounds.length > 0) { 
+            mapInstance.fitBounds(bounds, { padding: [50, 50], maxZoom: 17 }); 
+        }
         
-        setTimeout(() => { if(mapInstance) mapInstance.invalidateSize(); }, 500);
+        setTimeout(() => { if(mapInstance) mapInstance.invalidateSize(); }, 250);
+        setTimeout(() => { if(mapInstance) mapInstance.invalidateSize(); }, 800);
+        window.addEventListener('resize', () => { if(mapInstance) mapInstance.invalidateSize(); });
     }
 
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initResellerMap); } 
