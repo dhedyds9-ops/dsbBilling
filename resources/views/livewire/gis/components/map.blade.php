@@ -1481,7 +1481,10 @@
 
         function formatGisPhotoUrl(url) {
             if (!url || typeof url !== 'string') return '';
-            if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
+            if (url.startsWith('data:')) return url;
+            // Normalize absolute URL containing /storage/ to relative /storage/ to avoid HTTP Mixed Content on HTTPS
+            url = url.replace(/^https?:\/\/[^\/]+(\/storage\/.*)$/, '$1');
+            if (url.startsWith('http://') || url.startsWith('https://')) return url;
             if (url.startsWith('/storage/')) return url;
             if (url.startsWith('storage/')) return '/' + url;
             if (url.startsWith('/')) return url;

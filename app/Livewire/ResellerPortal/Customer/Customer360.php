@@ -173,6 +173,36 @@ class Customer360 extends AdminComponent
         session()->flash('success', 'Data pelanggan dan ONU berhasil diperbarui!');
     }
 
+    public function saveCoordinates($lat, $lng)
+    {
+        $lat = trim((string)$lat);
+        $lng = trim((string)$lng);
+
+        if (!$lat || !$lng) {
+            session()->flash('error', 'Titik koordinat Latitude dan Longitude wajib diisi.');
+            return;
+        }
+
+        $customer = $this->getCustomer();
+        $customer->update([
+            'latitude' => $lat,
+            'longitude' => $lng,
+        ]);
+
+        // Sync with associated ONU device if present
+        $customer->customerServices()->each(function ($svc) use ($lat, $lng) {
+            if ($svc->onu_id && $svc->onu) {
+                $svc->onu->update([
+                    'latitude' => $lat,
+                    'longitude' => $lng,
+                ]);
+            }
+        });
+
+        $this->getCustomer()->refresh();
+        session()->flash('success', 'Titik koordinat lokasi pelanggan berhasil disimpan!');
+    }
+
             public function updatedEditServicePasswordMode($val) {
         if ($val === 'same') $this->edit_service_password = $this->edit_service_username;
     }

@@ -82,6 +82,15 @@ class Index extends AdminComponent
             })
             ->values();
 
+        $formatPhotos = function ($rawPhotos) {
+            return array_values(array_filter(array_map(function ($p) {
+                if (empty($p)) return null;
+                $clean = preg_replace('/^https?:\/\/[^\/]+(\/storage\/.*)$/', '$1', (string) $p);
+                if (str_starts_with($clean, 'http://') || str_starts_with($clean, 'https://') || str_starts_with($clean, '/storage/')) return $clean;
+                return '/storage/' . ltrim($clean, '/');
+            }, (array) ($rawPhotos ?? []))));
+        };
+
         $olts = Olt::forReseller()->get()->map(fn($o) => [
             'id' => $o->id,
             'name' => $o->name,
@@ -92,11 +101,7 @@ class Index extends AdminComponent
             'address' => $o->address ?: '-',
             'latitude' => $o->latitude ? (float)$o->latitude : null,
             'longitude' => $o->longitude ? (float)$o->longitude : null,
-            'photos' => array_values(array_filter(array_map(function($p) {
-                if (empty($p)) return null;
-                if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
-                return '/storage/' . ltrim($p, '/');
-            }, (array)($o->photos ?? [])))),
+            'photos' => $formatPhotos($o->photos),
         ]);
 
         $odcs = Odc::forReseller()->with(['olt:id,name,latitude,longitude'])->get()->map(fn($o) => [
@@ -110,11 +115,7 @@ class Index extends AdminComponent
             'address' => $o->address ?: '-',
             'latitude' => $o->latitude ? (float)$o->latitude : null,
             'longitude' => $o->longitude ? (float)$o->longitude : null,
-            'photos' => array_values(array_filter(array_map(function($p) {
-                if (empty($p)) return null;
-                if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
-                return '/storage/' . ltrim($p, '/');
-            }, (array)($o->photos ?? [])))),
+            'photos' => $formatPhotos($o->photos),
         ]);
 
         $closures = JointClosure::forReseller()->with(['odc:id,name,latitude,longitude'])->get()->map(fn($c) => [
@@ -128,14 +129,10 @@ class Index extends AdminComponent
             'address' => $c->address ?: '-',
             'latitude' => $c->latitude ? (float)$c->latitude : null,
             'longitude' => $c->longitude ? (float)$c->longitude : null,
-            'photos' => array_values(array_filter(array_map(function($p) {
-                if (empty($p)) return null;
-                if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
-                return '/storage/' . ltrim($p, '/');
-            }, (array)($c->photos ?? [])))),
+            'photos' => $formatPhotos($c->photos),
         ]);
 
-        $odps = Odp::forReseller()->with(['olt:id,name', 'odc:id,name,latitude,longitude'])->get()->map(function($o) {
+        $odps = Odp::forReseller()->with(['olt:id,name', 'odc:id,name,latitude,longitude'])->get()->map(function($o) use ($formatPhotos) {
             $totalP = (int)($o->port_count ?: 8);
             $usedP = (int)($o->used_port_count ?? 0);
             $reservedP = (int)($o->reserved_port_count ?? 0);
@@ -152,11 +149,7 @@ class Index extends AdminComponent
                 'address' => $o->address ?: ($o->description ?: '-'),
                 'latitude' => $o->latitude ? (float)$o->latitude : null,
                 'longitude' => $o->longitude ? (float)$o->longitude : null,
-                'photos' => array_values(array_filter(array_map(function($p) {
-                    if (empty($p)) return null;
-                    if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
-                    return '/storage/' . ltrim($p, '/');
-                }, (array)($o->photos ?? [])))),
+                'photos' => $formatPhotos($o->photos),
             ];
         });
 

@@ -66,6 +66,15 @@ class Nearest extends Component
                 $q->where('branch_id', $branchId)->orWhereNull('branch_id')->orWhere('branch_id', 1);
             });
         }
+        $formatPhotos = function ($rawPhotos) {
+            return array_values(array_filter(array_map(function ($p) {
+                if (empty($p)) return null;
+                $clean = preg_replace('/^https?:\/\/[^\/]+(\/storage\/.*)$/', '$1', (string) $p);
+                if (str_starts_with($clean, 'http://') || str_starts_with($clean, 'https://') || str_starts_with($clean, '/storage/')) return $clean;
+                return '/storage/' . ltrim($clean, '/');
+            }, (array) ($rawPhotos ?? []))));
+        };
+
         $olts = $oltsQuery->get()->map(fn($o) => [
             'id' => $o->id,
             'name' => $o->name,
@@ -76,11 +85,7 @@ class Nearest extends Component
             'address' => $o->address ?: '-',
             'latitude' => $o->latitude ? (float)$o->latitude : null,
             'longitude' => $o->longitude ? (float)$o->longitude : null,
-            'photos' => array_values(array_filter(array_map(function($p) {
-                if (empty($p)) return null;
-                if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
-                return '/storage/' . ltrim($p, '/');
-            }, (array)($o->photos ?? [])))),
+            'photos' => $formatPhotos($o->photos),
         ])->toArray();
 
         $odcsQuery = Odc::withoutGlobalScopes()->with(['olt:id,name,latitude,longitude']);
@@ -89,7 +94,7 @@ class Nearest extends Component
                 $q->where('branch_id', $branchId)->orWhereNull('branch_id')->orWhere('branch_id', 1);
             });
         }
-        $odcs = $odcsQuery->get()->map(function($o) {
+        $odcs = $odcsQuery->get()->map(function($o) use ($formatPhotos) {
             $oltDist = null;
             if ($o->olt && $o->olt->latitude && $o->olt->longitude && $o->latitude && $o->longitude) {
                 $oltDist = round($this->calculateHaversine((float)$o->latitude, (float)$o->longitude, (float)$o->olt->latitude, (float)$o->olt->longitude), 2);
@@ -106,11 +111,7 @@ class Nearest extends Component
                 'address' => $o->address ?: ($o->description ?: '-'),
                 'latitude' => $o->latitude ? (float)$o->latitude : null,
                 'longitude' => $o->longitude ? (float)$o->longitude : null,
-                'photos' => array_values(array_filter(array_map(function($p) {
-                    if (empty($p)) return null;
-                    if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
-                    return '/storage/' . ltrim($p, '/');
-                }, (array)($o->photos ?? [])))),
+                'photos' => $formatPhotos($o->photos),
             ];
         })->toArray();
 
@@ -120,7 +121,7 @@ class Nearest extends Component
                 $q->where('branch_id', $branchId)->orWhereNull('branch_id')->orWhere('branch_id', 1);
             });
         }
-        $closures = $closuresQuery->get()->map(function($c) {
+        $closures = $closuresQuery->get()->map(function($c) use ($formatPhotos) {
             $odcDist = null;
             if ($c->odc && $c->odc->latitude && $c->odc->longitude && $c->latitude && $c->longitude) {
                 $odcDist = round($this->calculateHaversine((float)$c->latitude, (float)$c->longitude, (float)$c->odc->latitude, (float)$c->odc->longitude), 2);
@@ -137,11 +138,7 @@ class Nearest extends Component
                 'address' => $c->address ?: ($c->description ?: '-'),
                 'latitude' => $c->latitude ? (float)$c->latitude : null,
                 'longitude' => $c->longitude ? (float)$c->longitude : null,
-                'photos' => array_values(array_filter(array_map(function($p) {
-                    if (empty($p)) return null;
-                    if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
-                    return '/storage/' . ltrim($p, '/');
-                }, (array)($c->photos ?? [])))),
+                'photos' => $formatPhotos($c->photos),
             ];
         })->toArray();
 
@@ -269,6 +266,7 @@ class Nearest extends Component
 
         if ($path) {
             $photoUrl = Storage::url($path);
+            $cleanUrl = preg_replace('/^https?:\/\/[^\/]+(\/storage\/.*)$/', '$1', (string) $photoUrl);
             $node = match ($this->uploadTargetType) {
                 'olt' => Olt::withoutGlobalScopes()->find($this->uploadTargetId),
                 'odc' => Odc::withoutGlobalScopes()->find($this->uploadTargetId),
@@ -278,7 +276,7 @@ class Nearest extends Component
 
             if ($node) {
                 $current = is_array($node->photos) ? $node->photos : [];
-                $current[] = $photoUrl;
+                $current[] = $cleanUrl;
                 $node->photos = array_values(array_unique($current));
                 $node->save();
             }
@@ -378,8 +376,9 @@ class Nearest extends Component
 
             $photos = array_values(array_filter(array_map(function($p) {
                 if (empty($p)) return null;
-                if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
-                return '/storage/' . ltrim($p, '/');
+                $clean = preg_replace('/^https?:\/\/[^\/]+(\/storage\/.*)$/', '$1', (string) $p);
+                if (str_starts_with($clean, 'http://') || str_starts_with($clean, 'https://') || str_starts_with($clean, '/storage/')) return $clean;
+                return '/storage/' . ltrim($clean, '/');
             }, (array) ($odp->photos ?? []))));
 
             $odcDist = null;

@@ -186,4 +186,38 @@ class MobileApiAuthTest extends TestCase
         $response->assertStatus(403)
             ->assertJson(['success' => false]);
     }
+
+    public function test_authenticated_staff_can_generate_sso_token_and_auto_login()
+    {
+        $user = User::factory()->create([
+            'email' => 'sso_user_' . uniqid() . '@example.com',
+            'job_function' => 'RESELLER',
+            'is_active' => true,
+        ]);
+
+        Sanctum::actingAs($user, ['*']);
+
+        // 1. Generate SSO Token
+        $response = $this->postJson('/api/mobile/auth/sso-token');
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'target_path' => '/reseller-portal/dashboard',
+            ]);
+
+        $ssoToken = $response->json('sso_token');
+        $this->assertNotEmpty($ssoToken);
+        $this->assertStringContainsString('/sso/login?token=' . $ssoToken, $response->json('redirect_url'));
+
+        // 2. Consume SSO Token via Web GET
+        $webResponse = $this->get('/sso/login?token=' . $ssoToken);
+        $webResponse->assertRedirect('/reseller-portal/dashboard');
+        $this->assertAuthenticatedAs($user, 'web');
+
+        // 3. Replay attack: Single-use token must be invalidated
+        $this->app['auth']->guard('web')->logout();
+        $replayResponse = $this->get('/sso/login?token=' . $ssoToken);
+        $replayResponse->assertRedirect(route('login'));
+        $this->assertGuest('web');
+    }
 }

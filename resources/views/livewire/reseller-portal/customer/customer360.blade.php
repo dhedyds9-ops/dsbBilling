@@ -335,38 +335,62 @@
                 <div class="space-y-6">
                     <x-base.card>
             <x-slot name="header">
-                <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:20px">map</span>
-                    Lokasi Pelanggan
-                </h3>
-            </x-slot>
-            @if($customer->latitude && $customer->longitude)
-            <div class="space-y-3">
-                <div class="flex gap-4 text-sm">
-                    <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                        <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:18px">location_on</span>
-                        Lat: <span class="font-mono font-semibold text-slate-900 dark:text-slate-100">{{ $customer->latitude }}</span>
-                        &nbsp;|&nbsp; Lng: <span class="font-mono font-semibold text-slate-900 dark:text-slate-100">{{ $customer->longitude }}</span>
+                <div class="flex items-center justify-between w-full">
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:20px">map</span>
+                        Lokasi Pelanggan & Titik Koordinat
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="detectCustomerGps()"
+                                class="px-2.5 py-1 text-xs font-bold rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-300 border border-sky-200 dark:border-sky-800 hover:bg-sky-100 flex items-center gap-1 transition cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">my_location</span>
+                            <span>Deteksi GPS</span>
+                        </button>
                     </div>
-                    <a href="https://maps.google.com/?q={{ $customer->latitude }},{{ $customer->longitude }}" target="_blank" rel="noopener noreferrer"
-                       class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium">
-                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">open_in_new</span>
-                        Buka di Google Maps
-                    </a>
                 </div>
-                <div class="h-72 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 relative z-0" wire:ignore>
-                      <div id="customer-map" class="w-full h-full rounded-xl"></div>
-                  </div>
-            </div>
-            @else
-            <div class="h-48 bg-slate-100 dark:bg-slate-900 rounded-xl flex items-center justify-center">
-                <div class="text-center text-slate-400">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:48px">location_off</span>
-                    <p class="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-400">Koordinat lokasi belum diisi</p>
-                    <p class="text-xs mt-1">Silahkan edit profil dan isi data latitude/longitude</p>
+            </x-slot>
+
+            <div class="space-y-3">
+                {{-- Koordinat Status & Inputs --}}
+                <div class="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-500 font-medium">Lat:</span>
+                            <input type="text" id="cust_lat_input" value="{{ $customer->latitude ?? '' }}" placeholder="-6.xxxxxxx"
+                                   class="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg font-mono font-bold text-slate-800 dark:text-slate-100 w-28 text-xs focus:ring-1 focus:ring-indigo-500">
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-500 font-medium">Lng:</span>
+                            <input type="text" id="cust_lng_input" value="{{ $customer->longitude ?? '' }}" placeholder="106.xxxxxxx"
+                                   class="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg font-mono font-bold text-slate-800 dark:text-slate-100 w-28 text-xs focus:ring-1 focus:ring-indigo-500">
+                        </div>
+                        @if($customer->latitude && $customer->longitude)
+                        <a href="https://maps.google.com/?q={{ $customer->latitude }},{{ $customer->longitude }}" target="_blank" rel="noopener noreferrer"
+                           class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">
+                            <span class="material-symbols-outlined text-sm">open_in_new</span>
+                            <span>Google Maps</span>
+                        </a>
+                        @endif
+                    </div>
+                    <div>
+                        <button type="button" onclick="submitCoordinatesToLivewire()"
+                                class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs shadow-sm flex items-center gap-1.5 transition cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">save</span>
+                            <span>Simpan Titik Koordinat</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm text-indigo-500">touch_app</span>
+                    <span>Klik pada peta atau geser pin marker untuk menentukan titik koordinat rumah pelanggan secara presisi.</span>
+                </div>
+
+                {{-- Interactive Map --}}
+                <div class="h-80 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 relative z-0 overflow-hidden" wire:ignore>
+                    <div id="customer-map" class="w-full h-full rounded-xl"></div>
                 </div>
             </div>
-            @endif
         </x-base.card>
                 </div>
             </div>
@@ -1556,7 +1580,57 @@
 <script>
 document.addEventListener('livewire:initialized', () => {
     let map = null;
-    
+    let customerMarker = null;
+
+    window.submitCoordinatesToLivewire = function() {
+        const latInput = document.getElementById('cust_lat_input');
+        const lngInput = document.getElementById('cust_lng_input');
+        const lat = latInput ? latInput.value.trim() : '';
+        const lng = lngInput ? lngInput.value.trim() : '';
+
+        if (!lat || !lng) {
+            alert('Silakan klik pada peta terlebih dahulu untuk menentukan titik koordinat.');
+            return;
+        }
+
+        @this.saveCoordinates(lat, lng);
+    };
+
+    window.detectCustomerGps = function() {
+        if (!("geolocation" in navigator)) {
+            alert("Browser tidak mendukung geolokasi.");
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            const lat = pos.coords.latitude.toFixed(6);
+            const lng = pos.coords.longitude.toFixed(6);
+            updatePinPosition(lat, lng, true);
+        }, function(err) {
+            alert("Gagal membaca GPS: " + (err.message || 'Izin lokasi ditolak'));
+        }, { enableHighAccuracy: true, timeout: 10000 });
+    };
+
+    function updatePinPosition(lat, lng, panTo = false) {
+        const latIn = document.getElementById('cust_lat_input');
+        const lngIn = document.getElementById('cust_lng_input');
+        if (latIn) latIn.value = lat;
+        if (lngIn) lngIn.value = lng;
+
+        if (customerMarker) {
+            customerMarker.setLatLng([lat, lng]);
+        } else if (map) {
+            customerMarker = L.marker([lat, lng], { draggable: true }).addTo(map);
+            customerMarker.on('dragend', function(e) {
+                const pos = e.target.getLatLng();
+                if (latIn) latIn.value = pos.lat.toFixed(6);
+                if (lngIn) lngIn.value = pos.lng.toFixed(6);
+            });
+        }
+        if (panTo && map) {
+            map.setView([lat, lng], 17);
+        }
+    }
+
     function initMap() {
         if (typeof L === 'undefined') {
             setTimeout(initMap, 100);
@@ -1570,10 +1644,12 @@ document.addEventListener('livewire:initialized', () => {
             return;
         }
         
-        let lat = {{ $customer->latitude ?? 0 }};
-        let lng = {{ $customer->longitude ?? 0 }};
+        let hasCoords = {{ ($customer->latitude && $customer->longitude) ? 'true' : 'false' }};
+        let lat = {{ $customer->latitude ? (float)$customer->latitude : -6.800278 }};
+        let lng = {{ $customer->longitude ? (float)$customer->longitude : 105.939159 }};
+        let zoom = hasCoords ? 17 : 14;
         
-        map = L.map('customer-map').setView([lat, lng], 16);
+        map = L.map('customer-map').setView([lat, lng], zoom);
         
         let osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
@@ -1584,14 +1660,31 @@ document.addEventListener('livewire:initialized', () => {
             subdomains: ['0', '1', '2', '3']
         });
         
-        osm.addTo(map);
+        googleSat.addTo(map);
         
         L.control.layers({
-            "Street (OSM)": osm,
-            "Satellite (Google)": googleSat
+            "Satellite (Google)": googleSat,
+            "Street (OSM)": osm
         }).addTo(map);
         
-        L.marker([lat, lng]).addTo(map).bindPopup("{{ $customer->name }}");
+        if (hasCoords) {
+            customerMarker = L.marker([lat, lng], { draggable: true }).addTo(map).bindPopup("{{ $customer->name }}");
+            customerMarker.on('dragend', function(e) {
+                const pos = e.target.getLatLng();
+                const latIn = document.getElementById('cust_lat_input');
+                const lngIn = document.getElementById('cust_lng_input');
+                if (latIn) latIn.value = pos.lat.toFixed(6);
+                if (lngIn) lngIn.value = pos.lng.toFixed(6);
+            });
+        }
+
+        // Click on map to place/move pin
+        map.on('click', function(e) {
+            updatePinPosition(e.latlng.lat.toFixed(6), e.latlng.lng.toFixed(6), false);
+        });
+
+        setTimeout(() => { if (map) map.invalidateSize(); }, 300);
+        setTimeout(() => { if (map) map.invalidateSize(); }, 800);
     }
     
     initMap();

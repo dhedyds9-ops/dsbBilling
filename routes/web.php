@@ -99,6 +99,9 @@ Route::post('/register-lead', function (\Illuminate\Http\Request $request) {
     return back()->with('success', 'Terima kasih, pendaftaran Anda telah kami terima. Tim kami akan segera menghubungi Anda.');
 })->name('register.lead');
 
+// ==================== 1-CLICK SSO MOBILE AUTO-LOGIN ====================
+Route::get('/sso/login', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'ssoLogin'])->name('sso.login');
+
 // Dev Helper (hanya local)
 Route::get('/login-as-admin', function () {
     if (! app()->isLocal()) abort(404);
@@ -763,13 +766,29 @@ Route::post('/pengaturan/perusahaan/upload-logo', function (\Illuminate\Http\Req
     return back()->with('success', 'Gambar berhasil diperbarui!');
 })->middleware(['auth', 'role:administrator,manager'])->name('pengaturan.perusahaan.upload-logo');
 
-// Fallback direct storage file serving (in case symlink /public/storage is missing on server)
+// Fallback direct storage file serving (in case symlink /public/storage is missing or multi-directory on VPS)
 Route::get('/storage/{path}', function ($path) {
     $filePath = storage_path('app/public/' . $path);
     if (!file_exists($filePath)) {
+        // Multi-domain / multi-site VPS sibling fallback (e.g. /var/www/winets <-> /var/www/mstore)
+        $parentDir = dirname(base_path());
+        $candidates = [
+            $parentDir . '/winets/storage/app/public/' . $path,
+            $parentDir . '/mstore/storage/app/public/' . $path,
+            '/var/www/winets/storage/app/public/' . $path,
+            '/var/www/mstore/storage/app/public/' . $path,
+        ];
+        foreach ($candidates as $cand) {
+            if (file_exists($cand)) {
+                $filePath = $cand;
+                break;
+            }
+        }
+    }
+    if (!file_exists($filePath)) {
         abort(404);
     }
-    $mime = mime_content_type($filePath) ?: 'application/octet-stream';
+    $mime = @mime_content_type($filePath) ?: 'image/jpeg';
     return response()->file($filePath, [
         'Content-Type' => $mime,
         'Cache-Control' => 'public, max-age=86400',

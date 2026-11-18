@@ -105,5 +105,52 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
         return redirect()->route('home');
     }
+
+    /**
+     * Authenticate user into web session using a single-use mobile SSO token.
+     * GET /sso/login?token={ssoToken}
+     */
+    public function ssoLogin(Request $request): RedirectResponse
+    {
+        $token = (string) $request->query('token');
+        if (empty($token)) {
+            return redirect()->route('login')->withErrors(['error' => 'Token SSO tidak ditemukan.']);
+        }
+
+        $cacheKey = 'mobile_sso_token:' . $token;
+        $data = \Illuminate\Support\Facades\Cache::pull($cacheKey);
+
+        if (!$data || empty($data['user_id'])) {
+            return redirect()->route('login')->withErrors(['error' => 'Sesi login satu-klik telah kedaluwarsa atau sudah digunakan. Silakan coba kembali dari aplikasi.']);
+        }
+
+        $user = \App\Models\User::withoutGlobalScopes()->find($data['user_id']);
+        if (!$user || (isset($user->is_active) && !$user->is_active)) {
+            return redirect()->route('login')->withErrors(['error' => 'Akun pengguna tidak ditemukan atau dinonaktifkan.']);
+        }
+
+        // Establish standard web authentication
+        Auth::guard('web')->login($user, remember: true);
+        $request->session()->regenerate();
+
+        \Illuminate\Support\Facades\Log::info("SSO 1-Click Auto-Login: User #{$user->id} ({$user->name}) authenticated successfully.");
+
+        // Clean any customer-portal intended url if user is staff/reseller
+        session()->forget('url.intended');
+
+        $targetUrl = $data['target_path'] ?? null;
+        if (!empty($targetUrl)) {
+            return redirect($targetUrl);
+        }
+
+        // Fallback to role-based portal
+        if ($user->hasRole('reseller') || (method_exists($user, 'isReseller') && $user->isReseller())) {
+            return redirect()->route('reseller-portal.dashboard');
+        } elseif (strtoupper($user->job_function ?? '') === 'TECHNICIAN' || $user->hasRole(['technician', 'teknisi'])) {
+            return redirect()->route('technician.dashboard');
+        }
+
+        return redirect()->route('dashboard');
+    }
 }
 

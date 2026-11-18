@@ -200,6 +200,60 @@ class MobileAuthController extends Controller
     }
 
     /**
+     * Generate a short-lived single-use SSO token for 1-click web login.
+     * POST /api/mobile/auth/sso-token
+     */
+    public function createSsoToken(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        if (isset($user->is_active) && !$user->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akun staf dinonaktifkan.',
+            ], 403);
+        }
+
+        // Generate high-entropy single-use token
+        $ssoToken = \Illuminate\Support\Str::random(64);
+        $cacheKey = 'mobile_sso_token:' . $ssoToken;
+
+        // Determine destination target path based on user role
+        $targetPath = '/dashboard';
+        if ($user->hasRole('reseller') || (method_exists($user, 'isReseller') && $user->isReseller())) {
+            $targetPath = '/reseller-portal/dashboard';
+        } elseif (strtoupper($user->job_function ?? '') === 'TECHNICIAN' || $user->hasRole(['technician', 'teknisi'])) {
+            $targetPath = '/isp/dashboard';
+        }
+
+        // Store in cache for 60 seconds (one-time use)
+        Cache::put($cacheKey, [
+            'user_id' => $user->id,
+            'target_path' => $targetPath,
+            'ip' => $request->ip(),
+            'created_at' => now()->timestamp,
+        ], 60);
+
+        // Build absolute redirect URL based on request scheme and host
+        $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
+        $redirectUrl = $baseUrl . '/sso/login?token=' . $ssoToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Token SSO 1-klik berhasil dibuat.',
+            'sso_token' => $ssoToken,
+            'redirect_url' => $redirectUrl,
+            'target_path' => $targetPath,
+        ]);
+    }
+
+    /**
      * Authenticate via Single-Use Secure QR Code.
      */
     public function authenticateQr(Request $request): JsonResponse

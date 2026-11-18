@@ -75,7 +75,8 @@ class EnsureWorkforceCheckedIn
     protected function isExemptEndpoint(Request $request): bool
     {
         // Allow mobile auth, attendance management, payroll history, and sync bootstrap
-        if ($request->is('api/mobile/attendance*')
+        if ($request->is('api/mobile/auth*')
+            || $request->is('api/mobile/attendance*')
             || $request->is('api/mobile/me')
             || $request->is('api/mobile/logout')
             || $request->is('api/mobile/payroll*')
