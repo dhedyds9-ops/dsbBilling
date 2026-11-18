@@ -25,6 +25,14 @@ class Show extends AdminComponent
         ];
     }
 
+    public function deletePhoto()
+    {
+        \App\Services\ISP\NodePhotoService::deletePhotos($this->odp);
+        $this->odp->refresh();
+        \App\Livewire\Gis\GisMap::flushCache();
+        session()->flash('success', 'Foto dokumentasi tiang ODP berhasil dihapus!');
+    }
+
     public function render()
     {
         return view('livewire.isp.odp.show');

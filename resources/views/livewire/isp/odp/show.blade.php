@@ -78,7 +78,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Jumlah Port</label>
-                            <p class="text-slate-900 dark:text-slate-100">{{ $odp->port_count ?? '-' }}</p>
+                            <p class="text-slate-900 dark:text-slate-100 font-bold text-emerald-600 dark:text-emerald-400">{{ $odp->port_count ?: 8 }} Port</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Latitude</label>
@@ -114,19 +114,77 @@
                 </div>
             </div></div>
 
-            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden"><div class="p-4">
-                <x-slot name="header">
-                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Statistik</h3>
-                </x-slot>
-                <div class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                        <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
-                            <p class="text-sm text-slate-500 dark:text-slate-400">Splitter</p>
-                            <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $odp->splitters->count() }}</p>
+            <div class="space-y-6">
+                {{-- Foto Dokumentasi Tiang ODP --}}
+                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400" style="font-size:20px">photo_camera</span>
+                            Dokumentasi Tiang / Box ODP
+                        </h3>
+                        <a href="{{ route('isp.odps.edit', $odp->id) }}" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
+                            <span class="material-symbols-outlined text-xs">edit</span> Edit / Ganti
+                        </a>
+                    </div>
+                    <div class="p-4">
+                        @php
+                            $photos = is_array($odp->photos) ? $odp->photos : [];
+                            $hasPhoto = !empty($photos) && !empty($photos[0]);
+                        @endphp
+                        @if($hasPhoto)
+                            <div class="space-y-3">
+                                <div class="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-950 flex items-center justify-center max-h-72">
+                                    <img src="{{ $photos[0] }}" class="w-full h-64 object-cover cursor-pointer hover:scale-105 transition-transform duration-300" onclick="window.open('{{ $photos[0] }}', '_blank')" onerror="this.onerror=null; this.src='/node-photo/odp/{{ $odp->id }}';" title="Klik untuk membuka ukuran penuh">
+                                    <div class="absolute bottom-2 right-2 px-2.5 py-1 bg-black/70 backdrop-blur-xs text-white text-[11px] font-medium rounded-lg pointer-events-none flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-xs">zoom_in</span> Klik untuk perbesar
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between pt-1">
+                                    <span class="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-sm">verified</span> Foto Lapangan Aktif
+                                    </span>
+                                    <div class="flex items-center gap-2">
+                                        <a href="{{ route('isp.odps.edit', $odp->id) }}" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-xs">edit</span> Ubah
+                                        </a>
+                                        <button type="button" wire:click="deletePhoto" wire:confirm="Yakin ingin menghapus foto tiang ODP ini?" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer">
+                                            <span class="material-symbols-outlined text-xs">delete</span> Hapus
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        @else
+                            <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 text-center">
+                                <span class="material-symbols-outlined text-slate-300 dark:text-slate-600 text-4xl mb-2">add_photo_alternate</span>
+                                <p class="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Belum Ada Foto Tiang ODP</p>
+                                <p class="text-[11px] text-slate-400 mb-4">Tambahkan foto fisik tiang untuk mempermudah teknisi saat tracing gangguan di lapangan.</p>
+                                <a href="{{ route('isp.odps.edit', $odp->id) }}" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition">
+                                    <span class="material-symbols-outlined text-sm">add_a_photo</span> Unggah Foto Tiang Sekarang
+                                </a>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Statistik Card --}}
+                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 dark:border-slate-700">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Statistik Port & Splitter</h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Splitter Terpasang</p>
+                                <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $odp->splitters->count() }}</p>
+                            </div>
+                            <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Kapasitas Port</p>
+                                <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{{ $odp->port_count ?: 8 }}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div></div>
+            </div>
         </div>
     </div>
 </div>

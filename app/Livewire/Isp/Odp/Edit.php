@@ -33,6 +33,7 @@ class Edit extends AdminComponent
     public $port_count;
     public $status;
     public $photo;
+    public $croppedPhotoData = null;
     public $existingPhotos = [];
 
     public function mount($id = null)
@@ -56,8 +57,8 @@ class Edit extends AdminComponent
         $this->postal_code = $this->odp->postal_code;
         $this->latitude = $this->odp->latitude;
         $this->longitude = $this->odp->longitude;
-        $this->port_count = $this->odp->port_count;
-        $this->status = $this->odp->status;
+        $this->port_count = $this->odp->port_count ?: 8;
+        $this->status = $this->odp->status ?: 'active';
         $this->existingPhotos = is_array($this->odp->photos) ? $this->odp->photos : [];
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
@@ -83,8 +84,13 @@ class Edit extends AdminComponent
             'postal_code' => 'nullable|string|max:20',
         ]);
 
-        if ($this->photo) {
-            NodePhotoService::attachPhoto($this->odp, $this->photo, 'odp');
+        $photos = $this->existingPhotos;
+        if (!empty($this->croppedPhotoData)) {
+            $res = NodePhotoService::attachPhoto($this->odp, $this->croppedPhotoData, 'odp', true);
+            $photos = $res['photos'] ?? [];
+        } elseif ($this->photo) {
+            $res = NodePhotoService::attachPhoto($this->odp, $this->photo, 'odp', true);
+            $photos = $res['photos'] ?? [];
         }
 
         $service = app(OdpService::class);
@@ -102,11 +108,14 @@ class Edit extends AdminComponent
             'postal_code' => $this->postal_code,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
-            'port_count' => $this->port_count,
+            'port_count' => (int) ($this->port_count ?: 8),
             'status' => $this->status,
+            'photos' => array_values(array_unique($photos)),
         ], Auth::user());
 
-        session()->flash('success', 'ODP berhasil diperbarui!');
+        \App\Livewire\Gis\GisMap::flushCache();
+
+        session()->flash('success', 'ODP dan foto fisik tiang berhasil diperbarui!');
         return redirect()->route('isp.odps.show', $this->odpId);
     }
 
@@ -115,6 +124,8 @@ class Edit extends AdminComponent
         NodePhotoService::deletePhotos($this->odp);
         $this->existingPhotos = [];
         $this->photo = null;
+        $this->croppedPhotoData = null;
+        \App\Livewire\Gis\GisMap::flushCache();
         session()->flash('success', 'Foto dokumentasi tiang ODP berhasil dihapus!');
     }
 

@@ -30,6 +30,7 @@ class Edit extends AdminComponent
     public $port_count;
     public $status;
     public $photo;
+    public $croppedPhotoData = null;
     public array $existingPhotos = [];
 
     public function mount($id = null)
@@ -50,8 +51,8 @@ class Edit extends AdminComponent
         $this->address = $this->odc->address;
         $this->latitude = $this->odc->latitude;
         $this->longitude = $this->odc->longitude;
-        $this->port_count = $this->odc->port_count;
-        $this->status = $this->odc->status;
+        $this->port_count = $this->odc->port_count ?: 16;
+        $this->status = $this->odc->status ?: 'active';
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
             ['label' => 'Network', 'url' => route('isp.odcs.index')],
@@ -72,15 +73,12 @@ class Edit extends AdminComponent
         ]);
 
         $photos = $this->existingPhotos;
-        if ($this->photo) {
-            $dataUri = \App\Services\ISP\NodePhotoService::createDataUri($this->photo);
-            $relUrl = \App\Services\ISP\NodePhotoService::mirrorPhysicalFile($this->photo, 'odcs');
-            if ($dataUri) {
-                array_unshift($photos, $dataUri);
-            }
-            if ($relUrl) {
-                $photos[] = $relUrl;
-            }
+        if ($this->croppedPhotoData) {
+            $res = \App\Services\ISP\NodePhotoService::attachPhoto($this->odc, $this->croppedPhotoData, 'odc', true);
+            $photos = $res['photos'];
+        } elseif ($this->photo) {
+            $res = \App\Services\ISP\NodePhotoService::attachPhoto($this->odc, $this->photo, 'odc', true);
+            $photos = $res['photos'];
         }
 
         $service = app(OdcService::class);
@@ -110,6 +108,8 @@ class Edit extends AdminComponent
         \App\Services\ISP\NodePhotoService::deletePhotos($this->odc);
         $this->existingPhotos = [];
         $this->photo = null;
+        $this->croppedPhotoData = null;
+        \App\Livewire\Gis\GisMap::flushCache();
         session()->flash('success', 'Foto dokumentasi tiang ODC berhasil dihapus!');
     }
 
