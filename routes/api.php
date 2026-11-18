@@ -176,6 +176,10 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/auth/sso-token', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'createSsoToken'])->name('auth.sso-token');
+        Route::post('/auth/change-password', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'changePassword'])->name('auth.change-password');
+        Route::post('/auth/update-profile', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'updateProfile'])->name('auth.update-profile');
+        Route::post('/profile/change-password', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'changePassword']);
+        Route::post('/profile/update', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'updateProfile']);
     });
 
     Route::middleware(['auth:sanctum', 'workforce.checked_in'])->group(function () {

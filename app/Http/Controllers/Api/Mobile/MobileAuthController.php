@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class MobileAuthController extends Controller
 {
@@ -255,6 +257,146 @@ class MobileAuthController extends Controller
             'sso_token' => $ssoToken,
             'redirect_url' => $redirectUrl,
             'target_path' => $targetPath,
+        ]);
+    }
+
+    /**
+     * Change user password for authenticated mobile staff.
+     * POST /api/mobile/auth/change-password
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'current_password.required' => 'Kata sandi saat ini wajib diisi.',
+            'password.required' => 'Kata sandi baru wajib diisi.',
+            'password.min' => 'Kata sandi baru minimal 8 karakter.',
+            'password.confirmed' => 'Konfirmasi kata sandi baru tidak cocok.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Verify current password
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kata sandi saat ini yang Anda masukkan salah.',
+            ], 422);
+        }
+
+        // Ensure new password is not identical to current
+        if (Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kata sandi baru tidak boleh sama dengan kata sandi lama.',
+            ], 422);
+        }
+
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kata sandi berhasil diperbarui.',
+        ]);
+    }
+
+    /**
+     * Update user profile (Name, Username, Phone, Email) for authenticated mobile staff.
+     * POST /api/mobile/auth/update-profile
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'name' => ['nullable', 'string', 'max:255'],
+            'username' => [
+                'nullable',
+                'string',
+                'max:100',
+                Rule::unique('users', 'username')->ignore($user->id),
+            ],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'whatsapp' => ['nullable', 'string', 'max:50'],
+            'email' => [
+                'nullable',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user->id),
+            ],
+        ], [
+            'username.unique' => 'Username tersebut sudah digunakan oleh akun lain.',
+            'email.unique' => 'Alamat email tersebut sudah terdaftar.',
+            'email.email' => 'Format email tidak valid.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        if ($request->filled('name')) {
+            $user->name = trim((string)$request->name);
+        }
+
+        if ($request->filled('username')) {
+            $user->username = trim((string)$request->username);
+        }
+
+        if ($request->filled('email')) {
+            $user->email = trim((string)$request->email);
+        }
+
+        $phoneInput = $request->input('phone') ?? $request->input('whatsapp');
+        if ($phoneInput !== null) {
+            $cleanedPhone = trim((string)$phoneInput);
+            if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'phone')) {
+                $user->phone = $cleanedPhone;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'whatsapp')) {
+                $user->whatsapp = $cleanedPhone;
+            }
+        }
+
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profil akun berhasil diperbarui.',
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'username' => $user->username,
+                'email' => $user->email,
+                'phone' => $user->whatsapp ?? ($user->phone ?? ''),
+                'whatsapp' => $user->whatsapp ?? '',
+            ],
         ]);
     }
 
