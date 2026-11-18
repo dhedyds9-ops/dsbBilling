@@ -2230,10 +2230,20 @@ class MobileNetworkApiController extends Controller
             return response()->json(['success' => false, 'message' => 'Node perangkat tidak ditemukan.'], 404);
         }
 
+        $data = $node->toArray();
+        $data['address'] = $node->address ?? '';
+        $data['code'] = $node->code ?? '';
+        $data['name'] = $node->name ?? '';
+        $data['latitude'] = (string)($node->latitude ?? '');
+        $data['longitude'] = (string)($node->longitude ?? '');
+        $data['port_count'] = (int)($node->port_count ?? 8);
+        $data['type'] = $node->type ?? 'Dome';
+        $data['photos'] = is_array($node->photos) ? $node->photos : (is_string($node->photos) ? (json_decode($node->photos, true) ?: []) : []);
+
         return response()->json([
             'success' => true,
             'message' => 'Detail node ' . strtoupper($type) . ' berhasil dimuat.',
-            'data' => $node,
+            'data' => $data,
         ]);
     }
 
