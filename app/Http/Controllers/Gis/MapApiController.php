@@ -384,4 +384,69 @@ class MapApiController extends Controller
     {
         return response()->json(['paths' => []]);
     }
+
+    public function uploadPhoto(Request $request, $type, $id)
+    {
+        $request->validate([
+            'photo' => 'required|image|max:12288',
+        ]);
+
+        $model = match ($type) {
+            'olt' => Olt::find($id),
+            'odc' => Odc::find($id),
+            'odp' => Odp::find($id),
+            'closure' => class_exists(JointClosure::class) ? JointClosure::find($id) : null,
+            'htb' => class_exists(DistributionBox::class) ? DistributionBox::find($id) : null,
+            default => null,
+        };
+
+        if (!$model) {
+            return response()->json(['success' => false, 'message' => 'Node not found'], 404);
+        }
+
+        $folder = match ($type) {
+            'olt' => 'olts',
+            'odc' => 'odcs',
+            'closure' => 'closures',
+            default => 'odp',
+        };
+
+        $file = $request->file('photo');
+        $filename = \Illuminate\Support\Str::random(40) . '.' . ($file->getClientOriginalExtension() ?: 'jpg');
+        $relPath = "network_photos/{$folder}/{$filename}";
+
+        $targetPaths = [
+            storage_path("app/public/{$relPath}"),
+            public_path("storage/{$relPath}"),
+            "/var/www/shared_storage/{$relPath}",
+            "/var/www/mstore/storage/app/public/{$relPath}",
+            "/var/www/mstore/public/storage/{$relPath}",
+            "/var/www/winets/storage/app/public/{$relPath}",
+            "/var/www/winets/public/storage/{$relPath}",
+        ];
+
+        foreach ($targetPaths as $tp) {
+            $dir = dirname($tp);
+            if (!@is_dir($dir)) {
+                @mkdir($dir, 0775, true);
+            }
+            @copy($file->getRealPath(), $tp);
+            @chmod($tp, 0664);
+        }
+
+        $cleanUrl = "/storage/{$relPath}";
+        $current = is_array($model->photos) ? $model->photos : [];
+        array_unshift($current, $cleanUrl);
+        $model->photos = array_values(array_unique($current));
+        $model->save();
+
+        \App\Livewire\Gis\GisMap::flushCache();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Foto dokumentasi tiang berhasil diunggah dan disimpan!',
+            'url' => $cleanUrl,
+            'photos' => $model->photos,
+        ]);
+    }
 }

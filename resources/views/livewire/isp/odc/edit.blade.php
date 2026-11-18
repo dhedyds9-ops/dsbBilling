@@ -106,6 +106,25 @@
                     </div>
 
                     <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Foto Fisik Tiang / Perangkat ODC</label>
+                        @if($photo)
+                            <div class="mb-3">
+                                <img src="{{ $photo->temporaryUrl() }}" class="h-36 w-auto rounded-xl object-cover border border-indigo-200 dark:border-indigo-800 shadow-sm">
+                            </div>
+                        @elseif(!empty($existingPhotos))
+                            <div class="mb-3 flex items-center gap-3">
+                                <img src="{{ $existingPhotos[0] }}" class="h-36 w-auto rounded-xl object-cover border border-slate-200 dark:border-slate-700 shadow-sm" onerror="this.onerror=null; this.src='/node-photo/odc/{{ $odcId }}';">
+                                <div class="text-xs text-slate-500 dark:text-slate-400">
+                                    <p class="font-bold text-slate-700 dark:text-slate-200">Foto Saat Ini</p>
+                                    <p>Pilih foto baru di bawah ini untuk mengganti foto tiang ODC.</p>
+                                </div>
+                            </div>
+                        @endif
+                        <input type="file" wire:model="photo" accept="image/*" class="w-full text-xs text-slate-500 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 dark:file:bg-indigo-950/60 dark:file:text-indigo-300 hover:file:bg-indigo-100 cursor-pointer">
+                        @error('photo') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="md:col-span-2">
                         <x-forms.coordinate-picker latModel="latitude" lngModel="longitude" />
                     </div>
 

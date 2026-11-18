@@ -530,7 +530,7 @@
                     popupAnchor: [0, -18]
                 });
                 const firstPhoto = (o.photos && o.photos.length > 0) ? formatSafePhotoUrl(o.photos[0]) : '';
-                const photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onclick="window.open('${firstPhoto}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : '';
+                const photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onerror="this.onerror=null; this.src='/node-photo/olt/${o.id}';" onclick="window.open('/node-photo/olt/${o.id}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : `<div style="margin-bottom:6px;"><img src="/node-photo/olt/${o.id}" style="width:100%;height:65px;object-fit:cover;border-radius:8px;border:1px dashed #334155;"></div>`;
                 const gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + o.latitude + ',' + o.longitude;
 
                 const popupDiv = document.createElement('div');
@@ -587,7 +587,7 @@
                     popupAnchor: [0, -16]
                 });
                 const firstPhoto = (c.photos && c.photos.length > 0) ? formatSafePhotoUrl(c.photos[0]) : '';
-                const photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onclick="window.open('${firstPhoto}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : '';
+                const photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onerror="this.onerror=null; this.src='/node-photo/odc/${c.id}';" onclick="window.open('/node-photo/odc/${c.id}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : `<div style="margin-bottom:6px;"><img src="/node-photo/odc/${c.id}" style="width:100%;height:65px;object-fit:cover;border-radius:8px;border:1px dashed #334155;"></div>`;
                 const gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + c.latitude + ',' + c.longitude;
 
                 const popupDiv = document.createElement('div');
@@ -657,7 +657,7 @@
                     popupAnchor: [0, -13]
                 });
                 const firstPhoto = (jc.photos && jc.photos.length > 0) ? formatSafePhotoUrl(jc.photos[0]) : '';
-                const photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onclick="window.open('${firstPhoto}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : '';
+                const photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onerror="this.onerror=null; this.src='/node-photo/closure/${jc.id}';" onclick="window.open('/node-photo/closure/${jc.id}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : `<div style="margin-bottom:6px;"><img src="/node-photo/closure/${jc.id}" style="width:100%;height:65px;object-fit:cover;border-radius:8px;border:1px dashed #334155;"></div>`;
                 const gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + jc.latitude + ',' + jc.longitude;
 
                 const popupDiv = document.createElement('div');
@@ -845,7 +845,7 @@
                 const distanceText = odp.distance !== null ? (odp.distance + ' km') : '-';
                 const gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + odp.latitude + ',' + odp.longitude;
                 const firstPhoto = (odp.photos && odp.photos.length > 0) ? formatSafePhotoUrl(odp.photos[0]) : '';
-                const photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onclick="window.open('${firstPhoto}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : '';
+                const photoHtml = firstPhoto ? `<div style="margin-bottom:6px;"><img src="${firstPhoto}" onerror="this.onerror=null; this.src='/node-photo/odp/${odp.id}';" onclick="window.open('/node-photo/odp/${odp.id}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : `<div style="margin-bottom:6px;"><img src="/node-photo/odp/${odp.id}" style="width:100%;height:65px;object-fit:cover;border-radius:8px;border:1px dashed #334155;"></div>`;
 
                 const popupDiv = document.createElement('div');
                 popupDiv.innerHTML = `

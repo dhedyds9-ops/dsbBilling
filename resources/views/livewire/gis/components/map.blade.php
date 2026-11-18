@@ -207,6 +207,11 @@
                         <label for="odc_description" class="form-label">{{ __('Deskripsi') }}</label>
                         <textarea class="form-control dark:bg-slate-900 dark:text-slate-100" id="odc_description" name="description"></textarea>
                     </div>
+                    <div class="mb-3">
+                        <label for="odc_photo_input" class="form-label font-bold text-slate-700 dark:text-slate-200">{{ __('Foto Tiang / Perangkat ODC') }}</label>
+                        <input type="file" class="form-control text-xs dark:bg-slate-900 dark:text-slate-100" id="odc_photo_input" accept="image/*" capture="environment">
+                        <small class="text-slate-500 text-[11px] block mt-1">Pilih foto tiang untuk diunggah langsung ke database ODC.</small>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer justify-content-between">
@@ -299,6 +304,11 @@
                     <div class="mb-3">
                         <label for="odp_description" class="form-label font-semibold">{{ __('Deskripsi') }}</label>
                         <textarea class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="odp_description" name="description" rows="2" placeholder="Catatan splitter / tiang..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="odp_photo_input" class="form-label font-semibold text-slate-700 dark:text-slate-200">{{ __('Foto Tiang / Fisik ODP') }}</label>
+                        <input type="file" class="form-control text-xs dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="odp_photo_input" accept="image/*" capture="environment">
+                        <small class="text-slate-500 text-[11px] block mt-1">Pilih foto tiang untuk diunggah langsung ke database ODP.</small>
                     </div>
                 </form>
             </div>
@@ -2612,10 +2622,10 @@
                                     <span class="node-kv-value text-cyan-400 font-mono">${odcToServerDistance}</span>
                                 </div>
                             </div>
-                            ${(odc.photos && odc.photos.length > 0) ? `<div style="margin:8px 0;"><img src="${formatGisPhotoUrl(odc.photos[0])}" onclick="window.open(this.src, '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : ''}
+                            ${(odc.photos && odc.photos.length > 0) ? `<div style="margin:8px 0;"><img src="${formatGisPhotoUrl(odc.photos[0])}" onerror="this.onerror=null; this.src='/node-photo/odc/${odc.id}';" onclick="window.open('/node-photo/odc/${odc.id}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : `<div style="margin:8px 0;"><img src="/node-photo/odc/${odc.id}" onclick="editOdc(${odc.id})" style="width:100%;height:65px;object-fit:cover;border-radius:8px;border:1px dashed #475569;cursor:pointer;" title="Klik untuk upload foto tiang ODC"></div>`}
                             ${odc.description ? `<div class="node-note">${odc.description}</div>` : ''}
                             <div class="node-actions">
-                                <button type="button" class="node-btn node-btn-amber btn-edit-odc"><i class="fa fa-pencil-alt"></i> Edit</button>
+                                <button type="button" class="node-btn node-btn-amber btn-edit-odc"><i class="fa fa-camera"></i> Edit / Foto</button>
                                 <a href="/isp/odcs/${odc.id}/edit" target="_blank" class="node-btn node-btn-secondary"><i class="fa fa-external-link-alt"></i> Lengkap</a>
                                 <button type="button" class="node-btn node-btn-danger btn-del-odc"><i class="fa fa-trash-alt"></i> Hapus</button>
                             </div>
@@ -2732,10 +2742,10 @@
                                     <span class="node-kv-value text-cyan-400 font-mono">${odpToOdcDistance}</span>
                                 </div>
                             </div>
-                            ${(odp.photos && odp.photos.length > 0) ? `<div style="margin:8px 0;"><img src="${formatGisPhotoUrl(odp.photos[0])}" onclick="window.open(this.src, '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : ''}
+                            ${(odp.photos && odp.photos.length > 0) ? `<div style="margin:8px 0;"><img src="${formatGisPhotoUrl(odp.photos[0])}" onerror="this.onerror=null; this.src='/node-photo/odp/${odp.id}';" onclick="window.open('/node-photo/odp/${odp.id}', '_blank')" style="width:100%;height:95px;object-fit:cover;border-radius:8px;border:1px solid #334155;cursor:pointer;" title="Klik untuk perbesar"></div>` : `<div style="margin:8px 0;"><img src="/node-photo/odp/${odp.id}" onclick="editOdp(${odp.id})" style="width:100%;height:65px;object-fit:cover;border-radius:8px;border:1px dashed #475569;cursor:pointer;" title="Klik untuk upload foto tiang ODP"></div>`}
                             ${odp.description ? `<div class="node-note">${odp.description}</div>` : ''}
                             <div class="node-actions">
-                                <button type="button" class="node-btn node-btn-emerald btn-edit-odp"><i class="fa fa-pencil-alt"></i> Edit</button>
+                                <button type="button" class="node-btn node-btn-emerald btn-edit-odp"><i class="fa fa-camera"></i> Edit / Foto</button>
                                 <a href="/isp/odps/${odp.id}/edit" target="_blank" class="node-btn node-btn-secondary"><i class="fa fa-external-link-alt"></i> Lengkap</a>
                                 <button type="button" class="node-btn node-btn-danger btn-del-odp"><i class="fa fa-trash-alt"></i> Hapus</button>
                             </div>
@@ -3841,8 +3851,21 @@
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success || data.id) { // Some controllers return full object
-                    location.reload();
+                if (data.success || data.id) {
+                    var odcId = data.id || id;
+                    var pInput = document.getElementById('odc_photo_input');
+                    if (pInput && pInput.files && pInput.files.length > 0 && odcId) {
+                        var fd = new FormData();
+                        fd.append('photo', pInput.files[0]);
+                        fd.append('_token', csrfToken);
+                        fetch('/map/node/odc/' + odcId + '/photo', {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': csrfToken },
+                            body: fd
+                        }).finally(() => { location.reload(); });
+                    } else {
+                        location.reload();
+                    }
                 } else {
                     alert('{{ __('Error saving ODC:') }} ' + (data.message || JSON.stringify(data)));
                 }
@@ -3872,7 +3895,20 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success || data.id) {
-                    location.reload();
+                    var odpId = data.id || id;
+                    var pInput = document.getElementById('odp_photo_input');
+                    if (pInput && pInput.files && pInput.files.length > 0 && odpId) {
+                        var fd = new FormData();
+                        fd.append('photo', pInput.files[0]);
+                        fd.append('_token', csrfToken);
+                        fetch('/map/node/odp/' + odpId + '/photo', {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': csrfToken },
+                            body: fd
+                        }).finally(() => { location.reload(); });
+                    } else {
+                        location.reload();
+                    }
                 } else {
                     alert('{{ __('Error saving ODP:') }} ' + (data.message || JSON.stringify(data)));
                 }

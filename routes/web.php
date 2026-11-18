@@ -440,6 +440,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::put('/location/{type}/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'updateLocation'])->name('map.location.update');
             Route::post('/node/{type}', [\App\Http\Controllers\Gis\MapApiController::class, 'storeNode'])->name('map.node.store');
             Route::put('/node/{type}/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'updateNode'])->name('map.node.update');
+            Route::post('/node/{type}/{id}/photo', [\App\Http\Controllers\Gis\MapApiController::class, 'uploadPhoto'])->name('map.node.photo');
             Route::get('/wlan-status/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'wlanStatus'])->name('map.wlan-status');
             Route::post('/wlan-update/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'wlanUpdate'])->name('map.wlan-update');
             Route::post('/ping', [\App\Http\Controllers\Gis\MapApiController::class, 'ping'])->name('map.ping');
@@ -883,6 +884,73 @@ Route::get('/storage-check', function () {
 
     return response()->json($info, 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 });
+
+// Guaranteed node photo direct endpoint (never 404s, handles base64, physical files, and SVG fallback)
+Route::get('/node-photo/{type}/{id}', function ($type, $id) {
+    $model = match ($type) {
+        'olt' => \App\Models\ISP\Olt::find($id),
+        'odc' => \App\Models\ISP\Odc::find($id),
+        'odp' => \App\Models\ISP\Odp::find($id),
+        'closure' => class_exists(\App\Models\ISP\JointClosure::class) ? \App\Models\ISP\JointClosure::find($id) : null,
+        'htb' => class_exists(\App\Models\ISP\DistributionBox::class) ? \App\Models\ISP\DistributionBox::find($id) : null,
+        default => null,
+    };
+
+    if ($model && !empty($model->photos) && is_array($model->photos)) {
+        foreach ($model->photos as $p) {
+            if (empty($p)) continue;
+            if (str_starts_with($p, 'data:image')) {
+                [$header, $data] = explode(',', $p, 2);
+                preg_match('#data:(image/\w+);base64#', $header, $m);
+                $mime = $m[1] ?? 'image/jpeg';
+                return response(base64_decode($data))->header('Content-Type', $mime);
+            }
+            $cleanPath = ltrim(preg_replace('/^https?:\/\/[^\/]+(\/storage\/.*)$/', '$1', (string) $p), '/');
+            $cleanPath = preg_replace('/^storage\//', '', $cleanPath);
+
+            $candidates = [
+                storage_path('app/public/' . $cleanPath),
+                public_path('storage/' . $cleanPath),
+                '/var/www/shared_storage/' . $cleanPath,
+                '/var/www/mstore/storage/app/public/' . $cleanPath,
+                '/var/www/winets/storage/app/public/' . $cleanPath,
+                '/var/www/mstore/public/storage/' . $cleanPath,
+                '/var/www/winets/public/storage/' . $cleanPath,
+            ];
+            foreach ($candidates as $cand) {
+                if (@file_exists($cand) && @is_file($cand)) {
+                    $mime = @mime_content_type($cand) ?: 'image/jpeg';
+                    return response()->file($cand, [
+                        'Content-Type' => $mime,
+                        'Cache-Control' => 'public, max-age=86400',
+                    ]);
+                }
+            }
+        }
+    }
+
+    // Return clean SVG badge placeholder if photo physical file is missing
+    $title = strtoupper($type) . ' #' . $id;
+    $name = $model ? ($model->name ?? $model->code ?? $title) : $title;
+    $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250">
+        <defs>
+            <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#0f172a"/>
+                <stop offset="100%" stop-color="#1e293b"/>
+            </linearGradient>
+        </defs>
+        <rect width="400" height="250" fill="url(#g)" rx="12"/>
+        <circle cx="200" cy="95" r="40" fill="#334155"/>
+        <path d="M185 85 L215 85 L215 110 L185 110 Z" fill="#38bdf8"/>
+        <circle cx="200" cy="98" r="7" fill="#0f172a"/>
+        <text x="200" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="bold" fill="#f8fafc" text-anchor="middle">Dokumentasi ' . htmlspecialchars($name) . '</text>
+        <text x="200" y="185" font-family="system-ui, -apple-system, sans-serif" font-size="12" fill="#94a3b8" text-anchor="middle">Foto fisik tiang jaringan</text>
+    </svg>';
+    return response($svg, 200, [
+        'Content-Type' => 'image/svg+xml',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+})->name('node.photo');
 
 
 

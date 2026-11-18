@@ -117,6 +117,11 @@ class GisMap extends Component
     public static function flushCache(): void
     {
         Cache::forget(self::cacheKey());
+        Cache::forget('gis_map_data');
+        Cache::forget('gis_map_nodes');
+        Cache::forget('gis_nodes_all');
+        Cache::forget('gis_regions');
+        Cache::forget('gis_coordinators');
     }
 
     protected function canWriteGis(): bool

@@ -9,9 +9,13 @@ use App\Models\ISP\Pop;
 use App\Models\Master\Branch;
 use App\Services\ISP\OdcService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Livewire\WithFileUploads;
 
 class Edit extends AdminComponent
 {
+    use WithFileUploads;
+
     public $odcId;
     public $odc;
     public $branch_id;
@@ -25,6 +29,8 @@ class Edit extends AdminComponent
     public $longitude;
     public $port_count;
     public $status;
+    public $photo;
+    public array $existingPhotos = [];
 
     public function mount($id = null)
     {
@@ -34,6 +40,7 @@ class Edit extends AdminComponent
         $this->odcId = $id;
         $this->odc = OdcModel::findOrFail($id);
 
+        $this->existingPhotos = is_array($this->odc->photos) ? $this->odc->photos : [];
         $this->branch_id = $this->odc->branch_id;
         $this->olt_id = $this->odc->olt_id;
         $this->pop_id = $this->odc->pop_id;
@@ -61,7 +68,39 @@ class Edit extends AdminComponent
             'code' => 'required|unique:odcs,code,' . $this->odcId,
             'name' => 'required|string|max:255',
             'status' => 'required|in:active,inactive',
+            'photo' => 'nullable|image|max:12288',
         ]);
+
+        $photos = $this->existingPhotos;
+        if ($this->photo) {
+            $folder = 'odcs';
+            $filename = Str::random(40) . '.' . ($this->photo->getClientOriginalExtension() ?: 'jpg');
+            $relPath = "network_photos/{$folder}/{$filename}";
+            $fullPath = storage_path("app/public/{$relPath}");
+            @mkdir(dirname($fullPath), 0775, true);
+            @copy($this->photo->getRealPath(), $fullPath);
+            @chmod($fullPath, 0664);
+
+            $mirrorTargets = [
+                public_path("storage/{$relPath}"),
+                "/var/www/shared_storage/{$relPath}",
+                "/var/www/winets/storage/app/public/{$relPath}",
+                "/var/www/winets/public/storage/{$relPath}",
+                "/var/www/mstore/storage/app/public/{$relPath}",
+                "/var/www/mstore/public/storage/{$relPath}",
+            ];
+            foreach ($mirrorTargets as $mt) {
+                $mtDir = dirname($mt);
+                if (!@is_dir($mtDir)) @mkdir($mtDir, 0775, true);
+                if (!@file_exists($mt)) {
+                    @copy($fullPath, $mt);
+                    @chmod($mt, 0664);
+                }
+            }
+
+            $cleanUrl = "/storage/{$relPath}";
+            array_unshift($photos, $cleanUrl);
+        }
 
         $service = app(OdcService::class);
         $service->update($this->odc, [
@@ -76,9 +115,12 @@ class Edit extends AdminComponent
             'longitude' => $this->longitude,
             'port_count' => $this->port_count,
             'status' => $this->status,
+            'photos' => array_values(array_unique($photos)),
         ], Auth::user());
 
-        session()->flash('success', 'ODC berhasil diperbarui!');
+        \App\Livewire\Gis\GisMap::flushCache();
+
+        session()->flash('success', 'ODC dan foto tiang berhasil diperbarui!');
         return redirect()->route('isp.odcs.show', $this->odcId);
     }
 
