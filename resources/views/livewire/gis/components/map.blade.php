@@ -132,6 +132,28 @@
                             <label for="olt_description" class="form-label font-semibold">{{ __('Deskripsi') }}</label>
                             <textarea class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="olt_description" name="description" rows="2" placeholder="Catatan teknis OLT..."></textarea>
                         </div>
+
+                        {{-- Foto Saat Ini & Tombol Hapus --}}
+                        <div id="olt_current_photo_container" class="mb-3 p-2 rounded bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 d-none">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-2">
+                                    <img id="olt_current_photo_img" src="" style="width:50px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e1;">
+                                    <div>
+                                        <span class="text-xs font-bold d-block text-slate-800 dark:text-slate-200">Foto Saat Ini</span>
+                                        <span class="text-[10px] text-slate-400">Tersimpan di OLT</span>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline-danger btn-sm py-1 px-2 text-xs" id="olt_delete_photo_btn">
+                                    <i class="fa fa-trash"></i> Hapus Foto
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="olt_photo_input" class="form-label font-bold text-slate-700 dark:text-slate-200">{{ __('Foto Fisik / Rack OLT') }}</label>
+                            <input type="file" class="form-control text-xs dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="olt_photo_input" accept="image/*" capture="environment">
+                            <small class="text-slate-500 text-[11px] block mt-1">Pilih foto rack/ruang OLT untuk diunggah langsung ke database OLT.</small>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -3561,6 +3583,31 @@
                     fullEditBtn.classList.remove('d-none');
                 }
 
+                var curPhotoContainer = document.getElementById('olt_current_photo_container');
+                var curPhotoImg = document.getElementById('olt_current_photo_img');
+                var deletePhotoBtn = document.getElementById('olt_delete_photo_btn');
+                var photoInput = document.getElementById('olt_photo_input');
+                if (photoInput) photoInput.value = '';
+
+                if (olt.photos && olt.photos.length > 0 && olt.photos[0]) {
+                    if (curPhotoContainer) curPhotoContainer.classList.remove('d-none');
+                    if (curPhotoImg) curPhotoImg.src = formatGisPhotoUrl(olt.photos[0]);
+                    if (deletePhotoBtn) {
+                        deletePhotoBtn.onclick = function() {
+                            if (confirm('Yakin ingin menghapus foto OLT ini?')) {
+                                deletePhotoBtn.disabled = true;
+                                deletePhotoBtn.innerText = 'Menghapus...';
+                                fetch('/map/node/olt/' + olt.id + '/photo', {
+                                    method: 'DELETE',
+                                    headers: { 'X-CSRF-TOKEN': csrfToken }
+                                }).finally(() => location.reload());
+                            }
+                        };
+                    }
+                } else {
+                    if (curPhotoContainer) curPhotoContainer.classList.add('d-none');
+                }
+
                 document.getElementById('oltModalLabel').innerText = '{{ __('Edit OLT') }}';
                 document.getElementById('saveOltBtnText').innerText = '{{ __('Simpan OLT') }}';
 
@@ -3808,7 +3855,20 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success || data.id) {
-                        location.reload();
+                        var oId = data.id || oltId;
+                        var pInput = document.getElementById('olt_photo_input');
+                        if (pInput && pInput.files && pInput.files.length > 0 && oId) {
+                            var fd = new FormData();
+                            fd.append('photo', pInput.files[0]);
+                            fd.append('_token', csrfToken);
+                            fetch('/map/node/olt/' + oId + '/photo', {
+                                method: 'POST',
+                                headers: { 'X-CSRF-TOKEN': csrfToken },
+                                body: fd
+                            }).finally(() => { location.reload(); });
+                        } else {
+                            location.reload();
+                        }
                     } else {
                         alert('Gagal menyimpan OLT: ' + (data.message || JSON.stringify(data)));
                         if (spinner) spinner.classList.add('d-none');
@@ -3860,7 +3920,20 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success || data.id) {
-                        location.reload();
+                        var oId = data.id || id;
+                        var pInput = document.getElementById('olt_photo_input');
+                        if (pInput && pInput.files && pInput.files.length > 0 && oId) {
+                            var fd = new FormData();
+                            fd.append('photo', pInput.files[0]);
+                            fd.append('_token', csrfToken);
+                            fetch('/map/node/olt/' + oId + '/photo', {
+                                method: 'POST',
+                                headers: { 'X-CSRF-TOKEN': csrfToken },
+                                body: fd
+                            }).finally(() => { location.reload(); });
+                        } else {
+                            location.reload();
+                        }
                     } else {
                         alert('{{ __('Error placing OLT:') }} ' + (data.message || JSON.stringify(data)));
                         if (spinner) spinner.classList.add('d-none');

@@ -71,6 +71,11 @@
                     </div>
 
                     <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nomor Port ODC Induk <span class="text-xs text-slate-400 font-normal">(1..N)</span></label>
+                        <input type="number" wire:model="odc_port" min="1" placeholder="Contoh: 1, 2, 3..." class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                    </div>
+
+                    <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cabang / Wilayah Kantor <span class="text-xs text-slate-400 font-normal">(Opsional)</span></label>
                         <select wire:model="branch_id" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
                             <option value="">-- Tanpa Cabang Khusus / Global --</option>

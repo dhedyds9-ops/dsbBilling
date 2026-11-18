@@ -41,6 +41,7 @@ class Odp extends Model
 
     protected $fillable = [
         'odc_id',
+        'odc_port',
         'olt_id',
         'pon_port_id',
         'splitter_id',
@@ -72,6 +73,7 @@ class Odp extends Model
     ];
 
     protected $casts = [
+        'odc_port' => 'integer',
         'split_ratio' => 'integer',
         'port_count' => 'integer',
         'used_port_count' => 'integer',
@@ -84,7 +86,7 @@ class Odp extends Model
 
     public function reseller()
     {
-        return $this->belongsTo(\App\Models\Reseller::class);
+        return $this->belongsTo(\App\Models\User::class, 'reseller_id');
     }
 
     protected $appends = [

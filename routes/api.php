@@ -252,6 +252,9 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::get('/devices/{serialNumber}/diagnostics', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'diagnostics'])->name('devices.diagnostics');
             Route::get('/odps', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'odps'])->name('odps.index');
             Route::get('/topology', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'topology'])->name('topology');
+            Route::post('/devices/location', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'updateDeviceLocation'])->name('devices.location');
+            Route::get('/nodes/{type}/{id}', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'showNode'])->name('nodes.show');
+            Route::post('/nodes/{type}/{id}/update', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'updateNode'])->name('nodes.update');
             Route::post('/nodes/store', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'storeNode'])->name('nodes.store');
             Route::post('/nodes/{type}/{id}/photo', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'uploadNodePhoto'])->name('nodes.photo.upload');
         });

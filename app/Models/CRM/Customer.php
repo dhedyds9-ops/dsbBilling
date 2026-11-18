@@ -156,6 +156,18 @@ class Customer extends Model
         return $this->hasMany(\App\Models\Support\Ticket::class, 'customer_id');
     }
 
+    public function onu()
+    {
+        return $this->hasOneThrough(
+            \App\Models\ISP\Onu::class,
+            CustomerService::class,
+            'customer_id',
+            'id',
+            'id',
+            'onu_id'
+        );
+    }
+
     public function getCustomerCodeAttribute(): string
     {
         return (string) ($this->code ?? '');

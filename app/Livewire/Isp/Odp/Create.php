@@ -12,6 +12,7 @@ class Create extends AdminComponent
 {
     public $branch_id;
     public $odc_id;
+    public $odc_port;
     public $code;
     public $name;
     public $description;
@@ -67,6 +68,7 @@ class Create extends AdminComponent
         $service->create([
             'branch_id' => $this->branch_id === '' ? null : $this->branch_id,
             'odc_id' => $this->odc_id,
+            'odc_port' => $this->odc_port ? (int) $this->odc_port : null,
             'code' => $this->code,
             'name' => $this->name,
             'description' => $this->description,

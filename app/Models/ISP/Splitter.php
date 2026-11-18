@@ -12,6 +12,7 @@ class Splitter extends Model
 
     protected $fillable = [
         'odp_id',
+        'odc_id',
         'vendor_id',
         'code',
         'name',
@@ -35,6 +36,11 @@ class Splitter extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    public function odc()
+    {
+        return $this->belongsTo(Odc::class);
     }
 
     public function odp()

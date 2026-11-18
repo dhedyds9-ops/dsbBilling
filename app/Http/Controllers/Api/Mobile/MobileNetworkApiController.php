@@ -2128,6 +2128,22 @@ class MobileNetworkApiController extends Controller
                 'photos' => $photos,
                 'created_by' => $user->id,
             ]);
+        } elseif ($type === 'olt') {
+            $createdNode = Olt::create([
+                'code' => $validated['code'],
+                'name' => $validated['name'],
+                'latitude' => (string)$validated['latitude'],
+                'longitude' => (string)$validated['longitude'],
+                'address' => $validated['address'] ?? null,
+                'port_count' => $validated['port_count'] ?? 8,
+                'pon_port_count' => $validated['port_count'] ?? 8,
+                'ip_address' => $request->input('ip_address') ?: '127.0.0.1',
+                'host' => $request->input('ip_address') ?: '127.0.0.1',
+                'model' => $request->input('model') ?: 'OLT Standalone',
+                'branch_id' => $user->branch_id,
+                'photos' => $photos,
+                'created_by' => $user->id,
+            ]);
         }
 
         return response()->json([
@@ -2179,6 +2195,202 @@ class MobileNetworkApiController extends Controller
             'message' => 'Foto dokumentasi lokasi berhasil disimpan.',
             'photo_url' => $photoUrl,
             'all_photos' => $node->photos,
+        ]);
+    }
+
+    /**
+     * Show detail of single network node (ODP, ODC, Closure, OLT).
+     * GET /api/mobile/network/nodes/{type}/{id}
+     */
+    public function showNode(Request $request, string $type, int $id): JsonResponse
+    {
+        $node = match(strtolower($type)) {
+            'odp' => Odp::withoutGlobalScopes()->find($id),
+            'closure', 'joint_closure' => JointClosure::withoutGlobalScopes()->find($id),
+            'odc' => Odc::withoutGlobalScopes()->find($id),
+            'olt' => Olt::withoutGlobalScopes()->find($id),
+            default => null,
+        };
+
+        if (!$node) {
+            return response()->json(['success' => false, 'message' => 'Node perangkat tidak ditemukan.'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Detail node ' . strtoupper($type) . ' berhasil dimuat.',
+            'data' => $node,
+        ]);
+    }
+
+    /**
+     * Update network node attributes and optional photo.
+     * POST /api/mobile/network/nodes/{type}/{id}/update
+     */
+    public function updateNode(Request $request, string $type, int $id): JsonResponse
+    {
+        $node = match(strtolower($type)) {
+            'odp' => Odp::withoutGlobalScopes()->find($id),
+            'closure', 'joint_closure' => JointClosure::withoutGlobalScopes()->find($id),
+            'odc' => Odc::withoutGlobalScopes()->find($id),
+            'olt' => Olt::withoutGlobalScopes()->find($id),
+            default => null,
+        };
+
+        if (!$node) {
+            return response()->json(['success' => false, 'message' => 'Node perangkat tidak ditemukan.'], 404);
+        }
+
+        if ($request->filled('name')) $node->name = $request->input('name');
+        if ($request->filled('code')) $node->code = $request->input('code');
+        if ($request->filled('latitude')) $node->latitude = (string)$request->input('latitude');
+        if ($request->filled('longitude')) $node->longitude = (string)$request->input('longitude');
+        if ($request->has('address')) $node->address = $request->input('address');
+        if ($request->filled('port_count')) $node->port_count = (int)$request->input('port_count');
+        if ($request->has('description')) $node->description = $request->input('description');
+        if ($request->filled('status')) $node->status = $request->input('status');
+
+        if ($type === 'olt') {
+            if ($request->filled('ip_address')) {
+                $node->ip_address = $request->input('ip_address');
+                $node->host = $request->input('ip_address');
+            }
+            if ($request->filled('model')) $node->model = $request->input('model');
+            if ($request->filled('pon_port_count')) {
+                $node->pon_port_count = (int)$request->input('pon_port_count');
+                $node->port_count = (int)$request->input('pon_port_count');
+            }
+        } elseif ($type === 'odp') {
+            if ($request->filled('odc_id')) $node->odc_id = $request->input('odc_id');
+            if ($request->filled('color')) $node->color = $request->input('color');
+        } elseif ($type === 'odc') {
+            if ($request->filled('olt_id')) $node->olt_id = $request->input('olt_id');
+        } elseif ($type === 'closure' || $type === 'joint_closure') {
+            if ($request->filled('closure_type')) $node->type = $request->input('closure_type');
+            if ($request->filled('type') && in_array($request->input('type'), ['Dome', 'Inline', 'Wall Mount'])) {
+                $node->type = $request->input('type');
+            }
+        }
+
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $typeFolder = ($type === 'closure' || $type === 'joint_closure') ? 'closures' : $type;
+            $path = $file->store("network_photos/{$typeFolder}", 'public');
+            if ($path) {
+                $photoUrl = Storage::url($path);
+                $currentPhotos = is_array($node->photos) ? $node->photos : [];
+                $currentPhotos[] = $photoUrl;
+                $node->photos = array_values(array_unique($currentPhotos));
+            }
+        }
+
+        $node->save();
+
+        \Illuminate\Support\Facades\Cache::forget('gis_map_data');
+        \Illuminate\Support\Facades\Cache::forget('gis_map_nodes');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data titik ' . strtoupper($type) . ' berhasil diperbarui.',
+            'data' => $node,
+        ]);
+    }
+
+    /**
+     * Update device (customer / ONU) coordinates and ODP connection.
+     * POST /api/mobile/network/devices/location
+     */
+    public function updateDeviceLocation(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'device_id' => 'required|string',
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'odp_id' => 'nullable|integer',
+            'odp_name' => 'nullable|string',
+        ]);
+
+        $deviceId = $validated['device_id'];
+        $lat = (string)$validated['latitude'];
+        $lng = (string)$validated['longitude'];
+        $odpId = $validated['odp_id'] ?? null;
+        $odpName = $validated['odp_name'] ?? null;
+
+        if (!$odpId && !empty($odpName)) {
+            $odpId = Odp::withoutGlobalScopes()->where('name', $odpName)->value('id');
+        }
+
+        $customer = null;
+        $onu = null;
+
+        if (str_starts_with($deviceId, 'cust-')) {
+            $cId = (int)substr($deviceId, 5);
+            $customer = Customer::withoutGlobalScopes()->find($cId);
+        } elseif (str_starts_with($deviceId, 'onu-')) {
+            $oId = (int)substr($deviceId, 4);
+            $onu = Onu::withoutGlobalScopes()->find($oId);
+        } elseif (is_numeric($deviceId)) {
+            $customer = Customer::withoutGlobalScopes()->find((int)$deviceId);
+            if (!$customer) {
+                $onu = Onu::withoutGlobalScopes()->find((int)$deviceId);
+            }
+        } else {
+            $onu = Onu::withoutGlobalScopes()->where('serial_number', $deviceId)->first();
+            if (!$onu) {
+                $customer = Customer::withoutGlobalScopes()->where('code', $deviceId)->first();
+            }
+        }
+
+        if ($customer) {
+            $customer->latitude = $lat;
+            $customer->longitude = $lng;
+            $customer->save();
+
+            $cs = $customer->customerServices()->first();
+            if ($cs && $cs->onu) {
+                $onu = $cs->onu;
+            }
+        }
+
+        if ($onu) {
+            $onu->latitude = $lat;
+            $onu->longitude = $lng;
+            if ($odpId) {
+                $onu->odp_id = $odpId;
+            }
+            $onu->save();
+
+            if (!$customer) {
+                $linkedCs = CustomerService::where('onu_id', $onu->id)->first();
+                if ($linkedCs && $linkedCs->customer) {
+                    $linkedCs->customer->latitude = $lat;
+                    $linkedCs->customer->longitude = $lng;
+                    $linkedCs->customer->save();
+                }
+            }
+        }
+
+        if (!$customer && !$onu) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Perangkat/Pelanggan tidak ditemukan dengan ID: ' . $deviceId,
+            ], 404);
+        }
+
+        \Illuminate\Support\Facades\Cache::forget('gis_map_data');
+        \Illuminate\Support\Facades\Cache::forget('gis_map_nodes');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Titik lokasi berhasil disimpan secara permanen ke database.',
+            'data' => [
+                'device_id' => $deviceId,
+                'latitude' => $lat,
+                'longitude' => $lng,
+                'odp_id' => $odpId,
+                'customer_id' => $customer?->id,
+                'onu_id' => $onu?->id,
+            ],
         ]);
     }
 }

@@ -19,6 +19,7 @@ class Edit extends AdminComponent
     public $odp;
     public $branch_id;
     public $odc_id;
+    public $odc_port;
     public $code;
     public $name;
     public $description;
@@ -46,6 +47,7 @@ class Edit extends AdminComponent
 
         $this->branch_id = $this->odp->branch_id;
         $this->odc_id = $this->odp->odc_id;
+        $this->odc_port = $this->odp->odc_port;
         $this->code = $this->odp->code;
         $this->name = $this->odp->name;
         $this->description = $this->odp->description;
@@ -97,6 +99,7 @@ class Edit extends AdminComponent
         $service->update($this->odp, [
             'branch_id' => $this->branch_id === '' ? null : $this->branch_id,
             'odc_id' => $this->odc_id,
+            'odc_port' => $this->odc_port ? (int) $this->odc_port : null,
             'code' => $this->code,
             'name' => $this->name,
             'description' => $this->description,

@@ -66,7 +66,12 @@ class Odc extends Model
 
     public function reseller()
     {
-        return $this->belongsTo(\App\Models\Reseller::class);
+        return $this->belongsTo(\App\Models\User::class, 'reseller_id');
+    }
+
+    public function splitters()
+    {
+        return $this->hasMany(Splitter::class);
     }
 
     public function scopeActive($query)
