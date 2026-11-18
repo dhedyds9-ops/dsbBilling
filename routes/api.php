@@ -250,7 +250,7 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::post('/olts/{id}/sync', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'syncOlt'])->where('id', '\d+')->name('olts.sync');
             Route::get('/devices', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'devices'])->name('devices.index');
             Route::get('/devices/{identifier}', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'showDevice'])->name('devices.show');
-            Route::put('/devices/{id}/name', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'updateName'])->where('id', '\d+')->name('devices.update-name');
+            Route::put('/devices/{id}/name', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'updateName'])->name('devices.update-name');
             Route::post('/devices/provision-ont', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'provisionOnt'])->name('devices.provision');
             Route::post('/devices/sensus', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'sensusOnt'])->name('devices.sensus');
             Route::post('/devices/swap-ont', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'swapOnt'])->name('devices.swap');
@@ -333,6 +333,8 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::post('/devices/{id}/wifi', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'setWifi'])->name('devices.wifi');
             Route::post('/devices/{id}/wan', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'setWan'])->name('devices.wan');
             Route::post('/devices/{id}/admin-account', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'setAdminAccount'])->name('devices.admin-account');
+            Route::post('/devices/purge-offline', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'purgeOffline'])->name('devices.purge-offline');
+            Route::delete('/devices/{id}', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'deleteDevice'])->name('devices.delete');
             Route::get('/devices/{id}/tasks', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'getTasks'])->name('devices.tasks');
             Route::delete('/devices/{id}/tasks', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'clearTasks'])->name('devices.tasks.clear');
             Route::delete('/devices/{id}/tasks/{taskId}', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'deleteSingleTask'])->name('devices.tasks.delete');

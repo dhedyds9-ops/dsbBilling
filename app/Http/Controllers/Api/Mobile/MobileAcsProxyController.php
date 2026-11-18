@@ -86,6 +86,7 @@ class MobileAcsProxyController extends Controller
             'tasks.retry'  => ['onu.task.retry', 'onu.manage', 'noc.onu.manage'],
             'tasks.view'   => ['onu.task.view', 'onu.view', 'onu.manage', 'noc.onu.manage', 'technician.portal'],
             'reboot'       => ['onu.reboot', 'onu.manage', 'noc.onu.manage', 'technician.portal'],
+            'delete'       => ['onu.delete', 'onu.manage', 'noc.onu.manage', 'technician.portal'],
             'ping'         => ['onu.diagnose', 'onu.manage', 'noc.onu.manage', 'technician.portal'],
             'summon'       => ['onu.diagnose', 'onu.view', 'onu.reboot', 'onu.manage', 'noc.onu.manage', 'technician.portal'],
             'tags'         => ['onu.view', 'onu.manage', 'noc.onu.manage'],
@@ -106,7 +107,7 @@ class MobileAcsProxyController extends Controller
         }
 
         if (!$hasPerm && ($user->isReseller() || $user->hasRole('reseller'))) {
-            if (in_array($operation, ['summon', 'read', 'ping', 'tasks.view', 'reboot'])) {
+            if (in_array($operation, ['summon', 'read', 'ping', 'tasks.view', 'reboot', 'delete'])) {
                 $hasPerm = true;
             }
         }
@@ -1349,6 +1350,147 @@ class MobileAcsProxyController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menghapus tag: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a single device from GenieACS and local ACS cache.
+     * DELETE /api/mobile/acs/devices/{id}
+     */
+    public function deleteDevice(Request $request, string $id): JsonResponse
+    {
+        if ($authCheck = $this->authorizeAcsAccess($request)) {
+            return $authCheck;
+        }
+
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'delete')) {
+            return $devCheck;
+        }
+
+        $user = $request->user();
+        $actualGenieId = $this->resolveGenieAcsDeviceId($cleanId);
+
+        try {
+            // 1. Delete from GenieACS via driver
+            $deletedFromGenie = $this->driver->deleteDevice($actualGenieId);
+            if (!$deletedFromGenie && $actualGenieId !== $cleanId) {
+                $deletedFromGenie = $this->driver->deleteDevice($cleanId);
+            }
+
+            // 2. Also remove from local ACS cache
+            $cleanUpper = strtoupper(trim($cleanId));
+            $parts = explode('-', $cleanUpper);
+            $candidateSn = end($parts);
+
+            \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->where(function ($q) use ($cleanUpper, $actualGenieId, $candidateSn) {
+                    $q->where('uuid', $actualGenieId)
+                      ->orWhere('serial_number', $cleanUpper)
+                      ->orWhere('serial_number', $candidateSn);
+                })
+                ->delete();
+
+            // 3. Audit Log
+            AuditLog::record(
+                $user,
+                'acs.device.delete',
+                "Menghapus perangkat {$cleanId} (GenieACS ID: {$actualGenieId}) dari TR-069 ACS",
+                ['device_id' => $cleanId, 'genie_id' => $actualGenieId]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => "Perangkat {$cleanId} berhasil dihapus dari GenieACS.",
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning("MobileAcsProxy deleteDevice error: {$e->getMessage()}");
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus perangkat: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk purge offline devices from GenieACS.
+     * POST /api/mobile/acs/devices/purge-offline
+     */
+    public function purgeOffline(Request $request): JsonResponse
+    {
+        if ($authCheck = $this->authorizeAcsAccess($request)) {
+            return $authCheck;
+        }
+
+        $user = $request->user();
+        if (!$user->isSuperAdmin() && !$user->hasRole(['administrator', 'admin', 'noc', 'teknisi', 'technician', 'manager', 'reseller'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak: Hanya teknisi atau pengelola jaringan yang dapat membersihkan modem offline.',
+            ], 403);
+        }
+
+        try {
+            $devices = $this->driver->listDevices([], 1000);
+            $purgedCount = 0;
+            $cutoff = now()->subMinutes(15);
+
+            foreach ($devices as $dev) {
+                $devId = $dev['_id'] ?? '';
+                if (empty($devId)) continue;
+
+                $lastInform = $dev['_lastInform'] ?? null;
+                $isOffline = false;
+
+                if (!$lastInform) {
+                    $isOffline = true;
+                } else {
+                    $dt = \Carbon\Carbon::parse($lastInform);
+                    if ($dt->lt($cutoff)) {
+                        $isOffline = true;
+                    }
+                }
+
+                if ($user->hasRole('reseller')) {
+                    $effectiveResellerId = $user->getEffectiveResellerId() ?: $user->id;
+                    $sn = $dev['_deviceId']['_SerialNumber'] ?? $devId;
+                    $cs = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                        ->where('onu_serial', $sn)
+                        ->first();
+                    if ($cs && $cs->reseller_id && $cs->reseller_id != $effectiveResellerId) {
+                        continue;
+                    }
+                }
+
+                if ($isOffline) {
+                    if ($this->driver->deleteDevice($devId)) {
+                        $purgedCount++;
+                        \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                            ->where('uuid', $devId)
+                            ->orWhere('serial_number', $dev['_deviceId']['_SerialNumber'] ?? '')
+                            ->delete();
+                    }
+                }
+            }
+
+            AuditLog::record(
+                $user,
+                'acs.device.purge_offline',
+                "Membersihkan {$purgedCount} perangkat modem offline dari GenieACS TR-069",
+                ['purged_count' => $purgedCount]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => "Berhasil membersihkan {$purgedCount} perangkat modem yang sedang offline dari GenieACS.",
+                'purged_count' => $purgedCount,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning("MobileAcsProxy purgeOffline error: {$e->getMessage()}");
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membersihkan perangkat offline: ' . $e->getMessage(),
             ], 500);
         }
     }

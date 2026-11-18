@@ -516,19 +516,40 @@ class MobileNetworkApiController extends Controller
      * Update ONU name / label.
      * PUT /api/mobile/network/devices/{id}/name
      */
-    public function updateName(Request $request, int $id): JsonResponse
+    public function updateName(Request $request, string $id): JsonResponse
     {
         $request->validate([
             'name' => 'required|string|max:100',
         ]);
 
         $user = $request->user();
-        $query = Onu::query()->withoutGlobalScopes()->where('id', $id);
+        $cleanIdentifier = trim(urldecode($id));
+        $newName = trim((string) $request->name);
+
+        $query = Onu::query()->withoutGlobalScopes();
+        if (is_numeric($cleanIdentifier)) {
+            $query->where(function ($q) use ($cleanIdentifier) {
+                $q->where('id', (int) $cleanIdentifier)
+                  ->orWhere('serial_number', $cleanIdentifier)
+                  ->orWhere('code', $cleanIdentifier);
+            });
+        } else {
+            $upper = strtoupper($cleanIdentifier);
+            $parts = explode('-', $upper);
+            $shortSn = end($parts);
+            $query->where(function ($q) use ($cleanIdentifier, $upper, $shortSn) {
+                $q->where('serial_number', $cleanIdentifier)
+                  ->orWhere('serial_number', $upper)
+                  ->orWhere('serial_number', $shortSn)
+                  ->orWhere('code', $cleanIdentifier)
+                  ->orWhere('mac_address', $cleanIdentifier);
+            });
+        }
 
         $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
         if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
             $query->forReseller($user);
-        } elseif ($user && !empty($user->branch_id)) {
+        } elseif ($user && !$user->isSuperAdmin() && !empty($user->branch_id)) {
             $query->where(function ($q) use ($user) {
                 $q->where('branch_id', $user->branch_id)
                   ->orWhereNull('branch_id');
@@ -536,20 +557,52 @@ class MobileNetworkApiController extends Controller
         }
 
         $onu = $query->first();
-        if (!$onu) {
+        if ($onu) {
+            $onu->update(['name' => $newName]);
+
+            // Sync with local ACS device if exists
+            \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->where('onu_id', $onu->id)
+                ->orWhere('serial_number', $onu->serial_number)
+                ->update(['model' => $newName]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'Perangkat ONU tidak ditemukan atau di luar cakupan akses Anda.',
-            ], 404);
+                'success' => true,
+                'message' => 'Nama ONU berhasil diperbarui.',
+                'data' => $this->formatOnuDevice($onu),
+            ]);
         }
 
-        $onu->update(['name' => trim((string) $request->name)]);
+        // Fallback: check ACSDevice if not found in onus table
+        $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+            ->where(function ($q) use ($cleanIdentifier) {
+                $upper = strtoupper($cleanIdentifier);
+                $parts = explode('-', $upper);
+                $shortSn = end($parts);
+                $q->where('uuid', $cleanIdentifier)
+                  ->orWhere('serial_number', $cleanIdentifier)
+                  ->orWhere('serial_number', $upper)
+                  ->orWhere('serial_number', $shortSn);
+            })->first();
+
+        if ($acsDevice) {
+            $acsDevice->update(['model' => $newName]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Nama perangkat ACS berhasil diperbarui.',
+                'data' => [
+                    'id' => $acsDevice->id,
+                    'serial_number' => $acsDevice->serial_number,
+                    'name' => $newName,
+                    'model' => $newName,
+                ],
+            ]);
+        }
 
         return response()->json([
-            'success' => true,
-            'message' => 'Nama ONU berhasil diperbarui.',
-            'data' => $this->formatOnuDevice($onu),
-        ]);
+            'success' => false,
+            'message' => 'Perangkat ONU tidak ditemukan atau di luar cakupan akses Anda.',
+        ], 404);
     }
 
     /**
@@ -1879,15 +1932,8 @@ class MobileNetworkApiController extends Controller
         $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
         $isReseller = ($effectiveResellerId !== null || ($user && $user->hasRole('reseller')));
 
-        // 1. OLTs
+        // 1. OLTs (Tidak dibatasi role agar topologi fisik terlihat utuh)
         $oltsQuery = Olt::withoutGlobalScopes();
-        if ($isReseller) {
-            $oltsQuery->forReseller($user);
-        } elseif ($user && !$user->isSuperAdmin() && !empty($user->branch_id)) {
-            $oltsQuery->where(function ($q) use ($user) {
-                $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id')->orWhere('branch_id', 1);
-            });
-        }
         $formatPhotos = function ($rawPhotos) {
             return array_values(array_filter(array_map(function ($p) {
                 if (empty($p)) return null;
@@ -1912,87 +1958,74 @@ class MobileNetworkApiController extends Controller
             ];
         });
 
-        // 2. ODCs
-        $odcsQuery = Odc::withoutGlobalScopes();
-        if ($isReseller) {
-            $odcsQuery->where(function ($q) use ($effectiveResellerId) {
-                $q->where('reseller_id', $effectiveResellerId)
-                  ->orWhereNull('reseller_id');
-            });
-        } elseif ($user && !$user->isSuperAdmin() && !empty($user->branch_id)) {
-            $odcsQuery->where(function ($q) use ($user) {
-                $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id')->orWhere('branch_id', 1);
-            });
-        }
+        // 2. ODCs (Semua role diizinkan tampil sesuai instruksi)
+        $odcsQuery = Odc::withoutGlobalScopes()->with(['olt:id,name,code', 'odps:id,odc_id']);
         $odcs = $odcsQuery->get()->map(function (Odc $odc) use ($formatPhotos) {
+            $totalPorts = (int)($odc->port_count ?? 48);
+            $connectedOdps = $odc->odps ? $odc->odps->count() : 0;
+            $activePorts = max((int)($odc->active_port_count ?? 0), $connectedOdps);
+            $availablePorts = max(0, $totalPorts - $activePorts);
+
             return [
                 'id' => $odc->id,
                 'type' => 'odc',
                 'olt_id' => $odc->olt_id,
+                'olt_name' => $odc->olt?->name ?? 'OLT Core',
                 'code' => $odc->code,
                 'name' => $odc->name,
                 'latitude' => $odc->latitude ? (float)$odc->latitude : null,
                 'longitude' => $odc->longitude ? (float)$odc->longitude : null,
-                'port_count' => (int)($odc->port_count ?? 0),
-                'active_port_count' => (int)($odc->active_port_count ?? 0),
+                'port_count' => $totalPorts,
+                'active_port_count' => $activePorts,
+                'available_port_count' => $availablePorts,
+                'odps_count' => $connectedOdps,
                 'status' => $odc->status ?? 'active',
                 'photos' => $formatPhotos($odc->photos),
                 'address' => $odc->address ?? 'Kabinet Distribusi',
             ];
         });
 
-        // 3. Joint Closures (Closure FO)
-        $closuresQuery = JointClosure::withoutGlobalScopes();
-        if ($isReseller) {
-            $closuresQuery->where(function ($q) use ($effectiveResellerId) {
-                $q->where('reseller_id', $effectiveResellerId)
-                  ->orWhereNull('reseller_id');
-            });
-        } elseif ($user && !$user->isSuperAdmin() && !empty($user->branch_id)) {
-            $closuresQuery->where(function ($q) use ($user) {
-                $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id')->orWhere('branch_id', 1);
-            });
-        }
+        // 3. Joint Closures (Closure FO - Semua role diizinkan tampil)
+        $closuresQuery = JointClosure::withoutGlobalScopes()->with(['odc:id,name,code']);
         $closures = $closuresQuery->get()->map(function (JointClosure $jc) use ($formatPhotos) {
             return [
                 'id' => $jc->id,
                 'type' => 'closure',
                 'odc_id' => $jc->odc_id,
+                'odc_name' => $jc->odc?->name ?? '-',
                 'code' => $jc->code,
                 'name' => $jc->name,
                 'closure_type' => $jc->type ?? 'Dome',
                 'latitude' => $jc->latitude ? (float)$jc->latitude : null,
                 'longitude' => $jc->longitude ? (float)$jc->longitude : null,
-                'port_count' => (int)($jc->port_count ?? 0),
+                'port_count' => (int)($jc->port_count ?? 24),
                 'status' => $jc->status ?? 'active',
                 'photos' => $formatPhotos($jc->photos),
                 'address' => $jc->address ?? 'Sambungan Tiang / Handhole',
             ];
         });
 
-        // 4. ODPs
-        $odpsQuery = Odp::withoutGlobalScopes();
-        if ($isReseller) {
-            $odpsQuery->where(function ($q) use ($effectiveResellerId) {
-                $q->where('reseller_id', $effectiveResellerId)
-                  ->orWhereNull('reseller_id');
-            });
-        } elseif ($user && !$user->isSuperAdmin() && !empty($user->branch_id)) {
-            $odpsQuery->where(function ($q) use ($user) {
-                $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id')->orWhere('branch_id', 1);
-            });
-        }
+        // 4. ODPs (Semua role diizinkan tampil - Data Akurat)
+        $odpsQuery = Odp::withoutGlobalScopes()->with(['odc:id,name,code', 'onus:id,odp_id']);
         $odps = $odpsQuery->get()->map(function (Odp $odp) use ($formatPhotos) {
+            $totalPorts = (int)($odp->port_count ?? 8);
+            $onuCount = $odp->onus ? $odp->onus->count() : 0;
+            $activePorts = max((int)($odp->active_port_count ?? 0), $onuCount);
+            $availablePorts = max(0, $totalPorts - $activePorts);
+
             return [
                 'id' => $odp->id,
                 'type' => 'odp',
                 'odc_id' => $odp->odc_id,
+                'odc_name' => $odp->odc?->name ?? 'ODC Utama',
+                'odc_code' => $odp->odc?->code ?? '-',
                 'code' => $odp->code,
                 'name' => $odp->name,
                 'latitude' => $odp->latitude ? (float)$odp->latitude : null,
                 'longitude' => $odp->longitude ? (float)$odp->longitude : null,
-                'port_count' => (int)($odp->port_count ?? 8),
-                'active_port_count' => (int)($odp->active_port_count ?? 0),
+                'port_count' => $totalPorts,
+                'active_port_count' => $activePorts,
+                'available_port_count' => $availablePorts,
                 'status' => $odp->status ?? 'active',
                 'photos' => $formatPhotos($odp->photos),
                 'address' => $odp->address ?? 'Tiang Distribusi',
@@ -2143,10 +2176,34 @@ class MobileNetworkApiController extends Controller
             $createdNode->refresh();
         }
 
+        // Flush GIS cache if exists
+        try {
+            if (class_exists(\App\Livewire\Gis\GisMap::class) && method_exists(\App\Livewire\Gis\GisMap::class, 'flushCache')) {
+                \App\Livewire\Gis\GisMap::flushCache();
+            }
+        } catch (\Throwable $e) {
+            // Ignore cache flush failures
+        }
+
+        $formattedNode = [
+            'id' => $createdNode->id,
+            'type' => ($type === 'joint_closure' ? 'closure' : $type),
+            'code' => $createdNode->code,
+            'name' => $createdNode->name,
+            'latitude' => (float) $createdNode->latitude,
+            'longitude' => (float) $createdNode->longitude,
+            'address' => $createdNode->address ?? '',
+            'port_count' => (int) ($createdNode->port_count ?? 8),
+            'active_port_count' => 0,
+            'available_port_count' => (int) ($createdNode->port_count ?? 8),
+            'photos' => array_values(array_filter((array) ($createdNode->photos ?? []))),
+            'status' => 'active',
+        ];
+
         return response()->json([
             'success' => true,
             'message' => 'Titik ' . strtoupper($type) . ' berhasil didaftarkan.',
-            'data' => $createdNode,
+            'data' => $formattedNode,
         ], 201);
     }
 
