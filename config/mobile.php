@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10116,
-        'latest_version_name' => '1.1.16',
+        'latest_version_code' => 10117,
+        'latest_version_name' => '1.1.17',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'https://mstore.mstore.id') . '/downloads/dsbilling-mobile.apk',
-        'release_notes' => "dsBilling Staff & Teknisi v1.1.16:\n- Smart Auto-Cluster Discovery: Login langsung tanpa perlu input/ganti URL server (otomatis deteksi cluster MStore & Winets)\n- Dukungan Multi-Subdomain: Akun teknisi Winets & MStore dapat masuk secara mulus dari aplikasi yang sama\n- ODP & ODC Fiber Detail: Penyelarasan manajemen port dan topologi visual interaktif NOC\n- Perbaikan Foto Dokumentasi Jaringan: Pengunggahan foto Base64 permanen & sinkronisasi peta GIS.",
+        'release_notes' => "dsBilling Staff & Teknisi v1.1.17:\n- Fitur Keamanan Akun: Ubah profil/username login dan ganti kata sandi akun staf/teknisi/reseller langsung dari aplikasi mobile.\n- Smart Auto-Cluster Discovery: Deteksi otomatis multi-server cluster MStore & Winets.\n- ODP & ODC Fiber Detail: Penyelarasan manajemen port dan topologi visual interaktif GIS.\n- Perbaikan Foto Dokumentasi Jaringan & Stabilitas TR-069 ACS.",
     ],
     'customer' => [
         'latest_version_code' => 10106,
