@@ -190,11 +190,13 @@ class CustomerApiController extends Controller
             'message' => 'Login berhasil.',
             'token' => $tokenResult->plainTextToken,
             'token_type' => 'Bearer',
+            'server_url' => $request->getSchemeAndHttpHost(),
             'user' => $userPayload,
             'customer' => $customerPayload,
             'data' => [
                 'token' => $tokenResult->plainTextToken,
                 'token_type' => 'Bearer',
+                'server_url' => $request->getSchemeAndHttpHost(),
                 'customer' => $customerPayload,
                 'user' => $userPayload,
             ],
