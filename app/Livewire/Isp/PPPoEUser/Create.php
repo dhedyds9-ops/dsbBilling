@@ -39,6 +39,7 @@ class Create extends AdminComponent
 
     public $activation_date;
     public $status = 'active';
+    public $isSaving = false;
 
     public function mount()
     {
@@ -73,6 +74,11 @@ class Create extends AdminComponent
 
     public function save(?ProvisioningService $provisioningService = null)
     {
+        if ($this->isSaving) {
+            return;
+        }
+        $this->isSaving = true;
+
         $provisioningService = $provisioningService ?? app(ProvisioningService::class);
 
         if ($this->login_method === 'username_only') {
@@ -136,6 +142,7 @@ class Create extends AdminComponent
             } else {
                 session()->flash('error', $msg);
             }
+            $this->isSaving = false;
             return;
         }
 
@@ -200,6 +207,8 @@ class Create extends AdminComponent
                 'exception' => $e
             ]);
             session()->flash('error', 'Gagal membuat user: ' . $e->getMessage());
+        } finally {
+            $this->isSaving = false;
         }
     }
 

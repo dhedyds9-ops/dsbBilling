@@ -4,10 +4,29 @@ namespace App\Services\CRM;
 
 use App\Models\User;
 use App\Models\CRM\Customer;
+use Illuminate\Support\Facades\Cache;
 
 class CustomerCodeGenerator
 {
+    /**
+     * Generate customer code unik baru dengan prefix Ymd + 2 digit sequence (contoh: 2026111801).
+     * Dilengkapi atomic lock untuk mencegah race condition pada concurrent requests.
+     */
     public static function generate(): string
+    {
+        try {
+            return Cache::lock('customer_code_generator_lock', 10)->block(3, function () {
+                return self::doGenerate();
+            });
+        } catch (\Throwable) {
+            return self::doGenerate();
+        }
+    }
+
+    /**
+     * Algoritma kalkulasi sequence maksimal dan pencarian sequence berikutnya yang tersedia.
+     */
+    public static function doGenerate(): string
     {
         $prefix = date("Ymd");
         $prefixLen = strlen($prefix);
@@ -29,10 +48,11 @@ class CustomerCodeGenerator
         $maxSequence = 0;
 
         foreach ($customerCodes->concat($userCodes)->concat($usernames) as $existingCode) {
-            if (!is_string($existingCode) || !str_starts_with($existingCode, $prefix)) {
+            $codeStr = trim((string) $existingCode);
+            if ($codeStr === '' || !str_starts_with($codeStr, $prefix)) {
                 continue;
             }
-            $suffix = substr($existingCode, $prefixLen);
+            $suffix = substr($codeStr, $prefixLen);
             if ($suffix !== '' && ctype_digit($suffix)) {
                 $seq = (int) $suffix;
                 if ($seq > $maxSequence) {
@@ -60,7 +80,7 @@ class CustomerCodeGenerator
      */
     public static function ensureUnique(?string $code = null): string
     {
-        $clean = $code ? trim($code) : '';
+        $clean = $code ? trim((string) $code) : '';
         if ($clean !== '' && !self::codeExists($clean)) {
             return $clean;
         }
@@ -71,17 +91,22 @@ class CustomerCodeGenerator
     /**
      * Cek apakah kode sudah dipakai di tabel customers (termasuk soft-deleted & lintas reseller/cabang)
      * atau di tabel users (customer_code / username).
+     * Menggunakan query index-friendly (where) sebelum fallback case-insensitive (LOWER).
      */
     public static function codeExists(string $code): bool
     {
-        $lower = strtolower(trim($code));
-        if ($lower === '') {
+        $clean = trim((string) $code);
+        if ($clean === '') {
             return false;
         }
 
+        $lower = strtolower($clean);
+
         $inUsers = User::withoutGlobalScopes()
-            ->where(function ($q) use ($lower) {
-                $q->whereRaw('LOWER(customer_code) = ?', [$lower])
+            ->where(function ($q) use ($clean, $lower) {
+                $q->where('customer_code', $clean)
+                  ->orWhere('username', $clean)
+                  ->orWhereRaw('LOWER(customer_code) = ?', [$lower])
                   ->orWhereRaw('LOWER(username) = ?', [$lower]);
             })
             ->exists();
@@ -92,7 +117,10 @@ class CustomerCodeGenerator
 
         return Customer::withoutGlobalScopes()
             ->withTrashed()
-            ->whereRaw('LOWER(code) = ?', [$lower])
+            ->where(function ($q) use ($clean, $lower) {
+                $q->where('code', $clean)
+                  ->orWhereRaw('LOWER(code) = ?', [$lower]);
+            })
             ->exists();
     }
 }

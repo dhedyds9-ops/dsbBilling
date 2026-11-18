@@ -446,26 +446,44 @@ class ProvisioningService
             if ($customer) {
                 // Pastikan user portal login tersedia jika belum ada
                 if (empty($customer->user_id)) {
-                    $code = $customer->code ?: \App\Services\CRM\CustomerCodeGenerator::ensureUnique($data['customer_code'] ?? null);
-                    if (empty($customer->code)) {
-                        $customer->update(['code' => $code]);
+                    $maxAttempts = 5;
+                    for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                        DB::beginTransaction();
+                        try {
+                            $code = ($attempt === 1 && !empty($customer->code))
+                                ? $customer->code
+                                : \App\Services\CRM\CustomerCodeGenerator::generate();
+
+                            if ($customer->code !== $code) {
+                                $customer->update(['code' => $code]);
+                            }
+
+                            $user = \App\Models\User::create([
+                                'name' => $customer->name,
+                                'email' => $customer->email,
+                                'whatsapp' => $customer->phone,
+                                'customer_code' => $code,
+                                'username' => $code,
+                                'password' => \Illuminate\Support\Facades\Hash::make('123456'),
+                                'is_active' => true,
+                            ]);
+
+                            if ($role = \App\Models\Role::where('name', 'customer')->first()) {
+                                $user->roles()->attach($role->id);
+                            }
+
+                            $customer->update(['user_id' => $user->id]);
+                            DB::commit();
+                            break;
+                        } catch (\Illuminate\Database\QueryException $qe) {
+                            DB::rollBack();
+                            if ($this->isDuplicateCodeException($qe) && $attempt < $maxAttempts) {
+                                usleep(random_int(10000, 50000));
+                                continue;
+                            }
+                            throw $qe;
+                        }
                     }
-
-                    $user = \App\Models\User::create([
-                        'name' => $customer->name,
-                        'email' => $customer->email,
-                        'whatsapp' => $customer->phone,
-                        'customer_code' => $code,
-                        'username' => $code,
-                        'password' => \Illuminate\Support\Facades\Hash::make('123456'),
-                        'is_active' => true,
-                    ]);
-
-                    if ($role = \App\Models\Role::where('name', 'customer')->first()) {
-                        $user->roles()->attach($role->id);
-                    }
-
-                    $customer->update(['user_id' => $user->id]);
                 }
                 return $customer;
             }
@@ -515,64 +533,106 @@ class ProvisioningService
         }
 
         if (!$customer) {
-            $generatedCode = \App\Services\CRM\CustomerCodeGenerator::ensureUnique($data['customer_code'] ?? null);
+            $requestedCode = $data['customer_code'] ?? null;
+            $maxAttempts = 5;
 
-            // Create user portal login
-            $user = \App\Models\User::create([
-                'name' => $data['name'],
-                'email' => $data['email'] ?? null,
-                'whatsapp' => $data['phone'],
-                'customer_code' => $generatedCode,
-                'username' => $generatedCode,
-                'pppoe_username' => $data['username'] ?? null,
-                'password' => \Illuminate\Support\Facades\Hash::make('123456'),
-                'is_active' => true,
-            ]);
+            for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                DB::beginTransaction();
 
-            if ($role = \App\Models\Role::where('name', 'customer')->first()) {
-                $user->roles()->attach($role->id);
+                try {
+                    $generatedCode = ($attempt === 1 && !empty($requestedCode))
+                        ? \App\Services\CRM\CustomerCodeGenerator::ensureUnique($requestedCode)
+                        : \App\Services\CRM\CustomerCodeGenerator::generate();
+
+                    // Create user portal login
+                    $user = \App\Models\User::create([
+                        'name' => $data['name'],
+                        'email' => $data['email'] ?? null,
+                        'whatsapp' => $data['phone'],
+                        'customer_code' => $generatedCode,
+                        'username' => $generatedCode,
+                        'pppoe_username' => $data['username'] ?? null,
+                        'password' => \Illuminate\Support\Facades\Hash::make('123456'),
+                        'is_active' => true,
+                    ]);
+
+                    if ($role = \App\Models\Role::where('name', 'customer')->first()) {
+                        $user->roles()->attach($role->id);
+                    }
+
+                    $customer = Customer::create([
+                        'code' => $generatedCode,
+                        'user_id' => $user->id,
+                        'name' => $data['name'],
+                        'phone' => $data['phone'],
+                        'email' => $data['email'] ?? null,
+                        'address' => $data['address'] ?? null,
+                        'latitude' => $data['latitude'] ?? null,
+                        'longitude' => $data['longitude'] ?? null,
+                        'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : null,
+                        'status' => 'active',
+                        'created_by' => $userId,
+                        'updated_by' => $userId,
+                    ]);
+
+                    DB::commit();
+                    break;
+                } catch (\Illuminate\Database\QueryException $qe) {
+                    DB::rollBack();
+
+                    if ($this->isDuplicateCodeException($qe) && $attempt < $maxAttempts) {
+                        \Illuminate\Support\Facades\Log::warning("[Provisioning] Customer code collision ('{$generatedCode}') on attempt {$attempt}: {$qe->getMessage()}. Retrying with fresh sequence...");
+                        usleep(random_int(10000, 50000));
+                        continue;
+                    }
+
+                    throw $qe;
+                }
             }
-
-            $customer = Customer::create([
-                'code' => $generatedCode,
-                'user_id' => $user->id,
-                'name' => $data['name'],
-                'phone' => $data['phone'],
-                'email' => $data['email'] ?? null,
-                'address' => $data['address'] ?? null,
-                'latitude' => $data['latitude'] ?? null,
-                'longitude' => $data['longitude'] ?? null,
-                'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : null,
-                'status' => 'active',
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]);
         } else {
             // Jika customer yang ditemukan adalah Guest Voucher, upgrade menjadi regular customer
             if ($isGuest) {
-                $newCode = \App\Services\CRM\CustomerCodeGenerator::ensureUnique($data['customer_code'] ?? null);
-                $customer->update([
-                    'code' => $newCode,
-                    'name' => $data['name'],
-                    'email' => $data['email'] ?? $customer->email,
-                    'address' => $data['address'] ?? $customer->address,
-                    'latitude' => $data['latitude'] ?? $customer->latitude,
-                    'longitude' => $data['longitude'] ?? $customer->longitude,
-                    'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : $customer->reseller_id,
-                    'status' => 'active',
-                    'updated_by' => $userId,
-                ]);
+                $maxAttempts = 5;
+                for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                    DB::beginTransaction();
+                    try {
+                        $newCode = ($attempt === 1 && !empty($data['customer_code']))
+                            ? \App\Services\CRM\CustomerCodeGenerator::ensureUnique($data['customer_code'])
+                            : \App\Services\CRM\CustomerCodeGenerator::generate();
 
-                if (!empty($customer->user_id)) {
-                    $user = \App\Models\User::find($customer->user_id);
-                    if ($user) {
-                        $user->update([
+                        $customer->update([
+                            'code' => $newCode,
                             'name' => $data['name'],
-                            'customer_code' => $newCode,
-                            'username' => $newCode,
-                            'email' => $data['email'] ?? $user->email,
-                            'is_active' => true,
+                            'email' => $data['email'] ?? $customer->email,
+                            'address' => $data['address'] ?? $customer->address,
+                            'latitude' => $data['latitude'] ?? $customer->latitude,
+                            'longitude' => $data['longitude'] ?? $customer->longitude,
+                            'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : $customer->reseller_id,
+                            'status' => 'active',
+                            'updated_by' => $userId,
                         ]);
+
+                        if (!empty($customer->user_id)) {
+                            $user = \App\Models\User::find($customer->user_id);
+                            if ($user) {
+                                $user->update([
+                                    'name' => $data['name'],
+                                    'customer_code' => $newCode,
+                                    'username' => $newCode,
+                                    'email' => $data['email'] ?? $user->email,
+                                    'is_active' => true,
+                                ]);
+                            }
+                        }
+                        DB::commit();
+                        break;
+                    } catch (\Illuminate\Database\QueryException $qe) {
+                        DB::rollBack();
+                        if ($this->isDuplicateCodeException($qe) && $attempt < $maxAttempts) {
+                            usleep(random_int(10000, 50000));
+                            continue;
+                        }
+                        throw $qe;
                     }
                 }
             } else {
@@ -596,26 +656,44 @@ class ProvisioningService
 
             // Jika customer sudah ada tapi belum punya akun login portal, buatkan sekarang
             if (empty($customer->user_id)) {
-                $code = $customer->code ?: \App\Services\CRM\CustomerCodeGenerator::ensureUnique($data['customer_code'] ?? null);
-                if (empty($customer->code)) {
-                    $customer->update(['code' => $code]);
+                $maxAttempts = 5;
+                for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                    DB::beginTransaction();
+                    try {
+                        $code = ($attempt === 1 && !empty($customer->code))
+                            ? $customer->code
+                            : \App\Services\CRM\CustomerCodeGenerator::generate();
+
+                        if ($customer->code !== $code) {
+                            $customer->update(['code' => $code]);
+                        }
+
+                        $user = \App\Models\User::create([
+                            'name' => $customer->name,
+                            'email' => $customer->email,
+                            'whatsapp' => $customer->phone,
+                            'customer_code' => $code,
+                            'username' => $code,
+                            'password' => \Illuminate\Support\Facades\Hash::make('123456'),
+                            'is_active' => true,
+                        ]);
+
+                        if ($role = \App\Models\Role::where('name', 'customer')->first()) {
+                            $user->roles()->attach($role->id);
+                        }
+
+                        $customer->update(['user_id' => $user->id]);
+                        DB::commit();
+                        break;
+                    } catch (\Illuminate\Database\QueryException $qe) {
+                        DB::rollBack();
+                        if ($this->isDuplicateCodeException($qe) && $attempt < $maxAttempts) {
+                            usleep(random_int(10000, 50000));
+                            continue;
+                        }
+                        throw $qe;
+                    }
                 }
-
-                $user = \App\Models\User::create([
-                    'name' => $customer->name,
-                    'email' => $customer->email,
-                    'whatsapp' => $customer->phone,
-                    'customer_code' => $code,
-                    'username' => $code,
-                    'password' => \Illuminate\Support\Facades\Hash::make('123456'),
-                    'is_active' => true,
-                ]);
-
-                if ($role = \App\Models\Role::where('name', 'customer')->first()) {
-                    $user->roles()->attach($role->id);
-                }
-
-                $customer->update(['user_id' => $user->id]);
             }
         }
 
@@ -838,5 +916,41 @@ class ProvisioningService
             \Illuminate\Support\Facades\Log::warning('[ProvisioningService] Gagal auto-create ONU: ' . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Memeriksa apakah exception database disebabkan oleh benturan unique constraint pada kode customer / username.
+     */
+    protected function isDuplicateCodeException(\Illuminate\Database\QueryException $qe): bool
+    {
+        $sqlState = (string) $qe->getCode();
+        $errorCode = $qe->errorInfo[1] ?? 0;
+        $message = $qe->getMessage();
+
+        // MySQL error 1062, SQLite error 19, SQLSTATE 23000
+        $isDuplicateCodeOrState = 
+            $sqlState === '23000' || 
+            $sqlState === '1062' || 
+            $sqlState === '19' || 
+            $errorCode == 1062 || 
+            $errorCode == 19 ||
+            str_contains($message, '1062') ||
+            str_contains($message, '23000');
+
+        if ($isDuplicateCodeOrState) {
+            if (
+                str_contains($message, 'users_customer_code_unique') ||
+                str_contains($message, 'users_username_unique') ||
+                str_contains($message, 'customers_code_unique') ||
+                str_contains($message, 'members_code_unique') ||
+                str_contains($message, 'customer_code') ||
+                str_contains($message, 'Duplicate entry') ||
+                str_contains($message, 'UNIQUE constraint failed')
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

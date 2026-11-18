@@ -30,6 +30,7 @@ class Create extends AdminComponent
     public $reseller_id = '';
     public $branch_id = '';
     public $notes = '';
+    public $isSaving = false;
 
     public function mount()
     {
@@ -45,6 +46,11 @@ class Create extends AdminComponent
 
     public function save(\App\Services\Provisioning\ProvisioningService $provisioningService)
     {
+        if ($this->isSaving) {
+            return;
+        }
+        $this->isSaving = true;
+
         $this->validate([
             'name'               => 'required|string|max:255',
             'customer_code'      => 'nullable|string|unique:customers,code',
@@ -82,6 +88,7 @@ class Create extends AdminComponent
             } else {
                 session()->flash('error', $msg);
             }
+            $this->isSaving = false;
             return;
         }
 
@@ -126,19 +133,36 @@ class Create extends AdminComponent
 
                 session()->flash('success', 'Customer berhasil dibuat beserta layanan aktif!');
             } else {
-                // Mode Prospect: hanya buat data Customer (belum ada layanan)
-                $customer = \App\Models\CRM\Customer::create(array_merge([
-                    'code'       => $code,
-                    'name'       => $this->name,
-                    'phone'      => $this->phone,
-                    'email'      => $this->email,
-                    'address'    => $this->address,
-                    'status'     => 'active',
-                    'latitude'   => $this->latitude,
-                    'longitude'  => $this->longitude,
-                    'notes'      => $this->notes ?: null,
-                    'created_by' => auth()->id(),
-                ], $ownershipData));
+                // Mode Prospect: hanya buat data Customer (belum ada layanan) dengan retry loop jika collision
+                $maxAttempts = 5;
+                for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                    \Illuminate\Support\Facades\DB::beginTransaction();
+                    try {
+                        $candidateCode = ($attempt === 1) ? $code : \App\Services\CRM\CustomerCodeGenerator::generate();
+                        $customer = \App\Models\CRM\Customer::create(array_merge([
+                            'code'       => $candidateCode,
+                            'name'       => $this->name,
+                            'phone'      => $this->phone,
+                            'email'      => $this->email,
+                            'address'    => $this->address,
+                            'status'     => 'active',
+                            'latitude'   => $this->latitude,
+                            'longitude'  => $this->longitude,
+                            'notes'      => $this->notes ?: null,
+                            'created_by' => auth()->id(),
+                        ], $ownershipData));
+
+                        \Illuminate\Support\Facades\DB::commit();
+                        break;
+                    } catch (\Illuminate\Database\QueryException $qe) {
+                        \Illuminate\Support\Facades\DB::rollBack();
+                        if ($attempt < $maxAttempts && ($qe->getCode() == 23000 || str_contains($qe->getMessage(), '1062') || str_contains($qe->getMessage(), 'UNIQUE'))) {
+                            usleep(random_int(10000, 50000));
+                            continue;
+                        }
+                        throw $qe;
+                    }
+                }
 
                 session()->flash('success', 'Customer (Calon Pelanggan) berhasil disimpan!');
             }
@@ -148,6 +172,8 @@ class Create extends AdminComponent
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Customer create failed: ' . $e->getMessage());
             session()->flash('error', 'Gagal menyimpan: ' . $e->getMessage());
+        } finally {
+            $this->isSaving = false;
         }
     }
 

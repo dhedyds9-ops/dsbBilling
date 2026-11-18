@@ -259,39 +259,41 @@ class MobileInventoryApiController extends Controller
             $items = $query->limit($limit)->get();
         }
 
-        $warehouse = Warehouse::where('branch_id', $user->branch_id)->where('is_active', true)->first()
-            ?? Warehouse::where(function ($q) {
+        $warehouse = Warehouse::withoutGlobalScopes()->where('branch_id', $user->branch_id)->where('is_active', true)->first()
+            ?? Warehouse::withoutGlobalScopes()->where(function ($q) {
                 $q->where('type', 'main')->orWhereNull('branch_id')->orWhere('branch_id', 1);
             })->where('is_active', true)->first()
-            ?? Warehouse::where('is_active', true)->first();
+            ?? Warehouse::withoutGlobalScopes()->where('is_active', true)->first();
         $whId = $warehouse?->id;
 
         $formatted = $items->map(function (Item $i) use ($whId) {
             $stockQty = 0.0;
             if ($whId) {
                 if ($i->is_serialized) {
-                    $serialCount = (float) \App\Models\Inventory\ItemSerial::where('item_id', $i->id)
+                    $serialCount = (float) \App\Models\Inventory\ItemSerial::withoutGlobalScopes()->where('item_id', $i->id)
                         ->where('warehouse_id', $whId)
                         ->where(function ($sq) {
-                            $sq->whereIn(DB::raw('LOWER(status)'), ['in_warehouse', 'in warehouse', 'in_stock', 'ready']);
+                            $sq->whereIn(DB::raw('LOWER(status)'), ['in_warehouse', 'in warehouse', 'in_stock', 'ready', 'available', 'tersedia', 'gudang'])
+                               ->orWhereNull('status');
                         })
                         ->count();
-                    $stk = \App\Models\Inventory\InventoryStock::where('warehouse_id', $whId)->where('item_id', $i->id)->first();
+                    $stk = \App\Models\Inventory\InventoryStock::withoutGlobalScopes()->where('warehouse_id', $whId)->where('item_id', $i->id)->first();
                     $stockQty = max((float) ($stk?->quantity ?? 0.0), $serialCount);
                 } else {
-                    $stk = \App\Models\Inventory\InventoryStock::where('warehouse_id', $whId)->where('item_id', $i->id)->first();
+                    $stk = \App\Models\Inventory\InventoryStock::withoutGlobalScopes()->where('warehouse_id', $whId)->where('item_id', $i->id)->first();
                     $stockQty = (float) ($stk?->quantity ?? 0.0);
                 }
             }
 
             // Fallback: If branch warehouse has 0 stock, check central / all active warehouses so reseller sees actual available stock
             if ($stockQty <= 0) {
-                $allWhQty = (float) \App\Models\Inventory\InventoryStock::where('item_id', $i->id)->sum('quantity');
+                $allWhQty = (float) \App\Models\Inventory\InventoryStock::withoutGlobalScopes()->where('item_id', $i->id)->sum('quantity');
                 $allSerialQty = 0.0;
                 if ($i->is_serialized) {
-                    $allSerialQty = (float) \App\Models\Inventory\ItemSerial::where('item_id', $i->id)
+                    $allSerialQty = (float) \App\Models\Inventory\ItemSerial::withoutGlobalScopes()->where('item_id', $i->id)
                         ->where(function ($sq) {
-                            $sq->whereIn(DB::raw('LOWER(status)'), ['in_warehouse', 'in warehouse', 'in_stock', 'ready']);
+                            $sq->whereIn(DB::raw('LOWER(status)'), ['in_warehouse', 'in warehouse', 'in_stock', 'ready', 'available', 'tersedia', 'gudang'])
+                               ->orWhereNull('status');
                         })
                         ->count();
                 }
