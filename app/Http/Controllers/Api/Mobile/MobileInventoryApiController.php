@@ -229,7 +229,8 @@ class MobileInventoryApiController extends Controller
         if ($user->branch_id && !$user->isSuperAdmin()) {
             $query->where(function ($q) use ($user) {
                 $q->where('branch_id', $user->branch_id)
-                    ->orWhereNull('branch_id');
+                    ->orWhereNull('branch_id')
+                    ->orWhere('branch_id', 1);
             });
         }
 
@@ -259,6 +260,9 @@ class MobileInventoryApiController extends Controller
         }
 
         $warehouse = Warehouse::where('branch_id', $user->branch_id)->where('is_active', true)->first()
+            ?? Warehouse::where(function ($q) {
+                $q->where('type', 'main')->orWhereNull('branch_id')->orWhere('branch_id', 1);
+            })->where('is_active', true)->first()
             ?? Warehouse::where('is_active', true)->first();
         $whId = $warehouse?->id;
 
@@ -321,8 +325,11 @@ class MobileInventoryApiController extends Controller
 
         $warehouseId = $request->input('warehouse_id');
         if (!$warehouseId) {
-            $warehouse = Warehouse::where('branch_id', $user->branch_id)->first()
-                ?? Warehouse::first();
+            $warehouse = Warehouse::where('branch_id', $user->branch_id)->where('is_active', true)->first()
+                ?? Warehouse::where(function ($q) {
+                    $q->where('type', 'main')->orWhereNull('branch_id')->orWhere('branch_id', 1);
+                })->where('is_active', true)->first()
+                ?? Warehouse::where('is_active', true)->first();
 
             if (!$warehouse) {
                 // Ensure at least one warehouse exists for the branch/company
@@ -666,7 +673,11 @@ class MobileInventoryApiController extends Controller
             ], 422);
         }
 
-        $warehouse = Warehouse::where('branch_id', $user->branch_id)->first() ?? Warehouse::first();
+        $warehouse = Warehouse::where('branch_id', $user->branch_id)->where('is_active', true)->first()
+            ?? Warehouse::where(function ($q) {
+                $q->where('type', 'main')->orWhereNull('branch_id')->orWhere('branch_id', 1);
+            })->where('is_active', true)->first()
+            ?? Warehouse::where('is_active', true)->first();
         if (!$warehouse) {
             $warehouse = Warehouse::create([
                 'uuid' => (string) Str::uuid(),

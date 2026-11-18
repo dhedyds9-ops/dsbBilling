@@ -115,6 +115,9 @@ class Index extends Component
         try {
             DB::transaction(function () use ($user) {
                 $warehouse = Warehouse::where('branch_id', $user->branch_id)->where('is_active', true)->first()
+                    ?? Warehouse::where(function ($q) {
+                        $q->where('type', 'main')->orWhereNull('branch_id')->orWhere('branch_id', 1);
+                    })->where('is_active', true)->first()
                     ?? Warehouse::where('is_active', true)->first();
 
                 if (!$warehouse) {
@@ -296,6 +299,9 @@ class Index extends Component
                 }
 
                 $warehouse = Warehouse::where('branch_id', $user->branch_id)->where('is_active', true)->first()
+                    ?? Warehouse::where(function ($q) {
+                        $q->where('type', 'main')->orWhereNull('branch_id')->orWhere('branch_id', 1);
+                    })->where('is_active', true)->first()
                     ?? Warehouse::where('is_active', true)->first();
 
                 $returnDoc = InventoryReturn::create([
@@ -376,6 +382,9 @@ class Index extends Component
 
         // 2. DATA KETERSEDIAAN GUDANG KANTOR (Real Enterprise Stocks & Catalog)
         $activeWarehouse = Warehouse::where('branch_id', $user->branch_id)->where('is_active', true)->first()
+            ?? Warehouse::where(function ($q) {
+                $q->where('type', 'main')->orWhereNull('branch_id')->orWhere('branch_id', 1);
+            })->where('is_active', true)->first()
             ?? Warehouse::where('is_active', true)->first();
 
         $warehouseId = $activeWarehouse?->id;
