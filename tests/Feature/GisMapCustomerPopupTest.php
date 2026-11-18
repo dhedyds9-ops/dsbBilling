@@ -181,4 +181,59 @@ class GisMapCustomerPopupTest extends TestCase
                 'ssid_name' => 'Rumah_Dede_5G',
             ]);
     }
+
+    public function test_gis_map_page_renders_successfully(): void
+    {
+        $customer = Customer::create([
+            'uuid' => (string) Str::uuid(),
+            'customer_code' => 'CUST-RENDER-01',
+            'name' => 'Bapak Dede Render',
+            'email' => 'dede.render@test.com',
+            'phone' => '081234567899',
+            'address' => 'Jl. Mawar No 123',
+            'latitude' => -6.8500,
+            'longitude' => 106.2500,
+            'status' => 'active',
+        ]);
+
+        $onu = Onu::create([
+            'uuid' => (string) Str::uuid(),
+            'code' => 'ONU-RENDER-01',
+            'serial_number' => 'HWTC11223344',
+            'name' => 'ONU Render Test',
+            'latitude' => -6.8500,
+            'longitude' => 106.2500,
+            'status' => 'active',
+            'operational_status' => 'online',
+            'rx_power_dbm' => -19.5,
+            'tx_power_dbm' => 2.4,
+            'wifi_ssid' => 'WiFi-Test',
+            'wifi_password' => 'secret123',
+            'last_seen_at' => now(),
+        ]);
+
+        $cs = CustomerService::create([
+            'uuid' => (string) Str::uuid(),
+            'customer_id' => $customer->id,
+            'service_profile_id' => $this->profile->id,
+            'onu_id' => $onu->id,
+            'status' => 'active',
+            'installation_address' => 'Jl. Mawar No 123',
+            'billing_cycle' => 'monthly',
+        ]);
+
+        PPPoEUser::create([
+            'uuid' => (string) Str::uuid(),
+            'router_id' => $this->router->id,
+            'customer_id' => $customer->id,
+            'customer_service_id' => $cs->id,
+            'service_profile_id' => $this->profile->id,
+            'username' => 'dede_render',
+            'password' => 'secret123',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($this->adminUser)->get('/gis/map');
+        $response->assertStatus(200);
+    }
 }

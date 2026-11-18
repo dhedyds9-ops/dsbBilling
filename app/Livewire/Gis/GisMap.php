@@ -948,16 +948,13 @@ class GisMap extends Component
                         $q->select(['id', 'customer_id', 'onu_id', 'service_profile_id', 'username', 'status', 'tr069_status', 'offline_reason', 'last_seen_at'])
                           ->with([
                               'onu' => function($oq) {
-                                  $oq->select(['id', 'odp_id', 'name', 'serial_number', 'mac_address', 'wifi_ssid', 'wifi_password', 'rx_power_dbm', 'tx_power_dbm', 'latitude', 'longitude', 'last_seen_at', 'status', 'operational_status']);
+                                  $oq->select(['id', 'odp_id', 'name', 'serial_number', 'mac_address', 'wifi_ssid', 'wifi_password', 'rx_power_dbm', 'tx_power_dbm', 'latitude', 'longitude', 'last_seen_at']);
                               },
                               'pppoeUser' => function($pq) {
                                   $pq->select(['id', 'customer_service_id', 'username', 'odp_id', 'status']);
                               },
                               'hotspotUser' => function($hq) {
                                   $hq->select(['id', 'customer_service_id', 'username', 'status']);
-                              },
-                              'acsDevice' => function($aq) {
-                                  $aq->select(['id', 'customer_service_id', 'onu_id', 'serial_number', 'mac_address', 'ip_address', 'status', 'last_inform']);
                               }
                           ]);
                     }
@@ -977,7 +974,6 @@ class GisMap extends Component
                     if (!$onu && $service && $service->onu_id) {
                         $onu = \App\Models\ISP\Onu::find($service->onu_id);
                     }
-                    $acsDevice = $service?->acsDevice ?? $onu?->acsDevice;
                     $pppoe = $service?->pppoeUser;
                     $hotspot = $service?->hotspotUser;
 
@@ -992,25 +988,20 @@ class GisMap extends Component
                     $isOnline = false;
                     $lastReason = 'Modem Offline';
 
-                    // 1. Cek sesi PPPoE aktif langsung dari router/radius
-                    if ($pppoe && $pppoe->is_online) {
+                    // 1. Cek sesi PPPoE aktif dari status relasi tanpa N+1 query
+                    if ($pppoe && in_array(strtolower($pppoe->status ?? ''), ['active', 'online'])) {
                         $isOnline = true;
                         $lastReason = 'PPPoE Active Session';
                     }
                     // 2. Cek sesi Hotspot aktif
-                    elseif ($hotspot && $hotspot->is_online) {
+                    elseif ($hotspot && in_array(strtolower($hotspot->status ?? ''), ['active', 'online'])) {
                         $isOnline = true;
                         $lastReason = 'Hotspot Active Session';
                     }
                     // 3. Cek OLT link fisik
-                    elseif ($onu && in_array(strtolower((string)($onu->operational_status ?? $onu->status)), ['online', 'active']) && $onu->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 15) {
+                    elseif ($onu && $onu->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 15) {
                         $isOnline = true;
-                        $lastReason = 'ONU Online on OLT';
-                    }
-                    // 4. Cek GenieACS TR-069
-                    elseif ($acsDevice && ($acsDevice->status === 'online' || ($acsDevice->last_inform && $acsDevice->last_inform->diffInMinutes(now()) <= 15))) {
-                        $isOnline = true;
-                        $lastReason = 'TR-069 Active Inform';
+                        $lastReason = 'ONU Active on OLT';
                     } else {
                         $isOnline = false;
                         if ($service && strtolower($service->status ?? '') === 'suspended') {
@@ -1025,18 +1016,16 @@ class GisMap extends Component
                     // Inject properties expected by map JS
                     $c->is_online = $isOnline;
                     $c->odp_id = $onu?->odp_id ?? $pppoe?->odp_id ?? $c->odp_id;
-                    $c->tr069_ip = ($acsDevice?->ip_address && $acsDevice->ip_address !== '0.0.0.0')
-                        ? $acsDevice->ip_address
-                        : ($service?->tr069_status ?: ($onu?->serial_number ? 'TR069-' . $onu->serial_number : 'unknown'));
+                    $c->tr069_ip = $service?->tr069_status ?: ($onu?->serial_number ? 'TR069-' . $onu->serial_number : 'unknown');
                     $c->ssid_name = $onu?->wifi_ssid ?: null;
                     $c->ssid_password = $onu?->wifi_password ?: null;
                     $c->rx_power = ($onu?->rx_power_dbm !== null && $onu?->rx_power_dbm !== '') ? $onu->rx_power_dbm . ' dBm' : null;
                     $c->rdm_power = ($onu?->tx_power_dbm !== null && $onu?->tx_power_dbm !== '') ? $onu->tx_power_dbm . ' dBm' : null;
-                    $c->last_inform = $acsDevice?->last_inform ?? ($onu?->last_seen_at ?? null);
+                    $c->last_inform = $onu?->last_seen_at ?? $service?->last_seen_at;
                     $c->last_reason = $lastReason;
-                    $c->has_genie_status = (bool) ($acsDevice?->last_inform || $service?->tr069_status);
-                    $c->serial_number = $onu?->serial_number ?: ($acsDevice?->serial_number ?: '-');
-                    $c->mac_address = $onu?->mac_address ?: ($acsDevice?->mac_address ?: '-');
+                    $c->has_genie_status = (bool) ($service?->tr069_status || $onu?->wifi_ssid);
+                    $c->serial_number = $onu?->serial_number ?: '-';
+                    $c->mac_address = $onu?->mac_address ?: '-';
                     $c->service_type = $pppoe ? 'PPPoE' : ($hotspot ? 'Hotspot' : 'Internet');
                     $c->username = $pppoe?->username ?? $hotspot?->username ?? $service?->username ?? $c->code;
 
@@ -1057,8 +1046,7 @@ class GisMap extends Component
                     });
                 })
                 ->map(function($onu) {
-                    $isOnline = in_array(strtolower((string)($onu->operational_status ?? $onu->status)), ['online', 'active'])
-                        && $onu->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 15;
+                    $isOnline = $onu->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 15;
                     return (object)[
                         'id' => 'onu-' . $onu->id,
                         'name' => $onu->name ?: ('ONU ' . ($onu->serial_number ?: $onu->code)),
@@ -1067,7 +1055,7 @@ class GisMap extends Component
                         'address' => $onu->description ?: 'Standalone ONU Device',
                         'latitude' => $onu->latitude,
                         'longitude' => $onu->longitude,
-                        'status' => $onu->status,
+                        'status' => $onu->status ?? 'active',
                         'is_online' => $isOnline,
                         'odp_id' => $onu->odp_id,
                         'tr069_ip' => $onu->serial_number ? 'TR069-' . $onu->serial_number : 'unknown',

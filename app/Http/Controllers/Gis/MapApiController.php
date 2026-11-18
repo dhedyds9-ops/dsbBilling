@@ -284,12 +284,12 @@ class MapApiController extends Controller
             ]);
         }
 
-        $customer = Customer::with([
-            'customerServices.onu',
-            'customerServices.acsDevice',
-            'customerServices.pppoeUser',
-            'customerServices.hotspotUser',
-        ])->find($id);
+        $relations = ['customerServices.onu', 'customerServices.pppoeUser', 'customerServices.hotspotUser'];
+        if (\Illuminate\Support\Facades\Schema::hasTable('acs_devices')) {
+            $relations[] = 'customerServices.acsDevice';
+        }
+
+        $customer = Customer::with($relations)->find($id);
 
         if (!$customer) {
             return response()->json(['success' => false, 'message' => 'Customer not found'], 404);
@@ -300,13 +300,21 @@ class MapApiController extends Controller
         if (!$onu && $cs && $cs->onu_id) {
             $onu = \App\Models\ISP\Onu::find($cs->onu_id);
         }
-        if (!$onu && $cs) {
-            $acs = \App\Models\ACS\ACSDevice::where('customer_service_id', $cs->id)->first();
-            if ($acs && $acs->onu_id) {
-                $onu = \App\Models\ISP\Onu::find($acs->onu_id);
+
+        $acsDevice = null;
+        if (\Illuminate\Support\Facades\Schema::hasTable('acs_devices')) {
+            try {
+                if (!$onu && $cs) {
+                    $acs = \App\Models\ACS\ACSDevice::where('customer_service_id', $cs->id)->first();
+                    if ($acs && $acs->onu_id) {
+                        $onu = \App\Models\ISP\Onu::find($acs->onu_id);
+                    }
+                }
+                $acsDevice = $cs?->acsDevice ?? $onu?->acsDevice;
+            } catch (\Throwable) {
+                $acsDevice = null;
             }
         }
-        $acsDevice = $cs?->acsDevice ?? $onu?->acsDevice;
         $pppoe = $cs?->pppoeUser;
         $hotspot = $cs?->hotspotUser;
 
@@ -314,27 +322,32 @@ class MapApiController extends Controller
         $reason = 'Tidak Ada Sesi Aktif';
         $totalClients = 0;
 
-        if ($pppoe && $pppoe->is_online) {
-            $isOnline = true;
-            $reason = 'PPPoE Active Session';
-        } elseif ($hotspot && $hotspot->is_online) {
-            $isOnline = true;
-            $reason = 'Hotspot Active Session';
-        } elseif ($acsDevice && ($acsDevice->status === 'online' || ($acsDevice->last_inform && $acsDevice->last_inform->diffInMinutes(now()) <= 15))) {
-            $isOnline = true;
-            $reason = 'TR-069 Active Inform';
-        } elseif ($onu && in_array(strtolower((string)($onu->operational_status ?? $onu->status)), ['online', 'active']) && $onu->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 15) {
-            $isOnline = true;
-            $reason = 'ONU Online on OLT';
-        } else {
-            $isOnline = false;
-            if ($cs && strtolower($cs->status ?? '') === 'suspended') {
-                $reason = 'Layanan Disuspend';
-            } elseif ($cs && strtolower($cs->status ?? '') === 'inactive') {
-                $reason = 'Layanan Nonaktif';
+        try {
+            if ($pppoe && $pppoe->is_online) {
+                $isOnline = true;
+                $reason = 'PPPoE Active Session';
+            } elseif ($hotspot && $hotspot->is_online) {
+                $isOnline = true;
+                $reason = 'Hotspot Active Session';
+            } elseif ($acsDevice && ($acsDevice->status === 'online' || ($acsDevice->last_inform && $acsDevice->last_inform->diffInMinutes(now()) <= 15))) {
+                $isOnline = true;
+                $reason = 'TR-069 Active Inform';
+            } elseif ($onu && $onu->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 15) {
+                $isOnline = true;
+                $reason = 'ONU Online on OLT';
             } else {
-                $reason = 'Modem Offline / Sesi Terputus';
+                $isOnline = false;
+                if ($cs && strtolower($cs->status ?? '') === 'suspended') {
+                    $reason = 'Layanan Disuspend';
+                } elseif ($cs && strtolower($cs->status ?? '') === 'inactive') {
+                    $reason = 'Layanan Nonaktif';
+                } else {
+                    $reason = 'Modem Offline / Sesi Terputus';
+                }
             }
+        } catch (\Throwable) {
+            $isOnline = ($pppoe && in_array(strtolower($pppoe->status ?? ''), ['active', 'online']));
+            $reason = $isOnline ? 'PPPoE Active' : 'Modem Offline';
         }
 
         if ($acsDevice && isset($acsDevice->total_associations)) {
