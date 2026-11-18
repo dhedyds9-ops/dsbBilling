@@ -312,6 +312,49 @@
     </div>
     @endif
 
+    {{-- Modal Tambah / Update Foto Titik yang Sudah Ada --}}
+    @if($showUploadPhotoModal)
+    <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden animate-in fade-in duration-200">
+            <div class="px-5 py-4 bg-gradient-to-r from-sky-600 to-blue-600 text-white flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-xl">add_a_photo</span>
+                    <h3 class="font-bold text-sm sm:text-base">Unggah Foto Dokumentasi</h3>
+                </div>
+                <button type="button" wire:click="closeUploadPhotoModal" class="text-white/80 hover:text-white text-lg">&times;</button>
+            </div>
+
+            <form wire:submit.prevent="saveAdditionalPhoto" class="p-5 space-y-4">
+                <div>
+                    <span class="text-xs text-slate-500">Titik Target:</span>
+                    <div class="text-sm font-bold text-slate-800 dark:text-slate-100 mt-0.5">{{ $uploadTargetName }} ({{ strtoupper($uploadTargetType) }})</div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Ambil / Pilih Foto Fisik</label>
+                    <input type="file" wire:model="additionalPhoto" accept="image/*" capture="environment" required
+                           class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100">
+                    <p class="text-[10px] text-slate-400 mt-1">Gunakan kamera ponsel untuk mengambil foto tiang/box langsung di lokasi.</p>
+
+                    @if ($additionalPhoto)
+                        <div class="mt-3">
+                            <img src="{{ $additionalPhoto->temporaryUrl() }}" class="h-32 w-full rounded-xl object-cover border border-slate-200 shadow-sm">
+                        </div>
+                    @endif
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-end gap-2">
+                    <button type="button" wire:click="closeUploadPhotoModal" class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl">Batal</button>
+                    <button type="submit" wire:loading.attr="disabled" class="px-4 py-2 text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-sm flex items-center gap-1.5">
+                        <span wire:loading.remove>Unggah Foto</span>
+                        <span wire:loading>Mengunggah...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
     <script>
         let map = null;
         let userMarker = null;
@@ -442,8 +485,8 @@
                     iconSize: [24, 24],
                     iconAnchor: [12, 12]
                 });
-                const photo = (jc.photos && jc.photos.length > 0) ? `<img src="${jc.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;margin-top:6px;">` : '';
-                const popup = `<div style="font-family:inherit;min-width:180px;"><b style="color:#0d9488;">Closure FO: ${jc.name}</b><br><span style="font-size:11px;color:#64748b;">Tipe: ${jc.type || 'Dome'} (${jc.code})</span>${photo}</div>`;
+                const photo = (jc.photos && jc.photos.length > 0) ? `<img src="${jc.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;margin-top:6px;border:1px solid #334155;">` : '';
+                const popup = `<div style="font-family:inherit;min-width:180px;"><b style="color:#0d9488;">Closure FO: ${jc.name}</b><br><span style="font-size:11px;color:#64748b;">Tipe: ${jc.type || 'Dome'} (${jc.code})</span>${photo}<button type="button" onclick="openUploadPhotoModalFromMap('closure', ${jc.id}, '${jc.name}')" style="margin-top:6px; background:#0d9488; color:white; border:none; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; width:100%;">📸 Tambah / Ganti Foto</button></div>`;
                 L.marker([jc.latitude, jc.longitude], { icon }).addTo(backboneLayerGroup).bindPopup(popup);
             });
         }
@@ -476,6 +519,10 @@
 
         function openCreateModalFromMap(lat, lng) {
             @this.openCreateModal(lat, lng);
+        }
+
+        function openUploadPhotoModalFromMap(type, id, name) {
+            @this.openUploadPhotoModal(type, id, name);
         }
 
         function renderOdpsOnMap(odps, center, hasGps) {
@@ -522,7 +569,8 @@
                         distanceText +
                     '</div>' +
                     photo +
-                    '<div style="margin-top:8px;">' +
+                    '<div style="margin-top:8px; display:flex; flex-direction:column; gap:4px;">' +
+                        '<button type="button" onclick="openUploadPhotoModalFromMap(\'odp\', ' + odp.id + ', \'' + odp.name + '\')" style="background:#0284c7; color:white; border:none; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; width:100%;">📸 Tambah / Ganti Foto</button>' +
                         '<a href="' + gmapsUrl + '" target="_blank" style="display:inline-block; font-size:10px; font-weight:bold; color:#4f46e5; text-decoration:none;">➔ Buka Rute Google Maps</a>' +
                     '</div>' +
                 '</div>';

@@ -42,6 +42,13 @@ class Nearest extends Component
     public $newNodePhoto = null;
     public ?string $createSuccessMessage = null;
 
+    // Upload Additional Photo Modal (untuk titik yang sudah ada)
+    public bool $showUploadPhotoModal = false;
+    public string $uploadTargetType = 'odp';
+    public ?int $uploadTargetId = null;
+    public string $uploadTargetName = '';
+    public $additionalPhoto = null;
+
     public function mount()
     {
         $this->loadNearestOdps();
@@ -190,6 +197,51 @@ class Nearest extends Component
         $this->loadAllTopology();
         $this->showCreateModal = false;
         $this->newNodePhoto = null;
+    }
+
+    public function openUploadPhotoModal(string $type, int $id, string $name)
+    {
+        $this->uploadTargetType = $type;
+        $this->uploadTargetId = $id;
+        $this->uploadTargetName = $name;
+        $this->additionalPhoto = null;
+        $this->showUploadPhotoModal = true;
+    }
+
+    public function closeUploadPhotoModal()
+    {
+        $this->showUploadPhotoModal = false;
+        $this->additionalPhoto = null;
+    }
+
+    public function saveAdditionalPhoto()
+    {
+        $this->validate([
+            'additionalPhoto' => 'required|image|max:10240',
+        ]);
+
+        $folder = ($this->uploadTargetType === 'closure') ? 'closures' : 'odp';
+        $path = $this->additionalPhoto->store("network_photos/{$folder}", 'public');
+
+        if ($path) {
+            $photoUrl = Storage::url($path);
+            $node = ($this->uploadTargetType === 'closure')
+                ? JointClosure::withoutGlobalScopes()->find($this->uploadTargetId)
+                : Odp::withoutGlobalScopes()->find($this->uploadTargetId);
+
+            if ($node) {
+                $current = is_array($node->photos) ? $node->photos : [];
+                $current[] = $photoUrl;
+                $node->photos = array_values(array_unique($current));
+                $node->save();
+            }
+        }
+
+        $this->createSuccessMessage = "Foto tiang untuk {$this->uploadTargetName} berhasil diunggah!";
+        $this->showUploadPhotoModal = false;
+        $this->additionalPhoto = null;
+        $this->loadNearestOdps();
+        $this->loadAllTopology();
     }
 
     public function updatedSearch()
