@@ -38,7 +38,21 @@ trait HasBranchScope
                 if (auth()->user()->hasRole(UserRole::Reseller->value) && $hasResellerId) {
                     $effectiveResellerId = auth()->user()->getEffectiveResellerId();
                     if ($effectiveResellerId) {
-                        $builder->where($table . '.reseller_id', $effectiveResellerId);
+                        if (in_array($table, ['odcs', 'odps', 'joint_closures'], true)) {
+                            $builder->where(function ($q) use ($table, $effectiveResellerId) {
+                                $q->where($table . '.reseller_id', $effectiveResellerId);
+                                if (auth()->user()->branch_id) {
+                                    $q->orWhere(function ($sub) use ($table) {
+                                        $sub->whereNull($table . '.reseller_id')
+                                            ->where($table . '.branch_id', auth()->user()->branch_id);
+                                    });
+                                } else {
+                                    $q->orWhereNull($table . '.reseller_id');
+                                }
+                            });
+                        } else {
+                            $builder->where($table . '.reseller_id', $effectiveResellerId);
+                        }
                     }
                 }
             }

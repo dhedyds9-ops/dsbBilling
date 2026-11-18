@@ -91,9 +91,10 @@ class Odc extends Model
                 // 1. ODC berdasarkan Cabang Kantor (branch_id) & kata kunci wilayah
                 \App\Services\Auth\ResellerScopeHelper::applyOdcTerritory($q, $ctx, 'odcs');
 
-                // 2. ODC yang dibuat oleh reseller ini
+                // 2. ODC yang dibuat atau dimiliki oleh reseller ini
                 if ($resellerId) {
-                    $q->orWhere('odcs.created_by', $resellerId);
+                    $q->orWhere('odcs.created_by', $resellerId)
+                      ->orWhere('odcs.reseller_id', $resellerId);
                 }
 
                 // 3. ODC di bawah OLT wilayah reseller (selama tidak dikunci ke cabang lain)

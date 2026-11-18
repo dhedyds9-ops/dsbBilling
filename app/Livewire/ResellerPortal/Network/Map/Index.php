@@ -8,9 +8,40 @@ use App\Models\ISP\Odc;
 use App\Models\ISP\Odp;
 use App\Models\ISP\JointClosure;
 use App\Models\CRM\Customer;
+use App\Livewire\Gis\GisMap;
+use App\Services\ISP\NodePhotoService;
+use Illuminate\Support\Facades\Cache;
+use Livewire\WithFileUploads;
 
 class Index extends AdminComponent
 {
+    use WithFileUploads;
+
+    // Modal state for Add / Edit node
+    public bool $showModal = false;
+    public string $modalMode = 'create'; // 'create' | 'edit'
+    public string $nodeType = 'odp';    // 'odp' | 'odc'
+    public ?int $nodeId = null;
+
+    // Form fields
+    public string $nodeName = '';
+    public string $nodeCode = '';
+    public ?int $parentId = null; // odc_id for odp, or olt_id for odc
+    public int $portCount = 8;
+    public string $latitude = '';
+    public string $longitude = '';
+    public string $address = '';
+    public string $status = 'active';
+    public $photo = null;
+    public array $existingPhotos = [];
+    public ?string $feedbackMessage = null;
+
+    protected $listeners = [
+        'open-create-modal' => 'openCreateModal',
+        'open-edit-modal' => 'openEditModal',
+        'update-coordinates' => 'updateCoordinates',
+    ];
+
     public function mount()
     {
         parent::mount();
@@ -22,10 +53,252 @@ class Index extends AdminComponent
         ];
     }
 
+    public function openCreateModal(string $type = 'odp', ?float $lat = null, ?float $lng = null): void
+    {
+        $this->resetValidation();
+        $this->resetErrorBag();
+
+        $this->modalMode = 'create';
+        $this->nodeType = in_array($type, ['odp', 'odc']) ? $type : 'odp';
+        $this->nodeId = null;
+        $this->nodeName = '';
+        $this->parentId = null;
+        $this->latitude = $lat ? (string)$lat : '';
+        $this->longitude = $lng ? (string)$lng : '';
+        $this->address = '';
+        $this->status = 'active';
+        $this->photo = null;
+        $this->existingPhotos = [];
+        $this->feedbackMessage = null;
+
+        if ($this->nodeType === 'odc') {
+            $count = Odc::withoutGlobalScopes()->count() + 1;
+            $this->nodeCode = 'ODC-' . sprintf('%03d', $count);
+            $this->portCount = 48;
+        } else {
+            $count = Odp::withoutGlobalScopes()->count() + 1;
+            $this->nodeCode = 'ODP-' . sprintf('%03d', $count);
+            $this->portCount = 8;
+        }
+
+        $this->showModal = true;
+    }
+
+    public function openEditModal(string $type, int $id): void
+    {
+        $this->resetValidation();
+        $this->resetErrorBag();
+
+        $this->modalMode = 'edit';
+        $this->nodeType = in_array($type, ['odp', 'odc']) ? $type : 'odp';
+        $this->nodeId = $id;
+        $this->photo = null;
+        $this->feedbackMessage = null;
+
+        if ($this->nodeType === 'odc') {
+            $odc = Odc::withoutGlobalScopes()->find($id);
+            if (!$odc) {
+                $this->dispatch('node-saved', ['message' => 'ODC tidak ditemukan!', 'type' => 'error']);
+                return;
+            }
+            $this->nodeName = (string)$odc->name;
+            $this->nodeCode = (string)$odc->code;
+            $this->parentId = $odc->olt_id;
+            $this->portCount = (int)($odc->port_count ?: 48);
+            $this->latitude = (string)$odc->latitude;
+            $this->longitude = (string)$odc->longitude;
+            $this->address = (string)($odc->address ?? '');
+            $this->status = $odc->status ?? 'active';
+            $this->existingPhotos = (array)($odc->photos ?? []);
+        } else {
+            $odp = Odp::withoutGlobalScopes()->find($id);
+            if (!$odp) {
+                $this->dispatch('node-saved', ['message' => 'ODP tidak ditemukan!', 'type' => 'error']);
+                return;
+            }
+            $this->nodeName = (string)$odp->name;
+            $this->nodeCode = (string)$odp->code;
+            $this->parentId = $odp->odc_id;
+            $this->portCount = (int)($odp->port_count ?: 8);
+            $this->latitude = (string)$odp->latitude;
+            $this->longitude = (string)$odp->longitude;
+            $this->address = (string)($odp->address ?: ($odp->description ?? ''));
+            $this->status = $odp->status ?? 'active';
+            $this->existingPhotos = (array)($odp->photos ?? []);
+        }
+
+        $this->showModal = true;
+    }
+
+    public function closeModal(): void
+    {
+        $this->resetValidation();
+        $this->resetErrorBag();
+        $this->showModal = false;
+        $this->photo = null;
+    }
+
+    public function deleteExistingPhoto(int $index): void
+    {
+        if (!$this->nodeId) return;
+
+        $model = $this->nodeType === 'odc'
+            ? Odc::withoutGlobalScopes()->find($this->nodeId)
+            : Odp::withoutGlobalScopes()->find($this->nodeId);
+
+        if ($model && !empty($model->photos)) {
+            $photos = $model->photos;
+            if (isset($photos[$index])) {
+                unset($photos[$index]);
+                $model->photos = array_values($photos);
+                $model->save();
+                $this->existingPhotos = $model->photos ?? [];
+            }
+        }
+    }
+
+    public function save(): void
+    {
+        $table = $this->nodeType === 'odc' ? 'odcs' : 'odps';
+
+        $this->validate([
+            'nodeName' => 'required|string|max:255',
+            'nodeCode' => 'required|string|max:100|unique:' . $table . ',code,' . ($this->nodeId ?: 'NULL') . ',id',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'portCount' => 'required|integer|min:1|max:512',
+            'parentId' => 'nullable|integer',
+            'address' => 'nullable|string|max:500',
+            'status' => 'required|in:active,inactive',
+            'photo' => 'nullable|image|max:10240',
+        ]);
+
+        $user = auth()->user();
+        $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
+        $branchId = $user?->branch_id;
+
+        $targetModel = null;
+
+        if ($this->nodeType === 'odc') {
+            if ($this->modalMode === 'edit' && $this->nodeId) {
+                $odc = Odc::withoutGlobalScopes()->findOrFail($this->nodeId);
+                $odc->update([
+                    'name' => $this->nodeName,
+                    'code' => $this->nodeCode,
+                    'olt_id' => $this->parentId,
+                    'port_count' => $this->portCount,
+                    'latitude' => (string)$this->latitude,
+                    'longitude' => (string)$this->longitude,
+                    'address' => $this->address,
+                    'status' => $this->status,
+                    'updated_by' => $user?->id,
+                ]);
+                $targetModel = $odc;
+            } else {
+                $odc = Odc::create([
+                    'name' => $this->nodeName,
+                    'code' => $this->nodeCode,
+                    'olt_id' => $this->parentId,
+                    'port_count' => $this->portCount,
+                    'latitude' => (string)$this->latitude,
+                    'longitude' => (string)$this->longitude,
+                    'address' => $this->address,
+                    'status' => $this->status,
+                    'branch_id' => $branchId,
+                    'reseller_id' => $effectiveResellerId,
+                    'created_by' => $user?->id,
+                ]);
+                $targetModel = $odc;
+            }
+        } else {
+            if ($this->modalMode === 'edit' && $this->nodeId) {
+                $odp = Odp::withoutGlobalScopes()->findOrFail($this->nodeId);
+                $odp->update([
+                    'name' => $this->nodeName,
+                    'code' => $this->nodeCode,
+                    'odc_id' => $this->parentId,
+                    'port_count' => $this->portCount,
+                    'latitude' => (string)$this->latitude,
+                    'longitude' => (string)$this->longitude,
+                    'address' => $this->address,
+                    'status' => $this->status,
+                    'updated_by' => $user?->id,
+                ]);
+                $targetModel = $odp;
+            } else {
+                $odp = Odp::create([
+                    'name' => $this->nodeName,
+                    'code' => $this->nodeCode,
+                    'odc_id' => $this->parentId,
+                    'port_count' => $this->portCount,
+                    'latitude' => (string)$this->latitude,
+                    'longitude' => (string)$this->longitude,
+                    'address' => $this->address,
+                    'status' => $this->status,
+                    'branch_id' => $branchId,
+                    'reseller_id' => $effectiveResellerId,
+                    'created_by' => $user?->id,
+                ]);
+                $targetModel = $odp;
+            }
+        }
+
+        if ($this->photo && $targetModel) {
+            NodePhotoService::attachPhoto($targetModel, $this->photo, $this->nodeType, true);
+        }
+
+        GisMap::flushCache();
+        Cache::forget('gis_map_data');
+        Cache::forget('gis_map_nodes');
+
+        $actionWord = $this->modalMode === 'edit' ? 'diperbarui' : 'didaftarkan';
+        $msg = 'Titik ' . strtoupper($this->nodeType) . " berhasil {$actionWord}!";
+
+        $this->closeModal();
+        $this->dispatch('node-saved', ['message' => $msg]);
+    }
+
+    public function updateCoordinates(string $type, int $id, float $lat, float $lng): void
+    {
+        $latStr = (string)$lat;
+        $lngStr = (string)$lng;
+
+        if ($type === 'customer') {
+            $customer = Customer::withoutGlobalScopes()->find($id);
+            if ($customer) {
+                $customer->latitude = $latStr;
+                $customer->longitude = $lngStr;
+                $customer->save();
+            }
+        } elseif ($type === 'odp') {
+            $odp = Odp::withoutGlobalScopes()->find($id);
+            if ($odp) {
+                $odp->latitude = $latStr;
+                $odp->longitude = $lngStr;
+                $odp->save();
+            }
+        } elseif ($type === 'odc') {
+            $odc = Odc::withoutGlobalScopes()->find($id);
+            if ($odc) {
+                $odc->latitude = $latStr;
+                $odc->longitude = $lngStr;
+                $odc->save();
+            }
+        }
+
+        GisMap::flushCache();
+        Cache::forget('gis_map_data');
+        Cache::forget('gis_map_nodes');
+
+        $this->dispatch('node-saved', [
+            'message' => 'Titik koordinat berhasil diperbarui!',
+        ]);
+    }
+
     public function render()
     {
         $user = auth()->user();
-        $ownerId = $user->hasRole('reseller') ? $user->getEffectiveResellerId() : null;
+        $ownerId = $user?->hasRole('reseller') ? $user->getEffectiveResellerId() : null;
 
         $customers = Customer::withoutGlobalScopes()->with([
             'customerServices' => function($q) {
@@ -91,7 +364,7 @@ class Index extends AdminComponent
             }, (array) ($rawPhotos ?? []))));
         };
 
-        $olts = Olt::forReseller()->get()->map(fn($o) => [
+        $olts = Olt::withoutGlobalScopes()->forReseller()->get()->map(fn($o) => [
             'id' => $o->id,
             'name' => $o->name,
             'code' => $o->code,
@@ -104,7 +377,7 @@ class Index extends AdminComponent
             'photos' => $formatPhotos($o->photos),
         ]);
 
-        $odcs = Odc::forReseller()->with(['olt:id,name,latitude,longitude'])->get()->map(fn($o) => [
+        $odcs = Odc::withoutGlobalScopes()->forReseller()->with(['olt:id,name,latitude,longitude'])->get()->map(fn($o) => [
             'id' => $o->id,
             'name' => $o->name,
             'code' => $o->code,
@@ -118,7 +391,7 @@ class Index extends AdminComponent
             'photos' => $formatPhotos($o->photos),
         ]);
 
-        $closures = JointClosure::forReseller()->with(['odc:id,name,latitude,longitude'])->get()->map(fn($c) => [
+        $closures = JointClosure::withoutGlobalScopes()->forReseller()->with(['odc:id,name,latitude,longitude'])->get()->map(fn($c) => [
             'id' => $c->id,
             'name' => $c->name,
             'code' => $c->code,
@@ -132,7 +405,7 @@ class Index extends AdminComponent
             'photos' => $formatPhotos($c->photos),
         ]);
 
-        $odps = Odp::forReseller()->with(['olt:id,name', 'odc:id,name,latitude,longitude'])->get()->map(function($o) use ($formatPhotos) {
+        $odps = Odp::withoutGlobalScopes()->forReseller()->with(['olt:id,name', 'odc:id,name,latitude,longitude'])->get()->map(function($o) use ($formatPhotos) {
             $totalP = (int)($o->port_count ?: 8);
             $usedP = (int)($o->used_port_count ?? 0);
             $reservedP = (int)($o->reserved_port_count ?? 0);
@@ -153,12 +426,31 @@ class Index extends AdminComponent
             ];
         });
 
+        $oltOptions = Olt::withoutGlobalScopes()->forReseller()->orderBy('name')->get(['id', 'name', 'code']);
+        $odcOptions = Odc::withoutGlobalScopes()->forReseller()->orderBy('name')->get(['id', 'name', 'code']);
+
         return view('livewire.reseller-portal.network.map.index', [
+            'showModal' => $this->showModal,
+            'modalMode' => $this->modalMode,
+            'nodeType' => $this->nodeType,
+            'nodeId' => $this->nodeId,
+            'nodeName' => $this->nodeName,
+            'nodeCode' => $this->nodeCode,
+            'parentId' => $this->parentId,
+            'portCount' => $this->portCount,
+            'latitude' => $this->latitude,
+            'longitude' => $this->longitude,
+            'address' => $this->address,
+            'status' => $this->status,
+            'photo' => $this->photo,
+            'existingPhotos' => $this->existingPhotos,
             'customers' => $customers,
             'odps' => $odps,
             'closures' => $closures,
             'odcs' => $odcs,
             'olts' => $olts,
+            'oltOptions' => $oltOptions,
+            'odcOptions' => $odcOptions,
         ]);
     }
 }

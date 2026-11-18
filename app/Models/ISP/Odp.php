@@ -131,9 +131,10 @@ class Odp extends Model
                 // 1. ODP berdasarkan Cabang Kantor (branch_id) & kata kunci wilayah
                 \App\Services\Auth\ResellerScopeHelper::applyOdpTerritory($q, $ctx, 'odps');
 
-                // 2. ODP yang dibuat oleh reseller ini
+                // 2. ODP yang dibuat atau dimiliki oleh reseller ini
                 if ($resellerId) {
-                    $q->orWhere('odps.created_by', $resellerId);
+                    $q->orWhere('odps.created_by', $resellerId)
+                      ->orWhere('odps.reseller_id', $resellerId);
                 }
 
                 // 3. ODP di bawah ODC / OLT wilayah reseller (selama tidak dikunci ke cabang lain)
