@@ -6,6 +6,7 @@ use App\Livewire\AdminComponent;
 use App\Models\ISP\Olt;
 use App\Models\ISP\Odc;
 use App\Models\ISP\Odp;
+use App\Models\ISP\JointClosure;
 use App\Models\CRM\Customer;
 
 class Index extends AdminComponent
@@ -84,6 +85,7 @@ class Index extends AdminComponent
         return view('livewire.reseller-portal.network.map.index', [
             'customers' => $customers,
             'odps' => Odp::forReseller()->get(),
+            'closures' => JointClosure::forReseller()->get(),
             'odcs' => Odc::forReseller()->get(),
             'olts' => Olt::forReseller()->get(),
         ]);

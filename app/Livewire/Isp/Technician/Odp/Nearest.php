@@ -3,23 +3,193 @@
 namespace App\Livewire\Isp\Technician\Odp;
 
 use App\Models\ISP\Odp;
+use App\Models\ISP\Odc;
+use App\Models\ISP\Olt;
+use App\Models\ISP\JointClosure;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\Attributes\Layout;
 
 #[Layout('layouts.technician-app')]
 class Nearest extends Component
 {
+    use WithFileUploads;
+
     public ?float $latitude = null;
     public ?float $longitude = null;
     public int $radius = 5; // Default 5 km
     public string $search = '';
     public string $statusFilter = 'all'; // all, available, full
     public array $odps = [];
+    public array $allNodes = [
+        'olts' => [],
+        'odcs' => [],
+        'closures' => [],
+    ];
     public ?int $selectedOdpId = null;
+
+    // Create New Node Modal
+    public bool $showCreateModal = false;
+    public string $newNodeType = 'odp'; // odp, closure
+    public string $newNodeCode = '';
+    public string $newNodeName = '';
+    public ?float $newNodeLat = null;
+    public ?float $newNodeLng = null;
+    public string $newNodeAddress = '';
+    public int $newNodePortCount = 8;
+    public string $newNodeClosureType = 'Dome';
+    public $newNodePhoto = null;
+    public ?string $createSuccessMessage = null;
 
     public function mount()
     {
         $this->loadNearestOdps();
+        $this->loadAllTopology();
+    }
+
+    public function loadAllTopology()
+    {
+        $user = auth()->user();
+        $branchId = $user?->branch_id;
+
+        $oltsQuery = Olt::withoutGlobalScopes();
+        if ($branchId && !$user->isSuperAdmin()) {
+            $oltsQuery->where(function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId)->orWhereNull('branch_id')->orWhere('branch_id', 1);
+            });
+        }
+        $olts = $oltsQuery->get()->map(fn($o) => [
+            'id' => $o->id,
+            'name' => $o->name,
+            'code' => $o->code,
+            'latitude' => $o->latitude ? (float)$o->latitude : null,
+            'longitude' => $o->longitude ? (float)$o->longitude : null,
+            'photos' => $o->photos ?? [],
+        ])->toArray();
+
+        $odcsQuery = Odc::withoutGlobalScopes();
+        if ($branchId && !$user->isSuperAdmin()) {
+            $odcsQuery->where(function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId)->orWhereNull('branch_id')->orWhere('branch_id', 1);
+            });
+        }
+        $odcs = $odcsQuery->get()->map(fn($o) => [
+            'id' => $o->id,
+            'name' => $o->name,
+            'code' => $o->code,
+            'latitude' => $o->latitude ? (float)$o->latitude : null,
+            'longitude' => $o->longitude ? (float)$o->longitude : null,
+            'photos' => $o->photos ?? [],
+        ])->toArray();
+
+        $closuresQuery = JointClosure::withoutGlobalScopes();
+        if ($branchId && !$user->isSuperAdmin()) {
+            $closuresQuery->where(function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId)->orWhereNull('branch_id')->orWhere('branch_id', 1);
+            });
+        }
+        $closures = $closuresQuery->get()->map(fn($c) => [
+            'id' => $c->id,
+            'name' => $c->name,
+            'code' => $c->code,
+            'type' => $c->type ?? 'Dome',
+            'latitude' => $c->latitude ? (float)$c->latitude : null,
+            'longitude' => $c->longitude ? (float)$c->longitude : null,
+            'photos' => $c->photos ?? [],
+        ])->toArray();
+
+        $this->allNodes = [
+            'olts' => $olts,
+            'odcs' => $odcs,
+            'closures' => $closures,
+        ];
+    }
+
+    public function openCreateModal($lat = null, $lng = null)
+    {
+        $this->newNodeLat = $lat ? (float)$lat : ($this->latitude ?? -6.2088);
+        $this->newNodeLng = $lng ? (float)$lng : ($this->longitude ?? 106.8456);
+        $this->newNodeCode = ($this->newNodeType === 'closure' ? 'JC-' : 'ODP-') . strtoupper(substr(uniqid(), -5));
+        $this->newNodeName = ($this->newNodeType === 'closure' ? 'Closure ' : 'ODP ') . substr($this->newNodeCode, -5);
+        $this->newNodeAddress = '';
+        $this->newNodePhoto = null;
+        $this->createSuccessMessage = null;
+        $this->showCreateModal = true;
+    }
+
+    public function closeCreateModal()
+    {
+        $this->showCreateModal = false;
+        $this->newNodePhoto = null;
+    }
+
+    public function updatedNewNodeType()
+    {
+        $prefix = $this->newNodeType === 'closure' ? 'JC-' : 'ODP-';
+        $label = $this->newNodeType === 'closure' ? 'Closure ' : 'ODP ';
+        $suffix = strtoupper(substr(uniqid(), -5));
+        $this->newNodeCode = $prefix . $suffix;
+        $this->newNodeName = $label . $suffix;
+        $this->newNodePortCount = $this->newNodeType === 'closure' ? 24 : 8;
+    }
+
+    public function saveNewNode()
+    {
+        $this->validate([
+            'newNodeType' => 'required|in:odp,closure',
+            'newNodeCode' => 'required|string|max:100',
+            'newNodeName' => 'required|string|max:255',
+            'newNodeLat' => 'required|numeric',
+            'newNodeLng' => 'required|numeric',
+            'newNodeAddress' => 'nullable|string|max:500',
+            'newNodePortCount' => 'required|integer|min:1|max:512',
+            'newNodePhoto' => 'nullable|image|max:10240',
+        ]);
+
+        $user = auth()->user();
+        $photos = [];
+
+        if ($this->newNodePhoto) {
+            $folder = $this->newNodeType === 'closure' ? 'closures' : 'odp';
+            $path = $this->newNodePhoto->store("network_photos/{$folder}", 'public');
+            if ($path) {
+                $photos[] = Storage::url($path);
+            }
+        }
+
+        if ($this->newNodeType === 'odp') {
+            Odp::create([
+                'code' => $this->newNodeCode,
+                'name' => $this->newNodeName,
+                'latitude' => (string)$this->newNodeLat,
+                'longitude' => (string)$this->newNodeLng,
+                'address' => $this->newNodeAddress,
+                'port_count' => $this->newNodePortCount,
+                'branch_id' => $user?->branch_id,
+                'photos' => $photos,
+                'created_by' => $user?->id,
+            ]);
+        } else {
+            JointClosure::create([
+                'code' => $this->newNodeCode,
+                'name' => $this->newNodeName,
+                'type' => $this->newNodeClosureType,
+                'latitude' => (string)$this->newNodeLat,
+                'longitude' => (string)$this->newNodeLng,
+                'address' => $this->newNodeAddress,
+                'port_count' => $this->newNodePortCount,
+                'branch_id' => $user?->branch_id,
+                'photos' => $photos,
+                'created_by' => $user?->id,
+            ]);
+        }
+
+        $this->createSuccessMessage = "Titik " . strtoupper($this->newNodeType) . " {$this->newNodeName} berhasil disimpan!";
+        $this->loadNearestOdps();
+        $this->loadAllTopology();
+        $this->showCreateModal = false;
+        $this->newNodePhoto = null;
     }
 
     public function updatedSearch()

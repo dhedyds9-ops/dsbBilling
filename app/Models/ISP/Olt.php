@@ -108,6 +108,7 @@ class Olt extends Model
         'uptime_text',
         'temperature',
         'firmware_version',
+        'photos',
         'created_by',
         'updated_by',
     ];
@@ -122,6 +123,7 @@ class Olt extends Model
         'cli_port' => 'integer',
         'temperature' => 'float',
         'last_polled_at' => 'datetime',
+        'photos' => 'array',
     ];
 
     protected $hidden = [

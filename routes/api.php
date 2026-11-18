@@ -246,6 +246,9 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::post('/devices/dismantle', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'dismantle'])->name('devices.dismantle');
             Route::get('/devices/{serialNumber}/diagnostics', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'diagnostics'])->name('devices.diagnostics');
             Route::get('/odps', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'odps'])->name('odps.index');
+            Route::get('/topology', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'topology'])->name('topology');
+            Route::post('/nodes/store', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'storeNode'])->name('nodes.store');
+            Route::post('/nodes/{type}/{id}/photo', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'uploadNodePhoto'])->name('nodes.photo.upload');
         });
 
         // Attendance & Daily Shift (Technician Portal Parity)
@@ -269,6 +272,7 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::get('/routers', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'routers'])->name('routers');
             Route::post('/', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'store'])->name('store');
             Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'show'])->where('id', '\d+')->name('show');
+            Route::put('/{id}', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'update'])->where('id', '\d+')->name('update');
             Route::get('/{id}/invoices', [\App\Http\Controllers\Api\Mobile\MobileInvoiceApiController::class, 'customerInvoices'])->where('id', '\d+')->name('invoices');
         });
 

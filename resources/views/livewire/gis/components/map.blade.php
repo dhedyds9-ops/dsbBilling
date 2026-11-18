@@ -1563,15 +1563,16 @@
         var map = L.map('map').setView([defaultLat, defaultLng], initialZoom);
         var isPickerMode = new URLSearchParams(window.location.search).get('picker') === '1';
 
-        var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap'
+        var googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            maxZoom: 22,
+            subdomains: ['mt0','mt1','mt2','mt3'],
+            attribution: '&copy; Google Hybrid Satellite HD'
         });
 
-        var googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',{
+        var googleRoad = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
             maxZoom: 22,
-            subdomains:['mt0','mt1','mt2','mt3'],
-            attribution: '&copy; Google Maps'
+            subdomains: ['mt0','mt1','mt2','mt3'],
+            attribution: '&copy; Google Road Clean HD'
         });
         
         var darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -1579,18 +1580,13 @@
             attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
         });
 
-        // Determine initial layer based on theme
-        var currentTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
-        if (currentTheme === 'dark') {
-            darkLayer.addTo(map);
-        } else {
-            osm.addTo(map);
-        }
+        // Default to Google Hybrid Satellite HD
+        googleHybrid.addTo(map);
 
         var baseMaps = {
-            "Dark Mode": darkLayer,
-            "Satellite (Google)": googleHybrid,
-            "Street (OSM)": osm
+            "🛰️ Google Satellite Hybrid": googleHybrid,
+            "🗺️ Google Road Clean": googleRoad,
+            "🌙 Dark Mode": darkLayer
         };
         L.control.layers(baseMaps).addTo(map);
 

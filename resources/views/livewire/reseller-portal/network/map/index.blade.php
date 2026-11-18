@@ -66,6 +66,7 @@
     window.mapData = {
         olts: @json($olts),
         odcs: @json($odcs),
+        closures: @json($closures ?? []),
         odps: @json($odps),
         customers: @json($customers)
     };
@@ -87,25 +88,27 @@
 
         mapInstance = window.L.map('reseller-map').setView([-6.2088, 106.8456], 12);
         
-        let googleHybrid = window.L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'], attribution: 'Google' });
-        let osm = window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: 'OSM' });
+        let googleHybrid = window.L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'], attribution: '&copy; Google Hybrid Satellite HD' });
+        let googleRoad = window.L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'], attribution: '&copy; Google Road Clean HD' });
         let darkLayer = window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20, attribution: 'CARTO' });
         
         googleHybrid.addTo(mapInstance);
-        window.L.control.layers({ 'Dark Mode': darkLayer, 'Satellite (Google)': googleHybrid, 'Street (OSM)': osm }).addTo(mapInstance);
+        window.L.control.layers({ '🛰️ Google Hybrid Satellite HD': googleHybrid, '🗺️ Google Road Clean HD': googleRoad, '🌙 Dark Mode': darkLayer }).addTo(mapInstance);
         
         let linesLayer = window.L.layerGroup().addTo(mapInstance);
         let bounds = [];
         const popupOpt = { className: 'modern-map-popup' };
         
-        const olts = window.mapData.olts;
-        const odcs = window.mapData.odcs;
-        const odps = window.mapData.odps;
-        const customers = window.mapData.customers;
+        const olts = window.mapData.olts || [];
+        const odcs = window.mapData.odcs || [];
+        const closures = window.mapData.closures || [];
+        const odps = window.mapData.odps || [];
+        const customers = window.mapData.customers || [];
         
         olts.forEach(i => {
             if(i.latitude && i.longitude) {
                 let icon = window.L.divIcon({ className: 'custom-icon icon-olt', html: '<i class="fa fa-server"></i>', iconSize: [28,28] });
+                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-top:6px;"><img src="${i.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
                 let html = `
                     <div style="font-family:Inter,sans-serif;width:220px;font-size:12px;">
                         <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">
@@ -114,6 +117,7 @@
                         </div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">IP Host:</span><span style="font-family:monospace;color:#34d399;font-weight:700;">${i.ip_address ? `<a href="http://${i.ip_address}" target="_blank" rel="noopener noreferrer" class="ip-direct-link" style="color:#34d399;text-decoration:none !important;">${i.ip_address}</a>` : '-'}</span></div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Port PON:</span><span style="color:#38bdf8;font-weight:700;">${i.pon_port_count || i.port_count || '-'} Port</span></div>
+                        ${photoHtml}
                     </div>`;
                 window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);
                 bounds.push([i.latitude, i.longitude]);
@@ -123,6 +127,7 @@
         odcs.forEach(i => {
             if(i.latitude && i.longitude) {
                 let icon = window.L.divIcon({ className: 'custom-icon icon-odc', html: '<i class="fa fa-hdd"></i>', iconSize: [24,24] });
+                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-top:6px;"><img src="${i.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
                 let html = `
                     <div style="font-family:Inter,sans-serif;width:220px;font-size:12px;">
                         <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">
@@ -131,12 +136,36 @@
                         </div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Kode:</span><span style="font-family:monospace;color:#f8fafc;font-weight:600;">${i.code || '-'}</span></div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Kapasitas:</span><span style="color:#f8fafc;font-weight:700;">${i.capacity || 48} Port</span></div>
+                        ${photoHtml}
                     </div>`;
                 window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);
                 bounds.push([i.latitude, i.longitude]);
                 if(i.olt_id) {
                     let olt = olts.find(o => o.id == i.olt_id);
                     if(olt && olt.latitude && olt.longitude) { window.L.polyline([[olt.latitude, olt.longitude], [i.latitude, i.longitude]], { color: '#6f42c1', weight: 3, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer); }
+                }
+            }
+        });
+
+        closures.forEach(i => {
+            if(i.latitude && i.longitude) {
+                let icon = window.L.divIcon({ className: 'custom-icon icon-closure', html: '<i class="fa fa-archive" style="color:#14b8a6;"></i>', iconSize: [22,22] });
+                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-top:6px;"><img src="${i.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
+                let html = `
+                    <div style="font-family:Inter,sans-serif;width:220px;font-size:12px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">
+                            <span style="font-weight:700;color:#2dd4bf;font-size:13px;">Closure FO: ${i.name}</span>
+                            <span style="font-size:9px;font-weight:700;background:#134e4a;color:#99f6e4;padding:2px 6px;border-radius:999px;">CLOSURE</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Tipe:</span><span style="color:#f8fafc;font-weight:600;">${i.type || 'Dome'}</span></div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Kapasitas:</span><span style="color:#f8fafc;font-weight:700;">${i.port_count || 24} Core</span></div>
+                        ${photoHtml}
+                    </div>`;
+                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);
+                bounds.push([i.latitude, i.longitude]);
+                if(i.odc_id) {
+                    let odc = odcs.find(o => o.id == i.odc_id);
+                    if(odc && odc.latitude && odc.longitude) { window.L.polyline([[odc.latitude, odc.longitude], [i.latitude, i.longitude]], { color: '#0d9488', weight: 2.5, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer); }
                 }
             }
         });
@@ -148,6 +177,28 @@
                 let usedP = parseInt(i.used_port_count) || 0;
                 let availP = Math.max(0, totalP - usedP);
                 let pct = Math.min(100, Math.round((usedP / totalP) * 100));
+                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-top:6px;"><img src="${i.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
+                let html = `
+                    <div style="font-family:Inter,sans-serif;width:230px;font-size:12px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">
+                            <span style="font-weight:700;color:#34d399;font-size:13px;">ODP: ${i.name}</span>
+                            <span style="font-size:9px;font-weight:700;background:#064e3b;color:#a7f3d0;padding:2px 6px;border-radius:999px;">ODP</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Port Terpakai:</span><span style="color:#f8fafc;font-weight:700;">${usedP} / ${totalP} (${pct}%)</span></div>
+                        <div style="width:100%;height:5px;background:#1e293b;border-radius:999px;margin-bottom:6px;overflow:hidden;">
+                            <div style="width:${pct}%;height:100%;background:${pct > 90 ? '#ef4444' : (pct > 70 ? '#f59e0b' : '#10b981')};"></div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Port Tersedia:</span><span style="color:#34d399;font-weight:700;">${availP} ONU lagi</span></div>
+                        ${photoHtml}
+                    </div>`;
+                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);
+                bounds.push([i.latitude, i.longitude]);
+                if(i.odc_id) {
+                    let odc = odcs.find(o => o.id == i.odc_id);
+                    if(odc && odc.latitude && odc.longitude) { window.L.polyline([[odc.latitude, odc.longitude], [i.latitude, i.longitude]], { color: '#fd7e14', weight: 2, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer); }
+                }
+            }
+        });
                 let html = `
                     <div style="font-family:Inter,sans-serif;width:230px;font-size:12px;">
                         <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">

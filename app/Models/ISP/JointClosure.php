@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class JointClosure extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, \App\Traits\HasBranchScope;
 
     protected static function booted()
     {
@@ -27,6 +27,8 @@ class JointClosure extends Model
     }
 
     protected $fillable = [
+        'branch_id',
+        'reseller_id',
         'vendor_id',
         'odc_id',
         'code',
@@ -38,17 +40,35 @@ class JointClosure extends Model
         'latitude',
         'longitude',
         'status',
+        'photos',
         'created_by',
         'updated_by',
     ];
 
     protected $casts = [
         'port_count' => 'integer',
+        'photos' => 'array',
     ];
 
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    public function scopeForReseller($query, $user = null)
+    {
+        $user = $user ?? auth()->user();
+        if ($user && $user->hasRole('reseller')) {
+            $effectiveId = $user->getEffectiveResellerId();
+            return $query->where(function ($q) use ($effectiveId) {
+                if ($effectiveId) {
+                    $q->where('reseller_id', $effectiveId)
+                      ->orWhere('created_by', $effectiveId)
+                      ->orWhereNull('reseller_id');
+                }
+            });
+        }
+        return $query;
     }
 
     public function vendor()
@@ -59,6 +79,16 @@ class JointClosure extends Model
     public function odc()
     {
         return $this->belongsTo(Odc::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(\App\Models\Branch::class);
+    }
+
+    public function reseller()
+    {
+        return $this->belongsTo(\App\Models\Reseller::class);
     }
 
     public function createdBy()

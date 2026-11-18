@@ -52,6 +52,8 @@ class Odc extends Model
         'active_port_count',
         'status',
         'branch_id',
+        'reseller_id',
+        'photos',
         'created_by',
         'updated_by',
     ];
@@ -59,7 +61,13 @@ class Odc extends Model
     protected $casts = [
         'port_count' => 'integer',
         'active_port_count' => 'integer',
+        'photos' => 'array',
     ];
+
+    public function reseller()
+    {
+        return $this->belongsTo(\App\Models\Reseller::class);
+    }
 
     public function scopeActive($query)
     {

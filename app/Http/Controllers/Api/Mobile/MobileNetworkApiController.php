@@ -5,14 +5,17 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use App\Models\CRM\Customer;
 use App\Models\Customer\CustomerService;
+use App\Models\ISP\Odc;
 use App\Models\ISP\Odp;
 use App\Models\ISP\Olt;
 use App\Models\ISP\Onu;
+use App\Models\ISP\JointClosure;
 use App\Models\ISP\PonPort;
 use App\Models\Workforce\WorkOrder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class MobileNetworkApiController extends Controller
@@ -1571,14 +1574,26 @@ class MobileNetworkApiController extends Controller
         $hasOpticalSignal = ($rx !== null && $rx !== 0.0);
         $isOnline = in_array(strtolower((string) $onu->status), ['active', 'online', 'up', 'working']) || $hasOpticalSignal;
 
+        // Evaluasi status Online mengikuti logika Web Portal Reseller / GenieAcsDiagnosticService:
+        $stLabel = 'OFFLINE';
+        if ($rx !== null && $rx < -30.0) {
+            $stLabel = 'LOS';
+        } elseif ($rx !== null && $rx < -27.0) {
+            $stLabel = 'LOW_RX';
+        } elseif ($isOnline) {
+            $stLabel = 'ONLINE';
+        }
+
         $res = [
             'id' => $onu->id,
             'serial_number' => $onu->serial_number,
-            'mac_address' => $onu->mac_address,
+            'mac_address' => $onu->mac_address ?: '-',
+            'ip_address' => $onu->ip_address ?? $cs?->ip_address ?? $cs?->pppoeUser?->ip_address ?? '-',
             'model' => $onu->model ?: 'ONT',
             'name' => $onu->name,
             'code' => $onu->code,
             'status' => $onu->status ?: 'active',
+            'status_label' => $stLabel,
             'condition' => $onu->condition ?: 'good',
             'audit_status' => $onu->audit_status ?: 'pending',
             'operational_status' => $isOnline ? 'online' : ($onu->operational_status ?: 'offline'),
@@ -1586,16 +1601,19 @@ class MobileNetworkApiController extends Controller
             'provision_status' => $onu->provision_status ?: 'unprovisioned',
             'rx_power_dbm' => $rx,
             'tx_power_dbm' => $tx,
+            'rx_tx_power' => ($rx !== null ? "{$rx} dBm" : "-") . ' / ' . ($tx !== null ? "{$tx} dBm" : "-"),
             'optical_quality' => $qual,
             'wifi_ssid' => $onu->wifi_ssid,
             'odp_id' => $onu->odp_id,
             'odp_code' => $onu->odp?->code,
             'odp_name' => $onu->odp?->name,
             'olt_id' => $onu->olt_id,
-            'olt_name' => $onu->olt?->name,
+            'olt_name' => $onu->olt?->name ?: 'OLT',
             'olt_code' => $onu->olt?->code,
             'pon_port_id' => $onu->pon_port_id,
             'pon_port_number' => $onu->ponPort?->port_number,
+            'olt_pon' => ($onu->olt?->name ?: 'OLT') . ' / ' . ($onu->ponPort?->name ?: ($onu->pon_port ? 'PON ' . $onu->pon_port : ($onu->ponPort?->port_number ? 'PON ' . $onu->ponPort->port_number : 'PON 1'))),
+            'branch_name' => $onu->branch?->name ?? $cs?->branch?->name ?? 'Cabang',
             'customer_name' => $customerName,
             'customer_code' => $customerCode,
             'pppoe_username' => $cs?->pppoeUser?->username ?: ($cs?->username ?: null),
@@ -1809,5 +1827,310 @@ class MobileNetworkApiController extends Controller
                 'message' => $e->getMessage(),
             ], 422);
         }
+    }
+
+    /**
+     * Unified network topology for Web & Mobile map (OLT, ODC, Joint Closure, ODP, ONU).
+     * GET /api/mobile/network/topology
+     */
+    public function topology(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
+        $isReseller = ($effectiveResellerId !== null || ($user && $user->hasRole('reseller')));
+
+        // 1. OLTs
+        $oltsQuery = Olt::withoutGlobalScopes();
+        if ($isReseller) {
+            $oltsQuery->forReseller($user);
+        } elseif ($user && !$user->isSuperAdmin() && !empty($user->branch_id)) {
+            $oltsQuery->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id')->orWhere('branch_id', 1);
+            });
+        }
+        $olts = $oltsQuery->get()->map(function (Olt $olt) {
+            return [
+                'id' => $olt->id,
+                'type' => 'olt',
+                'code' => $olt->code,
+                'name' => $olt->name,
+                'model' => $olt->model,
+                'ip_address' => $olt->ip_address,
+                'latitude' => $olt->latitude ? (float)$olt->latitude : null,
+                'longitude' => $olt->longitude ? (float)$olt->longitude : null,
+                'status' => $olt->status ?? 'active',
+                'photos' => $olt->photos ?? [],
+                'address' => $olt->address ?? 'Lokasi POP / Server',
+            ];
+        });
+
+        // 2. ODCs
+        $odcsQuery = Odc::withoutGlobalScopes();
+        if ($isReseller) {
+            $odcsQuery->where(function ($q) use ($effectiveResellerId) {
+                $q->where('reseller_id', $effectiveResellerId)
+                  ->orWhereNull('reseller_id');
+            });
+        } elseif ($user && !$user->isSuperAdmin() && !empty($user->branch_id)) {
+            $odcsQuery->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id')->orWhere('branch_id', 1);
+            });
+        }
+        $odcs = $odcsQuery->get()->map(function (Odc $odc) {
+            return [
+                'id' => $odc->id,
+                'type' => 'odc',
+                'olt_id' => $odc->olt_id,
+                'code' => $odc->code,
+                'name' => $odc->name,
+                'latitude' => $odc->latitude ? (float)$odc->latitude : null,
+                'longitude' => $odc->longitude ? (float)$odc->longitude : null,
+                'port_count' => (int)($odc->port_count ?? 0),
+                'active_port_count' => (int)($odc->active_port_count ?? 0),
+                'status' => $odc->status ?? 'active',
+                'photos' => $odc->photos ?? [],
+                'address' => $odc->address ?? 'Kabinet Distribusi',
+            ];
+        });
+
+        // 3. Joint Closures (Closure FO)
+        $closuresQuery = JointClosure::withoutGlobalScopes();
+        if ($isReseller) {
+            $closuresQuery->where(function ($q) use ($effectiveResellerId) {
+                $q->where('reseller_id', $effectiveResellerId)
+                  ->orWhereNull('reseller_id');
+            });
+        } elseif ($user && !$user->isSuperAdmin() && !empty($user->branch_id)) {
+            $closuresQuery->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id')->orWhere('branch_id', 1);
+            });
+        }
+        $closures = $closuresQuery->get()->map(function (JointClosure $jc) {
+            return [
+                'id' => $jc->id,
+                'type' => 'closure',
+                'odc_id' => $jc->odc_id,
+                'code' => $jc->code,
+                'name' => $jc->name,
+                'closure_type' => $jc->type ?? 'Dome',
+                'latitude' => $jc->latitude ? (float)$jc->latitude : null,
+                'longitude' => $jc->longitude ? (float)$jc->longitude : null,
+                'port_count' => (int)($jc->port_count ?? 0),
+                'status' => $jc->status ?? 'active',
+                'photos' => $jc->photos ?? [],
+                'address' => $jc->address ?? 'Sambungan Tiang / Handhole',
+            ];
+        });
+
+        // 4. ODPs
+        $odpsQuery = Odp::withoutGlobalScopes();
+        if ($isReseller) {
+            $odpsQuery->where(function ($q) use ($effectiveResellerId) {
+                $q->where('reseller_id', $effectiveResellerId)
+                  ->orWhereNull('reseller_id');
+            });
+        } elseif ($user && !$user->isSuperAdmin() && !empty($user->branch_id)) {
+            $odpsQuery->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id')->orWhere('branch_id', 1);
+            });
+        }
+        $odps = $odpsQuery->get()->map(function (Odp $odp) {
+            return [
+                'id' => $odp->id,
+                'type' => 'odp',
+                'odc_id' => $odp->odc_id,
+                'code' => $odp->code,
+                'name' => $odp->name,
+                'latitude' => $odp->latitude ? (float)$odp->latitude : null,
+                'longitude' => $odp->longitude ? (float)$odp->longitude : null,
+                'port_count' => (int)($odp->port_count ?? 8),
+                'active_port_count' => (int)($odp->active_port_count ?? 0),
+                'status' => $odp->status ?? 'active',
+                'photos' => $odp->photos ?? [],
+                'address' => $odp->address ?? 'Tiang Distribusi',
+            ];
+        });
+
+        // 5. ONUs (ONT Pelanggan)
+        $onusQuery = Onu::withoutGlobalScopes()->with(['customerService.customer']);
+        if ($isReseller) {
+            $onusQuery->where('reseller_id', $effectiveResellerId);
+        } elseif ($user && !$user->isSuperAdmin() && !empty($user->branch_id)) {
+            $onusQuery->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id')->orWhere('branch_id', 1);
+            });
+        }
+        $onus = $onusQuery->limit(500)->get()->map(function (Onu $onu) {
+            $cust = $onu->customerService?->customer;
+            $lat = $onu->latitude ?: ($cust?->latitude ?? null);
+            $lng = $onu->longitude ?: ($cust?->longitude ?? null);
+
+            return [
+                'id' => $onu->id,
+                'type' => 'onu',
+                'odp_id' => $onu->odp_id,
+                'olt_id' => $onu->olt_id,
+                'serial_number' => $onu->serial_number,
+                'code' => $onu->code ?: $onu->serial_number,
+                'name' => $onu->name ?: ($cust?->name ?? 'ONT Pelanggan'),
+                'customer_name' => $cust?->name ?? '-',
+                'latitude' => $lat ? (float)$lat : null,
+                'longitude' => $lng ? (float)$lng : null,
+                'status' => $onu->status ?? 'offline',
+                'rx_power_dbm' => $onu->rx_power_dbm,
+                'address' => $cust?->address ?? '-',
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Topologi peta jaringan berhasil dimuat.',
+            'summary' => [
+                'olts_count' => $olts->count(),
+                'odcs_count' => $odcs->count(),
+                'closures_count' => $closures->count(),
+                'odps_count' => $odps->count(),
+                'onus_count' => $onus->count(),
+            ],
+            'data' => [
+                'olts' => $olts,
+                'odcs' => $odcs,
+                'closures' => $closures,
+                'odps' => $odps,
+                'onus' => $onus,
+            ],
+        ]);
+    }
+
+    /**
+     * Store new network node (ODP, Closure, ODC) with optional location photo.
+     * POST /api/mobile/network/nodes/store
+     */
+    public function storeNode(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'type' => 'required|string|in:odp,closure,joint_closure,odc,olt',
+            'code' => 'required|string|max:100',
+            'name' => 'required|string|max:255',
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'address' => 'nullable|string|max:500',
+            'port_count' => 'nullable|integer|min:1|max:512',
+            'parent_id' => 'nullable|integer',
+            'closure_type' => 'nullable|string|in:Dome,Inline,Wall Mount',
+            'photo' => 'nullable|image|max:10240',
+        ]);
+
+        $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
+        $photos = [];
+
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $typeFolder = ($validated['type'] === 'closure' || $validated['type'] === 'joint_closure') ? 'closures' : $validated['type'];
+            $path = $file->store("network_photos/{$typeFolder}", 'public');
+            if ($path) {
+                $photos[] = Storage::url($path);
+            }
+        }
+
+        $type = $validated['type'];
+        $createdNode = null;
+
+        if ($type === 'odp') {
+            $createdNode = Odp::create([
+                'code' => $validated['code'],
+                'name' => $validated['name'],
+                'latitude' => (string)$validated['latitude'],
+                'longitude' => (string)$validated['longitude'],
+                'address' => $validated['address'] ?? null,
+                'port_count' => $validated['port_count'] ?? 8,
+                'odc_id' => $validated['parent_id'] ?? null,
+                'branch_id' => $user->branch_id,
+                'reseller_id' => $effectiveResellerId,
+                'photos' => $photos,
+                'created_by' => $user->id,
+            ]);
+        } elseif ($type === 'closure' || $type === 'joint_closure') {
+            $createdNode = JointClosure::create([
+                'code' => $validated['code'],
+                'name' => $validated['name'],
+                'type' => $validated['closure_type'] ?? 'Dome',
+                'latitude' => (string)$validated['latitude'],
+                'longitude' => (string)$validated['longitude'],
+                'address' => $validated['address'] ?? null,
+                'port_count' => $validated['port_count'] ?? 24,
+                'odc_id' => $validated['parent_id'] ?? null,
+                'branch_id' => $user->branch_id,
+                'reseller_id' => $effectiveResellerId,
+                'photos' => $photos,
+                'created_by' => $user->id,
+            ]);
+        } elseif ($type === 'odc') {
+            $createdNode = Odc::create([
+                'code' => $validated['code'],
+                'name' => $validated['name'],
+                'latitude' => (string)$validated['latitude'],
+                'longitude' => (string)$validated['longitude'],
+                'address' => $validated['address'] ?? null,
+                'port_count' => $validated['port_count'] ?? 48,
+                'olt_id' => $validated['parent_id'] ?? null,
+                'branch_id' => $user->branch_id,
+                'reseller_id' => $effectiveResellerId,
+                'photos' => $photos,
+                'created_by' => $user->id,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Titik ' . strtoupper($type) . ' berhasil didaftarkan.',
+            'data' => $createdNode,
+        ], 201);
+    }
+
+    /**
+     * Upload / Append photo documentation to existing node.
+     * POST /api/mobile/network/nodes/{type}/{id}/photo
+     */
+    public function uploadNodePhoto(Request $request, string $type, int $id): JsonResponse
+    {
+        $request->validate([
+            'photo' => 'required|image|max:10240',
+        ]);
+
+        $file = $request->file('photo');
+        $typeFolder = ($type === 'closure' || $type === 'joint_closure') ? 'closures' : $type;
+        $path = $file->store("network_photos/{$typeFolder}", 'public');
+
+        if (!$path) {
+            return response()->json(['success' => false, 'message' => 'Gagal mengunggah foto.'], 500);
+        }
+
+        $photoUrl = Storage::url($path);
+
+        $node = match($type) {
+            'odp' => Odp::withoutGlobalScopes()->find($id),
+            'closure', 'joint_closure' => JointClosure::withoutGlobalScopes()->find($id),
+            'odc' => Odc::withoutGlobalScopes()->find($id),
+            'olt' => Olt::withoutGlobalScopes()->find($id),
+            default => null,
+        };
+
+        if (!$node) {
+            return response()->json(['success' => false, 'message' => 'Node perangkat tidak ditemukan.'], 404);
+        }
+
+        $currentPhotos = is_array($node->photos) ? $node->photos : [];
+        $currentPhotos[] = $photoUrl;
+        $node->photos = array_values(array_unique($currentPhotos));
+        $node->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Foto dokumentasi lokasi berhasil disimpan.',
+            'photo_url' => $photoUrl,
+            'all_photos' => $node->photos,
+        ]);
     }
 }

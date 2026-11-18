@@ -3,23 +3,40 @@
 
     {{-- Header Banner --}}
     <div class="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-4 sm:p-5 rounded-2xl shadow-md">
-        <div class="flex items-center justify-between gap-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
                 <div class="flex items-center gap-2 mb-1">
                     <span class="material-symbols-outlined text-xl sm:text-2xl notranslate" translate="no">share_location</span>
-                    <h2 class="text-base sm:text-lg font-black tracking-tight">Peta & Cari ODP Lapangan</h2>
+                    <h2 class="text-base sm:text-lg font-black tracking-tight">Peta Jaringan & Pendataan Titik</h2>
                 </div>
                 <p class="text-xs text-indigo-100 max-w-xl">
-                    Cari titik ODP berdasarkan nama/kode atau gunakan GPS untuk menemukan ODP terdekat di sekitar lokasi instalasi.
+                    Satu peta topologi terpadu (OLT, ODC, Closure FO, ODP). Cari titik jaringan atau tambahkan titik baru langsung dari lapangan lengkap dengan foto dokumentasi.
                 </p>
             </div>
-            <a href="{{ route('technician.odp.search') }}"
-               class="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 bg-white/15 hover:bg-white/25 text-white rounded-xl text-xs font-bold transition-colors">
-                <span class="material-symbols-outlined text-sm notranslate" translate="no">list_alt</span>
-                <span>Daftar Tabel ODP</span>
-            </a>
+            <div class="flex items-center gap-2">
+                <button type="button" wire:click="openCreateModal"
+                        class="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm transition-colors">
+                    <span class="material-symbols-outlined text-sm notranslate" translate="no">add_location_alt</span>
+                    <span>+ Titik Baru</span>
+                </button>
+                <a href="{{ route('technician.odp.search') }}"
+                   class="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 bg-white/15 hover:bg-white/25 text-white rounded-xl text-xs font-bold transition-colors">
+                    <span class="material-symbols-outlined text-sm notranslate" translate="no">list_alt</span>
+                    <span>Tabel ODP</span>
+                </a>
+            </div>
         </div>
     </div>
+
+    @if($createSuccessMessage)
+        <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-base">check_circle</span>
+                <span>{{ $createSuccessMessage }}</span>
+            </div>
+            <button type="button" wire:click="$set('createSuccessMessage', null)" class="text-emerald-600 hover:text-emerald-800">&times;</button>
+        </div>
+    @endif
 
     {{-- Search & Filter Toolbar --}}
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/80 p-3.5 sm:p-4 space-y-3">
@@ -196,11 +213,111 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
+    {{-- Modal Tambah Titik Jaringan Baru (ODP / Closure FO) --}}
+    @if($showCreateModal)
+    <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-lg overflow-hidden animate-in fade-in duration-200">
+            <div class="px-5 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-xl">add_location_alt</span>
+                    <h3 class="font-bold text-sm sm:text-base">Tambah Titik Lapangan Baru</h3>
+                </div>
+                <button type="button" wire:click="closeCreateModal" class="text-white/80 hover:text-white text-lg">&times;</button>
+            </div>
+
+            <form wire:submit.prevent="saveNewNode" class="p-5 space-y-4">
+                {{-- Pilihan Jenis Node --}}
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Jenis Titik Jaringan</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" wire:click="$set('newNodeType', 'odp')"
+                                class="py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 {{ $newNodeType === 'odp' ? 'bg-indigo-50 border-indigo-500 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400' }}">
+                            <span>📦</span>
+                            <span>ODP (Distribusi)</span>
+                        </button>
+                        <button type="button" wire:click="$set('newNodeType', 'closure')"
+                                class="py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 {{ $newNodeType === 'closure' ? 'bg-teal-50 border-teal-500 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400' }}">
+                            <span>🧰</span>
+                            <span>Closure FO (Joint)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Kode Titik</label>
+                        <input type="text" wire:model="newNodeCode" class="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono uppercase" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Titik</label>
+                        <input type="text" wire:model="newNodeName" class="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl" required>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Kapasitas Port / Core</label>
+                        <input type="number" wire:model="newNodePortCount" class="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-bold" min="1" max="512">
+                    </div>
+                    @if($newNodeType === 'closure')
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Model Closure</label>
+                        <select wire:model="newNodeClosureType" class="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl">
+                            <option value="Dome">Dome (Kubah Tiang)</option>
+                            <option value="Inline">Inline (Horizontal)</option>
+                            <option value="Wall Mount">Wall Mount (Dinding)</option>
+                        </select>
+                    </div>
+                    @endif
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Latitude</label>
+                        <input type="text" wire:model="newNodeLat" class="w-full px-2.5 py-1.5 text-xs bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-lg font-mono text-slate-600 dark:text-slate-300" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Longitude</label>
+                        <input type="text" wire:model="newNodeLng" class="w-full px-2.5 py-1.5 text-xs bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-lg font-mono text-slate-600 dark:text-slate-300" readonly>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Alamat / Patokan Tiang</label>
+                    <input type="text" wire:model="newNodeAddress" placeholder="Misal: Depan Pos Ronda RT 02 / Tiang No. 14" class="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl">
+                </div>
+
+                {{-- Upload Foto Tiang / Box --}}
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Foto Tiang / Box Lokasi</label>
+                    <input type="file" wire:model="newNodePhoto" accept="image/*" capture="environment"
+                           class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                    <p class="text-[10px] text-slate-400 mt-1">Gunakan kamera ponsel untuk mengambil foto tiang/box langsung di lokasi.</p>
+                    @if ($newNodePhoto)
+                        <div class="mt-2">
+                            <img src="{{ $newNodePhoto->temporaryUrl() }}" class="h-24 w-auto rounded-lg object-cover border border-slate-200">
+                        </div>
+                    @endif
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-end gap-2">
+                    <button type="button" wire:click="closeCreateModal" class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl">Batal</button>
+                    <button type="submit" wire:loading.attr="disabled" class="px-4 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm flex items-center gap-1.5">
+                        <span wire:loading.remove>Simpan Titik</span>
+                        <span wire:loading>Menyimpan...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
     <script>
         let map = null;
         let userMarker = null;
         let odpMarkers = {};
         let odpLayerGroup = null;
+        let backboneLayerGroup = null;
 
         document.addEventListener('livewire:initialized', () => {
             initMap();
@@ -233,23 +350,101 @@
 
             map = L.map('map').setView([initialLat, initialLng], 14);
 
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap &copy; CARTO',
-                maxZoom: 19
+            // 2 Lapisan Layar Jernih Seragam
+            const googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                attribution: '&copy; Google Hybrid Satellite HD',
+                maxZoom: 22,
+                subdomains: ['mt0','mt1','mt2','mt3']
+            });
+
+            const googleRoad = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                attribution: '&copy; Google Road Clean HD',
+                maxZoom: 22,
+                subdomains: ['mt0','mt1','mt2','mt3']
+            });
+
+            const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                maxZoom: 20
+            });
+
+            // Default to Google Hybrid
+            googleHybrid.addTo(map);
+
+            L.control.layers({
+                '🛰️ Google Hybrid Satelit HD': googleHybrid,
+                '🗺️ Google Road Clean HD': googleRoad,
+                '🌙 Dark Mode': darkLayer
             }).addTo(map);
 
+            backboneLayerGroup = L.layerGroup().addTo(map);
             odpLayerGroup = L.layerGroup().addTo(map);
+
+            // Render Backbone Nodes (OLT, ODC, Closures)
+            renderBackboneNodes();
 
             // Render current initial ODPs
             const initialOdps = @json($odps);
             renderOdpsOnMap(initialOdps, { lat: initialLat, lng: initialLng }, false);
 
-            // Map click listener
+            // Map click listener: Set acuan & tawarkan tambah titik baru
             map.on('click', function(e) {
                 const lat = e.latlng.lat;
                 const lng = e.latlng.lng;
                 updateUserMarker(lat, lng);
                 @this.setLocation(lat, lng);
+            });
+        }
+
+        function renderBackboneNodes() {
+            if (!backboneLayerGroup) return;
+            backboneLayerGroup.clearLayers();
+
+            const allNodes = @json($allNodes);
+            const olts = allNodes.olts || [];
+            const odcs = allNodes.odcs || [];
+            const closures = allNodes.closures || [];
+
+            // 1. Render OLT
+            olts.forEach(o => {
+                if (!o.latitude || !o.longitude) return;
+                const icon = L.divIcon({
+                    className: 'custom-olt-pin',
+                    html: '<div style="background-color:#2563eb; width:28px; height:28px; border-radius:8px; border:2px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; color:white; font-size:13px;">🏢</div>',
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                });
+                const photo = (o.photos && o.photos.length > 0) ? `<img src="${o.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;margin-top:6px;">` : '';
+                const popup = `<div style="font-family:inherit;min-width:180px;"><b style="color:#2563eb;">OLT Core: ${o.name}</b><br><span style="font-size:11px;color:#64748b;">Kode: ${o.code}</span>${photo}</div>`;
+                L.marker([o.latitude, o.longitude], { icon }).addTo(backboneLayerGroup).bindPopup(popup);
+            });
+
+            // 2. Render ODC
+            odcs.forEach(c => {
+                if (!c.latitude || !c.longitude) return;
+                const icon = L.divIcon({
+                    className: 'custom-odc-pin',
+                    html: '<div style="background-color:#d97706; width:26px; height:26px; border-radius:8px; border:2px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; color:white; font-size:12px;">🗄️</div>',
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 13]
+                });
+                const photo = (c.photos && c.photos.length > 0) ? `<img src="${c.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;margin-top:6px;">` : '';
+                const popup = `<div style="font-family:inherit;min-width:180px;"><b style="color:#d97706;">ODC: ${c.name}</b><br><span style="font-size:11px;color:#64748b;">Kode: ${c.code}</span>${photo}</div>`;
+                L.marker([c.latitude, c.longitude], { icon }).addTo(backboneLayerGroup).bindPopup(popup);
+            });
+
+            // 3. Render Closures (Joint Closure FO)
+            closures.forEach(jc => {
+                if (!jc.latitude || !jc.longitude) return;
+                const icon = L.divIcon({
+                    className: 'custom-closure-pin',
+                    html: '<div style="background-color:#0d9488; width:24px; height:24px; border-radius:8px; border:2px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; color:white; font-size:11px;">🧰</div>',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+                const photo = (jc.photos && jc.photos.length > 0) ? `<img src="${jc.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;margin-top:6px;">` : '';
+                const popup = `<div style="font-family:inherit;min-width:180px;"><b style="color:#0d9488;">Closure FO: ${jc.name}</b><br><span style="font-size:11px;color:#64748b;">Tipe: ${jc.type || 'Dome'} (${jc.code})</span>${photo}</div>`;
+                L.marker([jc.latitude, jc.longitude], { icon }).addTo(backboneLayerGroup).bindPopup(popup);
             });
         }
 
@@ -260,13 +455,23 @@
 
             const pinIcon = L.divIcon({
                 className: 'custom-user-pin',
-                html: '<div style="background-color:#4f46e5; width:18px; height:18px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.45);"></div>',
-                iconSize: [18, 18],
-                iconAnchor: [9, 9]
+                html: '<div style="background-color:#4f46e5; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.5);"></div>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
             });
 
             userMarker = L.marker([lat, lng], { icon: pinIcon }).addTo(map);
-            userMarker.bindPopup('<div style="font-size:11px; font-weight:bold;">📍 Titik Acuan Pencarian</div>').openPopup();
+            const popupContent = `
+                <div style="font-size:11px; font-weight:bold; min-width:150px;">
+                    <div>📍 Titik Acuan GPS</div>
+                    <div style="font-size:10px; color:#64748b; margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
+                    <button type="button" onclick="window.Livewire.find('${@this.getId()}').openCreateModal(${lat}, ${lng})"
+                            style="margin-top:6px; background:#10b981; color:white; border:none; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; width:100%;">
+                        + Tambah Node di Sini
+                    </button>
+                </div>
+            `;
+            userMarker.bindPopup(popupContent).openPopup();
         }
 
         function renderOdpsOnMap(odps, center, hasGps) {
@@ -303,6 +508,7 @@
 
                 const distanceText = odp.distance !== null ? ('<br>Jarak: <b>' + odp.distance + ' km</b>') : '';
                 const gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + odp.latitude + ',' + odp.longitude;
+                const photo = (odp.photos && odp.photos.length > 0) ? `<img src="${odp.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;margin-top:6px;">` : '';
 
                 const popupHtml = '<div style="font-family:inherit; min-width:180px; padding:2px;">' +
                     '<div style="font-weight:900; font-size:13px; color:#1e293b;">' + odp.code + '</div>' +
@@ -311,6 +517,7 @@
                         'Port Kosong: <strong style="color:' + color + ';">' + odp.available_port_count + '</strong> / ' + odp.port_count + ' Total' +
                         distanceText +
                     '</div>' +
+                    photo +
                     '<div style="margin-top:8px;">' +
                         '<a href="' + gmapsUrl + '" target="_blank" style="display:inline-block; font-size:10px; font-weight:bold; color:#4f46e5; text-decoration:none;">➔ Buka Rute Google Maps</a>' +
                     '</div>' +
@@ -351,6 +558,14 @@
                 }, function(error) {
                     alert("Gagal mendapatkan lokasi. Pastikan izin lokasi (GPS) diaktifkan di browser Anda.");
                 }, {
+                    enableHighAccuracy: true,
+                    timeout: 10000
+                });
+            } else {
+                alert("Browser Anda tidak mendukung geolokasi GPS.");
+            }
+        }
+    </script>
                     enableHighAccuracy: true,
                     timeout: 10000
                 });

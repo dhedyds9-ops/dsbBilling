@@ -62,6 +62,8 @@ class Odp extends Model
         'reserved_port_count',
         'status',
         'branch_id',
+        'reseller_id',
+        'photos',
         'installation_date',
         'last_maintenance_at',
         'attributes',
@@ -77,7 +79,13 @@ class Odp extends Model
         'installation_date' => 'date',
         'last_maintenance_at' => 'datetime',
         'attributes' => 'array',
+        'photos' => 'array',
     ];
+
+    public function reseller()
+    {
+        return $this->belongsTo(\App\Models\Reseller::class);
+    }
 
     protected $appends = [
         'color',
