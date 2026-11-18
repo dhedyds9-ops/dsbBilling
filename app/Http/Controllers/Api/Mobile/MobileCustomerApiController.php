@@ -40,6 +40,9 @@ class MobileCustomerApiController extends Controller
                 $q->where('branch_id', $user->branch_id)
                   ->orWhereNull('branch_id');
             });
+        } elseif (!$user->isSuperAdmin() && !$user->hasRole('administrator')) {
+            // Non-admin without branch or reseller context cannot see global cross-branch data
+            $query->whereRaw('1 = 0');
         }
 
         $search = trim((string) ($request->input('q') ?? $request->input('search') ?? ''));
@@ -147,6 +150,29 @@ class MobileCustomerApiController extends Controller
     public function show(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
+
+        // RBAC: Technicians can only view customer detail if assigned via Work Order or Ticket
+        if ($user && method_exists($user, 'isTechnician') && $user->isTechnician() && !$user->isSuperAdmin() && !$user->hasAnyRole(['administrator', 'manager', 'reseller'])) {
+            $hasAssignedWo = \App\Models\Workforce\WorkOrder::where('customer_id', $id)
+                ->where(function ($wq) use ($user) {
+                    $wq->where('assigned_to', $user->id)
+                      ->orWhereJsonContains('technician_ids', $user->id);
+                })->exists();
+
+            $hasAssignedTicket = \App\Models\Support\Ticket::where('customer_id', $id)
+                ->where(function ($tq) use ($user) {
+                    $tq->where('assigned_to', $user->id)
+                      ->orWhereJsonContains('technician_ids', $user->id);
+                })->exists();
+
+            if (!$hasAssignedWo && !$hasAssignedTicket) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak: Teknisi hanya dapat melihat detail pelanggan yang memiliki penugasan SPK/Tiket aktif.',
+                ], 403);
+            }
+        }
+
         $query = Customer::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])->with([
             'customerServices' => function ($q) {
                 $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
@@ -165,6 +191,9 @@ class MobileCustomerApiController extends Controller
                 $q->where('branch_id', $user->branch_id)
                   ->orWhereNull('branch_id');
             });
+        } elseif (!$user->isSuperAdmin() && !$user->hasRole('administrator')) {
+            // Non-admin without branch or reseller context cannot see global cross-branch data
+            $query->whereRaw('1 = 0');
         }
 
         $customer = $query->findOrFail($id);
@@ -299,6 +328,14 @@ class MobileCustomerApiController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
+
+        // RBAC: Direct customer registration is restricted to Reseller, Administrator, Manager, or Sales/Registration
+        if ($user && method_exists($user, 'isTechnician') && $user->isTechnician() && !$user->isSuperAdmin() && !$user->hasAnyRole(['administrator', 'manager', 'reseller', 'customer_service'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak: Teknisi tidak memiliki wewenang mendaftarkan master pelanggan baru.',
+            ], 403);
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',

@@ -71,4 +71,50 @@ class MobileInvoiceApiTest extends TestCase
 
         $this->assertEquals('paid', $invoice->fresh()->status);
     }
+
+    public function test_technician_cannot_list_or_pay_invoices(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'technician'], ['display_name' => 'Teknisi', 'guard_name' => 'web']);
+        $technician = User::factory()->create(['is_active' => true]);
+        $technician->roles()->attach($role->id);
+
+        $customer = Customer::create([
+            'uuid' => (string) Str::uuid(),
+            'name' => 'Customer Test',
+            'code' => '2026110402',
+            'phone' => '081234567891',
+            'status' => 'active',
+        ]);
+
+        $invoice = Invoice::create([
+            'uuid' => (string) Str::uuid(),
+            'invoice_number' => 'INV-TEST-0002',
+            'customer_id' => $customer->id,
+            'issue_date' => now(),
+            'due_date' => now()->addDays(7),
+            'total_amount' => 100000,
+            'paid_amount' => 0,
+            'status' => 'unpaid',
+        ]);
+
+        // 1. Technician cannot list invoices
+        $response = $this->actingAs($technician, 'sanctum')
+            ->getJson('/api/mobile/invoices');
+        $response->assertStatus(403)
+            ->assertJsonPath('success', false);
+
+        // 2. Technician cannot view customer invoices
+        $custResponse = $this->actingAs($technician, 'sanctum')
+            ->getJson("/api/mobile/customers/{$customer->id}/invoices");
+        $custResponse->assertStatus(403)
+            ->assertJsonPath('success', false);
+
+        // 3. Technician cannot pay invoice cash
+        $payResponse = $this->actingAs($technician, 'sanctum')
+            ->postJson("/api/mobile/invoices/{$invoice->id}/pay-cash", [
+                'amount' => 100000,
+            ]);
+        $payResponse->assertStatus(403)
+            ->assertJsonPath('success', false);
+    }
 }

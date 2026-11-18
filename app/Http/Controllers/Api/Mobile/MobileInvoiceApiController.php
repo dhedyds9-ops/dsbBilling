@@ -20,6 +20,16 @@ class MobileInvoiceApiController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
+
+        // RBAC: Technicians are not allowed to view customer billing invoices.
+        if ($user && method_exists($user, 'isTechnician') && $user->isTechnician() && !$user->isSuperAdmin() && !$user->hasAnyRole(['administrator', 'manager', 'kasir', 'cashier', 'reseller'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak: Teknisi tidak memiliki akses data tagihan.',
+                'data' => [],
+            ], 403);
+        }
+
         $resellerId = $user->getEffectiveResellerId() ?? (
             ($user->hasRole('reseller') || $user->role === 'reseller' || !empty($user->reseller_id))
                 ? ($user->reseller_id ?: $user->id)
@@ -187,6 +197,15 @@ class MobileInvoiceApiController extends Controller
     public function payCash(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
+
+        // RBAC: Technicians are not allowed to collect or execute cash billing payments.
+        if ($user && method_exists($user, 'isTechnician') && $user->isTechnician() && !$user->isSuperAdmin() && !$user->hasAnyRole(['administrator', 'manager', 'kasir', 'cashier', 'reseller'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak: Teknisi tidak memiliki wewenang memproses pembayaran tagihan.',
+            ], 403);
+        }
+
         $resellerId = $user->getEffectiveResellerId() ?? (
             ($user->hasRole('reseller') || $user->role === 'reseller' || !empty($user->reseller_id))
                 ? ($user->reseller_id ?: $user->id)
