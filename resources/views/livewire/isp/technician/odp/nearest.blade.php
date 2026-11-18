@@ -618,12 +618,4 @@
             }
         }
     </script>
-                    enableHighAccuracy: true,
-                    timeout: 10000
-                });
-            } else {
-                alert("Browser Anda tidak mendukung geolokasi GPS.");
-            }
-        }
-    </script>
 </div>
