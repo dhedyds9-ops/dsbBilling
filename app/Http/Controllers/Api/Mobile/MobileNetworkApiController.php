@@ -2073,15 +2073,6 @@ class MobileNetworkApiController extends Controller
         $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
         $photos = [];
 
-        if ($request->hasFile('photo')) {
-            $file = $request->file('photo');
-            $typeFolder = ($validated['type'] === 'closure' || $validated['type'] === 'joint_closure') ? 'closures' : $validated['type'];
-            $path = $file->store("network_photos/{$typeFolder}", 'public');
-            if ($path) {
-                $photos[] = Storage::url($path);
-            }
-        }
-
         $type = $validated['type'];
         $createdNode = null;
 
@@ -2146,6 +2137,12 @@ class MobileNetworkApiController extends Controller
             ]);
         }
 
+        if ($createdNode && $request->hasFile('photo')) {
+            $photoTarget = ($type === 'closure' || $type === 'joint_closure') ? 'closure' : $type;
+            \App\Services\ISP\NodePhotoService::attachPhoto($createdNode, $request->file('photo'), $photoTarget, true);
+            $createdNode->refresh();
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Titik ' . strtoupper($type) . ' berhasil didaftarkan.',
@@ -2160,20 +2157,12 @@ class MobileNetworkApiController extends Controller
     public function uploadNodePhoto(Request $request, string $type, int $id): JsonResponse
     {
         $request->validate([
-            'photo' => 'required|image|max:10240',
+            'photo' => 'required|image|max:12288',
         ]);
 
         $file = $request->file('photo');
-        $typeFolder = ($type === 'closure' || $type === 'joint_closure') ? 'closures' : $type;
-        $path = $file->store("network_photos/{$typeFolder}", 'public');
 
-        if (!$path) {
-            return response()->json(['success' => false, 'message' => 'Gagal mengunggah foto.'], 500);
-        }
-
-        $photoUrl = Storage::url($path);
-
-        $node = match($type) {
+        $node = match(strtolower($type)) {
             'odp' => Odp::withoutGlobalScopes()->find($id),
             'closure', 'joint_closure' => JointClosure::withoutGlobalScopes()->find($id),
             'odc' => Odc::withoutGlobalScopes()->find($id),
@@ -2185,16 +2174,41 @@ class MobileNetworkApiController extends Controller
             return response()->json(['success' => false, 'message' => 'Node perangkat tidak ditemukan.'], 404);
         }
 
-        $currentPhotos = is_array($node->photos) ? $node->photos : [];
-        $currentPhotos[] = $photoUrl;
-        $node->photos = array_values(array_unique($currentPhotos));
-        $node->save();
+        $photoTarget = ($type === 'closure' || $type === 'joint_closure') ? 'closure' : $type;
+        $res = \App\Services\ISP\NodePhotoService::attachPhoto($node, $file, $photoTarget, true);
 
         return response()->json([
             'success' => true,
             'message' => 'Foto dokumentasi lokasi berhasil disimpan.',
-            'photo_url' => $photoUrl,
-            'all_photos' => $node->photos,
+            'photo_url' => $res['dataUri'] ?: $res['relUrl'],
+            'all_photos' => $res['photos'],
+        ]);
+    }
+
+    /**
+     * Delete all photos attached to network node.
+     * DELETE /api/mobile/network/nodes/{type}/{id}/photo
+     */
+    public function deleteNodePhoto(Request $request, string $type, int $id): JsonResponse
+    {
+        $node = match(strtolower($type)) {
+            'odp' => Odp::withoutGlobalScopes()->find($id),
+            'closure', 'joint_closure' => JointClosure::withoutGlobalScopes()->find($id),
+            'odc' => Odc::withoutGlobalScopes()->find($id),
+            'olt' => Olt::withoutGlobalScopes()->find($id),
+            default => null,
+        };
+
+        if (!$node) {
+            return response()->json(['success' => false, 'message' => 'Node perangkat tidak ditemukan.'], 404);
+        }
+
+        \App\Services\ISP\NodePhotoService::deletePhotos($node);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Foto dokumentasi node berhasil dihapus.',
+            'all_photos' => [],
         ]);
     }
 
@@ -2273,15 +2287,8 @@ class MobileNetworkApiController extends Controller
         }
 
         if ($request->hasFile('photo')) {
-            $file = $request->file('photo');
-            $typeFolder = ($type === 'closure' || $type === 'joint_closure') ? 'closures' : $type;
-            $path = $file->store("network_photos/{$typeFolder}", 'public');
-            if ($path) {
-                $photoUrl = Storage::url($path);
-                $currentPhotos = is_array($node->photos) ? $node->photos : [];
-                $currentPhotos[] = $photoUrl;
-                $node->photos = array_values(array_unique($currentPhotos));
-            }
+            $photoTarget = ($type === 'closure' || $type === 'joint_closure') ? 'closure' : $type;
+            \App\Services\ISP\NodePhotoService::attachPhoto($node, $request->file('photo'), $photoTarget, true);
         }
 
         $node->save();

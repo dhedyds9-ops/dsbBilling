@@ -822,6 +822,40 @@ Route::get('/storage/{path}', function ($path) {
     }
 
     if (!$filePath) {
+        // If path is a network photo, attempt DB Base64 recovery or return clean SVG badge instead of 404
+        if (str_contains($cleanPath, 'network_photos/')) {
+            $fn = basename($cleanPath);
+            $models = [
+                \App\Models\ISP\Odc::withoutGlobalScopes()->where('photos', 'like', "%{$fn}%")->first(),
+                \App\Models\ISP\Odp::withoutGlobalScopes()->where('photos', 'like', "%{$fn}%")->first(),
+                \App\Models\ISP\Olt::withoutGlobalScopes()->where('photos', 'like', "%{$fn}%")->first(),
+                class_exists(\App\Models\ISP\JointClosure::class) ? \App\Models\ISP\JointClosure::withoutGlobalScopes()->where('photos', 'like', "%{$fn}%")->first() : null,
+            ];
+            foreach ($models as $m) {
+                if ($m && is_array($m->photos)) {
+                    foreach ($m->photos as $p) {
+                        if (str_starts_with($p, 'data:image')) {
+                            [$header, $data] = explode(',', $p, 2);
+                            preg_match('#data:(image/\w+);base64#', $header, $matches);
+                            $mime = $matches[1] ?? 'image/jpeg';
+                            return response(base64_decode($data))->header('Content-Type', $mime)->header('Cache-Control', 'public, max-age=86400');
+                        }
+                    }
+                }
+            }
+
+            // Clean SVG placeholder so <img> tags in any view/portal never display broken image icon
+            $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250">
+                <rect width="100%" height="100%" fill="#0f172a" rx="12"/>
+                <circle cx="200" cy="100" r="36" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+                <path d="M185 108 L215 108 M190 92 L200 82 L210 82 L220 92 L225 92 C228 92 230 94 230 97 L230 113 C230 116 228 118 225 118 L175 118 C172 118 170 116 170 113 L170 97 C170 94 172 92 175 92 Z" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="200" cy="104" r="7" fill="none" stroke="#64748b" stroke-width="2"/>
+                <text x="200" y="160" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="13" font-weight="bold" text-anchor="middle">Foto Belum Tersedia / Menunggu Unggahan</text>
+                <text x="200" y="180" fill="#475569" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">' . htmlspecialchars(substr($fn, 0, 32)) . '</text>
+            </svg>';
+            return response($svg, 200)->header('Content-Type', 'image/svg+xml')->header('Cache-Control', 'no-cache');
+        }
+
         \Illuminate\Support\Facades\Log::warning("[StorageFallback] File not found: {$cleanPath}");
         abort(404);
     }
