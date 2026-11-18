@@ -59,8 +59,13 @@ class DismantleOnt extends AdminComponent
     public ?string $completedSummary = null;
     public string $transaction_id = '';
 
-    public function mount()
+    public function mount(?int $customer_id = null, ?int $onu_id = null, ?int $ticket_id = null, bool $embedded = false)
     {
+        if ($customer_id) $this->customer_id = $customer_id;
+        if ($onu_id) $this->onu_id = $onu_id;
+        if ($ticket_id) $this->ticket_id = $ticket_id;
+        $this->embedded = $embedded;
+
         parent::mount();
         $this->activeModule = 'reseller';
         $this->activePage = 'network-dismantle-ont';
