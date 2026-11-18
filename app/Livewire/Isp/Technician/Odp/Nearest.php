@@ -195,9 +195,26 @@ class Nearest extends Component
 
         if ($this->newNodePhoto) {
             $folder = $this->newNodeType === 'closure' ? 'closures' : 'odp';
+            $targetDir = storage_path("app/public/network_photos/{$folder}");
+            if (!@is_dir($targetDir)) {
+                @mkdir($targetDir, 0775, true);
+            }
             $path = $this->newNodePhoto->store("network_photos/{$folder}", 'public');
             if ($path) {
-                $photos[] = Storage::url($path);
+                $fullSource = storage_path('app/public/' . $path);
+                if (@file_exists($fullSource)) {
+                    @chmod($fullSource, 0664);
+                    foreach (['/var/www/shared_storage/' . $path, '/var/www/winets/storage/app/public/' . $path, '/var/www/mstore/storage/app/public/' . $path] as $st) {
+                        $stDir = dirname($st);
+                        if (@is_dir($stDir) && !@file_exists($st)) {
+                            @copy($fullSource, $st);
+                            @chmod($st, 0664);
+                        }
+                    }
+                }
+                $photoUrl = Storage::url($path);
+                $cleanUrl = preg_replace('/^https?:\/\/[^\/]+(\/storage\/.*)$/', '$1', (string) $photoUrl);
+                $photos[] = $cleanUrl;
             }
         }
 
@@ -262,9 +279,34 @@ class Nearest extends Component
             'closure' => 'closures',
             default => 'odp',
         };
+
+        // Ensure target directory exists with proper permissions
+        $targetDir = storage_path("app/public/network_photos/{$folder}");
+        if (!@is_dir($targetDir)) {
+            @mkdir($targetDir, 0775, true);
+        }
+
         $path = $this->additionalPhoto->store("network_photos/{$folder}", 'public');
 
         if ($path) {
+            // Also mirror file to shared_storage or sibling site if available
+            $fullSource = storage_path('app/public/' . $path);
+            if (@file_exists($fullSource)) {
+                @chmod($fullSource, 0664);
+                $siblingTargets = [
+                    '/var/www/shared_storage/' . $path,
+                    '/var/www/winets/storage/app/public/' . $path,
+                    '/var/www/mstore/storage/app/public/' . $path,
+                ];
+                foreach ($siblingTargets as $st) {
+                    $stDir = dirname($st);
+                    if (@is_dir($stDir) && !@file_exists($st)) {
+                        @copy($fullSource, $st);
+                        @chmod($st, 0664);
+                    }
+                }
+            }
+
             $photoUrl = Storage::url($path);
             $cleanUrl = preg_replace('/^https?:\/\/[^\/]+(\/storage\/.*)$/', '$1', (string) $photoUrl);
             $node = match ($this->uploadTargetType) {

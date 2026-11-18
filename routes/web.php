@@ -768,26 +768,61 @@ Route::post('/pengaturan/perusahaan/upload-logo', function (\Illuminate\Http\Req
 
 // Fallback direct storage file serving (in case symlink /public/storage is missing or multi-directory on VPS)
 Route::get('/storage/{path}', function ($path) {
-    $filePath = storage_path('app/public/' . $path);
-    if (!file_exists($filePath)) {
-        // Multi-domain / multi-site VPS sibling fallback (e.g. /var/www/winets <-> /var/www/mstore)
-        $parentDir = dirname(base_path());
-        $candidates = [
-            $parentDir . '/winets/storage/app/public/' . $path,
-            $parentDir . '/mstore/storage/app/public/' . $path,
-            '/var/www/winets/storage/app/public/' . $path,
-            '/var/www/mstore/storage/app/public/' . $path,
+    $cleanPath = ltrim($path, '/');
+    $candidates = [
+        storage_path('app/public/' . $cleanPath),
+        storage_path('app/' . $cleanPath),
+        storage_path('app/private/' . $cleanPath),
+        public_path('storage/' . $cleanPath),
+        public_path($cleanPath),
+        '/var/www/shared_storage/' . $cleanPath,
+        '/var/www/mstore/storage/app/public/' . $cleanPath,
+        '/var/www/winets/storage/app/public/' . $cleanPath,
+        '/var/www/mstore/storage/app/' . $cleanPath,
+        '/var/www/winets/storage/app/' . $cleanPath,
+        dirname(base_path()) . '/mstore/storage/app/public/' . $cleanPath,
+        dirname(base_path()) . '/winets/storage/app/public/' . $cleanPath,
+    ];
+
+    $filePath = null;
+    foreach ($candidates as $cand) {
+        if (@file_exists($cand) && @is_file($cand)) {
+            $filePath = $cand;
+            break;
+        }
+    }
+
+    // Fuzzy search by filename in case of extension mismatch or nested directory variation
+    if (!$filePath) {
+        $filename = basename($cleanPath);
+        $nameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
+        $subDir = dirname($cleanPath);
+        $searchBases = [
+            '/var/www/shared_storage',
+            storage_path('app/public'),
+            storage_path('app'),
+            '/var/www/mstore/storage/app/public',
+            '/var/www/winets/storage/app/public',
+            '/var/www/mstore/storage/app',
+            '/var/www/winets/storage/app',
         ];
-        foreach ($candidates as $cand) {
-            if (file_exists($cand)) {
-                $filePath = $cand;
-                break;
+        foreach ($searchBases as $sb) {
+            $targetDir = $sb . '/' . $subDir;
+            if (@is_dir($targetDir)) {
+                $matches = @glob($targetDir . '/' . $nameWithoutExt . '.*');
+                if (!empty($matches)) {
+                    $filePath = $matches[0];
+                    break;
+                }
             }
         }
     }
-    if (!file_exists($filePath)) {
+
+    if (!$filePath) {
+        \Illuminate\Support\Facades\Log::warning("[StorageFallback] File not found: {$cleanPath}");
         abort(404);
     }
+
     $mime = @mime_content_type($filePath) ?: 'image/jpeg';
     return response()->file($filePath, [
         'Content-Type' => $mime,
