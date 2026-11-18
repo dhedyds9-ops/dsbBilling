@@ -18,7 +18,7 @@
                     title="Download Data Distribusi & Serah Terima ke Format Excel (.xlsx)">
                 <span wire:loading.remove wire:target="exportExcel" class="material-symbols-outlined text-sm">download</span>
                 <span wire:loading wire:target="exportExcel" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-                <span>Export Excel</span>
+                <span>Excel</span>
             </button>
         </div>
     </div>

@@ -17,11 +17,11 @@
                     title="Download Data Stok Opname ke Format Excel (.xlsx)">
                 <span wire:loading.remove wire:target="exportExcel" class="material-symbols-outlined text-sm">download</span>
                 <span wire:loading wire:target="exportExcel" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-                <span>Export Excel</span>
+                <span>Excel</span>
             </button>
             <button wire:click="openCreateModal" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm transition cursor-pointer">
                 <span class="material-symbols-outlined text-sm">add</span>
-                <span>Mulai Sesi Opname Baru</span>
+                <span>Mulai Opname</span>
             </button>
         </div>
     </div>

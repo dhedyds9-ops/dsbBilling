@@ -14,18 +14,18 @@
         <div class="flex items-center gap-2">
             <button wire:click="exportExcel" type="button"
                     wire:loading.attr="disabled"
-                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-bold rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs transition-all cursor-pointer"
+                    class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-bold rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs transition-all cursor-pointer"
                     title="Download Data Permintaan Barang ke Format Excel (.xlsx)">
                 <span wire:loading.remove wire:target="exportExcel" class="material-symbols-outlined text-sm text-emerald-600 dark:text-emerald-400">download</span>
                 <span wire:loading wire:target="exportExcel" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-                <span>Export Excel</span>
+                <span>Excel</span>
             </button>
 
             @if($canCreateRequisition)
                 <button wire:click="openCreateModal" type="button"
-                        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all">
+                        class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all">
                     <span class="material-symbols-outlined text-sm">add</span>
-                    <span>Buat Pengajuan Baru</span>
+                    <span>Pengajuan Baru</span>
                 </button>
             @endif
         </div>
@@ -48,18 +48,18 @@
     {{-- Tab Navigation Bar (Marketplace vs Riwayat) --}}
     <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700/80 pb-2">
         <button wire:click="setTab('list')" type="button"
-                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all {{ $activeTab === 'list' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
+                class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all {{ $activeTab === 'list' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
             <span class="material-symbols-outlined text-base">format_list_bulleted</span>
-            <span>Riwayat Pengajuan</span>
+            <span>Riwayat</span>
             <span class="px-2 py-0.5 rounded-full text-[10px] {{ $activeTab === 'list' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300' }}">
                 {{ $requisitions->total() }}
             </span>
         </button>
 
         <button wire:click="setTab('catalog')" type="button"
-                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all {{ $activeTab === 'catalog' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
+                class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all {{ $activeTab === 'catalog' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
             <span class="material-symbols-outlined text-base">storefront</span>
-            <span>Katalog Stok Gudang (Marketplace)</span>
+            <span>Stok Gudang</span>
             <span class="px-2 py-0.5 rounded-full text-[10px] {{ $activeTab === 'catalog' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300' }}">
                 {{ $catalogItems->count() }}
             </span>
@@ -424,13 +424,13 @@
                                     <button wire:click="openCreateForStock({{ $item->id }})" type="button"
                                             class="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5">
                                         <span class="material-symbols-outlined text-sm">shopping_cart</span>
-                                        <span>Ajukan Pengambilan</span>
+                                        <span>Ambil Barang</span>
                                     </button>
                                 @else
                                     <button wire:click="openCreateForStock({{ $item->id }})" type="button"
                                             class="w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5">
                                         <span class="material-symbols-outlined text-sm">notification_add</span>
-                                        <span>Minta Pengadaan (Restock)</span>
+                                        <span>Minta Pengadaan</span>
                                     </button>
                                 @endif
                             @else
@@ -703,9 +703,9 @@
                             Batal
                         </button>
                         <button type="submit"
-                                class="px-5 py-2.5 rounded-xl {{ $requisition_type === 'procurement_request' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700' }} text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5">
+                                class="px-5 py-2.5 rounded-xl {{ $requisition_type === 'procurement_request' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700' }} text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 cursor-pointer">
                             <span class="material-symbols-outlined text-sm notranslate" translate="no">send</span>
-                            <span>{{ $requisition_type === 'procurement_request' ? 'Kirim Permohonan Pengadaan' : 'Kirim Permintaan Pengambilan' }}</span>
+                            <span>{{ $requisition_type === 'procurement_request' ? 'Kirim Pengadaan' : 'Kirim Permintaan' }}</span>
                         </button>
                     </div>
                 </form>
@@ -775,18 +775,18 @@
                 <div class="flex items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-700/80">
                     <button wire:click="rejectRequisition" type="button"
                             class="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-bold transition-colors">
-                        Tolak Pengajuan
+                        Tolak
                     </button>
                     <div class="flex items-center gap-2">
                         <button wire:click="approveRequisition" type="button"
                                 class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer">
-                            Setujui Saja
+                            Setujui
                         </button>
                         @if(!$selectedRequisition->isProcurementRequest())
                             <button wire:click="approveAndDispatch" type="button"
                                     class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer">
                                 <span class="material-symbols-outlined text-sm">local_shipping</span>
-                                <span>Setujui & Buka Dispatch</span>
+                                <span>Setujui & Dispatch</span>
                             </button>
                         @else
                             <button wire:click="approveRequisition" type="button"
@@ -851,7 +851,7 @@
                     <button wire:click="saveLinkDispatch" type="button"
                             class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
                         <span class="material-symbols-outlined text-sm">link</span>
-                        <span>Tautkan & Tandai Dispatched</span>
+                        <span>Tautkan Dispatch</span>
                     </button>
                 </div>
             </div>

@@ -14,17 +14,17 @@
         <div class="flex items-center gap-2">
             <button wire:click="exportExcel" type="button"
                     wire:loading.attr="disabled"
-                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-bold rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs transition-all cursor-pointer"
+                    class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-bold rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs transition-all cursor-pointer"
                     title="Download Data Barang Masuk ke Format Excel (.xlsx)">
                 <span wire:loading.remove wire:target="exportExcel" class="material-symbols-outlined text-sm text-emerald-600 dark:text-emerald-400">download</span>
                 <span wire:loading wire:target="exportExcel" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-                <span>Export Excel</span>
+                <span>Excel</span>
             </button>
 
             <button wire:click="openCreateModal" type="button"
-                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all">
+                    class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all">
                 <span class="material-symbols-outlined text-sm">add</span>
-                <span>Catat Barang Masuk</span>
+                <span>Barang Masuk</span>
             </button>
         </div>
     </div>

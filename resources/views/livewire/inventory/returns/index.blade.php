@@ -18,13 +18,13 @@
                     title="Download Data Retur ke Format Excel (.xlsx)">
                 <span wire:loading.remove wire:target="exportExcel" class="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400">download</span>
                 <span wire:loading wire:target="exportExcel" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-                <span>Export Excel</span>
+                <span>Excel</span>
             </button>
 
             <button wire:click="openCreateModal" type="button"
                     class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all">
                 <span class="material-symbols-outlined text-sm">add</span>
-                <span>Ajukan Retur Barang</span>
+                <span>Ajukan Retur</span>
             </button>
         </div>
     </div>

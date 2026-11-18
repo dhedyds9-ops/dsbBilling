@@ -157,11 +157,11 @@
                         <button wire:click="openRequestModal()" type="button"
                                 class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition-colors">
                             <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
-                            <span>Minta Barang ke Gudang</span>
+                            <span>Minta Barang</span>
                         </button>
                         <button wire:click="switchTab('gudang')" type="button"
                                 class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors">
-                            Lihat Stok Gudang
+                            Stok Gudang
                         </button>
                     </div>
                 </div>
@@ -446,7 +446,7 @@
                     <button wire:click="submitMaterialRequest" type="button"
                             class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors flex items-center justify-center gap-1.5">
                         <span class="material-symbols-outlined text-sm">send</span>
-                        <span>Kirim Permintaan ke Gudang</span>
+                        <span>Kirim Permintaan</span>
                     </button>
                 </div>
             </div>
@@ -512,7 +512,7 @@
                     </button>
                     <button wire:click="saveUsage" type="button"
                             class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors">
-                        Simpan & Potong Stok
+                        Simpan
                     </button>
                 </div>
             </div>
@@ -584,7 +584,7 @@
                     </button>
                     <button wire:click="submitReturn" type="button"
                             class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors">
-                        Konfirmasi Simpan
+                        Simpan
                     </button>
                 </div>
             </div>
