@@ -355,6 +355,58 @@
     </div>
     @endif
 
+    <style>
+        .modern-map-popup .leaflet-popup-content-wrapper {
+            background: #0f172a !important;
+            padding: 0 !important;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5) !important;
+            border: 1px solid #1e293b !important;
+            border-radius: 12px !important;
+        }
+        .modern-map-popup .leaflet-popup-content { margin: 0 !important; width: 280px !important; }
+        .modern-map-popup .leaflet-popup-tip { background: #0f172a !important; }
+        .modern-map-popup .leaflet-popup-close-button { color: #94a3b8 !important; padding: 8px 8px 0 0 !important; font-size: 16px !important; }
+        .modern-map-popup .leaflet-popup-close-button:hover { color: #ffffff !important; }
+
+        .network-card {
+            width: 100%; padding: 0; color: #cbd5e1; font-family: "Inter", sans-serif; font-size: 12px; line-height: 1.4;
+            background: #0f172a; border-radius: 12px; overflow: hidden;
+        }
+        .network-header {
+            display: flex; align-items: center; justify-content: space-between; padding: 10px 12px;
+            border-bottom: 1px solid #1e293b; background: rgba(30, 41, 59, 0.5);
+        }
+        .network-title { font-size: 13px; font-weight: 700; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+        .network-subtitle { font-size: 10px; color: #94a3b8; font-family: monospace; }
+        .network-badge { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 999px; text-transform: uppercase; }
+        .badge-olt { background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff; border: 1px solid #60a5fa; }
+        .badge-odc { background: linear-gradient(135deg, #78350f, #f59e0b); color: #fff; border: 1px solid #fbbf24; }
+        .badge-odp { background: linear-gradient(135deg, #064e3b, #10b981); color: #fff; border: 1px solid #34d399; }
+        .badge-closure { background: #334155; color: #cbd5e1; border: 1px solid #64748b; }
+        .network-content { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+        .node-panel {
+            background: rgba(30, 41, 59, 0.45); border: 1px solid rgba(71, 85, 105, 0.4); border-radius: 8px;
+            padding: 7px 9px; display: flex; flex-direction: column; gap: 4px;
+        }
+        .node-kv { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 11px; }
+        .node-kv-label { color: #94a3b8; font-weight: 500; }
+        .node-kv-value { color: #f1f5f9; font-weight: 600; text-align: right; }
+        .node-progress-bg { width: 100%; height: 5px; background: #1e293b; border-radius: 999px; overflow: hidden; margin-top: 2px; }
+        .node-progress-bar { height: 100%; border-radius: 999px; }
+        .node-actions { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+        .node-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+            padding: 5px 8px; font-size: 10px; font-weight: 700; border-radius: 6px; text-decoration: none !important; cursor: pointer; border: none;
+        }
+
+        .custom-icon { display: flex; align-items: center; justify-content: center; color: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer; }
+        .custom-icon.icon-olt { background: radial-gradient(circle, #3b82f6 0%, #1e3a8a 100%); border: 2px solid #93c5fd; border-radius: 50%; box-shadow: 0 0 12px #3b82f6; }
+        .custom-icon.icon-odc { background: linear-gradient(135deg, #f59e0b 0%, #92400e 100%); border: 2px solid #fde68a; border-radius: 8px; transform: rotate(45deg); box-shadow: 0 0 12px #f59e0b; }
+        .custom-icon.icon-odc i { transform: rotate(-45deg); }
+        .custom-icon.icon-odp { background: linear-gradient(to bottom right, #10b981, #065f46); border: 2px solid #a7f3d0; border-radius: 4px; box-shadow: 0 0 10px #10b981; }
+        .custom-icon.icon-closure { background: #334155; border: 2px solid #94a3b8; border-radius: 10px 10px 3px 3px; }
+    </style>
+
     <script>
         let map = null;
         let userMarker = null;
@@ -451,47 +503,121 @@
             const olts = allNodes.olts || [];
             const odcs = allNodes.odcs || [];
             const closures = allNodes.closures || [];
+            const popupOpt = { maxWidth: 320, minWidth: 280, className: 'modern-map-popup' };
 
             // 1. Render OLT
             olts.forEach(o => {
                 if (!o.latitude || !o.longitude) return;
                 const icon = L.divIcon({
-                    className: 'custom-olt-pin',
-                    html: '<div style="background-color:#2563eb; width:28px; height:28px; border-radius:8px; border:2px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; color:white; font-size:13px;">🏢</div>',
-                    iconSize: [28, 28],
-                    iconAnchor: [14, 14]
+                    html: '<i class="fa fa-server" style="font-size:20px;"></i>',
+                    className: 'custom-icon icon-olt',
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18],
+                    popupAnchor: [0, -18]
                 });
-                const photo = (o.photos && o.photos.length > 0) ? `<img src="${o.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;margin-top:6px;">` : '';
-                const popup = `<div style="font-family:inherit;min-width:180px;"><b style="color:#2563eb;">OLT Core: ${o.name}</b><br><span style="font-size:11px;color:#64748b;">Kode: ${o.code}</span>${photo}</div>`;
-                L.marker([o.latitude, o.longitude], { icon }).addTo(backboneLayerGroup).bindPopup(popup);
+                const photoHtml = (o.photos && o.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${o.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
+                const cardHtml = `
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-title-group">
+                                <div class="network-title" title="${o.name}">${o.name}</div>
+                                <div class="network-subtitle">${o.code || 'OLT-CORE'}</div>
+                            </div>
+                            <span class="network-badge badge-olt">OLT</span>
+                        </div>
+                        <div class="network-content">
+                            ${photoHtml}
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">IP Host:</span>
+                                    <span class="node-kv-value font-mono text-cyan-400">${o.ip_address || '-'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Port PON:</span>
+                                    <span class="node-kv-value text-blue-300 font-bold">${o.pon_port_count || o.port_count || '-'} Port</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                const m = L.marker([o.latitude, o.longitude], { icon, interactive: true }).addTo(backboneLayerGroup).bindPopup(cardHtml, popupOpt);
+                m.on('click', function() { this.openPopup(); });
             });
 
             // 2. Render ODC
             odcs.forEach(c => {
                 if (!c.latitude || !c.longitude) return;
                 const icon = L.divIcon({
-                    className: 'custom-odc-pin',
-                    html: '<div style="background-color:#d97706; width:26px; height:26px; border-radius:8px; border:2px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; color:white; font-size:12px;">🗄️</div>',
-                    iconSize: [26, 26],
-                    iconAnchor: [13, 13]
+                    html: '<i class="fa fa-hdd" style="font-size:18px;"></i>',
+                    className: 'custom-icon icon-odc',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16],
+                    popupAnchor: [0, -16]
                 });
-                const photo = (c.photos && c.photos.length > 0) ? `<img src="${c.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;margin-top:6px;">` : '';
-                const popup = `<div style="font-family:inherit;min-width:180px;"><b style="color:#d97706;">ODC: ${c.name}</b><br><span style="font-size:11px;color:#64748b;">Kode: ${c.code}</span>${photo}</div>`;
-                L.marker([c.latitude, c.longitude], { icon }).addTo(backboneLayerGroup).bindPopup(popup);
+                const photoHtml = (c.photos && c.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${c.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
+                const cardHtml = `
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-title-group">
+                                <div class="network-title" title="${c.name}">${c.name}</div>
+                                <div class="network-subtitle">${c.code || 'ODC'}</div>
+                            </div>
+                            <span class="network-badge badge-odc">ODC</span>
+                        </div>
+                        <div class="network-content">
+                            ${photoHtml}
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Kapasitas:</span>
+                                    <span class="node-kv-value text-amber-300 font-bold">${c.capacity || 48} Port</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                const m = L.marker([c.latitude, c.longitude], { icon, interactive: true }).addTo(backboneLayerGroup).bindPopup(cardHtml, popupOpt);
+                m.on('click', function() { this.openPopup(); });
             });
 
             // 3. Render Closures (Joint Closure FO)
             closures.forEach(jc => {
                 if (!jc.latitude || !jc.longitude) return;
                 const icon = L.divIcon({
-                    className: 'custom-closure-pin',
-                    html: '<div style="background-color:#0d9488; width:24px; height:24px; border-radius:8px; border:2px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; color:white; font-size:11px;">🧰</div>',
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 12]
+                    html: '<i class="fa fa-archive" style="font-size:15px;"></i>',
+                    className: 'custom-icon icon-closure',
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 13],
+                    popupAnchor: [0, -13]
                 });
-                const photo = (jc.photos && jc.photos.length > 0) ? `<img src="${jc.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;margin-top:6px;border:1px solid #334155;">` : '';
-                const popup = `<div style="font-family:inherit;min-width:180px;"><b style="color:#0d9488;">Closure FO: ${jc.name}</b><br><span style="font-size:11px;color:#64748b;">Tipe: ${jc.type || 'Dome'} (${jc.code})</span>${photo}<button type="button" onclick="openUploadPhotoModalFromMap('closure', ${jc.id}, '${jc.name}')" style="margin-top:6px; background:#0d9488; color:white; border:none; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; width:100%;">📸 Tambah / Ganti Foto</button></div>`;
-                L.marker([jc.latitude, jc.longitude], { icon }).addTo(backboneLayerGroup).bindPopup(popup);
+                const photoHtml = (jc.photos && jc.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${jc.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
+                const cardHtml = `
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-title-group">
+                                <div class="network-title" title="${jc.name}">${jc.name}</div>
+                                <div class="network-subtitle">${jc.code || 'CLOSURE'}</div>
+                            </div>
+                            <span class="network-badge badge-closure">CLOSURE</span>
+                        </div>
+                        <div class="network-content">
+                            ${photoHtml}
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Tipe:</span>
+                                    <span class="node-kv-value">${jc.type || 'Dome'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Kapasitas:</span>
+                                    <span class="node-kv-value text-teal-300 font-bold">${jc.port_count || 24} Core</span>
+                                </div>
+                            </div>
+                            <div class="node-actions">
+                                <button type="button" onclick="openUploadPhotoModalFromMap('closure', ${jc.id}, '${jc.name}')" class="node-btn" style="background:#0d9488; color:white; width:100%;">
+                                    📸 Tambah / Ganti Foto Tiang
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+                const m = L.marker([jc.latitude, jc.longitude], { icon, interactive: true }).addTo(backboneLayerGroup).bindPopup(cardHtml, popupOpt);
+                m.on('click', function() { this.openPopup(); });
             });
         }
 
@@ -547,41 +673,71 @@
             odps.forEach(odp => {
                 if (!odp.latitude || !odp.longitude) return;
 
-                const isAvailable = (odp.available_port_count > 0);
-                const color = isAvailable ? '#10b981' : '#ef4444';
+                const totalP = parseInt(odp.port_count) || 8;
+                const availP = parseInt(odp.available_port_count) || 0;
+                const usedP = Math.max(0, totalP - availP);
+                const pct = Math.min(100, Math.round((usedP / totalP) * 100));
+                const barColor = pct > 90 ? '#ef4444' : (pct > 70 ? '#f59e0b' : '#10b981');
 
                 const odpIcon = L.divIcon({
-                    className: 'custom-odp-pin',
-                    html: '<div style="background-color:' + color + '; width:26px; height:26px; border-radius:8px; border:2px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:900;">' + (odp.available_port_count) + '</div>',
-                    iconSize: [26, 26],
-                    iconAnchor: [13, 13]
+                    className: 'custom-icon icon-odp',
+                    html: '<span style="font-weight:900; font-size:11px; color:white;">' + availP + '</span>',
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14],
+                    popupAnchor: [0, -14]
                 });
 
-                const marker = L.marker([odp.latitude, odp.longitude], { icon: odpIcon }).addTo(odpLayerGroup);
+                const marker = L.marker([odp.latitude, odp.longitude], { icon: odpIcon, interactive: true }).addTo(odpLayerGroup);
                 odpMarkers[odp.id] = marker;
                 boundsGroup.push(marker);
 
-                const distanceText = odp.distance !== null ? ('<br>Jarak: <b>' + odp.distance + ' km</b>') : '';
+                const distanceText = odp.distance !== null ? (odp.distance + ' km') : '-';
                 const gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + odp.latitude + ',' + odp.longitude;
-                const photo = (odp.photos && odp.photos.length > 0) ? `<img src="${odp.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;margin-top:6px;">` : '';
+                const photoHtml = (odp.photos && odp.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${odp.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
 
-                const popupHtml = '<div style="font-family:inherit; min-width:180px; padding:2px;">' +
-                    '<div style="font-weight:900; font-size:13px; color:#1e293b;">' + odp.code + '</div>' +
-                    '<div style="font-size:11px; color:#64748b; margin-top:2px;">' + odp.name + '</div>' +
-                    '<div style="margin-top:6px; padding-top:6px; border-top:1px solid #e2e8f0; font-size:11px; line-height:1.5;">' +
-                        'Port Kosong: <strong style="color:' + color + ';">' + odp.available_port_count + '</strong> / ' + odp.port_count + ' Total' +
-                        distanceText +
-                    '</div>' +
-                    photo +
-                    '<div style="margin-top:8px; display:flex; flex-direction:column; gap:4px;">' +
-                        '<button type="button" onclick="openUploadPhotoModalFromMap(\'odp\', ' + odp.id + ', \'' + odp.name + '\')" style="background:#0284c7; color:white; border:none; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; width:100%;">📸 Tambah / Ganti Foto</button>' +
-                        '<a href="' + gmapsUrl + '" target="_blank" style="display:inline-block; font-size:10px; font-weight:bold; color:#4f46e5; text-decoration:none;">➔ Buka Rute Google Maps</a>' +
-                    '</div>' +
-                '</div>';
+                const cardHtml = `
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-title-group">
+                                <div class="network-title" title="${odp.name}">${odp.name}</div>
+                                <div class="network-subtitle">${odp.code}</div>
+                            </div>
+                            <span class="network-badge badge-odp">ODP</span>
+                        </div>
+                        <div class="network-content">
+                            ${photoHtml}
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Port Terpakai:</span>
+                                    <span class="node-kv-value">${usedP} / ${totalP} (${pct}%)</span>
+                                </div>
+                                <div class="node-progress-bg">
+                                    <div class="node-progress-bar" style="width: ${pct}%; background: ${barColor};"></div>
+                                </div>
+                                <div class="node-kv" style="margin-top:3px;">
+                                    <span class="node-kv-label">Port Kosong:</span>
+                                    <span class="node-kv-value text-emerald-400 font-bold">${availP} Port Siap Pakai</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Jarak dari Posisi:</span>
+                                    <span class="node-kv-value font-mono text-cyan-300 font-bold">${distanceText}</span>
+                                </div>
+                            </div>
+                            <div class="node-actions">
+                                <button type="button" onclick="openUploadPhotoModalFromMap('odp', ${odp.id}, '${odp.name}')" class="node-btn" style="background:#0284c7; color:white;">
+                                    📸 Tambah / Ganti Foto Tiang
+                                </button>
+                                <a href="${gmapsUrl}" target="_blank" class="node-btn" style="background:#1e293b; color:#cbd5e1; border:1px solid #334155;">
+                                    ➔ Buka Rute Google Maps
+                                </a>
+                            </div>
+                        </div>
+                    </div>`;
 
-                marker.bindPopup(popupHtml);
+                marker.bindPopup(cardHtml, { maxWidth: 320, minWidth: 280, className: 'modern-map-popup' });
 
                 marker.on('click', function() {
+                    this.openPopup();
                     @this.selectOdp(odp.id);
                 });
             });

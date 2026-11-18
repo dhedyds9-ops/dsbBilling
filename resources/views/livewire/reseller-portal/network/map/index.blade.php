@@ -4,12 +4,9 @@
 @endsection
 
 <div class="h-[calc(100vh-100px)] w-full flex flex-col" style="min-height:600px;">
-    {{-- Leaflet CSS & JS --}}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .map-smart-toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(0, 229, 255, 0.2); overflow-x: auto; }
+        .map-smart-toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(0, 229, 255, 0.2); overflow-x: auto; }
         .toolbar-group { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
         .tb-btn { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; border: 1px solid transparent; cursor: pointer; transition: all 0.2s; color: white; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; flex-shrink: 0; }
         .tb-icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; color: white; }
@@ -24,18 +21,215 @@
         .connection-line { filter: drop-shadow(0 0 4px currentColor); }
         .connection-online { animation: dash 30s linear infinite; filter: drop-shadow(0 0 6px rgba(0, 242, 255, 0.8)); }
         @keyframes dash { to { stroke-dashoffset: -1000; } }
-        .modern-map-popup .leaflet-popup-content-wrapper { background: #0f172a !important; padding: 0 !important; border: 1px solid #1e293b !important; border-radius: 12px !important; }
-        .modern-map-popup .leaflet-popup-tip { background: #0f172a !important; border: 1px solid #1e293b !important; }
-        .modern-map-popup .leaflet-popup-content { margin: 0 !important; width: auto !important; min-width: 200px; padding: 12px !important; color: #cbd5e1;}
-        .modern-map-popup .leaflet-popup-close-button { color: #94a3b8 !important; padding: 10px 10px 0 0 !important; }
-        .custom-icon { display: flex; align-items: center; justify-content: center; color: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: transform 0.2s, box-shadow 0.2s; z-index: 500 !important; }
-        .custom-icon i { filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); font-size: 14px; }
-        .icon-olt { background: linear-gradient(135deg, #1e3a8a, #3b82f6); border-radius: 6px; border: 2px solid #60a5fa; }
-        .icon-odc { background: linear-gradient(135deg, #78350f, #f59e0b); border-radius: 50%; border: 2px solid #fbbf24; }
-        .icon-odp { background: linear-gradient(135deg, #064e3b, #10b981); border-radius: 4px; border: 2px solid #34d399; }
-        .icon-customer { background: linear-gradient(135deg, #0f172a, #1e293b); border-radius: 50%; border: 2px solid #cbd5e1; }
-        .icon-customer-online { border-color: #22c55e; box-shadow: 0 0 10px #22c55e; }
-        .icon-customer-offline { border-color: #ef4444; box-shadow: 0 0 10px #ef4444; }
+
+        /* Unified Modern Map Popup Styling */
+        .modern-map-popup .leaflet-popup-content-wrapper {
+            background: #0f172a !important;
+            padding: 0 !important;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5) !important;
+            border: 1px solid #1e293b !important;
+            border-radius: 12px !important;
+        }
+        .modern-map-popup .leaflet-popup-content {
+            margin: 0 !important;
+            width: 300px !important;
+        }
+        .modern-map-popup .leaflet-popup-tip {
+            background: #0f172a !important;
+        }
+        .modern-map-popup .leaflet-popup-close-button {
+            color: #94a3b8 !important;
+            padding: 10px 10px 0 0 !important;
+            font-size: 18px !important;
+            z-index: 100 !important;
+        }
+        .modern-map-popup .leaflet-popup-close-button:hover {
+            color: #ffffff !important;
+            background: transparent !important;
+        }
+
+        .network-card, .customer-card {
+            width: 100%;
+            padding: 0;
+            color: #cbd5e1;
+            font-family: "Inter", "Segoe UI", Tahoma, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            background: #0f172a;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .network-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border-bottom: 1px solid #1e293b;
+            background: rgba(30, 41, 59, 0.5);
+        }
+        .network-header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            flex: 1;
+        }
+        .network-title-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .network-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #f1f5f9;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+        .network-subtitle {
+            font-size: 10px;
+            color: #94a3b8;
+            font-family: "Consolas", monospace;
+        }
+        .network-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+        .badge-olt { background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff; border: 1px solid #60a5fa; }
+        .badge-odc { background: linear-gradient(135deg, #78350f, #f59e0b); color: #fff; border: 1px solid #fbbf24; }
+        .badge-odp { background: linear-gradient(135deg, #064e3b, #10b981); color: #fff; border: 1px solid #34d399; }
+        .badge-closure { background: #334155; color: #cbd5e1; border: 1px solid #64748b; }
+        .badge-onu-online { background: #065f46; color: #34d399; border: 1px solid #10b981; }
+        .badge-onu-offline { background: #7f1d1d; color: #f87171; border: 1px solid #ef4444; }
+
+        .network-content {
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .node-panel {
+            background: rgba(30, 41, 59, 0.45);
+            border: 1px solid rgba(71, 85, 105, 0.4);
+            border-radius: 8px;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .node-kv {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+        }
+        .node-kv-label {
+            color: #94a3b8;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .node-kv-value {
+            color: #f1f5f9;
+            font-weight: 600;
+            text-align: right;
+            word-break: break-word;
+        }
+        .node-progress-bg {
+            width: 100%;
+            height: 6px;
+            background: #1e293b;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-top: 3px;
+            margin-bottom: 2px;
+        }
+        .node-progress-bar {
+            height: 100%;
+            border-radius: 999px;
+            transition: width 0.3s;
+        }
+        .node-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .node-btn {
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 6px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 6px;
+            text-decoration: none !important;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        .node-btn-primary { background: #2563eb; color: #fff; }
+        .node-btn-primary:hover { background: #1d4ed8; }
+        .node-btn-secondary { background: #1e293b; color: #cbd5e1; border-color: #334155; }
+        .node-btn-secondary:hover { background: #334155; color: #fff; }
+        .node-btn-success { background: #059669; color: #fff; }
+        .node-btn-success:hover { background: #047857; }
+
+        /* Unified Smart Map Icons (Matching Admin GIS) */
+        .custom-icon {
+            display: flex; align-items: center; justify-content: center;
+            color: #ffffff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .custom-icon i { filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); pointer-events: none; }
+        .custom-icon:hover { transform: scale(1.15); }
+
+        .custom-icon.icon-olt { 
+            background: radial-gradient(circle, #3b82f6 0%, #1e3a8a 100%);
+            border: 2px solid #93c5fd; 
+            border-radius: 50%;
+            box-shadow: 0 0 15px #3b82f6, inset 0 0 10px rgba(255,255,255,0.5);
+        }
+        .custom-icon.icon-odc { 
+            background: linear-gradient(135deg, #f59e0b 0%, #92400e 100%);
+            border: 2px solid #fde68a; 
+            border-radius: 8px;
+            transform: rotate(45deg);
+            box-shadow: 0 0 15px #f59e0b;
+        }
+        .custom-icon.icon-odc i { transform: rotate(-45deg); }
+        .custom-icon.icon-odp { 
+            background: linear-gradient(to bottom right, #10b981, #065f46);
+            border: 2px solid #a7f3d0; 
+            border-radius: 3px;
+            box-shadow: 0 0 12px #10b981;
+        }
+        .custom-icon.icon-closure { 
+            background: #334155; border: 2px solid #94a3b8; border-radius: 12px 12px 4px 4px; 
+        }
+        .custom-icon.icon-customer-online { 
+            background: #06b6d4; border: 2px solid #cffafe; 
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            box-shadow: 0 0 10px #06b6d4;
+        }
+        .custom-icon.icon-customer-online i { transform: rotate(45deg); }
+        .custom-icon.icon-customer-offline { 
+            background: #ef4444; border: 2px solid #fecaca; color: white;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            box-shadow: 0 0 10px #ef4444;
+        }
+        .custom-icon.icon-customer-offline i { transform: rotate(45deg); }
     </style>
     
     <div class="bg-[#111827] border border-[#00e5ff]/30 rounded-lg shadow-lg flex-1 flex flex-col overflow-hidden">
@@ -76,6 +270,27 @@
 
     let mapInstance = null;
 
+    function createUnifiedIcon(type) {
+        let iconClass = 'fa-wifi';
+        let colorClass = 'icon-customer-offline';
+        let size = 26;
+
+        if (type === 'olt') { iconClass = 'fa-server'; colorClass = 'icon-olt'; size = 36; }
+        else if (type === 'odc') { iconClass = 'fa-hdd'; colorClass = 'icon-odc'; size = 32; }
+        else if (type === 'odp') { iconClass = 'fa-box'; colorClass = 'icon-odp'; size = 28; }
+        else if (type === 'closure') { iconClass = 'fa-archive'; colorClass = 'icon-closure'; size = 26; }
+        else if (type === 'online') { iconClass = 'fa-wifi'; colorClass = 'icon-customer-online'; size = 26; }
+        else { iconClass = 'fa-times'; colorClass = 'icon-customer-offline'; size = 26; }
+
+        return window.L.divIcon({
+            html: `<i class="fa ${iconClass}" style="font-size: ${Math.round(size/1.6)}px;"></i>`,
+            className: `custom-icon ${colorClass}`,
+            iconSize: [size, size],
+            iconAnchor: [size/2, size/2],
+            popupAnchor: [0, -size/2]
+        });
+    }
+
     function initResellerMap() {
         const container = document.getElementById('reseller-map');
         if (!container) return;
@@ -99,8 +314,9 @@
         window.L.control.layers({ '🛰️ Google Hybrid Satellite HD': googleHybrid, '🗺️ Google Road Clean HD': googleRoad, '🌙 Dark Mode': darkLayer }).addTo(mapInstance);
         
         let linesLayer = window.L.layerGroup().addTo(mapInstance);
+        let markersLayer = window.L.layerGroup().addTo(mapInstance);
         let bounds = [];
-        const popupOpt = { className: 'modern-map-popup' };
+        const popupOpt = { maxWidth: 320, minWidth: 280, className: 'modern-map-popup' };
         
         const olts = window.mapData.olts || [];
         const odcs = window.mapData.odcs || [];
@@ -108,40 +324,74 @@
         const odps = window.mapData.odps || [];
         const customers = window.mapData.customers || [];
         
+        // 1. Render OLT
         olts.forEach(i => {
             if(i.latitude && i.longitude) {
-                let icon = window.L.divIcon({ className: 'custom-icon icon-olt', html: '<i class="fa fa-server"></i>', iconSize: [28,28] });
-                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-top:6px;"><img src="${i.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
-                let html = `
-                    <div style="font-family:Inter,sans-serif;width:220px;font-size:12px;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">
-                            <span style="font-weight:700;color:#60a5fa;font-size:13px;">OLT: ${i.name}</span>
-                            <span style="font-size:9px;font-weight:700;background:#1e3a8a;color:#93c5fd;padding:2px 6px;border-radius:999px;">OLT</span>
+                let icon = createUnifiedIcon('olt');
+                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${i.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
+                let cardHtml = `
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-header-left">
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${i.name}">${i.name}</div>
+                                    <div class="network-subtitle">${i.code || 'OLT-CORE'}</div>
+                                </div>
+                            </div>
+                            <span class="network-badge badge-olt">OLT</span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">IP Host:</span><span style="font-family:monospace;color:#34d399;font-weight:700;">${i.ip_address ? `<a href="http://${i.ip_address}" target="_blank" rel="noopener noreferrer" class="ip-direct-link" style="color:#34d399;text-decoration:none !important;">${i.ip_address}</a>` : '-'}</span></div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Port PON:</span><span style="color:#38bdf8;font-weight:700;">${i.pon_port_count || i.port_count || '-'} Port</span></div>
-                        ${photoHtml}
+                        <div class="network-content">
+                            ${photoHtml}
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">IP Host:</span>
+                                    <span class="node-kv-value font-mono text-cyan-400">${i.ip_address || '-'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Port PON:</span>
+                                    <span class="node-kv-value text-blue-300 font-bold">${i.pon_port_count || i.port_count || '-'} Port</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>`;
-                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);
+                let m = window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
+                    .addTo(markersLayer)
+                    .bindPopup(cardHtml, popupOpt);
+                m.on('click', function() { this.openPopup(); });
                 bounds.push([i.latitude, i.longitude]);
             }
         });
         
+        // 2. Render ODC
         odcs.forEach(i => {
             if(i.latitude && i.longitude) {
-                let icon = window.L.divIcon({ className: 'custom-icon icon-odc', html: '<i class="fa fa-hdd"></i>', iconSize: [24,24] });
-                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-top:6px;"><img src="${i.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
-                let html = `
-                    <div style="font-family:Inter,sans-serif;width:220px;font-size:12px;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">
-                            <span style="font-weight:700;color:#fbbf24;font-size:13px;">ODC: ${i.name}</span>
-                            <span style="font-size:9px;font-weight:700;background:#78350f;color:#fde68a;padding:2px 6px;border-radius:999px;">ODC</span>
+                let icon = createUnifiedIcon('odc');
+                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${i.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
+                let cardHtml = `
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-header-left">
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${i.name}">${i.name}</div>
+                                    <div class="network-subtitle">${i.code || 'ODC'}</div>
+                                </div>
+                            </div>
+                            <span class="network-badge badge-odc">ODC</span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Kode:</span><span style="font-family:monospace;color:#f8fafc;font-weight:600;">${i.code || '-'}</span></div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Kapasitas:</span><span style="color:#f8fafc;font-weight:700;">${i.capacity || 48} Port</span></div>
-                        ${photoHtml}
+                        <div class="network-content">
+                            ${photoHtml}
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Kapasitas:</span>
+                                    <span class="node-kv-value text-amber-300 font-bold">${i.capacity || 48} Port</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>`;
-                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);
+                let m = window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
+                    .addTo(markersLayer)
+                    .bindPopup(cardHtml, popupOpt);
+                m.on('click', function() { this.openPopup(); });
                 bounds.push([i.latitude, i.longitude]);
                 if(i.olt_id) {
                     let olt = olts.find(o => o.id == i.olt_id);
@@ -150,21 +400,40 @@
             }
         });
 
+        // 3. Render Closures
         closures.forEach(i => {
             if(i.latitude && i.longitude) {
-                let icon = window.L.divIcon({ className: 'custom-icon icon-closure', html: '<i class="fa fa-archive" style="color:#14b8a6;"></i>', iconSize: [22,22] });
-                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-top:6px;"><img src="${i.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
-                let html = `
-                    <div style="font-family:Inter,sans-serif;width:220px;font-size:12px;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">
-                            <span style="font-weight:700;color:#2dd4bf;font-size:13px;">Closure FO: ${i.name}</span>
-                            <span style="font-size:9px;font-weight:700;background:#134e4a;color:#99f6e4;padding:2px 6px;border-radius:999px;">CLOSURE</span>
+                let icon = createUnifiedIcon('closure');
+                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${i.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
+                let cardHtml = `
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-header-left">
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${i.name}">${i.name}</div>
+                                    <div class="network-subtitle">${i.code || 'CLOSURE'}</div>
+                                </div>
+                            </div>
+                            <span class="network-badge badge-closure">CLOSURE</span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Tipe:</span><span style="color:#f8fafc;font-weight:600;">${i.type || 'Dome'}</span></div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Kapasitas:</span><span style="color:#f8fafc;font-weight:700;">${i.port_count || 24} Core</span></div>
-                        ${photoHtml}
+                        <div class="network-content">
+                            ${photoHtml}
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Tipe:</span>
+                                    <span class="node-kv-value">${i.type || 'Dome'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Kapasitas Core:</span>
+                                    <span class="node-kv-value text-teal-300 font-bold">${i.port_count || 24} Core</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>`;
-                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);
+                let m = window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
+                    .addTo(markersLayer)
+                    .bindPopup(cardHtml, popupOpt);
+                m.on('click', function() { this.openPopup(); });
                 bounds.push([i.latitude, i.longitude]);
                 if(i.odc_id) {
                     let odc = odcs.find(o => o.id == i.odc_id);
@@ -173,28 +442,53 @@
             }
         });
         
+        // 4. Render ODP
         odps.forEach(i => {
             if(i.latitude && i.longitude) {
-                let icon = window.L.divIcon({ className: 'custom-icon icon-odp', html: '<i class="fa fa-box"></i>', iconSize: [20,20] });
+                let icon = createUnifiedIcon('odp');
                 let totalP = parseInt(i.port_count) || 8;
                 let usedP = parseInt(i.used_port_count) || 0;
                 let availP = Math.max(0, totalP - usedP);
                 let pct = Math.min(100, Math.round((usedP / totalP) * 100));
-                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-top:6px;"><img src="${i.photos[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
-                let html = `
-                    <div style="font-family:Inter,sans-serif;width:230px;font-size:12px;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">
-                            <span style="font-weight:700;color:#34d399;font-size:13px;">ODP: ${i.name}</span>
-                            <span style="font-size:9px;font-weight:700;background:#064e3b;color:#a7f3d0;padding:2px 6px;border-radius:999px;">ODP</span>
+                let photoHtml = (i.photos && i.photos.length > 0) ? `<div style="margin-bottom:6px;"><img src="${i.photos[0]}" style="width:100%;height:85px;object-fit:cover;border-radius:6px;border:1px solid #334155;"></div>` : '';
+                let barColor = pct > 90 ? '#ef4444' : (pct > 70 ? '#f59e0b' : '#10b981');
+                let cardHtml = `
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-header-left">
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${i.name}">${i.name}</div>
+                                    <div class="network-subtitle">${i.code}</div>
+                                </div>
+                            </div>
+                            <span class="network-badge badge-odp">ODP</span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Port Terpakai:</span><span style="color:#f8fafc;font-weight:700;">${usedP} / ${totalP} (${pct}%)</span></div>
-                        <div style="width:100%;height:5px;background:#1e293b;border-radius:999px;margin-bottom:6px;overflow:hidden;">
-                            <div style="width:${pct}%;height:100%;background:${pct > 90 ? '#ef4444' : (pct > 70 ? '#f59e0b' : '#10b981')};"></div>
+                        <div class="network-content">
+                            ${photoHtml}
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Port Terpakai:</span>
+                                    <span class="node-kv-value">${usedP} / ${totalP} (${pct}%)</span>
+                                </div>
+                                <div class="node-progress-bg">
+                                    <div class="node-progress-bar" style="width: ${pct}%; background: ${barColor};"></div>
+                                </div>
+                                <div class="node-kv" style="margin-top:4px;">
+                                    <span class="node-kv-label">Tersedia:</span>
+                                    <span class="node-kv-value text-emerald-400 font-bold">${availP} Port Kosong</span>
+                                </div>
+                            </div>
+                            <div class="node-actions">
+                                <a href="https://www.google.com/maps/dir/?api=1&destination=${i.latitude},${i.longitude}" target="_blank" class="node-btn node-btn-secondary" style="width:100%;">
+                                    <i class="fa fa-map-marker-alt text-rose-400"></i> Rute Maps
+                                </a>
+                            </div>
                         </div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Port Tersedia:</span><span style="color:#34d399;font-weight:700;">${availP} ONU lagi</span></div>
-                        ${photoHtml}
                     </div>`;
-                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);
+                let m = window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
+                    .addTo(markersLayer)
+                    .bindPopup(cardHtml, popupOpt);
+                m.on('click', function() { this.openPopup(); });
                 bounds.push([i.latitude, i.longitude]);
                 if(i.odc_id) {
                     let odc = odcs.find(o => o.id == i.odc_id);
@@ -203,21 +497,52 @@
             }
         });
         
+        // 5. Render Pelanggan (ONU)
         customers.forEach(i => {
             if(i.latitude && i.longitude) {
-                let statusClass = i.is_online ? 'icon-customer-online' : 'icon-customer-offline';
-                let htmlIcon = i.is_online ? '<i class="fa fa-wifi text-green-400"></i>' : '<i class="fa fa-times text-red-400"></i>';
-                let icon = window.L.divIcon({ className: `custom-icon icon-customer ${statusClass}`, html: htmlIcon, iconSize: [22,22] });
-                let html = `
-                    <div style="font-family:Inter,sans-serif;width:220px;font-size:12px;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">
-                            <span style="font-weight:700;color:#f8fafc;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;" title="${i.name}">${i.name}</span>
-                            <span style="font-size:9px;font-weight:700;background:${i.is_online?'#065f46':'#334155'};color:${i.is_online?'#34d399':'#94a3b8'};padding:2px 6px;border-radius:999px;">${i.is_online ? 'ONLINE' : 'OFFLINE'}</span>
+                let icon = createUnifiedIcon(i.is_online ? 'online' : 'offline');
+                let waNumber = (i.phone || '').replace(/[^0-9]/g, '');
+                if (waNumber.startsWith('0')) { waNumber = '62' + waNumber.substring(1); }
+                let cardHtml = `
+                    <div class="customer-card">
+                        <div class="network-header">
+                            <div class="network-header-left">
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${i.name}">${i.name}</div>
+                                    <div class="network-subtitle">ID: ${i.code || i.id}</div>
+                                </div>
+                            </div>
+                            <span class="network-badge ${i.is_online ? 'badge-onu-online' : 'badge-onu-offline'}">
+                                ${i.is_online ? 'ONLINE' : 'OFFLINE'}
+                            </span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">User ID:</span><span style="font-family:monospace;color:#f8fafc;font-weight:600;">${i.customer_id || i.code || '-'}</span></div>
-                        ${i.phone ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Kontak:</span><span style="color:#38bdf8;">${i.phone}</span></div>` : ''}
+                        <div class="network-content">
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Layanan:</span>
+                                    <span class="node-kv-value font-bold text-cyan-400">${i.service_type || 'Internet'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">WiFi SSID:</span>
+                                    <span class="node-kv-value font-mono text-amber-300">${i.ssid_name || '-'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Telepon:</span>
+                                    <span class="node-kv-value font-mono">${i.phone || '-'}</span>
+                                </div>
+                            </div>
+                            <div class="node-actions">
+                                ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" class="node-btn node-btn-success"><i class="fab fa-whatsapp"></i> Chat WA</a>` : ''}
+                                <a href="https://www.google.com/maps/dir/?api=1&destination=${i.latitude},${i.longitude}" target="_blank" class="node-btn node-btn-secondary">
+                                    <i class="fa fa-map-marker-alt text-rose-400"></i> Maps
+                                </a>
+                            </div>
+                        </div>
                     </div>`;
-                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);
+                let m = window.L.marker([i.latitude, i.longitude], { icon: icon, interactive: true })
+                    .addTo(markersLayer)
+                    .bindPopup(cardHtml, popupOpt);
+                m.on('click', function() { this.openPopup(); });
                 bounds.push([i.latitude, i.longitude]);
                 if(i.odp_id) {
                     let odp = odps.find(o => o.id == i.odp_id);
