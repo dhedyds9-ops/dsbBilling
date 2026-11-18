@@ -214,11 +214,11 @@ class GenieAcsService
         // Fallback to database values stored in onus or customer_services
         if (empty($ssid)) {
             $ssid = ($wlanIndex === 1 ? $onu->wifi_ssid : null) 
-                ?: ($onu->customerService?->attributes["wifi_ssid_{$wlanIndex}"] ?? ($wlanIndex === 1 ? $onu->wifi_ssid : null) ?? "dsBilling_WiFi_{$wlanIndex}");
+                ?: ($onu->customerService?->attributes["wifi_ssid_{$wlanIndex}"] ?? ($wlanIndex === 1 ? $onu->wifi_ssid : null) ?? null);
         }
         if (empty($password) && $securityMode !== 'OPEN') {
             $password = ($wlanIndex === 1 ? $onu->wifi_password : null) 
-                ?: ($onu->customerService?->attributes["wifi_password_{$wlanIndex}"] ?? ($wlanIndex === 1 ? $onu->wifi_password : null) ?? '••••••••');
+                ?: ($onu->customerService?->attributes["wifi_password_{$wlanIndex}"] ?? ($wlanIndex === 1 ? $onu->wifi_password : null) ?? null);
         }
 
         // If live credentials successfully read from device, update DB to keep fresh

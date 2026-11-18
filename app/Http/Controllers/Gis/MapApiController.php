@@ -266,45 +266,91 @@ class MapApiController extends Controller
     {
         if (is_string($id) && str_starts_with($id, 'onu-')) {
             $onu = \App\Models\ISP\Onu::find(substr($id, 4));
-            $isOnline = $onu?->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 10;
+            $isOnline = in_array(strtolower((string)($onu?->operational_status ?? $onu?->status)), ['online', 'active'])
+                && $onu?->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 15;
             return response()->json([
                 'success' => true,
                 'is_online' => $isOnline,
+                'reason' => $isOnline ? 'ONU Active on OLT' : 'ONU Offline / LOS',
                 'total_clients' => 0,
-                'ssid_name' => $onu?->wifi_ssid ?: 'N/A',
-                'ssid_password' => $onu?->wifi_password ?: '',
-                'tr069_ip' => $onu?->serial_number ? 'TR069-' . $onu->serial_number : '-',
+                'ssid_name' => $onu?->wifi_ssid ?: null,
+                'ssid_password' => $onu?->wifi_password ?: null,
+                'tr069_ip' => $onu?->serial_number ? 'TR069-' . $onu->serial_number : 'unknown',
                 'last_inform' => $onu?->last_seen_at,
-                'rx_power' => $onu?->rx_power_dbm ? $onu->rx_power_dbm . ' dBm' : null,
-                'rdm_power' => $onu?->tx_power_dbm ? $onu->tx_power_dbm . ' dBm' : null,
+                'rx_power' => ($onu?->rx_power_dbm !== null && $onu?->rx_power_dbm !== '') ? $onu->rx_power_dbm . ' dBm' : null,
+                'rdm_power' => ($onu?->tx_power_dbm !== null && $onu?->tx_power_dbm !== '') ? $onu->tx_power_dbm . ' dBm' : null,
+                'serial_number' => $onu?->serial_number ?: ($onu?->code ?: '-'),
+                'mac_address' => $onu?->mac_address ?: '-',
             ]);
         }
 
-        $customer = Customer::with(['customerServices.onu', 'customerServices.acsDevice'])->find($id);
+        $customer = Customer::with([
+            'customerServices.onu',
+            'customerServices.acsDevice',
+            'customerServices.pppoeUser',
+            'customerServices.hotspotUser',
+        ])->find($id);
+
         if (!$customer) {
             return response()->json(['success' => false, 'message' => 'Customer not found'], 404);
         }
 
         $cs = $customer->customerServices->first();
         $onu = $cs?->onu;
+        if (!$onu && $cs && $cs->onu_id) {
+            $onu = \App\Models\ISP\Onu::find($cs->onu_id);
+        }
+        if (!$onu && $cs) {
+            $acs = \App\Models\ACS\ACSDevice::where('customer_service_id', $cs->id)->first();
+            if ($acs && $acs->onu_id) {
+                $onu = \App\Models\ISP\Onu::find($acs->onu_id);
+            }
+        }
         $acsDevice = $cs?->acsDevice ?? $onu?->acsDevice;
+        $pppoe = $cs?->pppoeUser;
+        $hotspot = $cs?->hotspotUser;
 
         $isOnline = false;
+        $reason = 'Tidak Ada Sesi Aktif';
         $totalClients = 0;
-        $ssidName = $onu?->wifi_ssid ?: 'N/A';
-        $ssidPassword = $onu?->wifi_password ?: '';
-        $tr069Ip = $acsDevice?->ip_address ?: ($cs?->tr069_status ?: ($onu?->serial_number ? 'TR069-' . $onu->serial_number : '-'));
-        $lastInform = $acsDevice?->last_inform ?: ($onu?->last_seen_at ?: $cs?->last_seen_at);
-        $rxPower = $onu?->rx_power_dbm ? $onu->rx_power_dbm . ' dBm' : null;
-        $rdmPower = $onu?->tx_power_dbm ? $onu->tx_power_dbm . ' dBm' : null;
 
-        if ($acsDevice) {
-            $isOnline = $acsDevice->status === 'online' || ($acsDevice->last_inform && $acsDevice->last_inform->diffInMinutes(now()) <= 10);
-        } elseif ($onu && $onu->last_seen_at) {
-            $isOnline = $onu->last_seen_at->diffInMinutes(now()) <= 10;
-        } elseif ($cs) {
-            $isOnline = $cs->status === 'active';
+        if ($pppoe && $pppoe->is_online) {
+            $isOnline = true;
+            $reason = 'PPPoE Active Session';
+        } elseif ($hotspot && $hotspot->is_online) {
+            $isOnline = true;
+            $reason = 'Hotspot Active Session';
+        } elseif ($acsDevice && ($acsDevice->status === 'online' || ($acsDevice->last_inform && $acsDevice->last_inform->diffInMinutes(now()) <= 15))) {
+            $isOnline = true;
+            $reason = 'TR-069 Active Inform';
+        } elseif ($onu && in_array(strtolower((string)($onu->operational_status ?? $onu->status)), ['online', 'active']) && $onu->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 15) {
+            $isOnline = true;
+            $reason = 'ONU Online on OLT';
+        } else {
+            $isOnline = false;
+            if ($cs && strtolower($cs->status ?? '') === 'suspended') {
+                $reason = 'Layanan Disuspend';
+            } elseif ($cs && strtolower($cs->status ?? '') === 'inactive') {
+                $reason = 'Layanan Nonaktif';
+            } else {
+                $reason = 'Modem Offline / Sesi Terputus';
+            }
         }
+
+        if ($acsDevice && isset($acsDevice->total_associations)) {
+            $totalClients = (int) $acsDevice->total_associations;
+        }
+
+        $ssidName = $onu?->wifi_ssid ?: null;
+        $ssidPassword = $onu?->wifi_password ?: null;
+        $tr069Ip = ($acsDevice?->ip_address && $acsDevice->ip_address !== '0.0.0.0')
+            ? $acsDevice->ip_address 
+            : ($cs?->tr069_status ?: ($onu?->serial_number ? 'TR069-' . $onu->serial_number : 'unknown'));
+        $lastInform = $acsDevice?->last_inform ?: ($onu?->last_seen_at ?: null);
+        $rxPower = ($onu?->rx_power_dbm !== null && $onu?->rx_power_dbm !== '') ? $onu->rx_power_dbm . ' dBm' : null;
+        $rdmPower = ($onu?->tx_power_dbm !== null && $onu?->tx_power_dbm !== '') ? $onu->tx_power_dbm . ' dBm' : null;
+        $serialNumber = $onu?->serial_number ?: ($acsDevice?->serial_number ?: '-');
+        $macAddress = $onu?->mac_address ?: ($acsDevice?->mac_address ?: '-');
 
         if (class_exists(\App\Services\ISP\GenieAcsService::class) && $onu) {
             try {
@@ -312,13 +358,17 @@ class MapApiController extends Controller
                 $wifiInfo = $genieService->getWifiCredentials($customer->id, $onu->id);
                 if (!empty($wifiInfo['ssid'])) $ssidName = $wifiInfo['ssid'];
                 if (!empty($wifiInfo['password'])) $ssidPassword = $wifiInfo['password'];
-                if (!empty($wifiInfo['online'])) $isOnline = true;
+                if (!empty($wifiInfo['online'])) {
+                    $isOnline = true;
+                    $reason = 'TR-069 Active Session';
+                }
             } catch (\Throwable $e) {}
         }
 
         return response()->json([
             'success' => true,
             'is_online' => $isOnline,
+            'reason' => $reason,
             'total_clients' => $totalClients,
             'ssid_name' => $ssidName,
             'ssid_password' => $ssidPassword,
@@ -326,6 +376,8 @@ class MapApiController extends Controller
             'last_inform' => $lastInform,
             'rx_power' => $rxPower,
             'rdm_power' => $rdmPower,
+            'serial_number' => $serialNumber,
+            'mac_address' => $macAddress,
         ]);
     }
 

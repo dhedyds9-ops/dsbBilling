@@ -3189,17 +3189,17 @@
             customer.longitude = lng;
             var isOnline = customer.is_online; // Assumed passed from controller
             var iconType = isOnline ? 'online' : 'offline';
-            var tr069Ip = customer.tr069_ip || '-';
-            var ssidName = customer.ssid_name || 'N/A';
+            var tr069Ip = customer.tr069_ip || 'unknown';
+            var ssidName = customer.ssid_name || null;
             var lastInform = customer.last_inform || null;
-            var lastReason = customer.last_reason || '-';
-            var hasGenieStatus = !!customer.has_genie_status;
+            var lastReason = customer.last_reason || (isOnline ? 'Active Session' : 'Modem Offline');
+            var serialNumber = customer.serial_number && customer.serial_number !== '-' ? customer.serial_number : null;
             var customerToOdpDistance = '-';
 
             function formatLastInform(value) {
-                if (!value) return 'N/A';
+                if (!value) return 'Belum pernah inform';
                 const date = new Date(value);
-                if (Number.isNaN(date.getTime())) return 'N/A';
+                if (Number.isNaN(date.getTime())) return 'Belum pernah inform';
                 const diffMs = Date.now() - date.getTime();
                 if (diffMs < 0) return date.toLocaleString('id-ID');
                 const totalMinutes = Math.floor(diffMs / 60000);
@@ -3258,8 +3258,12 @@
                             <!-- Network & TR069 Panel -->
                             <div class="node-panel">
                                 <div class="node-kv">
+                                    <span class="node-kv-label"><i class="fa fa-barcode text-slate-400 mr-1"></i> SN ONU:</span>
+                                    <span class="node-kv-value font-mono font-bold text-amber-300" id="popup-sn-${customer.id}">${serialNumber ? serialNumber : '<span class="text-slate-500 font-normal italic">Belum Tertaut</span>'}</span>
+                                </div>
+                                <div class="node-kv">
                                     <span class="node-kv-label"><i class="fa fa-network-wired text-slate-400 mr-1"></i> IP TR-069:</span>
-                                    <span class="node-kv-value font-mono text-cyan-400 font-bold" id="popup-ip-text-${customer.id}">${tr069Ip !== '-' && tr069Ip !== '0.0.0.0' ? `<a href="http://${tr069Ip}" target="_blank" rel="noopener noreferrer" class="ip-direct-link text-cyan-400 hover:text-cyan-300" style="text-decoration:none !important;">${tr069Ip}</a>` : tr069Ip}</span>
+                                    <span class="node-kv-value font-mono text-cyan-400 font-bold" id="popup-ip-text-${customer.id}">${(tr069Ip !== '-' && tr069Ip !== '0.0.0.0' && tr069Ip !== 'unknown') ? `<a href="http://${tr069Ip}" target="_blank" rel="noopener noreferrer" class="ip-direct-link text-cyan-400 hover:text-cyan-300" style="text-decoration:none !important;">${tr069Ip}</a>` : '<span class="text-slate-500 font-normal italic">unknown</span>'}</span>
                                 </div>
                                 <span id="popup-acs-ip-${customer.id}" class="d-none">${tr069Ip}</span>
                                 <div class="node-kv">
@@ -3277,33 +3281,32 @@
                                 <div class="node-kv">
                                     <span class="node-kv-label"><i class="fa fa-clock text-slate-400 mr-1"></i> Terakhir Aktif:</span>
                                     <span class="node-kv-value text-slate-400 text-xs" id="popup-last-inform-${customer.id}">
-                                        ${hasGenieStatus ? formatLastInform(lastInform) : 'N/A'}
+                                        ${lastInform ? `Last Inform: ${formatLastInform(lastInform)}` : 'Belum pernah inform'}
                                     </span>
                                 </div>
-                                ${(customer.rx_power || customer.rdm_power) ? `
                                 <div class="node-kv mt-1 pt-1 border-t border-slate-700/50">
                                     <span class="node-kv-label"><i class="fa fa-bolt text-amber-400 mr-1"></i> Redaman:</span>
-                                    <span class="node-kv-value d-flex gap-1">
-                                        ${customer.rx_power ? `<span class="px-1.5 py-0.5 bg-slate-800 border border-emerald-500/30 text-emerald-400 rounded text-xs font-mono font-bold">RX: ${customer.rx_power}</span>` : ''}
-                                        ${customer.rdm_power ? `<span class="px-1.5 py-0.5 bg-slate-800 border border-yellow-500/30 text-yellow-400 rounded text-xs font-mono font-bold">TX: ${customer.rdm_power}</span>` : ''}
+                                    <span class="node-kv-value d-flex gap-1" id="popup-optical-power-${customer.id}">
+                                        <span class="px-1.5 py-0.5 bg-slate-800 border ${customer.rx_power ? 'border-emerald-500/30 text-emerald-400' : 'border-slate-700 text-slate-400'} rounded text-xs font-mono font-bold" id="popup-rx-power-${customer.id}">RX: ${customer.rx_power || '-'}</span>
+                                        <span class="px-1.5 py-0.5 bg-slate-800 border ${customer.rdm_power ? 'border-yellow-500/30 text-yellow-400' : 'border-slate-700 text-slate-400'} rounded text-xs font-mono font-bold" id="popup-tx-power-${customer.id}">TX: ${customer.rdm_power || '-'}</span>
                                     </span>
                                 </div>
-                                ` : ''}
                             </div>
 
                             <!-- WiFi & Device Info Panel -->
                             <div class="node-panel">
                                 <div class="node-kv">
                                     <span class="node-kv-label"><i class="fa fa-wifi text-slate-400 mr-1"></i> SSID:</span>
-                                    <span class="node-kv-value font-bold text-yellow-300 font-mono truncate max-w-[170px]" id="popup-ssid-${customer.id}" title="${ssidName}">${ssidName}</span>
+                                    <span class="node-kv-value font-bold text-yellow-300 font-mono truncate max-w-[170px]" id="popup-ssid-${customer.id}" title="${ssidName || '-'}">${ssidName && ssidName !== 'N/A' && ssidName !== '-' ? ssidName : '<span class="text-slate-400 font-normal italic">Belum Sinkron TR-069</span>'}</span>
                                 </div>
                                 <div class="node-kv">
                                     <span class="node-kv-label"><i class="fa fa-key text-slate-400 mr-1"></i> Sandi:</span>
                                     <span class="node-kv-value font-mono d-flex align-items-center gap-1">
-                                        <span class="text-yellow-300 font-bold" id="pass-text-${customer.id}" data-password="${customer.ssid_password || ''}">••••••••</span>
+                                        <span class="text-yellow-300 font-bold" id="pass-text-${customer.id}" data-password="${customer.ssid_password || ''}">${customer.ssid_password ? '••••••••' : '<span class="text-slate-500 font-normal">-</span>'}</span>
+                                        ${customer.ssid_password ? `
                                         <button type="button" onclick="window.togglePassword(${customer.id}, this)" data-visible="0" class="btn btn-xs py-0 px-1 btn-dark border border-slate-600 text-slate-300 hover:text-white" title="Lihat/Sembunyikan Sandi">
                                             <span id="pass-icon-${customer.id}"><i class="fa fa-eye"></i></span>
-                                        </button>
+                                        </button>` : ''}
                                     </span>
                                 </div>
                                 <div class="node-kv">
@@ -3393,16 +3396,40 @@
                             if (data.success) {
                                 clientSpan.innerText = (data.total_clients || 0) + ' Perangkat';
                                 
-                                // Update SSID/password from live ONU data
-                                if (data.ssid_name) {
-                                    const ssidElement = document.getElementById(`popup-ssid-${customer.id}`);
-                                    if (ssidElement) ssidElement.innerText = data.ssid_name;
+                                // Update SN
+                                const snEl = document.getElementById(`popup-sn-${customer.id}`);
+                                if (snEl && data.serial_number && data.serial_number !== '-') {
+                                    snEl.innerText = data.serial_number;
                                 }
-                                if (typeof data.ssid_password !== 'undefined') {
-                                    const passText = document.getElementById(`pass-text-${customer.id}`);
-                                    if (passText) {
+
+                                // Update RX & TX
+                                const rxEl = document.getElementById(`popup-rx-power-${customer.id}`);
+                                if (rxEl) {
+                                    rxEl.innerText = 'RX: ' + (data.rx_power || '-');
+                                    rxEl.className = 'px-1.5 py-0.5 bg-slate-800 border ' + (data.rx_power ? 'border-emerald-500/30 text-emerald-400' : 'border-slate-700 text-slate-400') + ' rounded text-xs font-mono font-bold';
+                                }
+                                const txEl = document.getElementById(`popup-tx-power-${customer.id}`);
+                                if (txEl) {
+                                    txEl.innerText = 'TX: ' + (data.rdm_power || '-');
+                                    txEl.className = 'px-1.5 py-0.5 bg-slate-800 border ' + (data.rdm_power ? 'border-yellow-500/30 text-yellow-400' : 'border-slate-700 text-slate-400') + ' rounded text-xs font-mono font-bold';
+                                }
+
+                                // Update SSID/password from live ONU data
+                                const ssidElement = document.getElementById(`popup-ssid-${customer.id}`);
+                                if (ssidElement) {
+                                    if (data.ssid_name && data.ssid_name !== '-' && data.ssid_name !== 'N/A') {
+                                        ssidElement.innerText = data.ssid_name;
+                                    } else {
+                                        ssidElement.innerHTML = '<span class="text-slate-400 font-normal italic">Belum Sinkron TR-069</span>';
+                                    }
+                                }
+                                const passText = document.getElementById(`pass-text-${customer.id}`);
+                                if (passText) {
+                                    if (data.ssid_password) {
                                         passText.setAttribute('data-password', data.ssid_password || '');
-                                        passText.innerText = '********';
+                                        passText.innerText = '••••••••';
+                                    } else {
+                                        passText.innerHTML = '<span class="text-slate-500 font-normal">-</span>';
                                     }
                                 }
 
@@ -3420,6 +3447,8 @@
                                     statusText.innerText = 'ONLINE';
                                     if (lastReason) {
                                         lastReason.className = 'acs-value acs-value-now-online';
+                                        lastReason.innerText = data.reason || 'Active Session';
+                                        lastReason.setAttribute('title', data.reason || 'Active Session');
                                     }
                                 } else {
                                     statusDot.className = 'status-dot status-offline';
@@ -3427,18 +3456,20 @@
                                     statusText.innerText = 'OFFLINE';
                                     if (lastReason) {
                                         lastReason.className = 'acs-value acs-value-now-offline';
+                                        lastReason.innerText = data.reason || 'Modem Offline';
+                                        lastReason.setAttribute('title', data.reason || 'Modem Offline');
                                     }
                                 }
 
                                 if (data.tr069_ip) {
-                                    ipText.innerHTML = (data.tr069_ip !== '-' && data.tr069_ip !== '0.0.0.0')
+                                    ipText.innerHTML = (data.tr069_ip !== '-' && data.tr069_ip !== '0.0.0.0' && data.tr069_ip !== 'unknown')
                                         ? `<a href="http://${data.tr069_ip}" target="_blank" rel="noopener noreferrer" class="ip-direct-link text-cyan-400 hover:text-cyan-300" style="text-decoration:none !important;">${data.tr069_ip}</a>`
-                                        : data.tr069_ip;
+                                        : '<span class="text-slate-500 font-normal italic">unknown</span>';
                                     if (acsIp) acsIp.innerText = data.tr069_ip;
                                 }
 
-                                if (data.last_inform && lastInform) {
-                                    lastInform.innerText = `Last Inform: ${formatLastInform(data.last_inform)}`;
+                                if (lastInform) {
+                                    lastInform.innerText = data.last_inform ? `Last Inform: ${formatLastInform(data.last_inform)}` : 'Belum pernah inform';
                                 }
                             } else {
                                 clientSpan.innerText = '0 Perangkat';
