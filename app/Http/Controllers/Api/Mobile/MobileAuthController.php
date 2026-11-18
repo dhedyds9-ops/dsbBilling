@@ -102,6 +102,7 @@ class MobileAuthController extends Controller
             'message' => 'Login berhasil.',
             'token' => $plainToken,
             'token_type' => 'Bearer',
+            'server_url' => $request->getSchemeAndHttpHost(),
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,

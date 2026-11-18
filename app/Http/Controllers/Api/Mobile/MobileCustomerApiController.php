@@ -109,6 +109,9 @@ class MobileCustomerApiController extends Controller
             }
 
             $profileName = $primaryService?->serviceProfile?->name
+                ?? $primaryService?->pppoeUser?->serviceProfile?->name
+                ?? $primaryService?->hotspotUser?->serviceProfile?->name
+                ?? $primaryService?->service?->name
                 ?? $primaryService?->pppoeUser?->profile
                 ?? $primaryService?->hotspotUser?->profile
                 ?? null;
