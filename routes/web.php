@@ -830,6 +830,60 @@ Route::get('/storage/{path}', function ($path) {
     ]);
 })->where('path', '.*')->name('storage.fallback');
 
+Route::get('/storage-check', function () {
+    $info = [
+        'time' => date('Y-m-d H:i:s'),
+        'base_path' => base_path(),
+        'storage_path' => storage_path(),
+        'public_path' => public_path(),
+        'storage_app_public' => storage_path('app/public'),
+        'storage_app_public_is_dir' => is_dir(storage_path('app/public')),
+        'storage_app_public_is_writable' => is_writable(storage_path('app/public')),
+        'public_storage_is_link' => is_link(public_path('storage')),
+        'public_storage_is_dir' => is_dir(public_path('storage')),
+        'public_storage_target' => is_link(public_path('storage')) ? readlink(public_path('storage')) : (is_dir(public_path('storage')) ? 'DIRECTORY (NOT SYMLINK)' : 'MISSING'),
+        'network_photos_dir_exists' => is_dir(storage_path('app/public/network_photos')),
+        'network_photos_dir_writable' => is_writable(storage_path('app/public/network_photos')),
+    ];
+
+    // Check ODC & ODP in DB
+    $odc = \App\Models\ISP\Odc::find(1);
+    $odp = \App\Models\ISP\Odp::first();
+    $info['odc_1_photos'] = $odc ? $odc->photos : null;
+    $info['odp_first_photos'] = $odp ? $odp->photos : null;
+
+    // Scan all photos on disk
+    $scannedFiles = [];
+    $candidateDirs = [
+        storage_path('app/public'),
+        storage_path('app'),
+        public_path('storage'),
+        '/var/www/shared_storage',
+        '/var/www/mstore/storage/app/public',
+        '/var/www/winets/storage/app/public',
+    ];
+    foreach ($candidateDirs as $cd) {
+        if (@is_dir($cd)) {
+            try {
+                $iter = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($cd, RecursiveDirectoryIterator::SKIP_DOTS));
+                foreach ($iter as $f) {
+                    if ($f->isFile()) {
+                        $scannedFiles[] = [
+                            'path' => $f->getPathname(),
+                            'size' => $f->getSize(),
+                            'modified' => date('Y-m-d H:i:s', $f->getMTime()),
+                        ];
+                        if (count($scannedFiles) >= 80) break 2;
+                    }
+                }
+            } catch (\Throwable $e) {}
+        }
+    }
+    $info['scanned_files_sample'] = $scannedFiles;
+
+    return response()->json($info, 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+});
+
 
 
 

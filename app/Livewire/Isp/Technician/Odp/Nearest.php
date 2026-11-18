@@ -289,18 +289,39 @@ class Nearest extends Component
         $path = $this->additionalPhoto->store("network_photos/{$folder}", 'public');
 
         if ($path) {
-            // Also mirror file to shared_storage or sibling site if available
             $fullSource = storage_path('app/public/' . $path);
+
+            // Direct stream/copy fallback if Flysystem failed to write file physically
+            if (!@file_exists($fullSource)) {
+                try {
+                    $tempPath = $this->additionalPhoto->getRealPath();
+                    if ($tempPath && @file_exists($tempPath)) {
+                        @mkdir(dirname($fullSource), 0775, true);
+                        @copy($tempPath, $fullSource);
+                        @chmod($fullSource, 0664);
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('[DirectCopyFallback] ' . $e->getMessage());
+                }
+            }
+
+            // Also mirror file to public/storage, shared_storage and sibling sites so Nginx can serve directly
             if (@file_exists($fullSource)) {
                 @chmod($fullSource, 0664);
                 $siblingTargets = [
+                    public_path('storage/' . $path),
                     '/var/www/shared_storage/' . $path,
                     '/var/www/winets/storage/app/public/' . $path,
+                    '/var/www/winets/public/storage/' . $path,
                     '/var/www/mstore/storage/app/public/' . $path,
+                    '/var/www/mstore/public/storage/' . $path,
                 ];
                 foreach ($siblingTargets as $st) {
                     $stDir = dirname($st);
-                    if (@is_dir($stDir) && !@file_exists($st)) {
+                    if (!@is_dir($stDir)) {
+                        @mkdir($stDir, 0775, true);
+                    }
+                    if (!@file_exists($st)) {
                         @copy($fullSource, $st);
                         @chmod($st, 0664);
                     }
@@ -318,7 +339,17 @@ class Nearest extends Component
 
             if ($node) {
                 $current = is_array($node->photos) ? $node->photos : [];
-                $current[] = $cleanUrl;
+                // Purge phantom/broken files that do not exist on disk
+                $current = array_filter($current, function ($p) use ($cleanUrl) {
+                    if ($p === $cleanUrl) return false;
+                    $pClean = ltrim(preg_replace('/^https?:\/\/[^\/]+(\/storage\/.*)$/', '$1', (string) $p), '/');
+                    $pClean = preg_replace('/^storage\//', '', $pClean);
+                    return @file_exists(storage_path('app/public/' . $pClean))
+                        || @file_exists(public_path('storage/' . $pClean))
+                        || @file_exists('/var/www/shared_storage/' . $pClean);
+                });
+                // Put newest photo at the beginning so map popups immediately display it
+                array_unshift($current, $cleanUrl);
                 $node->photos = array_values(array_unique($current));
                 $node->save();
             }
