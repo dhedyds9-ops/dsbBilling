@@ -9,17 +9,16 @@
     </div>
 
     <div class="flex flex-col gap-2 w-full">
-            <select wire:model.live="radius" wire:change="loadNearestOdps" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
-                <option value="1">Radius 1 KM</option>
-                <option value="2">Radius 2 KM</option>
-                <option value="5">Radius 5 KM</option>
-                <option value="10">Radius 10 KM</option>
-            </select>
-            <button type="button" onclick="requestLocation()" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
-                <span class="material-symbols-outlined notranslate text-sm" translate="no">my_location</span>
-                Lacak Lokasi Saya
-            </button>
-        </div>
+        <select wire:model.live="radius" wire:change="loadNearestOdps" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
+            <option value="1">Radius 1 KM</option>
+            <option value="2">Radius 2 KM</option>
+            <option value="5">Radius 5 KM</option>
+            <option value="10">Radius 10 KM</option>
+        </select>
+        <button type="button" onclick="requestLocation()" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+            <span class="material-symbols-outlined notranslate text-sm" translate="no">my_location</span>
+            Lacak Lokasi Saya
+        </button>
     </div>
 
     <div class="flex flex-col gap-4">
