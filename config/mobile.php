@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10114,
-        'latest_version_name' => '1.1.14',
+        'latest_version_code' => 10116,
+        'latest_version_name' => '1.1.16',
         'minimum_supported_code' => 1,
-        'download_url' => env('APP_URL', 'http://localhost') . '/downloads/dsbilling-mobile-release.apk',
-        'release_notes' => "dsBilling Staff & Teknisi v1.1.14:\n- Perbaikan Filter Layanan Pelanggan: Penyelarasan daftar pelanggan PPPoE dan Hotspot sesuai jenis layanan aktif\n- Menu Ganti ONT (Swap) Reseller: Dukungan penuh penggantian modem atau aksesoris (adaptor/patchcord) langsung dari aplikasi\n- Sinkronisasi Status Tr-069 & OLT: Deteksi live status ONT, RX Power, dan konfigurasi IP Host otomatis\n- Notifikasi & Penugasan: Push notification untuk tiket gangguan, instalasi PSB, dan surat tugas teknisi/reseller.",
+        'download_url' => env('APP_URL', 'https://mstore.mstore.id') . '/downloads/dsbilling-mobile.apk',
+        'release_notes' => "dsBilling Staff & Teknisi v1.1.16:\n- Smart Auto-Cluster Discovery: Login langsung tanpa perlu input/ganti URL server (otomatis deteksi cluster MStore & Winets)\n- Dukungan Multi-Subdomain: Akun teknisi Winets & MStore dapat masuk secara mulus dari aplikasi yang sama\n- ODP & ODC Fiber Detail: Penyelarasan manajemen port dan topologi visual interaktif NOC\n- Perbaikan Foto Dokumentasi Jaringan: Pengunggahan foto Base64 permanen & sinkronisasi peta GIS.",
     ],
     'customer' => [
         'latest_version_code' => 10106,
