@@ -297,11 +297,19 @@ class User extends Authenticatable
         }
 
         if ($this->isReseller()) {
-            return in_array($permission, \App\Enums\UserPermission::defaultResellerPermissions(), true)
+            if (in_array($permission, \App\Enums\UserPermission::defaultResellerPermissions(), true)
                 || in_array($permission, [
                     'onu.view', 'onu.diagnose', 'onu.reboot',
                     'reseller.portal', 'reseller.dashboard', 'reseller.view'
-                ], true);
+                ], true)) {
+                return true;
+            }
+            foreach ($this->roles as $role) {
+                if ($role->permissions->contains('name', $permission)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
 

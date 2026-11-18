@@ -30,7 +30,7 @@
             <span class="material-symbols-outlined notranslate text-emerald-600 dark:text-emerald-400 mt-0.5" translate="no" style="font-size:22px">storefront</span>
             <div>
                 <strong class="font-bold block">Matriks Hak Akses Khusus Portal Reseller</strong>
-                <span>Menampilkan <strong>27 Hak Akses Terpilih</strong> yang berlaku langsung pada menu dan aksi <strong>Portal Reseller</strong> (Pelanggan, Layanan PPPoE & Hotspot, Cetak Voucher, Data Tagihan, Perangkat OLT/ODC/ODP, Peta Satelit GIS, dan Saldo Deposit). Izin internal ISP kantor pusat disaring demi keamanan sistem.</span>
+                <span>Menampilkan <strong>Hak Akses Terpilih & Manajemen ONU GenieACS</strong> yang berlaku langsung pada menu dan aksi <strong>Portal Reseller & Mobile App</strong> (Pelanggan, Layanan PPPoE & Hotspot, Cetak Voucher, Data Tagihan, Konfigurasi Modem ONU/GenieACS, Perangkat OLT/ODC/ODP, Peta Satelit GIS, dan Saldo Deposit). Izin internal ISP kantor pusat disaring demi keamanan sistem.</span>
             </div>
         </div>
     @endif

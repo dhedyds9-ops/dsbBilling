@@ -438,10 +438,12 @@ class MobileAuthController extends Controller
                 $perms = array_merge($perms, [
                     'workforce.view', 'workforce.execute',
                     'inventory.view', 'inventory.custody', 'inventory.request',
-                    'acs.view', 'acs.manage', 'acs.reboot', 'acs.wifi',
+                    'acs.view', 'acs.manage', 'acs.reboot', 'acs.wifi', 'acs.wan',
+                    'onu.view', 'onu.diagnose', 'onu.reboot', 'onu.configure.wifi', 'onu.configure.wan', 'onu.configure.admin',
+                    'onu.firmware.update', 'onu.firmware.downgrade', 'onu.factory_reset', 'onu.task.retry', 'onu.task.delete',
                     'customer.view', 'customer.create', 'customer.manage',
                     'support.view', 'support.create',
-                    'gis.view'
+                    'gis.view', 'technician.portal'
                 ]);
                 break;
             case 'WAREHOUSE':

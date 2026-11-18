@@ -249,9 +249,9 @@ class MobileAcsProxyController extends Controller
             }
 
             // Izinkan operasi diagnostik/monitoring (summon, read, ping, tasks.view) pada perangkat GenieACS unassigned
-            // asalkan perangkat belum diklaim/terdaftar oleh reseller lain.
+            // asalkan perangkat belum diklaim/terdaftar oleh reseller lain atau cabang lain.
             $isDiagnosticOp = in_array($operation, ['summon', 'read', 'ping', 'tasks.view']);
-            $isUnassigned = !$cs && (!$dbOnu || empty($dbOnu->reseller_id)) && (!$dbDevice || empty($dbDevice->customer_service_id));
+            $isUnassigned = !$cs && (!$dbOnu || (empty($dbOnu->reseller_id) && empty($dbOnu->branch_id))) && (!$dbDevice || empty($dbDevice->customer_service_id));
 
             if (!$isOwned && !($isDiagnosticOp && $isUnassigned)) {
                 return response()->json([
