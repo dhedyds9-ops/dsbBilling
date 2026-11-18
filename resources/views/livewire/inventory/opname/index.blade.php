@@ -100,7 +100,7 @@
                             {{ $opn->opname_number }}
                         </td>
                         <td class="px-5 py-3.5 text-slate-600 dark:text-slate-300">
-                            {{ $opn->opname_date?->format('d/m/Y') ?? '-' }}
+                            {{ $opn->opname_date ? (\Illuminate\Support\Carbon::parse($opn->opname_date)->format('d/m/Y')) : '-' }}
                         </td>
                         <td class="px-5 py-3.5 font-medium text-slate-800 dark:text-white">
                             {{ $opn->warehouse?->name ?? '-' }}
@@ -268,7 +268,7 @@
                         <span class="material-symbols-outlined text-blue-600">info</span>
                         Rincian Hasil Opname: {{ $selectedOpname->opname_number }}
                     </h3>
-                    <p class="text-xs text-slate-500">Gudang: {{ $selectedOpname->warehouse?->name }} | Tanggal: {{ $selectedOpname->opname_date?->format('d M Y') }}</p>
+                    <p class="text-xs text-slate-500">Gudang: {{ $selectedOpname->warehouse?->name }} | Tanggal: {{ $selectedOpname->opname_date ? (\Illuminate\Support\Carbon::parse($selectedOpname->opname_date)->format('d M Y')) : '-' }}</p>
                 </div>
                 <button wire:click="$set('showDetailModal', false)" class="text-slate-400 hover:text-slate-600">
                     <span class="material-symbols-outlined">close</span>

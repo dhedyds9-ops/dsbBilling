@@ -62,7 +62,7 @@ class Index extends Component
             if (!\Illuminate\Support\Facades\Schema::hasTable('inventory_stock_opnames')) {
                 \Illuminate\Support\Facades\Schema::create('inventory_stock_opnames', function (\Illuminate\Database\Schema\Blueprint $table) {
                     $table->id();
-                    $table->uuid('uuid')->unique();
+                    $table->uuid('uuid')->nullable()->unique();
                     $table->string('opname_number', 50)->unique()->index();
                     $table->unsignedBigInteger('warehouse_id')->index();
                     $table->unsignedBigInteger('branch_id')->nullable()->index();
@@ -73,6 +73,21 @@ class Index extends Component
                     $table->unsignedBigInteger('approved_by')->nullable()->index();
                     $table->timestamp('approved_at')->nullable();
                     $table->timestamps();
+                });
+            } else {
+                \Illuminate\Support\Facades\Schema::table('inventory_stock_opnames', function (\Illuminate\Database\Schema\Blueprint $table) {
+                    if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_stock_opnames', 'uuid')) {
+                        $table->uuid('uuid')->nullable();
+                    }
+                    if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_stock_opnames', 'branch_id')) {
+                        $table->unsignedBigInteger('branch_id')->nullable()->index();
+                    }
+                    if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_stock_opnames', 'status')) {
+                        $table->string('status', 30)->default('draft')->index();
+                    }
+                    if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_stock_opnames', 'opname_date')) {
+                        $table->date('opname_date')->nullable()->index();
+                    }
                 });
             }
 
@@ -269,7 +284,16 @@ class Index extends Component
             $opnames = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 20);
         }
 
-        $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();
+        $warehouses = collect();
+        try {
+            $whQuery = Warehouse::query();
+            if (\Illuminate\Support\Facades\Schema::hasColumn('warehouses', 'is_active')) {
+                $whQuery->where('is_active', true);
+            }
+            $warehouses = $whQuery->orderBy('name')->get();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Opname warehouses load error: ' . $e->getMessage());
+        }
 
         return view('livewire.inventory.opname.index', [
             'opnames' => $opnames,
