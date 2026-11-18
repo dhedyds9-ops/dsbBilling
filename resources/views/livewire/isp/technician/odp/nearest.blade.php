@@ -465,13 +465,17 @@
                 <div style="font-size:11px; font-weight:bold; min-width:150px;">
                     <div>📍 Titik Acuan GPS</div>
                     <div style="font-size:10px; color:#64748b; margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
-                    <button type="button" onclick="window.Livewire.find('${@this.getId()}').openCreateModal(${lat}, ${lng})"
+                    <button type="button" onclick="openCreateModalFromMap(${lat}, ${lng})"
                             style="margin-top:6px; background:#10b981; color:white; border:none; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; width:100%;">
                         + Tambah Node di Sini
                     </button>
                 </div>
             `;
             userMarker.bindPopup(popupContent).openPopup();
+        }
+
+        function openCreateModalFromMap(lat, lng) {
+            @this.openCreateModal(lat, lng);
         }
 
         function renderOdpsOnMap(odps, center, hasGps) {
