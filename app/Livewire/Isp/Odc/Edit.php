@@ -105,6 +105,14 @@ class Edit extends AdminComponent
         return redirect()->route('isp.odcs.show', $this->odcId);
     }
 
+    public function deletePhoto()
+    {
+        \App\Services\ISP\NodePhotoService::deletePhotos($this->odc);
+        $this->existingPhotos = [];
+        $this->photo = null;
+        session()->flash('success', 'Foto dokumentasi tiang ODC berhasil dihapus!');
+    }
+
     public function render()
     {
         $branches = Branch::where('is_active', true)->orderBy('name')->get();

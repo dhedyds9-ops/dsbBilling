@@ -110,6 +110,14 @@ class Edit extends AdminComponent
         return redirect()->route('isp.odps.show', $this->odpId);
     }
 
+    public function deletePhoto()
+    {
+        NodePhotoService::deletePhotos($this->odp);
+        $this->existingPhotos = [];
+        $this->photo = null;
+        session()->flash('success', 'Foto dokumentasi tiang ODP berhasil dihapus!');
+    }
+
     public function render()
     {
         $branches = Branch::where('is_active', true)->orderBy('name')->get();

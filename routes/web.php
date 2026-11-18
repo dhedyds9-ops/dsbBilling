@@ -441,6 +441,8 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::post('/node/{type}', [\App\Http\Controllers\Gis\MapApiController::class, 'storeNode'])->name('map.node.store');
             Route::put('/node/{type}/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'updateNode'])->name('map.node.update');
             Route::post('/node/{type}/{id}/photo', [\App\Http\Controllers\Gis\MapApiController::class, 'uploadPhoto'])->name('map.node.photo');
+            Route::delete('/node/{type}/{id}/photo', [\App\Http\Controllers\Gis\MapApiController::class, 'deletePhoto'])->name('map.node.photo.delete');
+            Route::post('/node/{type}/{id}/photo/delete', [\App\Http\Controllers\Gis\MapApiController::class, 'deletePhoto'])->name('map.node.photo.delete.post');
             Route::get('/wlan-status/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'wlanStatus'])->name('map.wlan-status');
             Route::post('/wlan-update/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'wlanUpdate'])->name('map.wlan-update');
             Route::post('/ping', [\App\Http\Controllers\Gis\MapApiController::class, 'ping'])->name('map.ping');

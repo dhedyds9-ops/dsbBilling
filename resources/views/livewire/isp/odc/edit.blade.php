@@ -112,12 +112,17 @@
                                 <img src="{{ $photo->temporaryUrl() }}" class="h-36 w-auto rounded-xl object-cover border border-indigo-200 dark:border-indigo-800 shadow-sm">
                             </div>
                         @elseif(!empty($existingPhotos))
-                            <div class="mb-3 flex items-center gap-3">
-                                <img src="{{ $existingPhotos[0] }}" class="h-36 w-auto rounded-xl object-cover border border-slate-200 dark:border-slate-700 shadow-sm" onerror="this.onerror=null; this.src='/node-photo/odc/{{ $odcId }}';">
-                                <div class="text-xs text-slate-500 dark:text-slate-400">
-                                    <p class="font-bold text-slate-700 dark:text-slate-200">Foto Saat Ini</p>
-                                    <p>Pilih foto baru di bawah ini untuk mengganti foto tiang ODC.</p>
+                            <div class="mb-3 flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <div class="flex items-center gap-3">
+                                    <img src="{{ $existingPhotos[0] }}" class="h-24 w-auto rounded-xl object-cover border border-slate-200 dark:border-slate-700 shadow-sm" onerror="this.onerror=null; this.src='/node-photo/odc/{{ $odcId }}';">
+                                    <div class="text-xs text-slate-500 dark:text-slate-400">
+                                        <p class="font-bold text-slate-700 dark:text-slate-200">Foto Saat Ini</p>
+                                        <p>Pilih foto baru di bawah untuk mengganti.</p>
+                                    </div>
                                 </div>
+                                <button type="button" wire:click="deletePhoto" wire:confirm="Hapus foto tiang ODC ini?" class="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer">
+                                    <span class="material-symbols-outlined text-sm">delete</span> Hapus Foto
+                                </button>
                             </div>
                         @endif
                         <input type="file" wire:model="photo" accept="image/*" class="w-full text-xs text-slate-500 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 dark:file:bg-indigo-950/60 dark:file:text-indigo-300 hover:file:bg-indigo-100 cursor-pointer">

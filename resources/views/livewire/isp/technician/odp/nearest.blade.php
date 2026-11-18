@@ -312,50 +312,91 @@
     </div>
     @endif
 
-    {{-- Modal Tambah / Update Foto Titik yang Sudah Ada --}}
+    {{-- Modal Tambah / Update / Crop Foto Titik yang Sudah Ada --}}
     @if($showUploadPhotoModal)
     <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden animate-in fade-in duration-200">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-lg overflow-hidden animate-in fade-in duration-200">
             <div class="px-5 py-4 bg-gradient-to-r from-sky-600 to-blue-600 text-white flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-xl">add_a_photo</span>
-                    <h3 class="font-bold text-sm sm:text-base">Unggah Foto Dokumentasi</h3>
+                    <span class="material-symbols-outlined text-xl">crop</span>
+                    <h3 class="font-bold text-sm sm:text-base">Foto Tiang & Penyesuaian (Crop)</h3>
                 </div>
                 <button type="button" wire:click="closeUploadPhotoModal" class="text-white/80 hover:text-white text-lg">&times;</button>
             </div>
 
-            <form wire:submit.prevent="saveAdditionalPhoto" class="p-5 space-y-4">
-                <div>
-                    <span class="text-xs text-slate-500">Titik Target:</span>
-                    <div class="text-sm font-bold text-slate-800 dark:text-slate-100 mt-0.5">{{ $uploadTargetName }} ({{ strtoupper($uploadTargetType) }})</div>
+            <div class="p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="text-xs text-slate-500">Titik Target:</span>
+                        <div class="text-sm font-bold text-slate-800 dark:text-slate-100">{{ $uploadTargetName }} ({{ strtoupper($uploadTargetType) }})</div>
+                    </div>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Ambil / Pilih Foto Fisik</label>
-                    <input type="file" wire:model="additionalPhoto" accept="image/*" capture="environment" required
-                           class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100">
-                    <p class="text-[10px] text-slate-400 mt-1">Gunakan kamera ponsel untuk mengambil foto tiang/box langsung di lokasi.</p>
-
-                    @if ($additionalPhoto)
-                        <div class="mt-3">
-                            <img src="{{ $additionalPhoto->temporaryUrl() }}" class="h-32 w-full rounded-xl object-cover border border-slate-200 shadow-sm">
+                {{-- Foto Saat Ini & Tombol Hapus --}}
+                @if($existingTargetPhoto)
+                <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <img src="{{ $existingTargetPhoto }}" class="w-16 h-12 object-cover rounded-lg border border-slate-300" onerror="this.onerror=null; this.src='/node-photo/{{ $uploadTargetType }}/{{ $uploadTargetId }}';">
+                        <div>
+                            <div class="text-xs font-bold text-slate-700 dark:text-slate-200">Foto Saat Ini</div>
+                            <div class="text-[10px] text-slate-400">Klik hapus jika ingin mengosongkan</div>
                         </div>
-                    @endif
+                    </div>
+                    <button type="button" wire:click="deleteCurrentPhoto" wire:confirm="Hapus foto tiang ini dari sistem?" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">delete</span> Hapus Foto
+                    </button>
+                </div>
+                @endif
+
+                {{-- Pilih Foto Baru & Interactive Crop Area --}}
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                        <span>Pilih / Ambil Foto Baru</span>
+                        <span class="text-[10px] text-sky-600 font-normal">Tersedia fitur geser, zoom & pangkas</span>
+                    </label>
+                    <input type="file" id="techPhotoFileInput" accept="image/*" capture="environment"
+                           class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100">
+                    <p class="text-[10px] text-slate-400 mt-1">Gunakan kamera ponsel untuk mengambil foto tiang atau pilih dari galeri.</p>
+                </div>
+
+                {{-- Area Cropper.js --}}
+                <div id="techCropperContainer" class="hidden space-y-2">
+                    <div class="max-h-64 overflow-hidden rounded-xl bg-slate-900 border border-slate-300 dark:border-slate-700 flex items-center justify-center">
+                        <img id="techCropperImage" class="max-w-full block">
+                    </div>
+                    <div class="flex items-center justify-between gap-1 p-2 bg-slate-100 dark:bg-slate-700/50 rounded-xl text-xs">
+                        <span class="text-[10px] text-slate-500 font-medium">Atur Tampilan:</span>
+                        <div class="flex items-center gap-1">
+                            <button type="button" id="btnTechRotate" class="px-2.5 py-1 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-semibold" title="Putar 90 derajat">
+                                🔄 Putar
+                            </button>
+                            <button type="button" id="btnTechZoomIn" class="px-2.5 py-1 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-semibold" title="Perbesar">
+                                🔍+
+                            </button>
+                            <button type="button" id="btnTechZoomOut" class="px-2.5 py-1 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-semibold" title="Perkecil">
+                                🔍-
+                            </button>
+                            <button type="button" id="btnTechReset" class="px-2.5 py-1 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-semibold" title="Reset">
+                                🔁 Reset
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-end gap-2">
                     <button type="button" wire:click="closeUploadPhotoModal" class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl">Batal</button>
-                    <button type="submit" wire:loading.attr="disabled" class="px-4 py-2 text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-sm flex items-center gap-1.5">
-                        <span wire:loading.remove>Unggah Foto</span>
-                        <span wire:loading>Mengunggah...</span>
+                    <button type="button" id="btnTechSubmitPhoto" class="px-5 py-2 text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-sm flex items-center gap-1.5 cursor-pointer">
+                        <span id="btnTechSubmitText">Simpan Foto Tiang</span>
                     </button>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
     @endif
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.min.js"></script>
     <style>
         .modern-map-popup .leaflet-popup-content-wrapper {
@@ -415,6 +456,84 @@
         let odpMarkers = {};
         let odpLayerGroup = null;
         let backboneLayerGroup = null;
+        let techCropper = null;
+
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.id === 'techPhotoFileInput') {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const container = document.getElementById('techCropperContainer');
+                const image = document.getElementById('techCropperImage');
+                if (container) container.classList.remove('hidden');
+
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    if (techCropper) {
+                        techCropper.destroy();
+                        techCropper = null;
+                    }
+                    image.src = evt.target.result;
+                    if (typeof Cropper !== 'undefined') {
+                        techCropper = new Cropper(image, {
+                            aspectRatio: 16 / 10,
+                            viewMode: 1,
+                            autoCropArea: 0.9,
+                            responsive: true,
+                            restore: false,
+                        });
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target) return;
+            if (e.target.id === 'btnTechRotate' || e.target.closest('#btnTechRotate')) {
+                if (techCropper) techCropper.rotate(90);
+            }
+            if (e.target.id === 'btnTechZoomIn' || e.target.closest('#btnTechZoomIn')) {
+                if (techCropper) techCropper.zoom(0.1);
+            }
+            if (e.target.id === 'btnTechZoomOut' || e.target.closest('#btnTechZoomOut')) {
+                if (techCropper) techCropper.zoom(-0.1);
+            }
+            if (e.target.id === 'btnTechReset' || e.target.closest('#btnTechReset')) {
+                if (techCropper) techCropper.reset();
+            }
+            if (e.target.id === 'btnTechSubmitPhoto' || e.target.closest('#btnTechSubmitPhoto')) {
+                const btn = document.getElementById('btnTechSubmitPhoto');
+                const btnText = document.getElementById('btnTechSubmitText');
+                if (btn) btn.disabled = true;
+                if (btnText) btnText.innerText = 'Menyimpan...';
+
+                if (techCropper) {
+                    const canvas = techCropper.getCroppedCanvas({
+                        maxWidth: 1200,
+                        maxHeight: 800,
+                        fillColor: '#fff',
+                        imageSmoothingEnabled: true,
+                        imageSmoothingQuality: 'high',
+                    });
+                    const base64Data = canvas.toDataURL('image/jpeg', 0.82);
+                    @this.set('croppedPhotoData', base64Data).then(() => {
+                        @this.saveAdditionalPhoto();
+                    });
+                } else {
+                    const fileInput = document.getElementById('techPhotoFileInput');
+                    if (fileInput && fileInput.files && fileInput.files[0]) {
+                        @this.upload('additionalPhoto', fileInput.files[0], () => {
+                            @this.saveAdditionalPhoto();
+                        });
+                    } else {
+                        alert('Silakan pilih foto terlebih dahulu.');
+                        if (btn) btn.disabled = false;
+                        if (btnText) btnText.innerText = 'Simpan Foto Tiang';
+                    }
+                }
+            }
+        });
 
         document.addEventListener('livewire:initialized', () => {
             initMap();

@@ -152,8 +152,9 @@ class NodePhotoService
 
     /**
      * Attach photo to a model (stores Base64 Data URI at index 0 AND mirrors relative file path).
+     * By default ($replace = true), it replaces existing photos to prevent accumulation of broken/stale images.
      */
-    public static function attachPhoto($model, $file, string $nodeType): array
+    public static function attachPhoto($model, $file, string $nodeType, bool $replace = true): array
     {
         $folder = match ($nodeType) {
             'olt' => 'olts',
@@ -176,19 +177,20 @@ class NodePhotoService
             $cleaned[] = $relUrl;
         }
 
-        // Keep previous valid entries (filtering out identical or corrupted entries)
-        foreach ($current as $item) {
-            if (empty($item) || $item === $dataUri || $item === $relUrl) {
-                continue;
-            }
-            if (str_starts_with($item, 'data:image')) {
-                // Keep older data URIs up to limit
-                if (count($cleaned) < 3) {
-                    $cleaned[] = $item;
+        if (!$replace) {
+            // Keep previous valid entries up to limit
+            foreach ($current as $item) {
+                if (empty($item) || $item === $dataUri || $item === $relUrl) {
+                    continue;
                 }
-            } else {
-                if (count($cleaned) < 5) {
-                    $cleaned[] = $item;
+                if (str_starts_with($item, 'data:image')) {
+                    if (count($cleaned) < 3) {
+                        $cleaned[] = $item;
+                    }
+                } else {
+                    if (count($cleaned) < 5) {
+                        $cleaned[] = $item;
+                    }
                 }
             }
         }
@@ -205,5 +207,38 @@ class NodePhotoService
             'relUrl' => $relUrl,
             'photos' => $model->photos,
         ];
+    }
+
+    /**
+     * Delete all photos attached to a model and purge physical files from disk.
+     */
+    public static function deletePhotos($model): bool
+    {
+        $current = is_array($model->photos) ? $model->photos : [];
+        foreach ($current as $p) {
+            if (!empty($p) && !str_starts_with($p, 'data:image')) {
+                $cleanPath = ltrim(preg_replace('/^https?:\/\/[^\/]+(\/storage\/.*)$/', '$1', (string) $p), '/');
+                $cleanPath = preg_replace('/^storage\//', '', $cleanPath);
+                $targets = [
+                    storage_path("app/public/{$cleanPath}"),
+                    public_path("storage/{$cleanPath}"),
+                    "/var/www/shared_storage/{$cleanPath}",
+                    "/var/www/mstore/storage/app/public/{$cleanPath}",
+                    "/var/www/winets/storage/app/public/{$cleanPath}",
+                ];
+                foreach ($targets as $tp) {
+                    if (@file_exists($tp)) @unlink($tp);
+                }
+            }
+        }
+
+        $model->photos = [];
+        $model->save();
+
+        if (class_exists(\App\Livewire\Gis\GisMap::class)) {
+            \App\Livewire\Gis\GisMap::flushCache();
+        }
+
+        return true;
     }
 }

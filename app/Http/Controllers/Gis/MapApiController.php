@@ -408,13 +408,36 @@ class MapApiController extends Controller
         }
 
         $target = $file ?: $base64;
-        $res = \App\Services\ISP\NodePhotoService::attachPhoto($model, $target, $type);
+        $res = \App\Services\ISP\NodePhotoService::attachPhoto($model, $target, $type, true);
 
         return response()->json([
             'success' => true,
-            'message' => 'Foto dokumentasi tiang berhasil diunggah dan disimpan!',
+            'message' => 'Foto dokumentasi tiang berhasil diperbarui!',
             'url' => $res['dataUri'] ?: $res['relUrl'],
             'photos' => $res['photos'],
+        ]);
+    }
+
+    public function deletePhoto(Request $request, $type, $id)
+    {
+        $model = match ($type) {
+            'olt' => Olt::withoutGlobalScopes()->find($id),
+            'odc' => Odc::withoutGlobalScopes()->find($id),
+            'odp' => Odp::withoutGlobalScopes()->find($id),
+            'closure' => class_exists(JointClosure::class) ? JointClosure::withoutGlobalScopes()->find($id) : null,
+            'htb' => class_exists(DistributionBox::class) ? DistributionBox::withoutGlobalScopes()->find($id) : null,
+            default => null,
+        };
+
+        if (!$model) {
+            return response()->json(['success' => false, 'message' => 'Node not found'], 404);
+        }
+
+        \App\Services\ISP\NodePhotoService::deletePhotos($model);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Foto dokumentasi tiang berhasil dihapus.',
         ]);
     }
 }

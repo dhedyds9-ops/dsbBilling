@@ -1,3 +1,5 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 <div class="h-full w-full flex flex-col p-4">
     <div class="bg-[#111827] border border-[#00e5ff]/30 rounded-lg shadow-lg flex-1 flex flex-col overflow-hidden">
         <!-- Toolbar is injected directly into map by JS, so we just need a title or can leave it clean -->
@@ -207,10 +209,43 @@
                         <label for="odc_description" class="form-label">{{ __('Deskripsi') }}</label>
                         <textarea class="form-control dark:bg-slate-900 dark:text-slate-100" id="odc_description" name="description"></textarea>
                     </div>
+
+                    {{-- Foto Saat Ini & Tombol Hapus --}}
+                    <div id="odc_current_photo_container" class="mb-3 p-2 rounded bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 d-none">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-2">
+                                <img id="odc_current_photo_img" src="" style="width:50px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e1;">
+                                <div>
+                                    <span class="text-xs font-bold d-block text-slate-800 dark:text-slate-200">Foto Saat Ini</span>
+                                    <span class="text-[10px] text-slate-400">Tersimpan di ODC</span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-danger btn-sm py-1 px-2 text-xs" id="odc_delete_photo_btn">
+                                <i class="fa fa-trash"></i> Hapus Foto
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label for="odc_photo_input" class="form-label font-bold text-slate-700 dark:text-slate-200">{{ __('Foto Tiang / Perangkat ODC') }}</label>
                         <input type="file" class="form-control text-xs dark:bg-slate-900 dark:text-slate-100" id="odc_photo_input" accept="image/*" capture="environment">
-                        <small class="text-slate-500 text-[11px] block mt-1">Pilih foto tiang untuk diunggah langsung ke database ODC.</small>
+                        <small class="text-slate-500 text-[11px] block mt-1">Pilih foto tiang untuk diunggah dan disesuaikan (crop/rotate).</small>
+                    </div>
+
+                    {{-- Interactive Cropper Container --}}
+                    <div id="odc_cropper_container" class="mb-3 d-none">
+                        <div style="max-height:220px;overflow:hidden;border-radius:8px;background:#0f172a;text-align:center;">
+                            <img id="odc_cropper_img" style="max-width:100%;display:block;">
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2 p-1 bg-slate-100 dark:bg-slate-900 rounded">
+                            <small class="text-slate-400 text-[10px]">Atur Crop:</small>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" id="odc_crop_rotate">🔄 Putar</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" id="odc_crop_zoom_in">🔍+</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" id="odc_crop_zoom_out">🔍-</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" id="odc_crop_reset">🔁 Reset</button>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -305,10 +340,43 @@
                         <label for="odp_description" class="form-label font-semibold">{{ __('Deskripsi') }}</label>
                         <textarea class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="odp_description" name="description" rows="2" placeholder="Catatan splitter / tiang..."></textarea>
                     </div>
+
+                    {{-- Foto Saat Ini & Tombol Hapus --}}
+                    <div id="odp_current_photo_container" class="mb-3 p-2 rounded bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 d-none">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-2">
+                                <img id="odp_current_photo_img" src="" style="width:50px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e1;">
+                                <div>
+                                    <span class="text-xs font-bold d-block text-slate-800 dark:text-slate-200">Foto Saat Ini</span>
+                                    <span class="text-[10px] text-slate-400">Tersimpan di ODP</span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-danger btn-sm py-1 px-2 text-xs" id="odp_delete_photo_btn">
+                                <i class="fa fa-trash"></i> Hapus Foto
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label for="odp_photo_input" class="form-label font-semibold text-slate-700 dark:text-slate-200">{{ __('Foto Tiang / Fisik ODP') }}</label>
                         <input type="file" class="form-control text-xs dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="odp_photo_input" accept="image/*" capture="environment">
-                        <small class="text-slate-500 text-[11px] block mt-1">Pilih foto tiang untuk diunggah langsung ke database ODP.</small>
+                        <small class="text-slate-500 text-[11px] block mt-1">Pilih foto tiang untuk diunggah dan disesuaikan (crop/rotate).</small>
+                    </div>
+
+                    {{-- Interactive Cropper Container --}}
+                    <div id="odp_cropper_container" class="mb-3 d-none">
+                        <div style="max-height:220px;overflow:hidden;border-radius:8px;background:#0f172a;text-align:center;">
+                            <img id="odp_cropper_img" style="max-width:100%;display:block;">
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2 p-1 bg-slate-100 dark:bg-slate-900 rounded">
+                            <small class="text-slate-400 text-[10px]">Atur Crop:</small>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" id="odp_crop_rotate">🔄 Putar</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" id="odp_crop_zoom_in">🔍+</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" id="odp_crop_zoom_out">🔍-</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" id="odp_crop_reset">🔁 Reset</button>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -3527,6 +3595,34 @@
                     fullEditBtn.classList.remove('d-none');
                 }
 
+                var curPhotoContainer = document.getElementById('odc_current_photo_container');
+                var curPhotoImg = document.getElementById('odc_current_photo_img');
+                var deletePhotoBtn = document.getElementById('odc_delete_photo_btn');
+                var cropperContainer = document.getElementById('odc_cropper_container');
+                var photoInput = document.getElementById('odc_photo_input');
+                if (photoInput) photoInput.value = '';
+                if (cropperContainer) cropperContainer.classList.add('d-none');
+                if (window.odcCropper) { window.odcCropper.destroy(); window.odcCropper = null; }
+
+                if (odc.photos && odc.photos.length > 0 && odc.photos[0]) {
+                    if (curPhotoContainer) curPhotoContainer.classList.remove('d-none');
+                    if (curPhotoImg) curPhotoImg.src = formatGisPhotoUrl(odc.photos[0]);
+                    if (deletePhotoBtn) {
+                        deletePhotoBtn.onclick = function() {
+                            if (confirm('Yakin ingin menghapus foto tiang ODC ini?')) {
+                                deletePhotoBtn.disabled = true;
+                                deletePhotoBtn.innerText = 'Menghapus...';
+                                fetch('/map/node/odc/' + odc.id + '/photo', {
+                                    method: 'DELETE',
+                                    headers: { 'X-CSRF-TOKEN': csrfToken }
+                                }).finally(() => location.reload());
+                            }
+                        };
+                    }
+                } else {
+                    if (curPhotoContainer) curPhotoContainer.classList.add('d-none');
+                }
+
                 document.getElementById('odcModalLabel').innerText = '{{ __('Edit ODC') }}';
                 var odcModal = new bootstrap.Modal(document.getElementById('odcModal'));
                 odcModal.show();
@@ -3552,6 +3648,34 @@
                 if (fullEditBtn) {
                     fullEditBtn.href = '/isp/odps/' + odp.id + '/edit';
                     fullEditBtn.classList.remove('d-none');
+                }
+
+                var curPhotoContainer = document.getElementById('odp_current_photo_container');
+                var curPhotoImg = document.getElementById('odp_current_photo_img');
+                var deletePhotoBtn = document.getElementById('odp_delete_photo_btn');
+                var cropperContainer = document.getElementById('odp_cropper_container');
+                var photoInput = document.getElementById('odp_photo_input');
+                if (photoInput) photoInput.value = '';
+                if (cropperContainer) cropperContainer.classList.add('d-none');
+                if (window.odpCropper) { window.odpCropper.destroy(); window.odpCropper = null; }
+
+                if (odp.photos && odp.photos.length > 0 && odp.photos[0]) {
+                    if (curPhotoContainer) curPhotoContainer.classList.remove('d-none');
+                    if (curPhotoImg) curPhotoImg.src = formatGisPhotoUrl(odp.photos[0]);
+                    if (deletePhotoBtn) {
+                        deletePhotoBtn.onclick = function() {
+                            if (confirm('Yakin ingin menghapus foto tiang ODP ini?')) {
+                                deletePhotoBtn.disabled = true;
+                                deletePhotoBtn.innerText = 'Menghapus...';
+                                fetch('/map/node/odp/' + odp.id + '/photo', {
+                                    method: 'DELETE',
+                                    headers: { 'X-CSRF-TOKEN': csrfToken }
+                                }).finally(() => location.reload());
+                            }
+                        };
+                    }
+                } else {
+                    if (curPhotoContainer) curPhotoContainer.classList.add('d-none');
                 }
 
                 document.getElementById('odpModalLabel').innerText = '{{ __('Edit ODP') }}';
@@ -3859,6 +3983,75 @@
             reader.readAsDataURL(file);
         }
 
+        window.odcCropper = null;
+        window.odpCropper = null;
+
+        var odcPhotoInput = document.getElementById('odc_photo_input');
+        if (odcPhotoInput) {
+            odcPhotoInput.addEventListener('change', function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var container = document.getElementById('odc_cropper_container');
+                var img = document.getElementById('odc_cropper_img');
+                if (container) container.classList.remove('d-none');
+                var reader = new FileReader();
+                reader.onload = function(evt) {
+                    if (window.odcCropper) window.odcCropper.destroy();
+                    img.src = evt.target.result;
+                    if (typeof Cropper !== 'undefined') {
+                        window.odcCropper = new Cropper(img, {
+                            aspectRatio: 16 / 10,
+                            viewMode: 1,
+                            autoCropArea: 0.9,
+                            responsive: true
+                        });
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+        var btnOdcRotate = document.getElementById('odc_crop_rotate');
+        if (btnOdcRotate) btnOdcRotate.onclick = function() { if (window.odcCropper) window.odcCropper.rotate(90); };
+        var btnOdcZoomIn = document.getElementById('odc_crop_zoom_in');
+        if (btnOdcZoomIn) btnOdcZoomIn.onclick = function() { if (window.odcCropper) window.odcCropper.zoom(0.1); };
+        var btnOdcZoomOut = document.getElementById('odc_crop_zoom_out');
+        if (btnOdcZoomOut) btnOdcZoomOut.onclick = function() { if (window.odcCropper) window.odcCropper.zoom(-0.1); };
+        var btnOdcReset = document.getElementById('odc_crop_reset');
+        if (btnOdcReset) btnOdcReset.onclick = function() { if (window.odcCropper) window.odcCropper.reset(); };
+
+        var odpPhotoInput = document.getElementById('odp_photo_input');
+        if (odpPhotoInput) {
+            odpPhotoInput.addEventListener('change', function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var container = document.getElementById('odp_cropper_container');
+                var img = document.getElementById('odp_cropper_img');
+                if (container) container.classList.remove('d-none');
+                var reader = new FileReader();
+                reader.onload = function(evt) {
+                    if (window.odpCropper) window.odpCropper.destroy();
+                    img.src = evt.target.result;
+                    if (typeof Cropper !== 'undefined') {
+                        window.odpCropper = new Cropper(img, {
+                            aspectRatio: 16 / 10,
+                            viewMode: 1,
+                            autoCropArea: 0.9,
+                            responsive: true
+                        });
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+        var btnOdpRotate = document.getElementById('odp_crop_rotate');
+        if (btnOdpRotate) btnOdpRotate.onclick = function() { if (window.odpCropper) window.odpCropper.rotate(90); };
+        var btnOdpZoomIn = document.getElementById('odp_crop_zoom_in');
+        if (btnOdpZoomIn) btnOdpZoomIn.onclick = function() { if (window.odpCropper) window.odpCropper.zoom(0.1); };
+        var btnOdpZoomOut = document.getElementById('odp_crop_zoom_out');
+        if (btnOdpZoomOut) btnOdpZoomOut.onclick = function() { if (window.odpCropper) window.odpCropper.zoom(-0.1); };
+        var btnOdpReset = document.getElementById('odp_crop_reset');
+        if (btnOdpReset) btnOdpReset.onclick = function() { if (window.odpCropper) window.odpCropper.reset(); };
+
         document.getElementById('saveOdcBtn').addEventListener('click', function() {
             var saveBtn = document.getElementById('saveOdcBtn');
             var originalText = saveBtn.innerText;
@@ -3885,7 +4078,19 @@
                 if (data.success || data.id) {
                     var odcId = data.id || id;
                     var pInput = document.getElementById('odc_photo_input');
-                    if (pInput && pInput.files && pInput.files.length > 0 && odcId) {
+                    if (window.odcCropper) {
+                        saveBtn.innerText = 'Menyimpan Hasil Crop...';
+                        var canvas = window.odcCropper.getCroppedCanvas({ maxWidth: 1200, maxHeight: 800 });
+                        var base64Data = canvas.toDataURL('image/jpeg', 0.82);
+                        var fd = new FormData();
+                        fd.append('photo_base64', base64Data);
+                        fd.append('_token', csrfToken);
+                        fetch('/map/node/odc/' + odcId + '/photo', {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': csrfToken },
+                            body: fd
+                        }).finally(() => { location.reload(); });
+                    } else if (pInput && pInput.files && pInput.files.length > 0 && odcId) {
                         saveBtn.innerText = 'Mengunggah Foto...';
                         compressImageFile(pInput.files[0], function(base64Data) {
                             var fd = new FormData();
@@ -3941,7 +4146,19 @@
                 if (data.success || data.id) {
                     var odpId = data.id || id;
                     var pInput = document.getElementById('odp_photo_input');
-                    if (pInput && pInput.files && pInput.files.length > 0 && odpId) {
+                    if (window.odpCropper) {
+                        saveBtn.innerText = 'Menyimpan Hasil Crop...';
+                        var canvas = window.odpCropper.getCroppedCanvas({ maxWidth: 1200, maxHeight: 800 });
+                        var base64Data = canvas.toDataURL('image/jpeg', 0.82);
+                        var fd = new FormData();
+                        fd.append('photo_base64', base64Data);
+                        fd.append('_token', csrfToken);
+                        fetch('/map/node/odp/' + odpId + '/photo', {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': csrfToken },
+                            body: fd
+                        }).finally(() => { location.reload(); });
+                    } else if (pInput && pInput.files && pInput.files.length > 0 && odpId) {
                         saveBtn.innerText = 'Mengunggah Foto...';
                         compressImageFile(pInput.files[0], function(base64Data) {
                             var fd = new FormData();

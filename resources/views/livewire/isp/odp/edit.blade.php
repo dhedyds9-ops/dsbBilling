@@ -144,9 +144,17 @@
                                 <img src="{{ $photo->temporaryUrl() }}" class="h-32 w-auto object-cover rounded-lg shadow-sm border border-slate-200">
                             </div>
                         @elseif(!empty($existingPhotos))
-                            <div class="mt-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 inline-block">
-                                <span class="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-1">Foto Saat Ini:</span>
-                                <img src="{{ $existingPhotos[0] }}" class="h-32 w-auto object-cover rounded-lg shadow-sm border border-slate-200" onerror="this.onerror=null; this.src='/node-photo/odp/{{ $odpId }}';">
+                            <div class="mt-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <img src="{{ $existingPhotos[0] }}" class="h-24 w-auto object-cover rounded-lg shadow-sm border border-slate-200" onerror="this.onerror=null; this.src='/node-photo/odp/{{ $odpId }}';">
+                                    <div>
+                                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 block mb-0.5">Foto Saat Ini</span>
+                                        <span class="text-[11px] text-slate-400">Pilih berkas baru di atas untuk mengganti foto tiang ODP ini.</span>
+                                    </div>
+                                </div>
+                                <button type="button" wire:click="deletePhoto" wire:confirm="Hapus foto tiang ODP ini?" class="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer">
+                                    <span class="material-symbols-outlined text-sm">delete</span> Hapus Foto
+                                </button>
                             </div>
                         @endif
                     </div>

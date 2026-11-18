@@ -48,6 +48,8 @@ class Nearest extends Component
     public ?int $uploadTargetId = null;
     public string $uploadTargetName = '';
     public $additionalPhoto = null;
+    public $croppedPhotoData = null;
+    public $existingTargetPhoto = null;
 
     public function mount()
     {
@@ -244,6 +246,15 @@ class Nearest extends Component
         $this->uploadTargetId = $id;
         $this->uploadTargetName = $name;
         $this->additionalPhoto = null;
+        $this->croppedPhotoData = null;
+
+        $node = match ($type) {
+            'olt' => Olt::withoutGlobalScopes()->find($id),
+            'odc' => Odc::withoutGlobalScopes()->find($id),
+            'closure' => JointClosure::withoutGlobalScopes()->find($id),
+            default => Odp::withoutGlobalScopes()->find($id),
+        };
+        $this->existingTargetPhoto = ($node && is_array($node->photos) && count($node->photos) > 0) ? $node->photos[0] : null;
         $this->showUploadPhotoModal = true;
     }
 
@@ -251,13 +262,17 @@ class Nearest extends Component
     {
         $this->showUploadPhotoModal = false;
         $this->additionalPhoto = null;
+        $this->croppedPhotoData = null;
+        $this->existingTargetPhoto = null;
     }
 
     public function saveAdditionalPhoto()
     {
-        $this->validate([
-            'additionalPhoto' => 'required|image|max:12288',
-        ]);
+        if (!$this->croppedPhotoData) {
+            $this->validate([
+                'additionalPhoto' => 'required|image|max:12288',
+            ]);
+        }
 
         $node = match ($this->uploadTargetType) {
             'olt' => Olt::withoutGlobalScopes()->find($this->uploadTargetId),
@@ -267,12 +282,38 @@ class Nearest extends Component
         };
 
         if ($node) {
-            \App\Services\ISP\NodePhotoService::attachPhoto($node, $this->additionalPhoto, $this->uploadTargetType);
+            $target = $this->croppedPhotoData ?: $this->additionalPhoto;
+            \App\Services\ISP\NodePhotoService::attachPhoto($node, $target, $this->uploadTargetType, true);
         }
 
-        $this->createSuccessMessage = "Foto tiang untuk {$this->uploadTargetName} berhasil diunggah!";
+        $this->createSuccessMessage = "Foto tiang untuk {$this->uploadTargetName} berhasil disimpan!";
         $this->showUploadPhotoModal = false;
         $this->additionalPhoto = null;
+        $this->croppedPhotoData = null;
+        $this->existingTargetPhoto = null;
+        $this->loadNearestOdps();
+        $this->loadAllTopology();
+        $this->js('window.location.reload()');
+    }
+
+    public function deleteCurrentPhoto()
+    {
+        $node = match ($this->uploadTargetType) {
+            'olt' => Olt::withoutGlobalScopes()->find($this->uploadTargetId),
+            'odc' => Odc::withoutGlobalScopes()->find($this->uploadTargetId),
+            'closure' => JointClosure::withoutGlobalScopes()->find($this->uploadTargetId),
+            default => Odp::withoutGlobalScopes()->find($this->uploadTargetId),
+        };
+
+        if ($node) {
+            \App\Services\ISP\NodePhotoService::deletePhotos($node);
+        }
+
+        $this->createSuccessMessage = "Foto dokumentasi tiang untuk {$this->uploadTargetName} berhasil dihapus!";
+        $this->showUploadPhotoModal = false;
+        $this->additionalPhoto = null;
+        $this->croppedPhotoData = null;
+        $this->existingTargetPhoto = null;
         $this->loadNearestOdps();
         $this->loadAllTopology();
         $this->js('window.location.reload()');
