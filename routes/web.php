@@ -899,23 +899,35 @@ Route::get('/node-photo/{type}/{id}', function ($type, $id) {
     if ($model && !empty($model->photos) && is_array($model->photos)) {
         foreach ($model->photos as $p) {
             if (empty($p)) continue;
-            if (str_starts_with($p, 'data:image')) {
-                [$header, $data] = explode(',', $p, 2);
+            if (str_contains($p, 'data:image')) {
+                $dataUri = strstr($p, 'data:image');
+                [$header, $data] = explode(',', $dataUri, 2);
                 preg_match('#data:(image/\w+);base64#', $header, $m);
                 $mime = $m[1] ?? 'image/jpeg';
-                return response(base64_decode($data))->header('Content-Type', $mime);
+                return response(base64_decode($data))->header('Content-Type', $mime)->header('Cache-Control', 'public, max-age=86400');
             }
             $cleanPath = ltrim(preg_replace('/^https?:\/\/[^\/]+(\/storage\/.*)$/', '$1', (string) $p), '/');
             $cleanPath = preg_replace('/^storage\//', '', $cleanPath);
+            $basename = basename($cleanPath);
 
             $candidates = [
                 storage_path('app/public/' . $cleanPath),
+                storage_path('app/' . $cleanPath),
                 public_path('storage/' . $cleanPath),
+                public_path($cleanPath),
                 '/var/www/shared_storage/' . $cleanPath,
                 '/var/www/mstore/storage/app/public/' . $cleanPath,
+                '/var/www/mstore/storage/app/' . $cleanPath,
                 '/var/www/winets/storage/app/public/' . $cleanPath,
+                '/var/www/winets/storage/app/' . $cleanPath,
                 '/var/www/mstore/public/storage/' . $cleanPath,
                 '/var/www/winets/public/storage/' . $cleanPath,
+                storage_path('app/public/network_photos/odcs/' . $basename),
+                storage_path('app/public/network_photos/odp/' . $basename),
+                '/var/www/mstore/storage/app/public/network_photos/odcs/' . $basename,
+                '/var/www/mstore/storage/app/public/network_photos/odp/' . $basename,
+                '/var/www/winets/storage/app/public/network_photos/odcs/' . $basename,
+                '/var/www/winets/storage/app/public/network_photos/odp/' . $basename,
             ];
             foreach ($candidates as $cand) {
                 if (@file_exists($cand) && @is_file($cand)) {
@@ -951,6 +963,28 @@ Route::get('/node-photo/{type}/{id}', function ($type, $id) {
         'Cache-Control' => 'public, max-age=3600',
     ]);
 })->name('node.photo');
+
+// Diagnostics Endpoint for Node Photos
+Route::get('/node-photo-diag/{type}/{id}', function ($type, $id) {
+    $model = match ($type) {
+        'olt' => \App\Models\ISP\Olt::withoutGlobalScopes()->find($id),
+        'odc' => \App\Models\ISP\Odc::withoutGlobalScopes()->find($id),
+        'odp' => \App\Models\ISP\Odp::withoutGlobalScopes()->find($id),
+        'closure' => class_exists(\App\Models\ISP\JointClosure::class) ? \App\Models\ISP\JointClosure::withoutGlobalScopes()->find($id) : null,
+        default => null,
+    };
+    if (!$model) return response()->json(['error' => 'Node not found'], 404);
+
+    return response()->json([
+        'type' => $type,
+        'id' => $id,
+        'name' => $model->name ?? $model->code,
+        'photos_raw' => $model->photos,
+        'photos_count' => is_array($model->photos) ? count($model->photos) : 0,
+        'has_data_uri' => is_array($model->photos) && count($model->photos) > 0 && str_contains($model->photos[0] ?? '', 'data:image'),
+        'stream_url' => url("/node-photo/{$type}/{$id}"),
+    ]);
+});
 
 
 

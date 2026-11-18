@@ -69,6 +69,9 @@ class Nearest extends Component
         $formatPhotos = function ($rawPhotos) {
             return array_values(array_filter(array_map(function ($p) {
                 if (empty($p)) return null;
+                if (str_starts_with($p, '/storage/data:image')) return substr($p, 9);
+                if (str_starts_with($p, 'storage/data:image')) return substr($p, 8);
+                if (str_starts_with($p, 'data:image')) return $p;
                 $clean = preg_replace('/^https?:\/\/[^\/]+(\/storage\/.*)$/', '$1', (string) $p);
                 if (str_starts_with($clean, 'http://') || str_starts_with($clean, 'https://') || str_starts_with($clean, '/storage/')) return $clean;
                 return '/storage/' . ltrim($clean, '/');
@@ -272,6 +275,7 @@ class Nearest extends Component
         $this->additionalPhoto = null;
         $this->loadNearestOdps();
         $this->loadAllTopology();
+        $this->js('window.location.reload()');
     }
 
     public function updatedSearch()
