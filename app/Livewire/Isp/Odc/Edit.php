@@ -73,33 +73,14 @@ class Edit extends AdminComponent
 
         $photos = $this->existingPhotos;
         if ($this->photo) {
-            $folder = 'odcs';
-            $filename = Str::random(40) . '.' . ($this->photo->getClientOriginalExtension() ?: 'jpg');
-            $relPath = "network_photos/{$folder}/{$filename}";
-            $fullPath = storage_path("app/public/{$relPath}");
-            @mkdir(dirname($fullPath), 0775, true);
-            @copy($this->photo->getRealPath(), $fullPath);
-            @chmod($fullPath, 0664);
-
-            $mirrorTargets = [
-                public_path("storage/{$relPath}"),
-                "/var/www/shared_storage/{$relPath}",
-                "/var/www/winets/storage/app/public/{$relPath}",
-                "/var/www/winets/public/storage/{$relPath}",
-                "/var/www/mstore/storage/app/public/{$relPath}",
-                "/var/www/mstore/public/storage/{$relPath}",
-            ];
-            foreach ($mirrorTargets as $mt) {
-                $mtDir = dirname($mt);
-                if (!@is_dir($mtDir)) @mkdir($mtDir, 0775, true);
-                if (!@file_exists($mt)) {
-                    @copy($fullPath, $mt);
-                    @chmod($mt, 0664);
-                }
+            $dataUri = \App\Services\ISP\NodePhotoService::createDataUri($this->photo);
+            $relUrl = \App\Services\ISP\NodePhotoService::mirrorPhysicalFile($this->photo, 'odcs');
+            if ($dataUri) {
+                array_unshift($photos, $dataUri);
             }
-
-            $cleanUrl = "/storage/{$relPath}";
-            array_unshift($photos, $cleanUrl);
+            if ($relUrl) {
+                $photos[] = $relUrl;
+            }
         }
 
         $service = app(OdcService::class);

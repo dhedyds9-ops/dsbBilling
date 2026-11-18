@@ -888,11 +888,11 @@ Route::get('/storage-check', function () {
 // Guaranteed node photo direct endpoint (never 404s, handles base64, physical files, and SVG fallback)
 Route::get('/node-photo/{type}/{id}', function ($type, $id) {
     $model = match ($type) {
-        'olt' => \App\Models\ISP\Olt::find($id),
-        'odc' => \App\Models\ISP\Odc::find($id),
-        'odp' => \App\Models\ISP\Odp::find($id),
-        'closure' => class_exists(\App\Models\ISP\JointClosure::class) ? \App\Models\ISP\JointClosure::find($id) : null,
-        'htb' => class_exists(\App\Models\ISP\DistributionBox::class) ? \App\Models\ISP\DistributionBox::find($id) : null,
+        'olt' => \App\Models\ISP\Olt::withoutGlobalScopes()->find($id),
+        'odc' => \App\Models\ISP\Odc::withoutGlobalScopes()->find($id),
+        'odp' => \App\Models\ISP\Odp::withoutGlobalScopes()->find($id),
+        'closure' => class_exists(\App\Models\ISP\JointClosure::class) ? \App\Models\ISP\JointClosure::withoutGlobalScopes()->find($id) : null,
+        'htb' => class_exists(\App\Models\ISP\DistributionBox::class) ? \App\Models\ISP\DistributionBox::withoutGlobalScopes()->find($id) : null,
         default => null,
     };
 

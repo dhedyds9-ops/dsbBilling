@@ -3833,7 +3833,38 @@
             });
         });
 
+        function compressImageFile(file, cb) {
+            if (!file) return cb(null);
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var img = new Image();
+                img.onload = function() {
+                    var canvas = document.createElement('canvas');
+                    var maxDim = 1200;
+                    var w = img.width, h = img.height;
+                    if (w > maxDim || h > maxDim) {
+                        var ratio = Math.min(maxDim / w, maxDim / h);
+                        w = Math.round(w * ratio);
+                        h = Math.round(h * ratio);
+                    }
+                    canvas.width = w;
+                    canvas.height = h;
+                    var ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    cb(canvas.toDataURL('image/jpeg', 0.82));
+                };
+                img.onerror = function() { cb(e.target.result); };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
         document.getElementById('saveOdcBtn').addEventListener('click', function() {
+            var saveBtn = document.getElementById('saveOdcBtn');
+            var originalText = saveBtn.innerText;
+            saveBtn.disabled = true;
+            saveBtn.innerText = 'Menyimpan...';
+
             var id = document.getElementById('odc_id').value;
             var url = id ? `/map/node/odc/${id}` : '/map/node/odc';
             var method = id ? 'PUT' : 'POST';
@@ -3855,28 +3886,41 @@
                     var odcId = data.id || id;
                     var pInput = document.getElementById('odc_photo_input');
                     if (pInput && pInput.files && pInput.files.length > 0 && odcId) {
-                        var fd = new FormData();
-                        fd.append('photo', pInput.files[0]);
-                        fd.append('_token', csrfToken);
-                        fetch('/map/node/odc/' + odcId + '/photo', {
-                            method: 'POST',
-                            headers: { 'X-CSRF-TOKEN': csrfToken },
-                            body: fd
-                        }).finally(() => { location.reload(); });
+                        saveBtn.innerText = 'Mengunggah Foto...';
+                        compressImageFile(pInput.files[0], function(base64Data) {
+                            var fd = new FormData();
+                            fd.append('photo', pInput.files[0]);
+                            if (base64Data) fd.append('photo_base64', base64Data);
+                            fd.append('_token', csrfToken);
+                            fetch('/map/node/odc/' + odcId + '/photo', {
+                                method: 'POST',
+                                headers: { 'X-CSRF-TOKEN': csrfToken },
+                                body: fd
+                            }).finally(() => { location.reload(); });
+                        });
                     } else {
                         location.reload();
                     }
                 } else {
+                    saveBtn.disabled = false;
+                    saveBtn.innerText = originalText;
                     alert('{{ __('Error saving ODC:') }} ' + (data.message || JSON.stringify(data)));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                saveBtn.disabled = false;
+                saveBtn.innerText = originalText;
                 alert('{{ __('An error occurred while saving.') }}');
             });
         });
 
         document.getElementById('saveOdpBtn').addEventListener('click', function() {
+            var saveBtn = document.getElementById('saveOdpBtn');
+            var originalText = saveBtn.innerText;
+            saveBtn.disabled = true;
+            saveBtn.innerText = 'Menyimpan...';
+
             var id = document.getElementById('odp_id').value;
             var url = id ? `/map/node/odp/${id}` : '/map/node/odp';
             var method = id ? 'PUT' : 'POST';
@@ -3898,23 +3942,31 @@
                     var odpId = data.id || id;
                     var pInput = document.getElementById('odp_photo_input');
                     if (pInput && pInput.files && pInput.files.length > 0 && odpId) {
-                        var fd = new FormData();
-                        fd.append('photo', pInput.files[0]);
-                        fd.append('_token', csrfToken);
-                        fetch('/map/node/odp/' + odpId + '/photo', {
-                            method: 'POST',
-                            headers: { 'X-CSRF-TOKEN': csrfToken },
-                            body: fd
-                        }).finally(() => { location.reload(); });
+                        saveBtn.innerText = 'Mengunggah Foto...';
+                        compressImageFile(pInput.files[0], function(base64Data) {
+                            var fd = new FormData();
+                            fd.append('photo', pInput.files[0]);
+                            if (base64Data) fd.append('photo_base64', base64Data);
+                            fd.append('_token', csrfToken);
+                            fetch('/map/node/odp/' + odpId + '/photo', {
+                                method: 'POST',
+                                headers: { 'X-CSRF-TOKEN': csrfToken },
+                                body: fd
+                            }).finally(() => { location.reload(); });
+                        });
                     } else {
                         location.reload();
                     }
                 } else {
+                    saveBtn.disabled = false;
+                    saveBtn.innerText = originalText;
                     alert('{{ __('Error saving ODP:') }} ' + (data.message || JSON.stringify(data)));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                saveBtn.disabled = false;
+                saveBtn.innerText = originalText;
                 alert('{{ __('An error occurred while saving.') }}');
             });
         });

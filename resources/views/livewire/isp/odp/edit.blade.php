@@ -128,6 +128,28 @@
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Deskripsi / Catatan</label>
                         <textarea wire:model="description" rows="2" placeholder="Catatan splitter atau keterangan tambahan..." class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100"></textarea>
                     </div>
+
+                    <div class="md:col-span-2 pt-2">
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-indigo-500 text-lg">add_a_photo</span>
+                            Foto Fisik Tiang / Box ODP
+                        </label>
+                        <input type="file" wire:model="photo" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-slate-700 dark:file:text-slate-200">
+                        <p class="text-xs text-slate-400 mt-1">Unggah foto tiang atau dokumentasi fisik ODP di lapangan (Maks. 12 MB).</p>
+                        @error('photo') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                        @if ($photo)
+                            <div class="mt-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-indigo-200 dark:border-indigo-900 inline-block">
+                                <span class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 block mb-1">Pratinjau Foto Baru:</span>
+                                <img src="{{ $photo->temporaryUrl() }}" class="h-32 w-auto object-cover rounded-lg shadow-sm border border-slate-200">
+                            </div>
+                        @elseif(!empty($existingPhotos))
+                            <div class="mt-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 inline-block">
+                                <span class="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-1">Foto Saat Ini:</span>
+                                <img src="{{ $existingPhotos[0] }}" class="h-32 w-auto object-cover rounded-lg shadow-sm border border-slate-200" onerror="this.onerror=null; this.src='/node-photo/odp/{{ $odpId }}';">
+                            </div>
+                        @endif
+                    </div>
                 </div>
             </div>
 

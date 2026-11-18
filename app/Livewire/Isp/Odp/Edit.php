@@ -7,10 +7,14 @@ use App\Models\ISP\Odp as OdpModel;
 use App\Models\ISP\Odc;
 use App\Models\Master\Branch;
 use App\Services\ISP\OdpService;
+use App\Services\ISP\NodePhotoService;
 use Illuminate\Support\Facades\Auth;
+use Livewire\WithFileUploads;
 
 class Edit extends AdminComponent
 {
+    use WithFileUploads;
+
     public $odpId;
     public $odp;
     public $branch_id;
@@ -28,6 +32,8 @@ class Edit extends AdminComponent
     public $longitude;
     public $port_count;
     public $status;
+    public $photo;
+    public $existingPhotos = [];
 
     public function mount($id = null)
     {
@@ -52,6 +58,7 @@ class Edit extends AdminComponent
         $this->longitude = $this->odp->longitude;
         $this->port_count = $this->odp->port_count;
         $this->status = $this->odp->status;
+        $this->existingPhotos = is_array($this->odp->photos) ? $this->odp->photos : [];
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
             ['label' => 'Network', 'url' => route('isp.odps.index')],
@@ -68,12 +75,17 @@ class Edit extends AdminComponent
             'code' => 'required|unique:odps,code,' . $this->odpId,
             'name' => 'required|string|max:255',
             'status' => 'required|in:active,inactive',
+            'photo' => 'nullable|image|max:12288',
             'district' => 'nullable|string|max:100',
             'village' => 'nullable|string|max:100',
             'regency' => 'nullable|string|max:100',
             'province' => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:20',
         ]);
+
+        if ($this->photo) {
+            NodePhotoService::attachPhoto($this->odp, $this->photo, 'odp');
+        }
 
         $service = app(OdpService::class);
         $service->update($this->odp, [
