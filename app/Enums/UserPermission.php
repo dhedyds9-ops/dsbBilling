@@ -562,6 +562,7 @@ enum UserPermission: string
             self::InventoryOpname->value,
             self::InventoryReport->value,
             self::OnuView->value,
+            self::OnuDiagnose->value,
             self::OnuReboot->value,
             'olt.view',
             'odc.view',

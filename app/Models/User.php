@@ -296,6 +296,14 @@ class User extends Authenticatable
                 ]);
         }
 
+        if ($this->isReseller()) {
+            return in_array($permission, \App\Enums\UserPermission::defaultResellerPermissions(), true)
+                || in_array($permission, [
+                    'onu.view', 'onu.diagnose', 'onu.reboot',
+                    'reseller.portal', 'reseller.dashboard', 'reseller.view'
+                ], true);
+        }
+
 
         if (str_contains($title, 'marketing') || str_contains($title, 'sales') || $this->hasRole('marketing')) {
             return str_starts_with($permission, 'crm.') || str_starts_with($permission, 'customer.');

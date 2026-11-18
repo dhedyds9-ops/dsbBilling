@@ -105,6 +105,12 @@ class MobileAcsProxyController extends Controller
             $hasPerm = true;
         }
 
+        if (!$hasPerm && ($user->isReseller() || $user->hasRole('reseller'))) {
+            if (in_array($operation, ['summon', 'read', 'ping', 'tasks.view', 'reboot'])) {
+                $hasPerm = true;
+            }
+        }
+
         if (!$hasPerm) {
             return response()->json([
                 'success' => false,
@@ -180,7 +186,7 @@ class MobileAcsProxyController extends Controller
 
         // 4. Reseller Scope & Ownership Enforcement (Layer C)
         // Validates chain: Reseller -> CustomerService -> ONU -> ACSDevice
-        if ($user->hasRole('reseller')) {
+        if ($user->hasRole('reseller') || $user->isReseller()) {
             $resellerId = $user->getEffectiveResellerId() ?: $user->id;
 
             // Reject if explicitly registered to another reseller
@@ -205,6 +211,13 @@ class MobileAcsProxyController extends Controller
                 }
             }
 
+            if ($dbOnu && !empty($dbOnu->reseller_id) && (int) $dbOnu->reseller_id !== (int) $resellerId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak: Perangkat ini terdaftar pada pelanggan Mitra Reseller lain.',
+                ], 403);
+            }
+
             // Assert positive ownership
             $isOwned = false;
 
@@ -220,7 +233,9 @@ class MobileAcsProxyController extends Controller
             }
 
             if (!$isOwned && $dbOnu) {
-                if ((int) $dbOnu->created_by === (int) $resellerId) {
+                if ((int) $dbOnu->reseller_id === (int) $resellerId || (int) $dbOnu->created_by === (int) $resellerId) {
+                    $isOwned = true;
+                } elseif (\App\Models\ISP\Onu::forReseller($user)->where('id', $dbOnu->id)->exists()) {
                     $isOwned = true;
                 }
             }
@@ -228,14 +243,17 @@ class MobileAcsProxyController extends Controller
             if (!$isOwned && $dbDevice) {
                 if ((int) $dbDevice->created_by === (int) $resellerId) {
                     $isOwned = true;
+                } elseif (\App\Models\ACS\ACSDevice::forReseller($user)->where('id', $dbDevice->id)->exists()) {
+                    $isOwned = true;
                 }
             }
 
-            if (!$isOwned && $dbDevice) {
-                $isOwned = \App\Models\ACS\ACSDevice::forReseller($user)->where('id', $dbDevice->id)->exists();
-            }
+            // Izinkan operasi diagnostik/monitoring (summon, read, ping, tasks.view) pada perangkat GenieACS unassigned
+            // asalkan perangkat belum diklaim/terdaftar oleh reseller lain.
+            $isDiagnosticOp = in_array($operation, ['summon', 'read', 'ping', 'tasks.view']);
+            $isUnassigned = !$cs && (!$dbOnu || empty($dbOnu->reseller_id)) && (!$dbDevice || empty($dbDevice->customer_service_id));
 
-            if (!$isOwned) {
+            if (!$isOwned && !($isDiagnosticOp && $isUnassigned)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Akses ditolak: Perangkat ini berada di luar cakupan kepemilikan akun Reseller Anda.',

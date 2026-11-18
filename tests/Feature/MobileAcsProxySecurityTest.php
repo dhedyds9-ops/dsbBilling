@@ -538,4 +538,75 @@ class MobileAcsProxySecurityTest extends TestCase
             ->postJson('/api/mobile/acs/devices/FAKE_DEVICE_ID_9999/wifi', ['ssid' => 'Hacked']);
         $resFake->assertStatus(403);
     }
+
+    /**
+     * Requirement 11: Reseller can summon own registered device without errors.
+     */
+    public function test_reseller_can_summon_own_device(): void
+    {
+        $token = $this->resellerA->createToken('test-token')->plainTextToken;
+
+        $driverMock = Mockery::mock(GenieACSDriver::class);
+        $driverMock->shouldReceive('summonDeviceResult')
+            ->once()
+            ->with('ZTEGCRESELLER_A')
+            ->andReturn([
+                'connection_request_success' => true,
+                'task_queued' => true,
+            ]);
+        $this->app->instance(GenieACSDriver::class, $driverMock);
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->postJson('/api/mobile/acs/devices/ZTEGCRESELLER_A/summon');
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Permintaan koneksi (Summon Live) berhasil dikirim ke perangkat.',
+            ]);
+    }
+
+    /**
+     * Requirement 12: Reseller can summon an unassigned device in GenieACS.
+     */
+    public function test_reseller_can_summon_unassigned_device(): void
+    {
+        $token = $this->resellerA->createToken('test-token')->plainTextToken;
+
+        $driverMock = Mockery::mock(GenieACSDriver::class);
+        $driverMock->shouldReceive('summonDeviceResult')
+            ->once()
+            ->with('202BC1-HG6821M-ZTEGC9999999')
+            ->andReturn([
+                'connection_request_success' => true,
+                'task_queued' => true,
+            ]);
+        $this->app->instance(GenieACSDriver::class, $driverMock);
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->postJson('/api/mobile/acs/devices/202BC1-HG6821M-ZTEGC9999999/summon');
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Permintaan koneksi (Summon Live) berhasil dikirim ke perangkat.',
+            ]);
+    }
+
+    /**
+     * Requirement 13: Reseller cannot summon a device owned by another reseller.
+     */
+    public function test_reseller_cannot_summon_other_reseller_device(): void
+    {
+        $token = $this->resellerA->createToken('test-token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->postJson('/api/mobile/acs/devices/ZTEGCRESELLER_B/summon');
+
+        $response->assertStatus(403)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Akses ditolak: Perangkat ini terdaftar pada pelanggan Mitra Reseller lain.',
+            ]);
+    }
 }
