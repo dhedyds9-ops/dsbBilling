@@ -356,6 +356,23 @@ abstract class BaseOltDriver implements OltDriverInterface
     abstract public function setOnuAdminStatus(Onu $onu, string $status): bool;
     abstract public function setOnuBandwidthLimit(Onu $onu, int $downloadMbps, int $uploadMbps): bool;
 
+    /**
+     * Get Optical Tx Power of the OLT SFP Transceiver for this PON port (dBm)
+     */
+    public function getPonPortTxPower(int $ponPort): ?float
+    {
+        return null;
+    }
+
+    /**
+     * Get RTT Ranging Distance for ONUs under this PON port (in meters)
+     * Returns array [onu_index => distance_in_meters]
+     */
+    public function getOnuDistances(int $ponPort): array
+    {
+        return [];
+    }
+
     public function pushOnuWanConfig(Onu $onu, array $config): bool
     {
         Log::warning("pushOnuWanConfig is not implemented for this OLT driver: " . static::class);

@@ -264,6 +264,20 @@ class CDataOltDriver extends BaseOltDriver
         return $ports;
     }
 
+    public function getPonPortTxPower(int $ponPort): ?float
+    {
+        try {
+            $raw = $this->snmp->get('.1.3.6.1.4.1.34592.1.3.100.2.2.1.3.' . $ponPort);
+            if ($raw && is_numeric($raw)) {
+                $val = (float)$raw;
+                if ($val > 100) return round($val / 100, 2);
+                if ($val > 0) return round($val, 2);
+            }
+        } catch (\Throwable) {}
+
+        return null;
+    }
+
     public function getOnuRxPower(int $ponPort): array
     {
         // 1. Calculate portNum (1-based, e.g. 1 to 16) and slot
@@ -554,6 +568,7 @@ class CDataOltDriver extends BaseOltDriver
                             'tx_power_dbm'     => null,
                             'snr_db'           => null,
                             'temperature'      => null,
+                            'distance_meters'  => null,
                             'firmware_version' => null,
                             'model'            => null,
                             'status'           => $runState,
@@ -735,6 +750,25 @@ class CDataOltDriver extends BaseOltDriver
                     }
                     if ($detectedTemp !== null) {
                         $this->cachedCliParsedOnus[$lPort][$lOnuId]['temperature'] = $detectedTemp;
+                    }
+
+                    // Extract RTT Distance in meters if exposed
+                    $detectedDist = null;
+                    if (preg_match('/(?:distance|dist).*?:?\s*(\d+)/i', $line, $dm)) {
+                        $detectedDist = (int)$dm[1];
+                    } else {
+                        foreach ($floats as $fIdx => $fData) {
+                            $fVal = $fData['val'];
+                            if ($fVal >= 20 && $fVal <= 40000 && $fIdx !== 0 && $fIdx !== 1 && $fIdx !== $rxFloatIndex) {
+                                if (floor($fVal) == $fVal && $fVal > 50) {
+                                    $detectedDist = (int)$fVal;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if ($detectedDist !== null) {
+                        $this->cachedCliParsedOnus[$lPort][$lOnuId]['distance_meters'] = $detectedDist;
                     }
                 }
             };

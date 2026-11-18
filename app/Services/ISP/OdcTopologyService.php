@@ -3,11 +3,15 @@
 namespace App\Services\ISP;
 
 use App\Models\AuditLog;
+use App\Models\ISP\AccessPoint;
+use App\Models\ISP\DistributionBox;
+use App\Models\ISP\JointClosure;
 use App\Models\ISP\NetworkIncident;
 use App\Models\ISP\Odc;
 use App\Models\ISP\Odp;
 use App\Models\ISP\Onu;
 use App\Models\ISP\Splitter;
+use App\Models\ISP\SplitterPort;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -80,6 +84,14 @@ class OdcTopologyService
         $customersCount = count($customerIds);
         $occupancyPercent = round(min(100, ($usedPorts / $totalPorts) * 100), 1);
 
+        // Splitters KPI
+        $odcSplitters = Splitter::withoutGlobalScopes()->where('odc_id', $odc->id)->get();
+        $splittersCount = $odcSplitters->count();
+        $plcSplittersCount = $odcSplitters->where('type', 'plc')->count();
+        $fbtSplittersCount = $odcSplitters->where('type', 'fbt')->count();
+        $splitterTotalPorts = (int) $odcSplitters->sum('port_count');
+        $splitterUsedPorts = (int) $odcSplitters->sum('active_port_count');
+
         return [
             'total_ports' => $totalPorts,
             'used_ports' => $usedPorts,
@@ -93,12 +105,29 @@ class OdcTopologyService
             'critical_onus_count' => $criticalOnusCount,
             'customers_count' => $customersCount,
             'occupancy_percent' => $occupancyPercent,
+            'splitters_count' => $splittersCount,
+            'plc_splitters_count' => $plcSplittersCount,
+            'fbt_splitters_count' => $fbtSplittersCount,
+            'splitter_total_ports' => $splitterTotalPorts,
+            'splitter_used_ports' => $splitterUsedPorts,
         ];
     }
 
     /**
+     * Get all splitters installed in this ODC with their port allocations
+     */
+    public function getOdcSplitters(Odc $odc): Collection
+    {
+        return Splitter::withoutGlobalScopes()
+            ->where('odc_id', $odc->id)
+            ->with(['ports.target', 'ports.customer'])
+            ->orderBy('id', 'asc')
+            ->get();
+    }
+
+    /**
      * Build interactive topology nodes and edges:
-     * OLT -> ODF/Feeder -> ODC -> Splitter ODC -> ODP -> Splitter ODP -> ONU -> Pelanggan
+     * OLT -> ODF/Feeder -> ODC -> SPLITTER ODC (each) -> ODP -> SPLITTER ODP (each) -> ONU/AP -> Pelanggan
      */
     public function getTopologyData(Odc $odc): array
     {
@@ -174,12 +203,6 @@ class OdcTopologyService
 
         // 3. ODC Cabinet Node (Target)
         $odcNodeId = 'odc-' . $odc->id;
-        $odcStatusColor = match ($odc->status) {
-            'active' => '#10b981',
-            'warning' => '#f59e0b',
-            default => '#ef4444',
-        };
-
         $nodes[] = [
             'id' => $odcNodeId,
             'label' => $odc->name . "\n[" . $odc->code . "]\nKapasitas: " . ($odc->port_count ?: 48) . " Port",
@@ -215,15 +238,25 @@ class OdcTopologyService
             'arrows' => ['to' => ['enabled' => true, 'scaleFactor' => 0.8]],
         ];
 
-        // 4. ODC Tray Splitters
-        $odcSplitters = Splitter::where('odc_id', $odc->id)->get();
-        $hasOdcSplitters = $odcSplitters->isNotEmpty();
+        // 4. ODC Splitters (Tier-1: PLC & FBT)
+        $odcSplitters = Splitter::withoutGlobalScopes()
+            ->where('odc_id', $odc->id)
+            ->with(['ports.target', 'ports.customer'])
+            ->get();
+
+        $connectedOdpViaSplitter = [];
 
         foreach ($odcSplitters as $spl) {
             $splNodeId = 'spl-odc-' . $spl->id;
+            $typeLabel = strtoupper($spl->type ?: 'PLC');
+            $ratioLabel = $spl->ratio_label ?: ("1:" . ($spl->ratio ?: 8));
+            $lossLabel = $spl->insertion_loss_db ? "Loss: {$spl->insertion_loss_db} dB" : "Loss: ~10.5 dB";
+            $usedCount = $spl->active_port_count ?: $spl->ports->where('status', 'used')->count();
+            $totalCount = $spl->port_count ?: 8;
+
             $nodes[] = [
                 'id' => $splNodeId,
-                'label' => $spl->name . "\nRatio 1:" . ($spl->ratio ?: 4) . "\n[" . $spl->code . "]",
+                'label' => $spl->name . "\n[" . $typeLabel . " " . $ratioLabel . "]\n" . $lossLabel . "\n" . $usedCount . "/" . $totalCount . " Port",
                 'group' => 'splitter_odc',
                 'level' => 3,
                 'shape' => 'diamond',
@@ -239,13 +272,19 @@ class OdcTopologyService
                     'id' => $spl->id,
                     'code' => $spl->code,
                     'name' => $spl->name,
-                    'ratio' => "1:" . ($spl->ratio ?: 4),
-                    'ports' => $spl->port_count,
+                    'type_category' => $spl->type ?: 'plc',
+                    'ratio_label' => $ratioLabel,
+                    'package_type' => $spl->package_type ?: 'tray',
+                    'insertion_loss_db' => $spl->insertion_loss_db,
+                    'input_ports' => $spl->input_port_count ?: 1,
+                    'total_ports' => $totalCount,
+                    'used_ports' => $usedCount,
                     'status' => $spl->status,
                     'detail_url' => null,
                 ],
             ];
 
+            // Connect ODC to Splitter Input
             $edges[] = [
                 'from' => $odcNodeId,
                 'to' => $splNodeId,
@@ -254,15 +293,60 @@ class OdcTopologyService
                 'width' => 2.5,
                 'arrows' => ['to' => ['enabled' => true, 'scaleFactor' => 0.8]],
             ];
+
+            // Map Splitter Output Ports
+            foreach ($spl->ports->where('port_type', 'output') as $port) {
+                if ($port->status === 'used' && $port->target_type && $port->target_id) {
+                    if ($port->target_type === Odp::class || str_ends_with($port->target_type, 'Odp')) {
+                        $targetOdpId = $port->target_id;
+                        $connectedOdpViaSplitter[$targetOdpId] = [
+                            'splitter_id' => $spl->id,
+                            'port_number' => $port->port_number,
+                            'core_color' => $port->core_color,
+                        ];
+                    } elseif ($port->target_type === JointClosure::class || str_ends_with($port->target_type, 'JointClosure')) {
+                        $closureNodeId = 'closure-' . $port->target_id;
+                        $nodes[] = [
+                            'id' => $closureNodeId,
+                            'label' => ($port->target_label ?: "Joint Closure #{$port->target_id}") . "\n[Closure]",
+                            'group' => 'closure',
+                            'level' => 4,
+                            'shape' => 'box',
+                            'color' => ['background' => '#0f172a', 'border' => '#eab308'],
+                            'font' => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 12],
+                            'metadata' => [
+                                'type' => 'closure',
+                                'id' => $port->target_id,
+                                'name' => $port->target_label,
+                            ],
+                        ];
+                        $edges[] = [
+                            'from' => $splNodeId,
+                            'to' => $closureNodeId,
+                            'label' => "Port #{$port->port_number} [{$port->core_color}]",
+                            'color' => ['color' => '#eab308', 'highlight' => '#00e5ff'],
+                            'width' => 2,
+                            'arrows' => ['to' => ['enabled' => true, 'scaleFactor' => 0.8]],
+                        ];
+                    }
+                }
+            }
         }
 
         // 5. ODP Nodes & downstream elements
         $odps = Odp::withoutGlobalScopes()
             ->where('odc_id', $odc->id)
-            ->with(['splitters', 'onus.customerService.customer', 'onus.customerService.pppoeUser', 'onus.customerService.hotspotUser', 'onus.acsDevice'])
+            ->with([
+                'splitters.ports.target',
+                'splitters.ports.customer',
+                'onus.customerService.customer',
+                'onus.customerService.pppoeUser',
+                'onus.customerService.hotspotUser',
+                'onus.acsDevice',
+            ])
             ->get();
 
-        $odpLevel = $hasOdcSplitters ? 4 : 3;
+        $odpLevel = $odcSplitters->isNotEmpty() ? 4 : 3;
 
         foreach ($odps as $odpIdx => $odp) {
             $odpNodeId = 'odp-' . $odp->id;
@@ -303,31 +387,48 @@ class OdcTopologyService
                 ],
             ];
 
-            // Connect ODC (or ODC Splitter) to ODP
-            $edgeSourceId = $odcNodeId;
-            if ($hasOdcSplitters && $odcSplitters->isNotEmpty()) {
-                $edgeSourceId = 'spl-odc-' . $odcSplitters->first()->id;
+            // Connect ODC (or specific ODC Splitter) to ODP
+            if (isset($connectedOdpViaSplitter[$odp->id])) {
+                $conn = $connectedOdpViaSplitter[$odp->id];
+                $edges[] = [
+                    'from' => 'spl-odc-' . $conn['splitter_id'],
+                    'to' => $odpNodeId,
+                    'label' => "Port #{$conn['port_number']} (" . ($conn['core_color'] ?: 'Core') . ") ➔ IN",
+                    'color' => ['color' => '#a855f7', 'highlight' => '#00e5ff', 'hover' => '#c084fc'],
+                    'width' => 2.5,
+                    'arrows' => ['to' => ['enabled' => true, 'scaleFactor' => 0.8]],
+                ];
+            } else {
+                $edgeSourceId = $odcNodeId;
+                if ($odcSplitters->isNotEmpty()) {
+                    $edgeSourceId = 'spl-odc-' . $odcSplitters->first()->id;
+                }
+                $edges[] = [
+                    'from' => $edgeSourceId,
+                    'to' => $odpNodeId,
+                    'label' => 'Port ' . $odpPort . ' ➔ IN',
+                    'color' => ['color' => $odpColor, 'highlight' => '#00e5ff', 'hover' => '#38bdf8'],
+                    'width' => 2.5,
+                    'arrows' => ['to' => ['enabled' => true, 'scaleFactor' => 0.8]],
+                ];
             }
 
-            $edges[] = [
-                'from' => $edgeSourceId,
-                'to' => $odpNodeId,
-                'label' => 'Port ' . $odpPort . ' ➔ IN',
-                'color' => ['color' => $odpColor, 'highlight' => '#00e5ff', 'hover' => '#38bdf8'],
-                'width' => 2.5,
-                'arrows' => ['to' => ['enabled' => true, 'scaleFactor' => 0.8]],
-            ];
-
-            // 6. Splitter ODP (2nd Tier)
+            // 6. Splitter ODP (Tier-2: PLC & FBT)
             $odpSplitters = $odp->splitters;
-            $parentForOnu = $odpNodeId;
+            $connectedOnuViaSplitter = [];
 
             if ($odpSplitters->isNotEmpty()) {
                 foreach ($odpSplitters as $spOdp) {
                     $spOdpNodeId = 'spl-odp-' . $spOdp->id;
+                    $typeLabel = strtoupper($spOdp->type ?: 'PLC');
+                    $ratioLabel = $spOdp->ratio_label ?: ("1:" . ($spOdp->ratio ?: 8));
+                    $lossLabel = $spOdp->insertion_loss_db ? "Loss: {$spOdp->insertion_loss_db} dB" : "Loss: ~10.5 dB";
+                    $usedCount = $spOdp->active_port_count ?: $spOdp->ports->where('status', 'used')->count();
+                    $totalCount = $spOdp->port_count ?: 8;
+
                     $nodes[] = [
                         'id' => $spOdpNodeId,
-                        'label' => $spOdp->name . "\nRatio 1:" . ($spOdp->ratio ?: 8),
+                        'label' => $spOdp->name . "\n[" . $typeLabel . " " . $ratioLabel . "]\n" . $lossLabel . "\n" . $usedCount . "/" . $totalCount . " Port",
                         'group' => 'splitter_odp',
                         'level' => $odpLevel + 1,
                         'shape' => 'diamond',
@@ -343,7 +444,11 @@ class OdcTopologyService
                             'id' => $spOdp->id,
                             'code' => $spOdp->code,
                             'name' => $spOdp->name,
-                            'ratio' => "1:" . ($spOdp->ratio ?: 8),
+                            'type_category' => $spOdp->type ?: 'plc',
+                            'ratio_label' => $ratioLabel,
+                            'insertion_loss_db' => $spOdp->insertion_loss_db,
+                            'total_ports' => $totalCount,
+                            'used_ports' => $usedCount,
                             'status' => $spOdp->status,
                             'detail_url' => null,
                         ],
@@ -352,13 +457,24 @@ class OdcTopologyService
                     $edges[] = [
                         'from' => $odpNodeId,
                         'to' => $spOdpNodeId,
-                        'label' => 'Input',
+                        'label' => 'Input Feeder',
                         'color' => ['color' => '#f59e0b', 'highlight' => '#00e5ff'],
                         'width' => 2,
                         'arrows' => ['to' => ['enabled' => true, 'scaleFactor' => 0.8]],
                     ];
 
-                    $parentForOnu = $spOdpNodeId;
+                    // Map ODP Splitter output ports
+                    foreach ($spOdp->ports->where('port_type', 'output') as $port) {
+                        if ($port->status === 'used' && $port->target_type && $port->target_id) {
+                            if ($port->target_type === Onu::class || str_ends_with($port->target_type, 'Onu')) {
+                                $connectedOnuViaSplitter[$port->target_id] = [
+                                    'splitter_id' => $spOdp->id,
+                                    'port_number' => $port->port_number,
+                                    'attenuation_db' => $port->attenuation_db,
+                                ];
+                            }
+                        }
+                    }
                 }
             }
 
@@ -408,14 +524,28 @@ class OdcTopologyService
                     ],
                 ];
 
-                $edges[] = [
-                    'from' => $parentForOnu,
-                    'to' => $onuNodeId,
-                    'label' => 'Drop Port ' . $onuDropPort,
-                    'color' => ['color' => $onuColor, 'highlight' => '#00e5ff'],
-                    'width' => 2,
-                    'arrows' => ['to' => ['enabled' => true, 'scaleFactor' => 0.8]],
-                ];
+                // Connect from ODP Splitter (or ODP box fallback)
+                if (isset($connectedOnuViaSplitter[$onu->id])) {
+                    $conn = $connectedOnuViaSplitter[$onu->id];
+                    $edges[] = [
+                        'from' => 'spl-odp-' . $conn['splitter_id'],
+                        'to' => $onuNodeId,
+                        'label' => "Port #{$conn['port_number']}",
+                        'color' => ['color' => $onuColor, 'highlight' => '#00e5ff'],
+                        'width' => 2,
+                        'arrows' => ['to' => ['enabled' => true, 'scaleFactor' => 0.8]],
+                    ];
+                } else {
+                    $parentForOnu = $odpSplitters->isNotEmpty() ? ('spl-odp-' . $odpSplitters->first()->id) : $odpNodeId;
+                    $edges[] = [
+                        'from' => $parentForOnu,
+                        'to' => $onuNodeId,
+                        'label' => 'Drop Port ' . $onuDropPort,
+                        'color' => ['color' => $onuColor, 'highlight' => '#00e5ff'],
+                        'width' => 2,
+                        'arrows' => ['to' => ['enabled' => true, 'scaleFactor' => 0.8]],
+                    ];
+                }
 
                 // 8. Pelanggan Node
                 $cs = $onu->customerService;
@@ -475,6 +605,7 @@ class OdcTopologyService
                 'total_nodes' => count($nodes),
                 'total_edges' => count($edges),
                 'odps' => $odps->count(),
+                'odc_splitters' => $odcSplitters->count(),
                 'onus' => count(array_filter($nodes, fn($n) => $n['group'] === 'onu')),
                 'customers' => count(array_filter($nodes, fn($n) => $n['group'] === 'customer')),
             ],
@@ -572,7 +703,7 @@ class OdcTopologyService
         $onus = Onu::withoutGlobalScopes()
             ->whereIn('odp_id', $odpIds)
             ->with([
-                'odp',
+                'odp.splitters',
                 'acsDevice',
                 'customerService.customer',
                 'customerService.pppoeUser',
@@ -740,30 +871,25 @@ class OdcTopologyService
      */
     public function calculateLinkBudget(Onu $onu): array
     {
-        $txOlt = 3.0; // dBm (Class B+ standard)
-        $feederLoss = 0.5; // dB
-        $odcSplitterLoss = 7.2; // 1:4 splitter loss ~ 7.2 dB
-        $distributionLoss = 1.2; // dB
-        $odpSplitterLoss = 10.5; // 1:8 splitter loss ~ 10.5 dB
-        $dropLoss = 0.4; // dB
-        
-        $totalLoss = $feederLoss + $odcSplitterLoss + $distributionLoss + $odpSplitterLoss + $dropLoss;
-        $calculatedRx = round($txOlt - $totalLoss, 1);
-        $actualRx = $onu->rx_power_dbm !== null ? (float) $onu->rx_power_dbm : $calculatedRx;
-        $deviation = round($actualRx - $calculatedRx, 2);
+        $budget = app(OpticalLinkBudgetService::class)->calculateOnuBudget($onu);
 
+        $m = $budget['metrics'] ?? [];
+        $d = $budget['diagnosis'] ?? [];
+
+        // Return rich link budget payload matching both legacy contract and new diagnostic engine
         return [
-            'tx_olt' => $txOlt,
-            'feeder_loss' => $feederLoss,
-            'odc_splitter_loss' => $odcSplitterLoss,
-            'distribution_loss' => $distributionLoss,
-            'odp_splitter_loss' => $odpSplitterLoss,
-            'drop_loss' => $dropLoss,
-            'total_attenuation' => round($totalLoss, 1),
-            'calculated_rx' => $calculatedRx,
-            'actual_rx' => $actualRx,
-            'deviation' => $deviation,
-            'status' => $actualRx >= -24.0 ? 'ideal' : ($actualRx >= -27.0 ? 'marginal' : 'critical'),
+            'tx_olt' => $budget['olt']['tx_power_dbm'] ?? 4.5,
+            'feeder_loss' => $budget['segments'][1]['loss_db'] ?? 0.8,
+            'odc_splitter_loss' => $budget['segments'][2]['loss_db'] ?? 7.2,
+            'distribution_loss' => $budget['segments'][3]['loss_db'] ?? 0.5,
+            'odp_splitter_loss' => $budget['segments'][4]['loss_db'] ?? 10.5,
+            'drop_loss' => $budget['segments'][5]['loss_db'] ?? 0.6,
+            'total_attenuation' => $m['total_estimated_loss_db'] ?? 19.6,
+            'calculated_rx' => $m['theoretical_rx_dbm'] ?? -15.1,
+            'actual_rx' => $m['actual_rx_dbm'] ?? -15.1,
+            'deviation' => $m['deviation_db'] ?? 0.0,
+            'status' => $d['status'] ?? 'ideal',
+            'full_budget' => $budget,
         ];
     }
 }

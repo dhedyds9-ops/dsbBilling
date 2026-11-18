@@ -445,6 +445,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::post('/node/{type}/{id}/photo/delete', [\App\Http\Controllers\Gis\MapApiController::class, 'deletePhoto'])->name('map.node.photo.delete.post');
             Route::get('/wlan-status/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'wlanStatus'])->name('map.wlan-status');
             Route::post('/wlan-update/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'wlanUpdate'])->name('map.wlan-update');
+            Route::get('/optical-budget/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'opticalBudget'])->name('map.optical-budget');
             Route::post('/ping', [\App\Http\Controllers\Gis\MapApiController::class, 'ping'])->name('map.ping');
             Route::get('/odps', function() {
                 return response()->json(\App\Models\ISP\Odp::select(['id', 'name', 'code', 'latitude', 'longitude', 'port_count'])->whereNotNull('latitude')->whereNotNull('longitude')->get());

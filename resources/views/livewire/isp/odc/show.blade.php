@@ -305,6 +305,98 @@
                         </div>
                     </div>
                 </div>
+
+                {{-- Splitter ODC Management (PLC & FBT) --}}
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+                    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                        <div>
+                            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-purple-500 text-lg">call_split</span>
+                                Splitter Terpasang pada ODC (Tier-1 Tray)
+                            </h3>
+                            <p class="text-xs text-slate-500 mt-0.5">Daftar splitter kaskade PLC dan FBT terpasang di dalam ODC ini</p>
+                        </div>
+                        <button type="button" wire:click="openAddSplitterModal"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">add</span>
+                            Pasang Splitter Baru
+                        </button>
+                    </div>
+
+                    @php $splitters = $this->odcSplitters; @endphp
+                    @if($splitters->isNotEmpty())
+                        <div class="space-y-4">
+                            @foreach($splitters as $sp)
+                                @php
+                                    $usedPorts = $sp->ports->where('port_type', 'output')->where('status', 'used')->count();
+                                    $totalPorts = $sp->port_count ?: 8;
+                                    $pct = $totalPorts > 0 ? round(($usedPorts / $totalPorts) * 100) : 0;
+                                    $isFbt = $sp->type === 'fbt';
+                                @endphp
+                                <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-800/40">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                                        <div class="flex items-center gap-2.5 flex-wrap">
+                                            <span class="font-bold text-sm text-slate-900 dark:text-slate-100">{{ $sp->name }}</span>
+                                            <span class="font-mono text-xs px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">{{ $sp->code }}</span>
+                                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full {{ $isFbt ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800' : 'bg-purple-100 text-purple-800 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-300 dark:border-purple-800' }}">
+                                                {{ strtoupper($sp->type ?: 'PLC') }} {{ $sp->ratio_label ?: '1:8' }}
+                                            </span>
+                                            <span class="text-xs text-slate-500">
+                                                Redaman: <strong class="font-mono text-slate-700 dark:text-slate-300">~{{ $sp->insertion_loss_db ?: '10.5' }} dB</strong>
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs font-mono font-semibold {{ $pct >= 90 ? 'text-rose-500' : 'text-slate-600 dark:text-slate-400' }}">
+                                                {{ $usedPorts }}/{{ $totalPorts }} Port Terpakai ({{ $pct }}%)
+                                            </span>
+                                            <button type="button" wire:click="deleteSplitter({{ $sp->id }})" wire:confirm="Yakin ingin melepas splitter {{ $sp->name }}?"
+                                                    class="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded transition cursor-pointer" title="Hapus Splitter">
+                                                <span class="material-symbols-outlined text-sm">delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {{-- Port status pill strip --}}
+                                    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 pt-2 border-t border-slate-200 dark:border-slate-700/60 text-xs">
+                                        @foreach($sp->ports->where('port_type', 'output') as $p)
+                                            @php
+                                                $pStatusColor = match($p->status) {
+                                                    'used' => 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800',
+                                                    'fault' => 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800',
+                                                    'reserved' => 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800',
+                                                    default => 'bg-white text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700'
+                                                };
+                                            @endphp
+                                            <div wire:click="openSplitterPortModal({{ $p->id }})"
+                                                 class="p-2 rounded-xl border {{ $pStatusColor }} cursor-pointer hover:shadow-xs transition flex flex-col justify-between"
+                                                 title="Klik untuk konfigurasi Port #{{ $p->port_number }}">
+                                                <div class="flex items-center justify-between font-mono text-[11px] font-bold">
+                                                    <span>#{{ $p->port_number }}</span>
+                                                    @if($p->core_color)
+                                                        <span class="w-2.5 h-2.5 rounded-full border border-black/20" title="Core {{ $p->core_color }}" style="background-color: {{ strtolower($p->core_color) }}"></span>
+                                                    @endif
+                                                </div>
+                                                <div class="text-[10px] truncate mt-1 text-slate-700 dark:text-slate-300 font-medium">
+                                                    {{ $p->target_label ?: 'Tersedia' }}
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="p-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                            <span class="material-symbols-outlined text-slate-400 text-3xl mb-1">call_split</span>
+                            <p class="text-xs text-slate-500 mb-2">Belum ada splitter yang dipasang pada tray ODC ini.</p>
+                            <button type="button" wire:click="openAddSplitterModal"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold cursor-pointer">
+                                <span class="material-symbols-outlined text-sm">add</span>
+                                Pasang Splitter Pertama
+                            </button>
+                        </div>
+                    @endif
+                </div>
             </div>
 
             {{-- Col 3: GPS Coordinates & Documentation Photos --}}
@@ -877,6 +969,232 @@
                     <p class="text-xs">Belum ada catatan riwayat gangguan atau perubahan koneksi ODC.</p>
                 </div>
             @endif
+        </div>
+    @endif
+
+    {{-- ============================================================
+         MODAL 1: PASANG SPLITTER BARU (PLC / FBT)
+         ============================================================ --}}
+    @if($showSplitterModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-purple-600">call_split</span>
+                        Pasang Splitter Baru pada ODC
+                    </h3>
+                    <button type="button" wire:click="closeAddSplitterModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
+
+                <div class="space-y-3.5 text-xs">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Kode Splitter <span class="text-rose-500">*</span></label>
+                            <input type="text" wire:model="splitterCode"
+                                   class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-mono text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-purple-500">
+                            @error('splitterCode') <span class="text-rose-500 text-[11px]">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nama Splitter <span class="text-rose-500">*</span></label>
+                            <input type="text" wire:model="splitterName"
+                                   class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-purple-500">
+                            @error('splitterName') <span class="text-rose-500 text-[11px]">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Teknologi Splitter</label>
+                            <select wire:model.live="splitterType"
+                                    class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-purple-500 font-semibold">
+                                <option value="plc">PLC (Planar Lightwave Circuit)</option>
+                                <option value="fbt">FBT (Fused Biconical Taper / Coupler)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Rasio Pembagian</label>
+                            <select wire:model.live="splitterRatio"
+                                    class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-purple-500 font-mono">
+                                @if($splitterType === 'plc')
+                                    <option value="1:2">1:2 (Output: 2 Port)</option>
+                                    <option value="1:4">1:4 (Output: 4 Port)</option>
+                                    <option value="1:8">1:8 (Output: 8 Port)</option>
+                                    <option value="1:16">1:16 (Output: 16 Port)</option>
+                                    <option value="1:32">1:32 (Output: 32 Port)</option>
+                                    <option value="2:4">2:4 (Redundant: 4 Port)</option>
+                                    <option value="2:8">2:8 (Redundant: 8 Port)</option>
+                                    <option value="2:16">2:16 (Redundant: 16 Port)</option>
+                                @else
+                                    <option value="50:50">50:50 (Balanced Tap)</option>
+                                    <option value="70:30">70:30 (Trunk 70% / Branch 30%)</option>
+                                    <option value="80:20">80:20 (Trunk 80% / Branch 20%)</option>
+                                    <option value="85:15">85:15 (Trunk 85% / Branch 15%)</option>
+                                    <option value="90:10">90:10 (Trunk 90% / Drop 10%)</option>
+                                    <option value="60:40">60:40 (Trunk 60% / Branch 40%)</option>
+                                @endif
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Port Input</label>
+                            <input type="number" min="1" max="4" wire:model="splitterInputPorts"
+                                   class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-mono text-slate-800 dark:text-slate-100">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Port Output</label>
+                            <input type="number" min="2" max="64" wire:model="splitterPortCount"
+                                   class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-mono text-slate-800 dark:text-slate-100">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Redaman (dB)</label>
+                            <input type="number" step="0.1" wire:model="splitterLossDb"
+                                   class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-mono text-slate-800 dark:text-slate-100">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Kemasan Fisik</label>
+                        <select wire:model="splitterPackage"
+                                class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100">
+                            <option value="tray">Tray / Cassette Module</option>
+                            <option value="cassette">ABS Cassette Box</option>
+                            <option value="mini_tube">Steel Tube / Mini Tube</option>
+                            <option value="rack_mount">Rack Mount 1U Tray</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Catatan / Keterangan</label>
+                        <textarea wire:model="splitterDescription" rows="2" placeholder="Contoh: Splitter Tray 1 untuk distribusi Cluster Mawar"
+                                  class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                    <button type="button" wire:click="closeAddSplitterModal" class="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer">
+                        Batal
+                    </button>
+                    <button type="button" wire:click="createSplitter"
+                            class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer">
+                        Simpan & Pasang Splitter
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- ============================================================
+         MODAL 2: KONFIGURASI PORT SPLITTER (ALOKASI OUTPUT)
+         ============================================================ --}}
+    @if($showSplitterPortModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-purple-600">settings_input_component</span>
+                        Konfigurasi Output Port #{{ $selectedSplitterPort?->port_number }} ({{ $selectedSplitterPort?->splitter?->name }})
+                    </h3>
+                    <button type="button" wire:click="closeSplitterPortModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
+
+                <div class="space-y-3.5 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Status Port</label>
+                        <select wire:model.live="portFormStatus"
+                                class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100 font-semibold">
+                            <option value="available">Available (Port Kosong / Siap)</option>
+                            <option value="used">Used (Terhubung ke Downstream)</option>
+                            <option value="reserved">Reserved (Dicadangkan)</option>
+                            <option value="fault">Fault (Gangguan / Rusak)</option>
+                        </select>
+                    </div>
+
+                    @if($portFormStatus === 'used')
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Tipe Target</label>
+                                <select wire:model.live="portFormTargetType"
+                                        class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100">
+                                    <option value="odp">ODP (Optical Distribution Point)</option>
+                                    <option value="closure">Joint Closure / Sambungan</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Pilih Target</label>
+                                @if($portFormTargetType === 'odp')
+                                    <select wire:model="portFormTargetId"
+                                            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100">
+                                        <option value="">— Pilih ODP —</option>
+                                        @foreach($this->availableOdps as $odpItem)
+                                            <option value="{{ $odpItem->id }}">{{ $odpItem->code }} — {{ $odpItem->name }}</option>
+                                        @endforeach
+                                    </select>
+                                @else
+                                    <select wire:model="portFormTargetId"
+                                            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100">
+                                        <option value="">— Pilih Closure —</option>
+                                        @foreach($this->availableClosures as $clItem)
+                                            <option value="{{ $clItem->id }}">{{ $clItem->code }} — {{ $clItem->name }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Warna Core (TIA-598)</label>
+                            <select wire:model="portFormCoreColor"
+                                    class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100">
+                                <option value="">— Pilih Warna —</option>
+                                @foreach(\App\Models\ISP\SplitterPort::TIA_598_COLORS as $cIdx => $cName)
+                                    <option value="{{ $cName }}">Core #{{ $cIdx }}: {{ $cName }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Redaman Port (dB)</label>
+                            <input type="number" step="0.01" wire:model="portFormAttenuation"
+                                   placeholder="Contoh: 10.50"
+                                   class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-mono text-slate-800 dark:text-slate-100">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Catatan Tambahan</label>
+                        <input type="text" wire:model="portFormNotes" placeholder="Catatan kabel drop, arah jalur, atau teknisi"
+                               class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100">
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800">
+                    @if($selectedSplitterPort && $selectedSplitterPort->status === 'used')
+                        <button type="button" wire:click="disconnectSplitterPort({{ $selectedSplitterPort->id }})" wire:confirm="Lepas koneksi port ini?"
+                                class="px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-xl transition cursor-pointer">
+                            Putus Koneksi
+                        </button>
+                    @else
+                        <div></div>
+                    @endif
+
+                    <div class="flex gap-2">
+                        <button type="button" wire:click="closeSplitterPortModal" class="px-3.5 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer">
+                            Batal
+                        </button>
+                        <button type="button" wire:click="saveSplitterPort"
+                                class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer">
+                            Simpan Konfigurasi
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     @endif
 </div>

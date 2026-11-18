@@ -24,6 +24,8 @@ class ZteOltDriver extends BaseOltDriver
     protected string $onuBiasOid      = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.10';
     protected string $onuMacOid       = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.8';
     protected string $onuFwVerOid     = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.9';
+    protected string $onuDistanceOid  = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.13';
+    protected string $ponTxPowerOid   = '.1.3.6.1.4.1.3902.1082.500.10.2.4.1.5';
 
     public function getPonPortsStatus(): array
     {
@@ -55,6 +57,10 @@ class ZteOltDriver extends BaseOltDriver
         $macs      = $this->snmp->walk($this->onuMacOid . '.' . $ponPort);
         $firmwares = $this->snmp->walk($this->onuFwVerOid . '.' . $ponPort);
         $biasRaw   = $this->snmp->walk($this->onuBiasOid . '.' . $ponPort);
+        $distRaw   = [];
+        try {
+            $distRaw = $this->snmp->walk($this->onuDistanceOid . '.' . $ponPort);
+        } catch (\Throwable) {}
 
         foreach ($serials as $idx => $serial) {
             $rxRawVal = (int)($rxRaw[$idx] ?? 0);
@@ -97,6 +103,14 @@ class ZteOltDriver extends BaseOltDriver
                 }
             }
 
+            $distVal = null;
+            if (!empty($distRaw[$idx]) && is_numeric($distRaw[$idx])) {
+                $d = (int)$distRaw[$idx];
+                if ($d > 0 && $d < 50000) {
+                    $distVal = $d;
+                }
+            }
+
             $results[] = [
                 'pon_port'         => $ponPort,
                 'onu_index'        => $idx,
@@ -106,6 +120,7 @@ class ZteOltDriver extends BaseOltDriver
                 'tx_power_dbm'     => $txDbm,
                 'snr_db'           => $snrVal,
                 'temperature'      => $tempVal,
+                'distance_meters'  => $distVal,
                 'firmware_version' => $fw,
                 'status'           => match ((int)($statuses[$idx] ?? 0)) {
                     1, 10, 100 => 'online',
@@ -116,6 +131,25 @@ class ZteOltDriver extends BaseOltDriver
             ];
         }
         return $results;
+    }
+
+    public function getPonPortTxPower(int $ponPort): ?float
+    {
+        try {
+            $raw = $this->snmp->get($this->ponTxPowerOid . '.' . $ponPort);
+            if ($raw && is_numeric($raw)) {
+                $val = (float)$raw;
+                if ($val > 1000) {
+                    return round($val / 1000, 2);
+                } elseif ($val > 100) {
+                    return round($val / 100, 2);
+                } elseif ($val > 0) {
+                    return round($val, 2);
+                }
+            }
+        } catch (\Throwable) {}
+
+        return null;
     }
 
     public function discoverUnregisteredOnus(): array

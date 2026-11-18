@@ -166,7 +166,7 @@ class GisMap extends Component
                     ];
                 })->toArray(),
 
-                'odcs' => Odc::get()->map(function ($odc) use ($formatPhotos) {
+                'odcs' => Odc::with(['splitters'])->get()->map(function ($odc) use ($formatPhotos) {
                     return [
                         'id' => $odc->id,
                         'olt_id' => $odc->olt_id,
@@ -176,6 +176,7 @@ class GisMap extends Component
                         'lon' => (float) $odc->longitude,
                         'status' => $odc->status,
                         'photos' => $formatPhotos($odc->photos),
+                        'splitter_count' => $odc->splitters->count(),
                         'description' => $odc->description ?? $odc->address ?? '',
                     ];
                 })->toArray(),
@@ -447,7 +448,7 @@ class GisMap extends Component
 
     private function getOdpDetails($odpId)
     {
-        $odp = Odp::with(['splitters'])->find($odpId);
+        $odp = Odp::with(['splitters.ports'])->find($odpId);
         
         if (!$odp) {
             return [];
@@ -471,8 +472,11 @@ class GisMap extends Component
             'splitters' => $odp->splitters->map(fn($splitter) => [
                 'id' => $splitter->id,
                 'name' => $splitter->name,
-                'split_ratio' => $splitter->split_ratio,
+                'type' => strtoupper($splitter->type ?: 'PLC'),
+                'ratio' => $splitter->ratio_label ?: ("1:" . ($splitter->ratio ?: 8)),
                 'port_count' => $splitter->port_count,
+                'used_ports' => $splitter->active_port_count ?: $splitter->ports->where('status', 'used')->count(),
+                'loss_db' => $splitter->insertion_loss_db,
             ])->toArray(),
             'actions' => [
                 ['label' => 'View Details', 'action' => 'viewDetails'],
@@ -483,7 +487,7 @@ class GisMap extends Component
 
     private function getOdcDetails($odcId)
     {
-        $odc = Odc::find($odcId);
+        $odc = Odc::with(['splitters.ports'])->find($odcId);
 
         if (!$odc) {
             return [];
@@ -503,6 +507,18 @@ class GisMap extends Component
                 'total' => $total,
                 'used' => $used,
                 'utilization' => $utilization,
+            ],
+            'splitters' => $odc->splitters->map(fn($splitter) => [
+                'id' => $splitter->id,
+                'name' => $splitter->name,
+                'type' => strtoupper($splitter->type ?: 'PLC'),
+                'ratio' => $splitter->ratio_label ?: ("1:" . ($splitter->ratio ?: 8)),
+                'port_count' => $splitter->port_count,
+                'used_ports' => $splitter->active_port_count ?: $splitter->ports->where('status', 'used')->count(),
+                'loss_db' => $splitter->insertion_loss_db,
+            ])->toArray(),
+            'actions' => [
+                ['label' => 'View Details', 'action' => 'viewDetails'],
             ],
         ];
     }
@@ -565,17 +581,27 @@ class GisMap extends Component
             return [];
         }
 
+        $budget = null;
+        try {
+            $budget = app(\App\Services\ISP\OpticalLinkBudgetService::class)->calculateCustomerBudget($customer);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("LinkBudget error on GisMap for customer {$customerId}: " . $e->getMessage());
+        }
+
         return [
             'type' => 'customer',
             'id' => $customer->id,
             'name' => $customer->name,
             'code' => $customer->code,
             'status' => $customer->status,
+            'phone' => $customer->phone,
+            'address' => $customer->address,
             'capacity' => [
                 'total' => 1,
                 'used' => 1,
                 'utilization' => 100,
             ],
+            'optical_budget' => $budget,
         ];
     }
 

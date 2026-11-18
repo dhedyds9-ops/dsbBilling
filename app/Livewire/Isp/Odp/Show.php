@@ -5,10 +5,13 @@ namespace App\Livewire\Isp\Odp;
 use App\Livewire\AdminComponent;
 use App\Models\AuditLog;
 use App\Models\CRM\Customer;
+use App\Models\ISP\AccessPoint;
 use App\Models\ISP\HotspotUser;
 use App\Models\ISP\Odp as OdpModel;
 use App\Models\ISP\Onu;
 use App\Models\ISP\PPPoEUser;
+use App\Models\ISP\Splitter;
+use App\Models\ISP\SplitterPort;
 use App\Models\Support\Ticket;
 use App\Services\ISP\GenieAcsDiagnosticService;
 use App\Services\ISP\NodePhotoService;
@@ -44,6 +47,30 @@ class Show extends AdminComponent
     public $isLoadingGenieAcs = false;
     public $genieAcsMessage = null;
 
+    // Splitter Management State (PLC & FBT in ODP)
+    public bool $showSplitterModal = false;
+    public string $splitterName = '';
+    public string $splitterCode = '';
+    public string $splitterType = 'plc'; // 'plc', 'fbt'
+    public string $splitterRatio = '1:8';
+    public string $splitterPackage = 'abs_box'; // 'abs_box', 'mini_tube', 'cassette'
+    public int $splitterInputPorts = 1;
+    public int $splitterPortCount = 8;
+    public ?float $splitterLossDb = 10.50;
+    public string $splitterDescription = '';
+
+    // Splitter Port Modal State (Output to ONU/AP/Customer)
+    public bool $showSplitterPortModal = false;
+    public ?int $selectedSplitterPortId = null;
+    public ?SplitterPort $selectedSplitterPort = null;
+    public string $spPortFormTargetType = 'onu'; // 'onu', 'ap'
+    public ?int $spPortFormTargetId = null;
+    public ?int $spPortFormCustomerId = null;
+    public string $spPortFormStatus = 'available';
+    public ?float $spPortFormAttenuation = null;
+    public string $spPortFormCoreColor = '';
+    public string $spPortFormNotes = '';
+
     public function mount($id = null)
     {
         parent::mount();
@@ -65,8 +92,10 @@ class Show extends AdminComponent
     {
         $this->odp = OdpModel::with([
             'odc.olt',
+            'odc.splitters',
             'olt',
-            'splitters',
+            'splitters.ports.target',
+            'splitters.ports.customer',
             'branch',
             'reseller',
             'parent',
@@ -668,6 +697,210 @@ class Show extends AdminComponent
         session()->flash('success', 'Foto dokumentasi tiang ODP berhasil dihapus!');
     }
 
+    // -------------------------------------------------------------
+    // Splitter Management (Tier-2 in ODP)
+    // -------------------------------------------------------------
+    public function openAddSplitterModal(): void
+    {
+        $count = Splitter::withoutGlobalScopes()->where('odp_id', $this->odpId)->count() + 1;
+        $this->splitterCode = 'SPL-' . ($this->odp->code ?: 'ODP') . '-S' . $count;
+        $this->splitterName = 'Splitter Box #' . $count;
+        $this->splitterType = 'plc';
+        $this->splitterRatio = '1:8';
+        $this->splitterPackage = 'abs_box';
+        $this->splitterInputPorts = 1;
+        $this->splitterPortCount = 8;
+        $this->splitterLossDb = 10.50;
+        $this->splitterDescription = '';
+        $this->showSplitterModal = true;
+    }
+
+    public function closeAddSplitterModal(): void
+    {
+        $this->showSplitterModal = false;
+    }
+
+    public function updatedSplitterRatio($ratio): void
+    {
+        $this->splitterRatio = $ratio;
+        $losses = Splitter::STANDARD_LOSSES;
+        $this->splitterLossDb = $losses[$ratio] ?? 10.50;
+
+        if (preg_match('/^[12]:(\d+)$/', $ratio, $m)) {
+            $this->splitterPortCount = (int) $m[1];
+        } elseif (in_array($ratio, ['50:50', '60:40', '70:30', '80:20', '85:15', '90:10'])) {
+            $this->splitterPortCount = 2;
+            $this->splitterType = 'fbt';
+        }
+    }
+
+    public function updatedSplitterType($type): void
+    {
+        $this->splitterType = $type;
+        if ($type === 'fbt' && (!str_contains($this->splitterRatio, ':') || str_starts_with($this->splitterRatio, '1:'))) {
+            $this->splitterRatio = '70:30';
+            $this->splitterPortCount = 2;
+            $this->splitterLossDb = 5.60;
+        } elseif ($type === 'plc' && !str_starts_with($this->splitterRatio, '1:')) {
+            $this->splitterRatio = '1:8';
+            $this->splitterPortCount = 8;
+            $this->splitterLossDb = 10.50;
+        }
+    }
+
+    public function createSplitter(): void
+    {
+        $this->validate([
+            'splitterCode' => 'required|string|max:50',
+            'splitterName' => 'required|string|max:100',
+            'splitterType' => 'required|in:plc,fbt',
+            'splitterRatio' => 'required|string|max:20',
+            'splitterPortCount' => 'required|integer|min:2|max:64',
+            'splitterInputPorts' => 'required|integer|min:1|max:4',
+        ]);
+
+        $splitter = Splitter::create([
+            'odp_id' => $this->odpId,
+            'code' => $this->splitterCode,
+            'name' => $this->splitterName,
+            'type' => $this->splitterType,
+            'ratio_label' => $this->splitterRatio,
+            'package_type' => $this->splitterPackage,
+            'input_port_count' => $this->splitterInputPorts,
+            'port_count' => $this->splitterPortCount,
+            'insertion_loss_db' => $this->splitterLossDb,
+            'description' => $this->splitterDescription,
+            'status' => 'active',
+            'branch_id' => $this->odp->branch_id,
+            'created_by' => auth()->id(),
+        ]);
+
+        $splitter->syncPorts();
+        $this->loadOdp();
+        $this->closeAddSplitterModal();
+
+        session()->flash('success', "Splitter {$splitter->name} ({$splitter->ratio_label}) berhasil dipasang pada ODP.");
+    }
+
+    public function deleteSplitter(int $splitterId): void
+    {
+        $splitter = Splitter::withoutGlobalScopes()
+            ->where('odp_id', $this->odpId)
+            ->find($splitterId);
+
+        if ($splitter) {
+            $name = $splitter->name;
+            $splitter->ports()->delete();
+            $splitter->delete();
+            $this->loadOdp();
+            session()->flash('success', "Splitter {$name} berhasil dilepas dari ODP.");
+        }
+    }
+
+    // -------------------------------------------------------------
+    // Splitter Port Modal (Output ke ONU / AP / Pelanggan)
+    // -------------------------------------------------------------
+    public function openSplitterPortModal(int $portId): void
+    {
+        $port = SplitterPort::withoutGlobalScopes()->with(['splitter', 'target', 'customer'])->find($portId);
+        if (!$port) {
+            return;
+        }
+
+        $this->selectedSplitterPortId = $port->id;
+        $this->selectedSplitterPort = $port;
+        $this->spPortFormTargetType = ($port->target_type && str_contains($port->target_type, 'AccessPoint')) ? 'ap' : 'onu';
+        $this->spPortFormTargetId = $port->target_id;
+        $this->spPortFormCustomerId = $port->customer_id;
+        $this->spPortFormStatus = $port->status ?: 'available';
+        $this->spPortFormAttenuation = $port->attenuation_db;
+        $this->spPortFormCoreColor = $port->core_color ?: '';
+        $this->spPortFormNotes = $port->notes ?: '';
+
+        $this->showSplitterPortModal = true;
+    }
+
+    public function closeSplitterPortModal(): void
+    {
+        $this->showSplitterPortModal = false;
+        $this->selectedSplitterPortId = null;
+        $this->selectedSplitterPort = null;
+    }
+
+    public function saveSplitterPort(): void
+    {
+        if (!$this->selectedSplitterPortId) {
+            return;
+        }
+
+        $port = SplitterPort::withoutGlobalScopes()->find($this->selectedSplitterPortId);
+        if (!$port) {
+            return;
+        }
+
+        $port->status = $this->spPortFormStatus;
+        $port->attenuation_db = $this->spPortFormAttenuation;
+        $port->core_color = $this->spPortFormCoreColor;
+        $port->notes = $this->spPortFormNotes;
+
+        if ($this->spPortFormStatus === 'used' && $this->spPortFormTargetId) {
+            if ($this->spPortFormTargetType === 'onu') {
+                $onu = Onu::withoutGlobalScopes()->find($this->spPortFormTargetId);
+                if ($onu) {
+                    $cust = $onu->customerService?->customer;
+                    $port->assignTarget($onu, null, "{$onu->name} [{$onu->serial_number}]", $cust?->id ?: $this->spPortFormCustomerId);
+                }
+            } elseif ($this->spPortFormTargetType === 'ap') {
+                $ap = AccessPoint::withoutGlobalScopes()->find($this->spPortFormTargetId);
+                if ($ap) {
+                    $port->assignTarget($ap, null, "{$ap->name} [{$ap->ssid}]");
+                }
+            }
+        } elseif ($this->spPortFormStatus === 'available') {
+            $port->disconnect();
+        } else {
+            $port->save();
+        }
+
+        $this->loadOdp();
+        $this->closeSplitterPortModal();
+        session()->flash('success', "Konfigurasi Port #{$port->port_number} berhasil diperbarui.");
+    }
+
+    public function disconnectSplitterPort(int $portId): void
+    {
+        $port = SplitterPort::withoutGlobalScopes()->find($portId);
+        if ($port) {
+            $port->disconnect();
+            $this->loadOdp();
+            session()->flash('success', "Koneksi Port #{$port->port_number} berhasil diputus.");
+        }
+    }
+
+    public function getOdpSplittersProperty()
+    {
+        return Splitter::withoutGlobalScopes()
+            ->where('odp_id', $this->odpId)
+            ->with(['ports.target', 'ports.customer'])
+            ->orderBy('id', 'asc')
+            ->get();
+    }
+
+    public function getAvailableOnusProperty()
+    {
+        return Onu::withoutGlobalScopes()
+            ->where('odp_id', $this->odpId)
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'serial_number']);
+    }
+
+    public function getAvailableAccessPointsProperty()
+    {
+        return AccessPoint::withoutGlobalScopes()
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'ssid']);
+    }
+
     public function render()
     {
         return view('livewire.isp.odp.show', [
@@ -677,6 +910,7 @@ class Show extends AdminComponent
             'onus' => $this->onus,
             'tickets' => $this->tickets,
             'portLogs' => $this->portLogs,
+            'splitters' => $this->odpSplitters,
         ]);
     }
 }

@@ -582,6 +582,107 @@
     </div>
 </div>
 
+<!-- Optical Link Budget Diagnostic Modal -->
+<div class="modal fade" id="opticalBudgetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-slate-900 text-slate-100 border border-slate-700 shadow-2xl rounded-xl">
+            <div class="modal-header border-b border-slate-800 py-3 px-4 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-sm">
+                        <i class="fa fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title font-bold text-sm text-slate-100 mb-0">Diagnostik Link Budget & Pelacakan Gangguan Optik</h5>
+                        <p class="text-xs text-slate-400 mb-0" id="opticalModalCustomerTitle">Memuat informasi pelanggan...</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="btnRefreshOpticalLive" class="btn btn-sm btn-outline-info text-xs flex items-center gap-1.5 py-1 px-2.5 rounded-lg border-teal-500/50 text-teal-300 hover:bg-teal-500/20" title="Refresh Live Telemetri via TR-069 GenieACS">
+                        <i class="fa fa-sync-alt" id="refreshOpticalIcon"></i>
+                        <span>Live Refresh (TR-069)</span>
+                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+
+            <div class="modal-body p-4 max-h-[75vh] overflow-y-auto space-y-4">
+                <!-- Loading State -->
+                <div id="opticalModalLoading" class="py-12 text-center">
+                    <div class="spinner-border text-teal-400 w-8 h-8" role="status"></div>
+                    <p class="text-xs text-slate-400 mt-2">Menganalisis topologi jalur pasif OLT ➔ ODC ➔ ODP ➔ ONU...</p>
+                </div>
+
+                <!-- Error State -->
+                <div id="opticalModalError" class="hidden p-3 rounded-lg bg-rose-950/40 border border-rose-500/40 text-rose-200 text-xs"></div>
+
+                <!-- Content Container -->
+                <div id="opticalModalContent" class="hidden space-y-4">
+                    <!-- Diagnosis Box -->
+                    <div id="opticalDiagBox" class="p-3.5 rounded-xl border space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="font-bold text-sm flex items-center gap-2" id="opticalDiagTitle">
+                                Status Normal
+                            </div>
+                            <span class="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-black/40 text-slate-300">Automated RCA</span>
+                        </div>
+                        <p class="text-xs leading-relaxed mb-0" id="opticalDiagRec"></p>
+                    </div>
+
+                    <!-- Key Metrics Grid -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                        <div class="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                            <div class="text-[10px] text-slate-400 uppercase font-semibold">Optical Tx OLT</div>
+                            <div class="text-sm font-bold text-teal-300 mt-0.5" id="m_tx_olt">+4.5 dBm</div>
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                            <div class="text-[10px] text-slate-400 uppercase font-semibold">Total Estimasi Loss</div>
+                            <div class="text-sm font-bold text-rose-300 mt-0.5" id="m_total_loss">-19.6 dB</div>
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                            <div class="text-[10px] text-slate-400 uppercase font-semibold">Estimasi Teoretis Rx</div>
+                            <div class="text-sm font-bold text-cyan-300 mt-0.5" id="m_theoretical_rx">-15.1 dBm</div>
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                            <div class="text-[10px] text-slate-400 uppercase font-semibold">Actual Rx (Deviasi)</div>
+                            <div class="text-sm font-bold flex items-center gap-1.5 mt-0.5">
+                                <span id="m_actual_rx" class="text-slate-100">-19.2 dBm</span>
+                                <span id="m_deviation" class="text-xs font-bold">(-4.1 dB)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Distance Crosscheck -->
+                    <div class="p-2.5 rounded-lg bg-slate-800/40 border border-slate-700/40 flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-2 text-slate-400">
+                            <i class="fa fa-route text-cyan-400"></i>
+                            <span>Jarak Jalur Kabel (GIS Peta): <strong class="text-slate-200" id="m_gis_dist">0 m</strong></span>
+                        </div>
+                        <div class="text-slate-400">
+                            <span>Jarak Optik Laser: <strong class="text-cyan-300" id="m_rtt_dist">0 m (OLT RTT)</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Breakdown Segmen Pasif -->
+                    <div class="space-y-2">
+                        <div class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                            <span>Rincian Redaman Jalur Pasif (Step-by-Step)</span>
+                            <span class="text-[10px] font-normal text-slate-500">Standar ITU-T G.652.D</span>
+                        </div>
+                        <div id="opticalSegmentsList" class="space-y-1.5"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer border-t border-slate-800 py-2.5 px-4 flex justify-between items-center">
+                <span class="text-[11px] text-slate-500">
+                    <i class="fa fa-shield-alt text-teal-400 mr-1"></i> dsBilling Optical Diagnostic Engine
+                </span>
+                <button type="button" class="btn btn-secondary btn-sm px-4 text-xs font-semibold" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Customer Modal (Quick Edit & Tambah Pelanggan / ONU) -->
 <div class="modal fade" id="customerModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -3228,6 +3329,13 @@
                             <!-- Ping Output Container -->
                             <div id="ping-result-${customer.id}" class="card-panel p-2 text-xs font-mono hidden bg-black/70 border border-slate-700 text-emerald-400 overflow-auto max-h-24"></div>
 
+                            <!-- Optical Link Budget Button -->
+                            <div class="node-actions" style="margin-top:4px;margin-bottom:2px;">
+                                <button type="button" onclick="window.openOpticalDiagnosticModal('${customer.id}')" class="node-btn" style="width:100%;background:linear-gradient(135deg, #0284c7, #0d9488);color:#fff;font-weight:700;padding:6px;border-radius:6px;box-shadow:0 2px 6px rgba(13,148,136,0.25);">
+                                    <i class="fa fa-chart-line mr-1"></i> Analisis Link Budget Optik
+                                </button>
+                            </div>
+
                             <!-- Action Toolbar Row 1: Network Commands -->
                             <div class="node-actions" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;">
                                 <button type="button" onclick="window.openWifiModal(${customer.id})" class="node-btn node-btn-emerald">
@@ -4498,6 +4606,125 @@
                 alert('Fitur duplikat untuk ID: ' + id);
             }
         };
+
+        // Optical Link Budget Diagnostic Handler
+        window.openOpticalDiagnosticModal = function(id, fresh = false) {
+            const modalEl = document.getElementById('opticalBudgetModal');
+            if (!modalEl) return;
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+
+            const loadingEl = document.getElementById('opticalModalLoading');
+            const contentEl = document.getElementById('opticalModalContent');
+            const errorEl = document.getElementById('opticalModalError');
+            const titleEl = document.getElementById('opticalModalCustomerTitle');
+            const btnRefresh = document.getElementById('btnRefreshOpticalLive');
+            const refreshIcon = document.getElementById('refreshOpticalIcon');
+
+            if (loadingEl) loadingEl.classList.remove('hidden');
+            if (contentEl) contentEl.classList.add('hidden');
+            if (errorEl) errorEl.classList.add('hidden');
+            if (refreshIcon && fresh) refreshIcon.classList.add('fa-spin');
+
+            if (btnRefresh) {
+                btnRefresh.setAttribute('data-customer-id', id);
+            }
+
+            fetch(`/map/optical-budget/${id}?fresh=${fresh ? '1' : '0'}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (loadingEl) loadingEl.classList.add('hidden');
+                    if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+
+                    if (!data.success) {
+                        if (errorEl) {
+                            errorEl.innerText = data.message || 'Gagal memuat kalkulasi link budget optik.';
+                            errorEl.classList.remove('hidden');
+                        }
+                        return;
+                    }
+
+                    if (contentEl) contentEl.classList.remove('hidden');
+                    if (titleEl) {
+                        const name = data.customer ? `${data.customer.name} (${data.customer.code})` : (data.onu ? `ONU ${data.onu.serial_number}` : 'Pelanggan');
+                        titleEl.innerText = name;
+                    }
+
+                    // Render Diagnosis Badge & Recommendation
+                    const diag = data.diagnosis || {};
+                    const diagTitleEl = document.getElementById('opticalDiagTitle');
+                    const diagRecEl = document.getElementById('opticalDiagRec');
+                    const diagBoxEl = document.getElementById('opticalDiagBox');
+
+                    if (diagTitleEl) diagTitleEl.innerText = diag.title || 'Status Normal';
+                    if (diagRecEl) diagRecEl.innerText = diag.recommendation || '-';
+                    if (diagBoxEl) {
+                        diagBoxEl.className = `p-3.5 rounded-xl border space-y-2 ${
+                            diag.status === 'ideal' ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200' :
+                            (diag.status === 'marginal' ? 'bg-amber-950/40 border-amber-500/40 text-amber-200' : 'bg-rose-950/40 border-rose-500/40 text-rose-200')
+                        }`;
+                    }
+
+                    // Render Key Metrics
+                    const m = data.metrics || {};
+                    const oltTx = data.olt ? data.olt.tx_power_dbm : 4.5;
+                    document.getElementById('m_tx_olt').innerText = `+${Number(oltTx).toFixed(1)} dBm`;
+                    document.getElementById('m_total_loss').innerText = `-${Number(m.total_estimated_loss_db || 0).toFixed(1)} dB`;
+                    document.getElementById('m_theoretical_rx').innerText = `${Number(m.theoretical_rx_dbm || 0).toFixed(1)} dBm`;
+                    document.getElementById('m_actual_rx').innerText = `${Number(m.actual_rx_dbm || 0).toFixed(1)} dBm`;
+
+                    const devEl = document.getElementById('m_deviation');
+                    const devVal = Number(m.deviation_db || 0);
+                    devEl.innerText = `(${devVal > 0 ? '+' : ''}${devVal.toFixed(1)} dB)`;
+                    devEl.className = `text-xs font-bold ${Math.abs(devVal) <= 1.8 ? 'text-emerald-400' : (devVal < -2.5 ? 'text-rose-400' : 'text-amber-400')}`;
+
+                    // Distances
+                    document.getElementById('m_gis_dist').innerText = `${m.total_gis_distance_meters || 0} m`;
+                    document.getElementById('m_rtt_dist').innerText = m.rtt_distance_meters ? `${m.rtt_distance_meters} m (OLT RTT)` : 'N/A';
+
+                    // Render Step-by-Step Segments
+                    const segListEl = document.getElementById('opticalSegmentsList');
+                    if (segListEl) {
+                        segListEl.innerHTML = '';
+                        (data.segments || []).forEach((seg, idx) => {
+                            const isLoss = seg.node_type !== 'active_source';
+                            const row = document.createElement('div');
+                            row.className = 'flex items-center justify-between p-2.5 rounded-lg bg-slate-800/60 border border-slate-700/60 text-xs';
+                            row.innerHTML = `
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-6 h-6 flex items-center justify-center rounded-full bg-slate-700/70 text-[11px] font-bold text-slate-300 font-mono">${idx + 1}</span>
+                                    <div>
+                                        <div class="font-bold text-slate-200">${seg.name}</div>
+                                        <div class="text-[11px] text-slate-400">${seg.details}</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-mono font-bold text-xs ${isLoss ? 'text-rose-300' : 'text-teal-300'}">
+                                        ${isLoss ? `-${Number(seg.loss_db).toFixed(2)} dB` : `+${Number(seg.value).toFixed(2)} dBm`}
+                                    </div>
+                                    <div class="text-[10px] text-slate-500">${seg.device_name || ''}</div>
+                                </div>
+                            `;
+                            segListEl.appendChild(row);
+                        });
+                    }
+                })
+                .catch(err => {
+                    if (loadingEl) loadingEl.classList.add('hidden');
+                    if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+                    if (errorEl) {
+                        errorEl.innerText = 'Terjadi kendala jaringan saat memuat data diagnostik.';
+                        errorEl.classList.remove('hidden');
+                    }
+                });
+        };
+
+        document.getElementById('btnRefreshOpticalLive')?.addEventListener('click', function() {
+            const custId = this.getAttribute('data-customer-id');
+            if (custId) {
+                window.openOpticalDiagnosticModal(custId, true);
+            }
+        });
     });
 </script>
 @endpush

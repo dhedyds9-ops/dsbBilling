@@ -372,6 +372,29 @@ class MapApiController extends Controller
         return response()->json(['success' => true, 'message' => 'Pengaturan WiFi berhasil diperbarui']);
     }
 
+    public function opticalBudget(Request $request, $id)
+    {
+        $forceFresh = filter_var($request->input('fresh', false), FILTER_VALIDATE_BOOLEAN);
+
+        if (is_string($id) && str_starts_with($id, 'onu-')) {
+            $onuId = (int) substr($id, 4);
+            $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->find($onuId);
+            if (!$onu) {
+                return response()->json(['success' => false, 'message' => 'ONU tidak ditemukan.'], 404);
+            }
+            $result = app(\App\Services\ISP\OpticalLinkBudgetService::class)->calculateOnuBudget($onu, null, $forceFresh);
+            return response()->json($result);
+        }
+
+        $customer = Customer::withoutGlobalScopes()->find($id);
+        if (!$customer) {
+            return response()->json(['success' => false, 'message' => 'Pelanggan tidak ditemukan.'], 404);
+        }
+
+        $result = app(\App\Services\ISP\OpticalLinkBudgetService::class)->calculateCustomerBudget($customer, $forceFresh);
+        return response()->json($result);
+    }
+
     public function ping(Request $request)
     {
         return response()->json([

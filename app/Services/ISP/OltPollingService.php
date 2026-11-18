@@ -143,6 +143,14 @@ class OltPollingService
                         ]);
                     }
 
+                    // Optional DDM Optical Tx Power on SFP
+                    try {
+                        $sfpTx = $port['tx_power_dbm'] ?? $driver->getPonPortTxPower($idx);
+                        if ($sfpTx !== null && $sfpTx > 0) {
+                            $dbPort->update(['tx_power_dbm' => $sfpTx]);
+                        }
+                    } catch (\Throwable) {}
+
                     $this->recordMetric(
                         $olt,
                         'pon_port_status',
@@ -365,6 +373,7 @@ class OltPollingService
                             'tx_power_dbm' => $txDbm,
                             'snr_db' => $snrDb,
                             'temperature' => $temperature,
+                            'distance_meters' => !empty($item['distance_meters']) ? (int)$item['distance_meters'] : $onu->distance_meters,
                             'last_seen_at' => $status === 'online' ? now() : $onu->last_seen_at,
                             'status' => $newStatusEnum,
                         ];
