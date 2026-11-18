@@ -180,4 +180,46 @@ class MobileTechnicianCustomerRbacTest extends TestCase
         $this->assertEquals('user_baru', $cs->fresh()->username);
         $this->assertEquals('pass_baru123', $cs->fresh()->password);
     }
+
+    public function test_reseller_can_update_onu_name(): void
+    {
+        $branch = Branch::firstOrCreate(
+            ['code' => 'PST'],
+            ['name' => 'Cabang Pusat']
+        );
+
+        $role = Role::firstOrCreate(['name' => 'reseller'], ['display_name' => 'Reseller', 'guard_name' => 'web']);
+        $reseller = User::factory()->create([
+            'is_active' => true,
+            'branch_id' => $branch->id,
+        ]);
+        $reseller->roles()->attach($role->id);
+
+        $olt = \App\Models\ISP\Olt::create([
+            'name' => 'OLT Test',
+            'code' => 'OLT-TEST-01',
+            'ip_address' => '10.10.10.1',
+            'branch_id' => $branch->id,
+            'status' => 'online',
+        ]);
+
+        $onu = \App\Models\ISP\Onu::create([
+            'olt_id' => $olt->id,
+            'serial_number' => 'HWTC12345678',
+            'name' => 'ONU Lama',
+            'branch_id' => $branch->id,
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($reseller, 'sanctum')
+            ->putJson("/api/mobile/network/devices/{$onu->id}/name", [
+                'name' => 'ONT Huawei Ruang Depan',
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.name', 'ONT Huawei Ruang Depan');
+
+        $this->assertEquals('ONT Huawei Ruang Depan', $onu->fresh()->name);
+    }
 }

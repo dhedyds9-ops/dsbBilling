@@ -513,6 +513,46 @@ class MobileNetworkApiController extends Controller
     }
 
     /**
+     * Update ONU name / label.
+     * PUT /api/mobile/network/devices/{id}/name
+     */
+    public function updateName(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'name' => 'required|string|max:100',
+        ]);
+
+        $user = $request->user();
+        $query = Onu::query()->withoutGlobalScopes()->where('id', $id);
+
+        $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
+        if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
+            $query->forReseller($user);
+        } elseif ($user && !empty($user->branch_id)) {
+            $query->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
+
+        $onu = $query->first();
+        if (!$onu) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Perangkat ONU tidak ditemukan atau di luar cakupan akses Anda.',
+            ], 404);
+        }
+
+        $onu->update(['name' => trim((string) $request->name)]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Nama ONU berhasil diperbarui.',
+            'data' => $this->formatOnuDevice($onu),
+        ]);
+    }
+
+    /**
      * Search and list ODPs (Optical Distribution Points).
      * Supports GPS radius proximity calculation when lat/lng are supplied.
      */
@@ -1848,7 +1888,15 @@ class MobileNetworkApiController extends Controller
                 $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id')->orWhere('branch_id', 1);
             });
         }
-        $olts = $oltsQuery->get()->map(function (Olt $olt) {
+        $formatPhotos = function ($rawPhotos) {
+            return array_values(array_filter(array_map(function ($p) {
+                if (empty($p)) return null;
+                if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
+                return '/storage/' . ltrim($p, '/');
+            }, (array) ($rawPhotos ?? []))));
+        };
+
+        $olts = $oltsQuery->get()->map(function (Olt $olt) use ($formatPhotos) {
             return [
                 'id' => $olt->id,
                 'type' => 'olt',
@@ -1859,7 +1907,7 @@ class MobileNetworkApiController extends Controller
                 'latitude' => $olt->latitude ? (float)$olt->latitude : null,
                 'longitude' => $olt->longitude ? (float)$olt->longitude : null,
                 'status' => $olt->status ?? 'active',
-                'photos' => $olt->photos ?? [],
+                'photos' => $formatPhotos($olt->photos),
                 'address' => $olt->address ?? 'Lokasi POP / Server',
             ];
         });
@@ -1876,7 +1924,7 @@ class MobileNetworkApiController extends Controller
                 $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id')->orWhere('branch_id', 1);
             });
         }
-        $odcs = $odcsQuery->get()->map(function (Odc $odc) {
+        $odcs = $odcsQuery->get()->map(function (Odc $odc) use ($formatPhotos) {
             return [
                 'id' => $odc->id,
                 'type' => 'odc',
@@ -1888,7 +1936,7 @@ class MobileNetworkApiController extends Controller
                 'port_count' => (int)($odc->port_count ?? 0),
                 'active_port_count' => (int)($odc->active_port_count ?? 0),
                 'status' => $odc->status ?? 'active',
-                'photos' => $odc->photos ?? [],
+                'photos' => $formatPhotos($odc->photos),
                 'address' => $odc->address ?? 'Kabinet Distribusi',
             ];
         });
@@ -1905,7 +1953,7 @@ class MobileNetworkApiController extends Controller
                 $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id')->orWhere('branch_id', 1);
             });
         }
-        $closures = $closuresQuery->get()->map(function (JointClosure $jc) {
+        $closures = $closuresQuery->get()->map(function (JointClosure $jc) use ($formatPhotos) {
             return [
                 'id' => $jc->id,
                 'type' => 'closure',
@@ -1917,7 +1965,7 @@ class MobileNetworkApiController extends Controller
                 'longitude' => $jc->longitude ? (float)$jc->longitude : null,
                 'port_count' => (int)($jc->port_count ?? 0),
                 'status' => $jc->status ?? 'active',
-                'photos' => $jc->photos ?? [],
+                'photos' => $formatPhotos($jc->photos),
                 'address' => $jc->address ?? 'Sambungan Tiang / Handhole',
             ];
         });
@@ -1934,7 +1982,7 @@ class MobileNetworkApiController extends Controller
                 $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id')->orWhere('branch_id', 1);
             });
         }
-        $odps = $odpsQuery->get()->map(function (Odp $odp) {
+        $odps = $odpsQuery->get()->map(function (Odp $odp) use ($formatPhotos) {
             return [
                 'id' => $odp->id,
                 'type' => 'odp',
@@ -1946,7 +1994,7 @@ class MobileNetworkApiController extends Controller
                 'port_count' => (int)($odp->port_count ?? 8),
                 'active_port_count' => (int)($odp->active_port_count ?? 0),
                 'status' => $odp->status ?? 'active',
-                'photos' => $odp->photos ?? [],
+                'photos' => $formatPhotos($odp->photos),
                 'address' => $odp->address ?? 'Tiang Distribusi',
             ];
         });

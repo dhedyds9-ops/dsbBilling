@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.min.js"></script>
     <style>
         .map-smart-toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(0, 229, 255, 0.2); overflow-x: auto; }
         .toolbar-group { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
@@ -447,7 +448,14 @@
 
                 if(i.olt_id) {
                     let olt = olts.find(o => o.id == i.olt_id);
-                    if(olt && olt.latitude && olt.longitude) { window.L.polyline([[olt.latitude, olt.longitude], [i.latitude, i.longitude]], { color: '#6f42c1', weight: 3, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer); }
+                    if(olt && olt.latitude && olt.longitude) {
+                        let path = [[olt.latitude, olt.longitude], [i.latitude, i.longitude]];
+                        if (window.L.polyline && window.L.polyline.antPath) {
+                            window.L.polyline.antPath(path, { color: '#6f42c1', weight: 4, opacity: 0.9, pulseColor: '#ffffff', delay: 400 }).addTo(linesLayer);
+                        } else {
+                            window.L.polyline(path, { color: '#6f42c1', weight: 3, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer);
+                        }
+                    }
                 }
             }
         });
@@ -508,7 +516,14 @@
 
                 if(i.odc_id) {
                     let odc = odcs.find(o => o.id == i.odc_id);
-                    if(odc && odc.latitude && odc.longitude) { window.L.polyline([[odc.latitude, odc.longitude], [i.latitude, i.longitude]], { color: '#0d9488', weight: 2.5, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer); }
+                    if(odc && odc.latitude && odc.longitude) {
+                        let path = [[odc.latitude, odc.longitude], [i.latitude, i.longitude]];
+                        if (window.L.polyline && window.L.polyline.antPath) {
+                            window.L.polyline.antPath(path, { color: '#0d9488', weight: 3, opacity: 0.8, dashArray: [4, 8], pulseColor: '#ffffff', delay: 400 }).addTo(linesLayer);
+                        } else {
+                            window.L.polyline(path, { color: '#0d9488', weight: 2.5, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer);
+                        }
+                    }
                 }
             }
         });
@@ -584,7 +599,14 @@
 
                 if(i.odc_id) {
                     let odc = odcs.find(o => o.id == i.odc_id);
-                    if(odc && odc.latitude && odc.longitude) { window.L.polyline([[odc.latitude, odc.longitude], [i.latitude, i.longitude]], { color: '#fd7e14', weight: 2, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer); }
+                    if(odc && odc.latitude && odc.longitude) {
+                        let path = [[odc.latitude, odc.longitude], [i.latitude, i.longitude]];
+                        if (window.L.polyline && window.L.polyline.antPath) {
+                            window.L.polyline.antPath(path, { color: '#fd7e14', weight: 4, opacity: 0.8, pulseColor: '#ffffff', delay: 400 }).addTo(linesLayer);
+                        } else {
+                            window.L.polyline(path, { color: '#fd7e14', weight: 3, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer);
+                        }
+                    }
                 }
             }
         });
@@ -644,8 +666,13 @@
                 if(i.odp_id) {
                     let odp = odps.find(o => o.id == i.odp_id);
                     if(odp && odp.latitude && odp.longitude) {
-                        let opts = i.is_online ? { color: '#00f2fff3', weight: 3, opacity: 1.0, dashArray: '4, 8', className: 'connection-online' } : { color: '#6b7280', weight: 2, opacity: 0.5, dashArray: '2, 6' };
-                        window.L.polyline([[odp.latitude, odp.longitude], [i.latitude, i.longitude]], opts).addTo(linesLayer);
+                        let path = [[odp.latitude, odp.longitude], [i.latitude, i.longitude]];
+                        if (i.is_online && window.L.polyline && window.L.polyline.antPath) {
+                            window.L.polyline.antPath(path, { color: '#00f2ff', weight: 3, opacity: 1.0, dashArray: [2, 10], pulseColor: '#ffffff', delay: 320 }).addTo(linesLayer);
+                        } else {
+                            let opts = i.is_online ? { color: '#00f2fff3', weight: 3, opacity: 1.0, dashArray: '4, 8', className: 'connection-online' } : { color: '#6b7280', weight: 2, opacity: 0.5, dashArray: '2, 6' };
+                            window.L.polyline(path, opts).addTo(linesLayer);
+                        }
                     }
                 }
             }

@@ -259,14 +259,22 @@ class Nearest extends Component
             'additionalPhoto' => 'required|image|max:10240',
         ]);
 
-        $folder = ($this->uploadTargetType === 'closure') ? 'closures' : 'odp';
+        $folder = match ($this->uploadTargetType) {
+            'olt' => 'olts',
+            'odc' => 'odcs',
+            'closure' => 'closures',
+            default => 'odp',
+        };
         $path = $this->additionalPhoto->store("network_photos/{$folder}", 'public');
 
         if ($path) {
             $photoUrl = Storage::url($path);
-            $node = ($this->uploadTargetType === 'closure')
-                ? JointClosure::withoutGlobalScopes()->find($this->uploadTargetId)
-                : Odp::withoutGlobalScopes()->find($this->uploadTargetId);
+            $node = match ($this->uploadTargetType) {
+                'olt' => Olt::withoutGlobalScopes()->find($this->uploadTargetId),
+                'odc' => Odc::withoutGlobalScopes()->find($this->uploadTargetId),
+                'closure' => JointClosure::withoutGlobalScopes()->find($this->uploadTargetId),
+                default => Odp::withoutGlobalScopes()->find($this->uploadTargetId),
+            };
 
             if ($node) {
                 $current = is_array($node->photos) ? $node->photos : [];

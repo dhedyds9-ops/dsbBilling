@@ -355,6 +355,8 @@
     </div>
     @endif
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.min.js"></script>
     <style>
         .modern-map-popup .leaflet-popup-content-wrapper {
             background: #0f172a !important;
@@ -703,6 +705,47 @@
 
                 L.marker([jc.latitude, jc.longitude], { icon, interactive: true }).addTo(backboneLayerGroup).bindPopup(popupDiv, popupOpt);
             });
+
+            // Draw OLT -> ODC AntPath Lines
+            odcs.forEach(c => {
+                if (!c.latitude || !c.longitude || !c.olt_id) return;
+                const olt = olts.find(o => o.id == c.olt_id);
+                if (olt && olt.latitude && olt.longitude) {
+                    const path = [[olt.latitude, olt.longitude], [c.latitude, c.longitude]];
+                    if (L.polyline && L.polyline.antPath) {
+                        L.polyline.antPath(path, {
+                            color: '#6f42c1',
+                            weight: 5,
+                            opacity: 0.9,
+                            pulseColor: '#ffffff',
+                            delay: 400
+                        }).addTo(backboneLayerGroup);
+                    } else {
+                        L.polyline(path, { color: '#6f42c1', weight: 5, opacity: 0.9 }).addTo(backboneLayerGroup);
+                    }
+                }
+            });
+
+            // Draw ODC -> JointClosure AntPath Lines
+            closures.forEach(jc => {
+                if (!jc.latitude || !jc.longitude || !jc.odc_id) return;
+                const odc = odcs.find(c => c.id == jc.odc_id);
+                if (odc && odc.latitude && odc.longitude) {
+                    const path = [[odc.latitude, odc.longitude], [jc.latitude, jc.longitude]];
+                    if (L.polyline && L.polyline.antPath) {
+                        L.polyline.antPath(path, {
+                            color: '#0d9488',
+                            weight: 3,
+                            opacity: 0.8,
+                            dashArray: [4, 8],
+                            pulseColor: '#ffffff',
+                            delay: 400
+                        }).addTo(backboneLayerGroup);
+                    } else {
+                        L.polyline(path, { color: '#0d9488', weight: 3, opacity: 0.8 }).addTo(backboneLayerGroup);
+                    }
+                }
+            });
         }
 
         function updateUserMarker(lat, lng) {
@@ -775,6 +818,26 @@
                 const marker = L.marker([odp.latitude, odp.longitude], { icon: odpIcon, interactive: true }).addTo(odpLayerGroup);
                 odpMarkers[odp.id] = marker;
                 boundsGroup.push(marker);
+
+                // Connect ODC -> ODP line
+                if (odp.odc_id) {
+                    const allNodesData = (typeof allNodes !== 'undefined') ? allNodes : (@json($allNodes) || {});
+                    const uplinkOdc = ((allNodesData.odcs || [])).find(c => c.id == odp.odc_id);
+                    if (uplinkOdc && uplinkOdc.latitude && uplinkOdc.longitude) {
+                        const path = [[uplinkOdc.latitude, uplinkOdc.longitude], [odp.latitude, odp.longitude]];
+                        if (L.polyline && L.polyline.antPath) {
+                            L.polyline.antPath(path, {
+                                color: '#fd7e14',
+                                weight: 4,
+                                opacity: 0.8,
+                                pulseColor: '#ffffff',
+                                delay: 400
+                            }).addTo(odpLayerGroup);
+                        } else {
+                            L.polyline(path, { color: '#fd7e14', weight: 4, opacity: 0.8 }).addTo(odpLayerGroup);
+                        }
+                    }
+                }
 
                 const distanceText = odp.distance !== null ? (odp.distance + ' km') : '-';
                 const gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + odp.latitude + ',' + odp.longitude;

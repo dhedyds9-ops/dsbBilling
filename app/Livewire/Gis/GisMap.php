@@ -130,9 +130,17 @@ class GisMap extends Component
 
     public function getMapDataProperty()
     {
-        return Cache::remember(self::cacheKey(), 120, function () {
+        $formatPhotos = function ($photos) {
+            return array_values(array_filter(array_map(function ($p) {
+                if (empty($p)) return null;
+                if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
+                return '/storage/' . ltrim($p, '/');
+            }, (array) ($photos ?? []))));
+        };
+
+        return Cache::remember(self::cacheKey(), 120, function () use ($formatPhotos) {
             return [
-                'olts' => Olt::with(['ponPorts'])->get()->map(function ($olt) {
+                'olts' => Olt::with(['ponPorts'])->get()->map(function ($olt) use ($formatPhotos) {
                     $total = max(1, $olt->pon_port_count ?? 1);
                     $used = $olt->active_port_count ?? 0;
                     return [
@@ -144,10 +152,12 @@ class GisMap extends Component
                         'status' => $olt->status,
                         'utilization' => (int) round(($used / $total) * 100),
                         'pon_port_count' => $olt->ponPorts->count(),
+                        'photos' => $formatPhotos($olt->photos),
+                        'description' => $olt->description ?? $olt->address ?? '',
                     ];
                 })->toArray(),
 
-                'odcs' => Odc::get()->map(function ($odc) {
+                'odcs' => Odc::get()->map(function ($odc) use ($formatPhotos) {
                     return [
                         'id' => $odc->id,
                         'olt_id' => $odc->olt_id,
@@ -156,10 +166,12 @@ class GisMap extends Component
                         'lat' => (float) $odc->latitude,
                         'lon' => (float) $odc->longitude,
                         'status' => $odc->status,
+                        'photos' => $formatPhotos($odc->photos),
+                        'description' => $odc->description ?? $odc->address ?? '',
                     ];
                 })->toArray(),
                 
-                'odps' => Odp::with(['splitters'])->get()->map(function ($odp) {
+                'odps' => Odp::with(['splitters'])->get()->map(function ($odp) use ($formatPhotos) {
                     $total = max(1, $odp->port_count ?? 1);
                     $used = $odp->used_port_count ?? 0;
                     return [
@@ -174,6 +186,8 @@ class GisMap extends Component
                         'status' => $odp->status,
                         'utilization' => (int) round(($used / $total) * 100),
                         'splitter_count' => $odp->splitters->count(),
+                        'photos' => $formatPhotos($odp->photos),
+                        'description' => $odp->description ?? $odp->address ?? '',
                     ];
                 })->toArray(),
 
@@ -188,7 +202,7 @@ class GisMap extends Component
                     ];
                 })->toArray(),
 
-                'closures' => JointClosure::get()->map(function ($closure) {
+                'closures' => JointClosure::get()->map(function ($closure) use ($formatPhotos) {
                     return [
                         'id' => $closure->id,
                         'name' => $closure->name,
@@ -196,6 +210,8 @@ class GisMap extends Component
                         'lat' => (float) $closure->latitude,
                         'lon' => (float) $closure->longitude,
                         'status' => $closure->status,
+                        'photos' => $formatPhotos($closure->photos),
+                        'description' => $closure->description ?? $closure->address ?? '',
                     ];
                 })->toArray(),
                 
