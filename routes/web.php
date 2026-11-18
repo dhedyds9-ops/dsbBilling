@@ -130,8 +130,12 @@ Route::middleware(['auth'])->group(function () use ($cs) {
     })->name('network.map');
 
     // ==================== TECHNICIAN PORTAL ====================
-    Route::middleware(['role:administrator,manager,technician', 'job_function:TECHNICIAN'])->group(function () {
+    Route::middleware(['role:administrator,manager,technician,teknisi', 'job_function:TECHNICIAN'])->group(function () {
         Route::get('/technician-portal/dashboard', \App\Livewire\Isp\Technician\Dashboard::class)->name('technician.dashboard');
+        Route::get('/technician-portal', fn() => redirect()->route('technician.dashboard'));
+        Route::get('/technician/dashboard', \App\Livewire\Isp\Technician\Dashboard::class);
+        Route::get('/technician', fn() => redirect()->route('technician.dashboard'));
+        Route::get('/isp/dashboard', fn() => redirect()->route('technician.dashboard'));
         Route::get('/technician-portal/attendance', \App\Livewire\Isp\Technician\Attendance\Index::class)->name('technician.attendance');
         Route::get('/technician-portal/payroll', \App\Livewire\Isp\Technician\Payroll\Index::class)->name('technician.payroll.index');
         Route::get('/technician-portal/payroll/{id}', \App\Livewire\Isp\Technician\Payroll\Show::class)->name('technician.payroll.show');

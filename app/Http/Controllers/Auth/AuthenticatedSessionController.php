@@ -146,8 +146,12 @@ class AuthenticatedSessionController extends Controller
         // Fallback to role-based portal
         if ($user->hasRole('reseller') || (method_exists($user, 'isReseller') && $user->isReseller())) {
             return redirect()->route('reseller-portal.dashboard');
-        } elseif (strtoupper($user->job_function ?? '') === 'TECHNICIAN' || $user->hasRole(['technician', 'teknisi'])) {
+        } elseif (strtoupper($user->job_function ?? '') === 'TECHNICIAN' || $user->hasRole(['technician', 'teknisi']) || (method_exists($user, 'isTechnician') && $user->isTechnician())) {
             return redirect()->route('technician.dashboard');
+        } elseif ($user->hasRole('customer')) {
+            return redirect()->route('customer-portal.dashboard');
+        } elseif ($user->hasRole('noc') || strtoupper($user->job_function ?? '') === 'NOC') {
+            return redirect()->route('noc.overview');
         }
 
         return redirect()->route('dashboard');

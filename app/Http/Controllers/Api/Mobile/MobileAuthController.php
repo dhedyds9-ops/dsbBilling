@@ -229,8 +229,12 @@ class MobileAuthController extends Controller
         $targetPath = '/dashboard';
         if ($user->hasRole('reseller') || (method_exists($user, 'isReseller') && $user->isReseller())) {
             $targetPath = '/reseller-portal/dashboard';
-        } elseif (strtoupper($user->job_function ?? '') === 'TECHNICIAN' || $user->hasRole(['technician', 'teknisi'])) {
-            $targetPath = '/isp/dashboard';
+        } elseif (strtoupper($user->job_function ?? '') === 'TECHNICIAN' || $user->hasRole(['technician', 'teknisi']) || (method_exists($user, 'isTechnician') && $user->isTechnician())) {
+            $targetPath = '/technician-portal/dashboard';
+        } elseif ($user->hasRole('customer')) {
+            $targetPath = '/customer-portal/dashboard';
+        } elseif ($user->hasRole('noc') || strtoupper($user->job_function ?? '') === 'NOC') {
+            $targetPath = '/noc/overview';
         }
 
         // Store in cache for 60 seconds (one-time use)

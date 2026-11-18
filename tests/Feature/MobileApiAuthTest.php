@@ -220,4 +220,40 @@ class MobileApiAuthTest extends TestCase
         $replayResponse->assertRedirect(route('login'));
         $this->assertGuest('web');
     }
+
+    public function test_authenticated_technician_can_generate_sso_token_and_auto_login_to_technician_portal()
+    {
+        $user = User::factory()->create([
+            'email' => 'tech_sso_' . uniqid() . '@example.com',
+            'job_function' => 'TECHNICIAN',
+            'is_active' => true,
+        ]);
+
+        Sanctum::actingAs($user, ['*']);
+
+        // 1. Generate SSO Token for Technician
+        $response = $this->postJson('/api/mobile/auth/sso-token');
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'target_path' => '/technician-portal/dashboard',
+            ]);
+
+        $ssoToken = $response->json('sso_token');
+        $this->assertNotEmpty($ssoToken);
+        $this->assertStringContainsString('/sso/login?token=' . $ssoToken, $response->json('redirect_url'));
+
+        // 2. Consume SSO Token via Web GET
+        $webResponse = $this->get('/sso/login?token=' . $ssoToken);
+        $webResponse->assertRedirect('/technician-portal/dashboard');
+        $this->assertAuthenticatedAs($user, 'web');
+
+        // 3. Accessing /technician-portal/dashboard must return 200 (not 404)
+        $portalResponse = $this->actingAs($user)->get('/technician-portal/dashboard');
+        $portalResponse->assertStatus(200);
+
+        // 4. Accessing legacy /isp/dashboard must redirect to technician dashboard (not 404)
+        $legacyResponse = $this->actingAs($user)->get('/isp/dashboard');
+        $legacyResponse->assertRedirect(route('technician.dashboard'));
+    }
 }
