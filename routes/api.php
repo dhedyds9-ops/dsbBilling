@@ -171,6 +171,8 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
     Route::post('/auth/password/forgot', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'requestPasswordReset'])->name('auth.password.forgot');
     Route::get('/app/check-update', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate'])->name('app.check-update');
     Route::get('/version/check', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate']);
+    Route::get('/partner', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'partnerInfo'])->name('partner');
+    Route::get('/public/partner-info', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'partnerInfo'])->name('public.partner-info');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/auth/sso-token', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'createSsoToken'])->name('auth.sso-token');
@@ -347,6 +349,8 @@ Route::prefix('customer')->name('api.customer.')->group(function () {
     // Public OTA Update Checks (Must be unauthenticated so older apps & login screen can check)
     Route::get('/app/check-update', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate'])->name('app.check-update');
     Route::get('/version/check', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate']);
+    Route::get('/partner', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'partnerInfo'])->name('partner');
+    Route::get('/public/partner-info', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'partnerInfo'])->name('public.partner-info');
 
     Route::post('/auth/login', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'login'])->name('auth.login');
     Route::post('/login', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'login'])->name('login');

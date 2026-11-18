@@ -65,4 +65,58 @@ class MobileAppApiController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Get official ISP upstream partner & company identity for landing & mobile login branding.
+     * GET /api/mobile/partner
+     * GET /api/mobile/public/partner-info
+     */
+    public function partnerInfo(Request $request): JsonResponse
+    {
+        $host = $request->getHost();
+        $isWinets = str_contains($host, 'winets');
+
+        $partnerName = \App\Models\Setting::getValue('company.partner_name');
+        if (empty($partnerName)) {
+            $partnerName = $isWinets ? 'PT Winet Nusantara' : 'PT MSTORE DIGITAL NUSANTARA';
+        }
+
+        $partnerLegal = \App\Models\Setting::getValue('company.partner_legal_name') ?: $partnerName;
+        $partnerLogo = \App\Models\Setting::getValue('company.partner_logo_url');
+        $partnerWebsite = \App\Models\Setting::getValue('company.partner_website');
+        $partnerPhone = \App\Models\Setting::getValue('company.partner_mobile') ?: \App\Models\Setting::getValue('company.partner_phone');
+        $partnerEmail = \App\Models\Setting::getValue('company.partner_email');
+        $partnerServiceType = \App\Models\Setting::getValue('company.partner_service_type') ?: 'Dedicated Internet & FTTH Backbone';
+        $partnerLicenseNo = \App\Models\Setting::getValue('company.partner_license_no') ?: 'Izin Penyelenggara Jasa Internet (ISP) Kominfo RI';
+        $partnerDescription = \App\Models\Setting::getValue('company.partner_description')
+            ?: "Layanan internet diselenggarakan secara legal melalui kemitraan strategis dengan {$partnerName} sebagai penyedia jaringan backbone dan upstream berlisensi resmi Kominfo RI.";
+        $partnerBackup = \App\Models\Setting::getValue('company.partner_upstream_backup');
+
+        $companyName = \App\Models\Setting::getValue('company.name') ?: config('app.name', 'dsBilling');
+        $companyLogo = \App\Models\Setting::getValue('company.logo_url', null);
+
+        $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
+        $logoUrl = null;
+        if (!empty($partnerLogo)) {
+            $logoUrl = str_starts_with($partnerLogo, 'http') ? $partnerLogo : ($baseUrl . '/' . ltrim($partnerLogo, '/'));
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'partner_name' => $partnerName,
+                'partner_legal_name' => $partnerLegal,
+                'partner_logo_url' => $logoUrl,
+                'partner_service_type' => $partnerServiceType,
+                'partner_license_no' => $partnerLicenseNo,
+                'partner_description' => $partnerDescription,
+                'partner_website' => $partnerWebsite,
+                'partner_phone' => $partnerPhone,
+                'partner_email' => $partnerEmail,
+                'partner_backup' => $partnerBackup,
+                'company_name' => $companyName,
+                'server_cluster' => $isWinets ? 'Winets' : 'MStore',
+            ],
+        ]);
+    }
 }
