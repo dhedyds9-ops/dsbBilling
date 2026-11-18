@@ -165,13 +165,48 @@ class TelegramService
         $note  = !empty($data['note']) ? htmlspecialchars((string)$data['note']) : '';
         $url   = $this->ticketUrl($id);
 
+        $isNetwork = !empty($data['is_network_object']);
+        $targetLines = [];
+        if ($isNetwork) {
+            $objName = htmlspecialchars((string)($data['object_name'] ?? ($data['customer_name'] !== 'Pelanggan' ? $data['customer_name'] : ($data['title'] ?? 'Infrastruktur Jaringan'))));
+            $targetLines[] = "🌐 <b>Objek Jaringan:</b> <b>{$objName}</b>";
+            if (!empty($data['contact_phone']) && $data['contact_phone'] !== '-') {
+                $targetLines[] = "📞 <b>PIC / Kontak:</b> " . htmlspecialchars((string)$data['contact_phone']);
+            }
+        } elseif (!empty($data['is_psb'])) {
+            $custName = htmlspecialchars((string)($data['customer_name'] ?? 'Calon Pelanggan'));
+            $targetLines[] = "👤 <b>Calon Pelanggan:</b> <b>{$custName}</b>";
+            if (!empty($data['contact_phone']) && $data['contact_phone'] !== '-') {
+                $targetLines[] = "📞 <b>No. HP:</b> " . htmlspecialchars((string)$data['contact_phone']);
+            }
+        } else {
+            $custName = htmlspecialchars((string)($data['customer_name'] ?? 'Pelanggan'));
+            $custCode = !empty($data['customer_code']) ? " (" . htmlspecialchars((string)$data['customer_code']) . ")" : "";
+            $targetLines[] = "👤 <b>Pelanggan:</b> <b>{$custName}{$custCode}</b>";
+            if (!empty($data['contact_phone']) && $data['contact_phone'] !== '-') {
+                $targetLines[] = "📞 <b>No. HP:</b> " . htmlspecialchars((string)$data['contact_phone']);
+            }
+        }
+        if (!empty($data['network_details'])) {
+            $net = preg_replace('/^(ODP:\s*)+/i', '', trim((string)$data['network_details']));
+            $targetLines[] = "📦 <b>Objek / ODP:</b> " . htmlspecialchars($net);
+        }
+        if (!empty($data['device_details'])) {
+            $targetLines[] = "📡 <b>Perangkat:</b> " . htmlspecialchars((string)$data['device_details']);
+        }
+        $targetBlock = implode("\n", $targetLines);
+
+        $desc = !empty($data['description']) ? trim((string)$data['description']) : '';
+        $descLine = ($desc !== '' && $desc !== '-' && $desc !== $title) ? "\n💬 <b>Keluhan:</b> " . htmlspecialchars($desc) : "";
+
         if ($action === 'created') {
             $msg = "🎫 <b>TIKET BARU: {$code}</b>\n\n"
                 . "<b>Yang ditugaskan :</b>\n"
                 . "👷 <b>Teknisi:</b> {$tech}\n"
                 . "📌 <b>Tipe:</b> {$tipe}\n"
-                . "👤 <b>Pelanggan:</b> {$cust}\n"
-                . "📝 <b>Subjek:</b> {$title}\n"
+                . $targetBlock . "\n"
+                . "📝 <b>Subjek:</b> {$title}"
+                . $descLine . "\n"
                 . "⚡ <b>Prioritas:</b> {$prio}\n"
                 . "📍 <b>Alamat:</b> {$addr}"
                 . $mapsLine . "\n\n"
@@ -184,7 +219,7 @@ class TelegramService
                 . "👷 <b>Teknisi:</b> {$tech}\n"
                 . "📌 <b>Tipe:</b> {$tipe}\n"
                 . "📊 <b>Status:</b> <b>{$status}</b>\n"
-                . "👤 <b>Pelanggan:</b> {$cust}\n"
+                . $targetBlock . "\n"
                 . "📝 <b>Subjek:</b> {$title}\n"
                 . "⚡ <b>Prioritas:</b> {$prio}\n"
                 . "📍 <b>Alamat:</b> {$addr}"
@@ -196,13 +231,13 @@ class TelegramService
             $msg = "✅ <b>TIKET SELESAI: {$code}</b>\n\n"
                 . "<b>Yang ditugaskan :</b>\n"
                 . "👷 <b>Teknisi:</b> {$tech}\n"
-                . "👤 <b>Pelanggan:</b> {$cust}\n"
+                . $targetBlock . "\n"
                 . "📝 <b>Subjek:</b> {$title}\n"
                 . ($note ? "💬 <b>Penyelesaian:</b> {$note}\n\n" : "\n")
                 . "🔗 <b>Detail:</b> {$url}\n\n"
                 . "🚀 <i>Sistem</i>";
         } else {
-            $msg = "📋 <b>UPDATE TIKET #{$id}</b>\n\n<b>Judul:</b> {$title}\n<b>Pelanggan:</b> {$cust}";
+            $msg = "📋 <b>UPDATE TIKET #{$id}</b>\n\n<b>Judul:</b> {$title}\n{$targetBlock}";
         }
 
         $this->broadcastEvent('ticket', $msg, 'HTML');

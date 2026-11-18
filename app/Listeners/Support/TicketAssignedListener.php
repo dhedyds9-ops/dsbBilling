@@ -25,12 +25,13 @@ class TicketAssignedListener
             $technician = User::find((int) $event->assigneeId);
             if (!$technician) return;
 
-            $customer = $ticket->customer;
-            $customerName = $customer?->name 
-                ?? ($ticket->installation ? ('PSB: ' . ($ticket->installation->customer_name ?: 'Calon Pelanggan')) : 'Pelanggan / Objek');
-            $address = $customer?->address ?: ($ticket->installation?->survey?->address ?: '-');
-            $lat = $customer?->latitude ?: ($ticket->installation?->survey?->latitude ?: null);
-            $lng = $customer?->longitude ?: ($ticket->installation?->survey?->longitude ?: null);
+            $payload = $ticket->getNotificationPayload([
+                'technician_name' => $technician->name,
+            ]);
+
+            $targetDisplayName = $payload['is_network_object']
+                ? ($payload['object_name'] ?: 'Infrastruktur Jaringan')
+                : ($payload['customer_name'] ?: 'Pelanggan');
 
             // ── 1. In-App Database Notification ke Teknisi (Portal Teknisi & Android) ──
             try {
@@ -38,7 +39,7 @@ class TicketAssignedListener
                     'uuid' => (string) \Illuminate\Support\Str::uuid(),
                     'recipient_id' => $technician->id,
                     'title' => 'Tugas Baru Tiket #' . $ticket->id,
-                    'message' => "Anda ditugaskan menangani tiket: {$ticket->title} ({$customerName})",
+                    'message' => "Anda ditugaskan menangani tiket: {$ticket->title} ({$targetDisplayName})",
                     'type' => 'in_app',
                     'status' => 'pending',
                     'sent_at' => now(),
@@ -58,22 +59,7 @@ class TicketAssignedListener
             try {
                 $techPhone = $this->normalizePhone($technician->phone ?? $technician->whatsapp ?? null);
                 if ($techPhone) {
-                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
-                    $text = $this->template->ticketAssigned([
-                        'ticket_code'      => $code,
-                        'ticket_id'        => $ticket->id,
-                        'title'            => $ticket->title,
-                        'category'         => $ticket->category ?? 'internet',
-                        'priority'         => $ticket->priority ?? 'medium',
-                        'description'      => $ticket->description ?? '',
-                        'customer_name'    => $customerName,
-                        'customer_address' => $address,
-                        'latitude'         => $lat,
-                        'longitude'        => $lng,
-                        'customer_phone'   => $this->normalizePhone($customer?->phone ?? '') ?: '',
-                        'technician_name'  => $technician->name,
-                    ]);
-
+                    $text = $this->template->ticketAssigned($payload);
                     \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($techPhone, $text);
                 }
             } catch (\Throwable $te) {
@@ -90,19 +76,7 @@ class TicketAssignedListener
                     $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
                     $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
                     if ($ticketGroupId !== '') {
-                        $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
-                        $groupText = $this->template->ticketAssigned([
-                            'ticket_code'      => $code,
-                            'ticket_id'        => $ticket->id,
-                            'title'            => $ticket->title,
-                            'category'         => $ticket->category ?? 'internet',
-                            'priority'         => $ticket->priority ?? 'medium',
-                            'customer_name'    => $customer?->name ?? 'Pelanggan',
-                            'customer_address' => $address,
-                            'latitude'         => $lat,
-                            'longitude'        => $lng,
-                            'technician_name'  => $technician->name,
-                        ]);
+                        $groupText = $this->template->ticketAssigned($payload);
 
                         \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
                         Log::info('[TicketAssignedListener] Notifikasi tiket assigned dikirim ke Grup WA', [
@@ -122,22 +96,10 @@ class TicketAssignedListener
                 if (!$isNewlyCreated) {
                     $telegram = app(\App\Services\Telegram\TelegramService::class);
                     if ($telegram->isEnabled()) {
-                        $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
-                        $telegram->sendTicketNotification([
-                            'ticket_code'      => $code,
-                            'ticket_id'        => $ticket->id,
-                            'title'            => $ticket->title,
-                            'customer_name'    => $customer?->name ?? 'Pelanggan',
-                            'customer_address' => $address,
-                            'latitude'         => $lat,
-                            'longitude'        => $lng,
-                            'category'         => $ticket->category ?? 'internet',
-                            'priority'         => $ticket->priority ?? 'medium',
-                            'status'           => $ticket->status ?? 'in_progress',
-                            'technician_name'  => $technician->name,
-                            'updated_by'       => 'Sistem Penugasan',
-                            'note'             => "Tiket ditugaskan ke {$technician->name}",
-                        ], 'updated');
+                        $telegram->sendTicketNotification(array_merge($payload, [
+                            'updated_by' => 'Sistem Penugasan',
+                            'note'       => "Tiket ditugaskan ke {$technician->name}",
+                        ]), 'updated');
                     }
                 }
             } catch (\Throwable $tge) {

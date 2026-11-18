@@ -86,6 +86,24 @@ class Index extends BaseEnterpriseList
         return $query->orderBy('name')->pluck('name', 'id')->toArray();
     }
 
+    public function getOdpOptionsProperty(): array
+    {
+        return \App\Models\ISP\Odp::active()->orderBy('name')->pluck('name', 'id')->toArray();
+    }
+
+    public function updatedNewTicketManualNetworkOdpId($value): void
+    {
+        if ($value) {
+            $odp = \App\Models\ISP\Odp::withoutGlobalScopes()->find($value);
+            if ($odp) {
+                $this->newTicket['manual_customer_name'] = "ODP: {$odp->name}" . ($odp->code ? " ({$odp->code})" : '');
+                if (!empty($odp->address)) {
+                    $this->newTicket['manual_customer_address'] = $odp->address;
+                }
+            }
+        }
+    }
+
     public function updatedNewTicketResellerId($value): void
     {
         $this->newTicket['customer_id'] = '';
@@ -155,6 +173,7 @@ class Index extends BaseEnterpriseList
             'reseller_id' => $defaultResellerId,
             'customer_id' => '',
             'manual_customer_name' => '',
+            'manual_network_odp_id' => '',
             'manual_customer_phone' => '',
             'manual_customer_address' => '',
             'title' => '',
@@ -385,6 +404,7 @@ class Index extends BaseEnterpriseList
             'reseller_id' => $defaultResellerId,
             'customer_id' => '',
             'manual_customer_name' => '',
+            'manual_network_odp_id' => '',
             'manual_customer_phone' => '',
             'manual_customer_address' => '',
             'title' => '',
@@ -742,31 +762,19 @@ class Index extends BaseEnterpriseList
                 // (Mencegah pesan terkirim ganda 2x ke grup WhatsApp & Telegram)
                 try {
                     $ticket->loadMissing(['customer', 'assignedTo', 'installation.survey']);
-                    $cust = $ticket->customer;
-                    $address = $cust?->address ?: ($ticket->installation?->survey?->address ?: '-');
-                    $lat = $cust?->latitude ?: ($ticket->installation?->survey?->latitude ?: null);
-                    $lng = $cust?->longitude ?: ($ticket->installation?->survey?->longitude ?: null);
+                    $payload = $ticket->getNotificationPayload([
+                        'technician_name'  => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
+                        'status'           => $ticket->status,
+                        'priority'         => $ticket->priority,
+                        'updated_by'       => Auth::user()?->name ?? 'Staff',
+                        'note'             => $this->editingTicket['note'] ?? '',
+                    ]);
 
                     $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
                     $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
                     if ($ticketGroupId !== '') {
                         $template = app(\App\Services\Notifications\WhatsApp\WaTemplateEngine::class);
-                        $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
-                        $groupText = $template->ticketUpdated([
-                            'ticket_code'      => $code,
-                            'ticket_id'        => $ticket->id,
-                            'title'            => $ticket->title,
-                            'category'         => $ticket->category ?? 'internet',
-                            'customer_name'    => $cust?->name ?? 'Pelanggan',
-                            'customer_address' => $address,
-                            'latitude'         => $lat,
-                            'longitude'        => $lng,
-                            'status'           => $ticket->status,
-                            'priority'         => $ticket->priority,
-                            'technician_name'  => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
-                            'updated_by'       => Auth::user()?->name ?? 'Staff',
-                            'note'             => $this->editingTicket['note'] ?? '',
-                        ]);
+                        $groupText = $template->ticketUpdated($payload);
 
                         \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
                     }
@@ -778,22 +786,7 @@ class Index extends BaseEnterpriseList
                 try {
                     $telegram = app(\App\Services\Telegram\TelegramService::class);
                     if ($telegram->isEnabled()) {
-                        $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
-                        $telegram->sendTicketNotification([
-                            'ticket_code'      => $code,
-                            'ticket_id'        => $ticket->id,
-                            'title'            => $ticket->title,
-                            'customer_name'    => $cust?->name ?? 'Pelanggan',
-                            'customer_address' => $address,
-                            'latitude'         => $lat,
-                            'longitude'        => $lng,
-                            'category'         => $ticket->category ?? 'internet',
-                            'priority'         => $ticket->priority ?? 'medium',
-                            'status'           => $ticket->status,
-                            'technician_name'  => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
-                            'updated_by'       => Auth::user()?->name ?? 'Staff',
-                            'note'             => $this->editingTicket['note'] ?? '',
-                        ], 'updated');
+                        $telegram->sendTicketNotification($payload, 'updated');
                     }
                 } catch (\Throwable $te) {
                     \Illuminate\Support\Facades\Log::warning('[TicketEdit] Gagal kirim Telegram: ' . $te->getMessage());

@@ -341,8 +341,51 @@ final class WaTemplateEngine
 
     // ---------- helpers ----------
     // ================================================================
-    //  TICKET NOTIFICATIONS (Support → Teknisi)
+    //  TICKET NOTIFICATIONS (Support → Teknisi & Grup WA)
     // ================================================================
+
+    /**
+     * Format blok identitas target tiket (Objek Jaringan / Calon Pelanggan PSB / Pelanggan Terdaftar)
+     * Lengkap dengan detail teknis infrastruktur (ODP, ODC, Port, ONU, PPPoE).
+     */
+    private function formatTicketTargetBlock(array $d): string
+    {
+        $isNetwork = !empty($d['is_network_object']);
+        $lines = [];
+
+        if ($isNetwork) {
+            $objName = $this->e($d['object_name'] ?? ($d['customer_name'] !== 'Pelanggan' ? $d['customer_name'] : ($d['title'] ?? 'Infrastruktur Jaringan')));
+            $lines[] = "🌐 Objek Jaringan: *{$objName}*";
+            if (!empty($d['contact_phone']) && $d['contact_phone'] !== '-') {
+                $lines[] = "📞 PIC / Kontak: " . $this->e($d['contact_phone']);
+            }
+        } elseif (!empty($d['is_psb'])) {
+            $custName = $this->e($d['customer_name'] ?? 'Calon Pelanggan');
+            $lines[] = "👤 Calon Pelanggan: *{$custName}*";
+            if (!empty($d['contact_phone']) && $d['contact_phone'] !== '-') {
+                $lines[] = "📞 No. HP: " . $this->e($d['contact_phone']);
+            }
+        } else {
+            $custName = $this->e($d['customer_name'] ?? 'Pelanggan');
+            $custCode = !empty($d['customer_code']) ? " (" . $this->e($d['customer_code']) . ")" : "";
+            $lines[] = "👤 Pelanggan: *{$custName}{$custCode}*";
+            if (!empty($d['contact_phone']) && $d['contact_phone'] !== '-') {
+                $lines[] = "📞 No. HP: " . $this->e($d['contact_phone']);
+            }
+        }
+
+        // Detail infrastruktur teknis (ODP / ODC / Port / OLT)
+        if (!empty($d['network_details'])) {
+            $net = preg_replace('/^(ODP:\s*)+/i', '', trim((string)$d['network_details']));
+            $lines[] = "📦 Objek / ODP: " . $this->e($net);
+        }
+        // Detail Perangkat (ONU Modem / PPPoE / Hotspot)
+        if (!empty($d['device_details'])) {
+            $lines[] = "📡 Perangkat: " . $this->e($d['device_details']);
+        }
+
+        return implode("\n", $lines);
+    }
 
     /** Notifikasi tiket BARU MASUK ke NOC / Grup WhatsApp */
     public function ticketCreated(array $d): string
@@ -352,11 +395,10 @@ final class WaTemplateEngine
         $catRaw = strtolower((string)($d['category'] ?? 'internet'));
         $tipe  = match($catRaw) {
             'internet' => 'PERBAIKAN',
-            'installation' => 'PEMASANGAN',
+            'installation', 'psb' => 'PEMASANGAN (PSB)',
             'billing' => 'BILLING',
             default => strtoupper((string)($d['category'] ?? 'PERBAIKAN'))
         };
-        $cust  = $this->e($d['customer_name'] ?? 'Pelanggan');
         $subj  = $this->e($d['title'] ?? '-');
         $prioRaw = strtolower((string)($d['priority'] ?? 'medium'));
         $prio  = match($prioRaw) {
@@ -369,16 +411,22 @@ final class WaTemplateEngine
         $addr  = $this->e($d['customer_address'] ?? ($d['address'] ?? '-'));
         if (trim($addr) === '') $addr = '-';
         $mapsUrl = $this->resolveMapsUrl($d['latitude'] ?? null, $d['longitude'] ?? null, $d['maps_url'] ?? null);
-        $locLine = $mapsUrl ? "\n🗺️ Lokasi: {$mapsUrl}" : "";
+        $locLine = $mapsUrl ? "\n🗺️ Peta GPS: {$mapsUrl}" : "";
         $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
         $url   = $this->ticketUrl($id);
 
+        $targetBlock = $this->formatTicketTargetBlock($d);
+
+        $desc = !empty($d['description']) ? trim((string)$d['description']) : '';
+        $descLine = ($desc !== '' && $desc !== '-' && $desc !== $subj) ? "\n💬 Keluhan: " . $this->e($desc) : "";
+
         return "🎫 *TIKET BARU: {$code}*\n\n"
             . "Yang ditugaskan :\n"
-            . "👷 Teknisi: {$tech}\n"
+            . "👷 Teknisi: *{$tech}*\n"
             . "📌 Tipe: {$tipe}\n"
-            . "👤 Pelanggan: {$cust}\n"
-            . "📝 Subjek: {$subj}\n"
+            . $targetBlock . "\n"
+            . "📝 Subjek: {$subj}"
+            . $descLine . "\n"
             . "⚡ Prioritas: {$prio}\n"
             . "📍 Alamat: {$addr}"
             . $locLine . "\n\n"
@@ -394,11 +442,10 @@ final class WaTemplateEngine
         $catRaw = strtolower((string)($d['category'] ?? 'internet'));
         $tipe  = match($catRaw) {
             'internet' => 'PERBAIKAN',
-            'installation' => 'PEMASANGAN',
+            'installation', 'psb' => 'PEMASANGAN (PSB)',
             'billing' => 'BILLING',
             default => strtoupper((string)($d['category'] ?? 'PERBAIKAN'))
         };
-        $cust  = $this->e($d['customer_name'] ?? 'Pelanggan');
         $subj  = $this->e($d['title'] ?? '-');
         $prioRaw = strtolower((string)($d['priority'] ?? 'medium'));
         $prio  = match($prioRaw) {
@@ -411,16 +458,22 @@ final class WaTemplateEngine
         $addr  = $this->e($d['customer_address'] ?? ($d['address'] ?? '-'));
         if (trim($addr) === '') $addr = '-';
         $mapsUrl = $this->resolveMapsUrl($d['latitude'] ?? null, $d['longitude'] ?? null, $d['maps_url'] ?? null);
-        $locLine = $mapsUrl ? "\n🗺️ Lokasi: {$mapsUrl}" : "";
+        $locLine = $mapsUrl ? "\n🗺️ Peta GPS: {$mapsUrl}" : "";
         $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
         $url   = $this->ticketUrl($id);
 
+        $targetBlock = $this->formatTicketTargetBlock($d);
+
+        $desc = !empty($d['description']) ? trim((string)$d['description']) : '';
+        $descLine = ($desc !== '' && $desc !== '-' && $desc !== $subj) ? "\n💬 Keluhan: " . $this->e($desc) : "";
+
         return "🎫 *TIKET DITUGASKAN: {$code}*\n\n"
             . "Yang ditugaskan :\n"
-            . "👷 Teknisi: {$tech}\n"
+            . "👷 Teknisi: *{$tech}*\n"
             . "📌 Tipe: {$tipe}\n"
-            . "👤 Pelanggan: {$cust}\n"
-            . "📝 Subjek: {$subj}\n"
+            . $targetBlock . "\n"
+            . "📝 Subjek: {$subj}"
+            . $descLine . "\n"
             . "⚡ Prioritas: {$prio}\n"
             . "📍 Alamat: {$addr}"
             . $locLine . "\n\n"
@@ -433,16 +486,17 @@ final class WaTemplateEngine
     {
         $code  = $this->e($d['ticket_code'] ?? ($d['ticket_id'] ? ('TKT-' . $d['ticket_id']) : 'TKT-RESOLVED'));
         $tech  = $this->e($d['technician_name'] ?? 'Tim Teknis');
-        $cust  = $this->e($d['customer_name'] ?? 'Pelanggan');
         $subj  = $this->e($d['title'] ?? '-');
         $note  = !empty($d['note']) ? $this->e($d['note']) : '';
         $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
         $url   = $this->ticketUrl($id);
 
+        $targetBlock = $this->formatTicketTargetBlock($d);
+
         return "✅ *TIKET SELESAI: {$code}*\n\n"
             . "Yang ditugaskan :\n"
-            . "👷 Teknisi: {$tech}\n"
-            . "👤 Pelanggan: {$cust}\n"
+            . "👷 Teknisi: *{$tech}*\n"
+            . $targetBlock . "\n"
             . "📝 Subjek: {$subj}\n"
             . ($note ? "💬 Penyelesaian: {$note}\n\n" : "\n")
             . "🔗 Detail: {$url}\n\n"
@@ -457,11 +511,10 @@ final class WaTemplateEngine
         $catRaw = strtolower((string)($d['category'] ?? 'internet'));
         $tipe  = match($catRaw) {
             'internet' => 'PERBAIKAN',
-            'installation' => 'PEMASANGAN',
+            'installation', 'psb' => 'PEMASANGAN (PSB)',
             'billing' => 'BILLING',
             default => strtoupper((string)($d['category'] ?? 'PERBAIKAN'))
         };
-        $cust  = $this->e($d['customer_name'] ?? 'Pelanggan');
         $subj  = $this->e($d['title'] ?? '-');
         $statusRaw = strtoupper((string)($d['status'] ?? 'IN_PROGRESS'));
         $prioRaw = strtolower((string)($d['priority'] ?? 'medium'));
@@ -475,17 +528,19 @@ final class WaTemplateEngine
         $addr  = $this->e($d['customer_address'] ?? ($d['address'] ?? '-'));
         if (trim($addr) === '') $addr = '-';
         $mapsUrl = $this->resolveMapsUrl($d['latitude'] ?? null, $d['longitude'] ?? null, $d['maps_url'] ?? null);
-        $locLine = $mapsUrl ? "\n🗺️ Lokasi: {$mapsUrl}" : "";
+        $locLine = $mapsUrl ? "\n🗺️ Peta GPS: {$mapsUrl}" : "";
         $note  = !empty($d['note']) ? $this->e($d['note']) : '';
         $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
         $url   = $this->ticketUrl($id);
 
+        $targetBlock = $this->formatTicketTargetBlock($d);
+
         return "✏️ *TIKET DIPERBARUI: {$code}*\n\n"
             . "Yang ditugaskan :\n"
-            . "👷 Teknisi: {$tech}\n"
+            . "👷 Teknisi: *{$tech}*\n"
             . "📌 Tipe: {$tipe}\n"
             . "📊 Status: *{$statusRaw}*\n"
-            . "👤 Pelanggan: {$cust}\n"
+            . $targetBlock . "\n"
             . "📝 Subjek: {$subj}\n"
             . "⚡ Prioritas: {$prio}\n"
             . "📍 Alamat: {$addr}"

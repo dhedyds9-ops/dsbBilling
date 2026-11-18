@@ -87,18 +87,11 @@ class TicketResolvedListener
                 $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
                 $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
                 if ($ticketGroupId !== '') {
-                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
-                    $groupText = $this->template->ticketResolved([
-                        'ticket_code'      => $code,
-                        'ticket_id'        => $ticket->id,
-                        'title'            => $ticket->title,
-                        'customer_name'    => $customer?->name ?? 'Pelanggan',
-                        'customer_address' => $address,
-                        'latitude'         => $lat,
-                        'longitude'        => $lng,
-                        'technician_name'  => $technician?->name ?? 'Tim Teknis',
-                        'note'             => $event->note ?? ($ticket->resolution_notes ?? ''),
+                    $payload = $ticket->getNotificationPayload([
+                        'technician_name' => $technician?->name ?? 'Tim Teknis',
+                        'note'            => $event->note ?? ($ticket->resolution_notes ?? ''),
                     ]);
+                    $groupText = $this->template->ticketResolved($payload);
 
                     \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
                 }
@@ -110,18 +103,11 @@ class TicketResolvedListener
             try {
                 $telegram = app(\App\Services\Telegram\TelegramService::class);
                 if ($telegram->isEnabled()) {
-                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
-                    $telegram->sendTicketNotification([
-                        'ticket_code'      => $code,
-                        'ticket_id'        => $ticket->id,
-                        'title'            => $ticket->title,
-                        'customer_name'    => $customer?->name ?? 'Pelanggan',
-                        'customer_address' => $address,
-                        'latitude'         => $lat,
-                        'longitude'        => $lng,
-                        'technician_name'  => $technician?->name ?? 'Tim Teknis',
-                        'note'             => $event->note ?? ($ticket->resolution_notes ?? ''),
-                    ], 'resolved');
+                    $payload = $ticket->getNotificationPayload([
+                        'technician_name' => $technician?->name ?? 'Tim Teknis',
+                        'note'            => $event->note ?? ($ticket->resolution_notes ?? ''),
+                    ]);
+                    $telegram->sendTicketNotification($payload, 'resolved');
                 }
             } catch (\Throwable $tge) {
                 Log::warning('[TicketResolvedListener] Gagal notif Telegram: ' . $tge->getMessage());

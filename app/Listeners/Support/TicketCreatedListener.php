@@ -22,13 +22,16 @@ class TicketCreatedListener
             $ticket = Ticket::with(['customer', 'assignedTo', 'installation.survey'])->find((int) $event->ticketId);
             if (!$ticket) return;
 
+            $payload = $ticket->getNotificationPayload();
             $customer = $ticket->customer;
-            $address = $customer?->address ?: ($ticket->installation?->survey?->address ?: '-');
-            $lat = $customer?->latitude ?: ($ticket->installation?->survey?->latitude ?: null);
-            $lng = $customer?->longitude ?: ($ticket->installation?->survey?->longitude ?: null);
 
             $creator = !empty($event->userId) ? User::find((int) $event->userId) : null;
             $creatorLabel = $creator ? "Admin ({$creator->name})" : 'Portal Pelanggan';
+            $payload['created_by'] = $creatorLabel;
+
+            $targetDisplayName = $payload['is_network_object']
+                ? ($payload['object_name'] ?: 'Infrastruktur Jaringan')
+                : ($payload['customer_name'] ?: 'Pelanggan');
 
             // ── 1. Kirim notifikasi ke semua Admin/NOC ────────────────
             try {
@@ -42,7 +45,7 @@ class TicketCreatedListener
                         'uuid' => (string) \Illuminate\Support\Str::uuid(),
                         'recipient_id' => $admin->id,
                         'title' => 'Tiket Support Baru',
-                        'message' => "Tiket #{$ticket->id} dari " . ($ticket->customer?->name ?? 'Pelanggan') . " telah dibuat.",
+                        'message' => "Tiket #{$ticket->id} ({$targetDisplayName}) telah dibuat.",
                         'type' => 'in_app',
                         'status' => 'pending',
                         'data' => [
@@ -57,17 +60,7 @@ class TicketCreatedListener
                     // WA ke admin jika punya nomor
                     $adminPhone = $this->normalizePhone($admin->phone ?? $admin->whatsapp ?? null);
                     if ($adminPhone) {
-                        $text = $this->template->ticketCreated([
-                            'ticket_id'        => $ticket->id,
-                            'title'            => $ticket->title,
-                            'category'         => $ticket->category ?? '-',
-                            'priority'         => $ticket->priority ?? 'medium',
-                            'customer_name'    => $customer?->name ?? 'Pelanggan',
-                            'customer_address' => $address,
-                            'latitude'         => $lat,
-                            'longitude'        => $lng,
-                            'created_by'       => $creatorLabel,
-                        ]);
+                        $text = $this->template->ticketCreated($payload);
                         $msg = new WaOutgoingMessage(
                             toPhone: $adminPhone,
                             text: $text,
@@ -119,19 +112,7 @@ class TicketCreatedListener
                 $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
                 $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
                 if ($ticketGroupId !== '') {
-                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
-                    $groupText = $this->template->ticketCreated([
-                        'ticket_code'      => $code,
-                        'ticket_id'        => $ticket->id,
-                        'title'            => $ticket->title,
-                        'category'         => $ticket->category ?? 'internet',
-                        'priority'         => $ticket->priority ?? 'medium',
-                        'customer_name'    => $customer?->name ?? 'Pelanggan',
-                        'customer_address' => $address,
-                        'latitude'         => $lat,
-                        'longitude'        => $lng,
-                        'technician_name'  => $ticket->assignedTo?->name ?? 'Belum Ditugaskan',
-                    ]);
+                    $groupText = $this->template->ticketCreated($payload);
 
                     // Kirim langsung via HTTP Gateway tanpa dependensi queue
                     $waRes = \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
@@ -152,20 +133,7 @@ class TicketCreatedListener
             try {
                 $telegram = app(\App\Services\Telegram\TelegramService::class);
                 if ($telegram->isEnabled()) {
-                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
-                    $telegram->sendTicketNotification([
-                        'ticket_code'      => $code,
-                        'ticket_id'        => $ticket->id,
-                        'title'            => $ticket->title,
-                        'customer_name'    => $customer?->name ?? 'Pelanggan',
-                        'customer_address' => $address,
-                        'latitude'         => $lat,
-                        'longitude'        => $lng,
-                        'category'         => $ticket->category ?? 'internet',
-                        'priority'         => $ticket->priority ?? 'medium',
-                        'technician_name'  => $ticket->assignedTo?->name ?? 'Belum Ditugaskan',
-                        'created_by'       => $creatorLabel,
-                    ], 'created');
+                    $telegram->sendTicketNotification($payload, 'created');
                 }
             } catch (\Throwable $tge) {
                 Log::warning('[TicketCreatedListener] Gagal notif Telegram: ' . $tge->getMessage());
