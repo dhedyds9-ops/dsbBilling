@@ -38,7 +38,8 @@ class Search extends Component
             ->when($user && $user->branch_id && !$user->isSuperAdmin(), function ($q) use ($user) {
                 $q->where(function ($b) use ($user) {
                     $b->where('branch_id', $user->branch_id)
-                      ->orWhereNull('branch_id');
+                      ->orWhereNull('branch_id')
+                      ->orWhere('branch_id', 1);
                 });
             })
             ->when($this->search, function ($q) {

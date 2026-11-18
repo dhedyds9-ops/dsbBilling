@@ -1,206 +1,362 @@
-<div class="space-y-3.5 pb-6">
-    @section('header_title', 'Peta ODP Terdekat')
-    <div class="bg-indigo-600 text-white p-3.5 sm:p-4 rounded-2xl shadow-md">
-        <div class="flex items-center gap-2 mb-1">
-            <span class="material-symbols-outlined text-lg sm:text-xl">share_location</span>
-            <h2 class="text-base sm:text-lg font-black">Pemetaan ODP Terdekat</h2>
+<div class="space-y-4 pb-6">
+    @section('header_title', 'Peta & Cari ODP')
+
+    {{-- Header Banner --}}
+    <div class="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-4 sm:p-5 rounded-2xl shadow-md">
+        <div class="flex items-center justify-between gap-3">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="material-symbols-outlined text-xl sm:text-2xl notranslate" translate="no">share_location</span>
+                    <h2 class="text-base sm:text-lg font-black tracking-tight">Peta & Cari ODP Lapangan</h2>
+                </div>
+                <p class="text-xs text-indigo-100 max-w-xl">
+                    Cari titik ODP berdasarkan nama/kode atau gunakan GPS untuk menemukan ODP terdekat di sekitar lokasi instalasi.
+                </p>
+            </div>
+            <a href="{{ route('technician.odp.search') }}"
+               class="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 bg-white/15 hover:bg-white/25 text-white rounded-xl text-xs font-bold transition-colors">
+                <span class="material-symbols-outlined text-sm notranslate" translate="no">list_alt</span>
+                <span>Daftar Tabel ODP</span>
+            </a>
         </div>
-        <p class="text-xs text-indigo-100">Gunakan GPS perangkat Anda untuk menemukan titik ODP terdekat di sekitar lokasi instalasi.</p>
     </div>
 
-    <div class="flex flex-col gap-2 w-full">
-        <select wire:model.live="radius" wire:change="loadNearestOdps" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
-            <option value="1">Radius 1 KM</option>
-            <option value="2">Radius 2 KM</option>
-            <option value="5">Radius 5 KM</option>
-            <option value="10">Radius 10 KM</option>
-        </select>
-        <button type="button" onclick="requestLocation()" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
-            <span class="material-symbols-outlined notranslate text-sm" translate="no">my_location</span>
-            Lacak Lokasi Saya
-        </button>
+    {{-- Search & Filter Toolbar --}}
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/80 p-3.5 sm:p-4 space-y-3">
+        {{-- Search Input --}}
+        <div class="relative">
+            <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 notranslate" translate="no" style="font-size:20px">search</span>
+            <input type="text"
+                   wire:model.live.debounce.300ms="search"
+                   placeholder="Cari kode ODP, nama, atau alamat (misal: ODP-01)..."
+                   class="w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-semibold focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100 placeholder:text-slate-400">
+            @if(!empty($search))
+                <button type="button" wire:click="$set('search', '')"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                    <span class="material-symbols-outlined text-sm notranslate" translate="no">close</span>
+                </button>
+            @endif
+        </div>
+
+        {{-- Filter Grid --}}
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
+            {{-- Radius Filter --}}
+            <div class="sm:col-span-4">
+                <select wire:model.live="radius"
+                        class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500">
+                    <option value="1">Radius 1 KM</option>
+                    <option value="2">Radius 2 KM</option>
+                    <option value="5">Radius 5 KM (Standar)</option>
+                    <option value="10">Radius 10 KM</option>
+                    <option value="25">Radius 25 KM</option>
+                    <option value="0">Semua Radius (Tanpa Batas)</option>
+                </select>
+            </div>
+
+            {{-- Status Port Filter --}}
+            <div class="sm:col-span-4">
+                <select wire:model.live="statusFilter"
+                        class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500">
+                    <option value="all">Semua Status Port</option>
+                    <option value="available">Port Tersedia (Ready)</option>
+                    <option value="full">Port Penuh (Full)</option>
+                </select>
+            </div>
+
+            {{-- GPS Button --}}
+            <div class="sm:col-span-4">
+                <button type="button"
+                        onclick="requestLocation()"
+                        class="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
+                    <span class="material-symbols-outlined text-sm notranslate" translate="no">my_location</span>
+                    <span>Lacak Lokasi Saya</span>
+                </button>
+            </div>
+        </div>
     </div>
 
-    <div class="flex flex-col gap-4">
-        <!-- Peta -->
-        <div class="w-full">
+    {{-- Main Content: Map & List --}}
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {{-- Peta Leaflet --}}
+        <div class="lg:col-span-7 xl:col-span-8">
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden relative">
-                <div id="map" style="height: 500px; width: 100%; z-index: 10;"></div>
-                
-                <div wire:loading wire:target="loadNearestOdps" class="absolute inset-0 bg-slate-900/20 backdrop-blur-sm z-20 flex items-center justify-center">
-                    <div class="bg-white dark:bg-slate-800 rounded-lg p-4 shadow-xl flex flex-col gap-2 w-full">
-                        <span class="material-symbols-outlined notranslate animate-spin text-indigo-600" translate="no">autorenew</span>
-                        <span class="font-medium text-slate-900 dark:text-white">Mencari ODP...</span>
+                <div id="map" style="height: 520px; width: 100%; z-index: 10;"></div>
+
+                {{-- Loading Overlay --}}
+                <div wire:loading wire:target="loadNearestOdps, search, radius, statusFilter, setLocation"
+                     class="absolute inset-0 bg-slate-900/25 backdrop-blur-xs z-20 flex items-center justify-center">
+                    <div class="bg-white dark:bg-slate-800 rounded-xl px-4 py-3 shadow-xl flex items-center gap-2.5 border border-slate-100 dark:border-slate-700">
+                        <span class="material-symbols-outlined notranslate animate-spin text-indigo-600 text-xl" translate="no">autorenew</span>
+                        <span class="text-xs font-bold text-slate-800 dark:text-slate-100">Memuat titik ODP...</span>
+                    </div>
+                </div>
+
+                {{-- Map Legend / Helper --}}
+                <div class="absolute bottom-3 left-3 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xs p-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-[10px] space-y-1">
+                    <div class="flex items-center gap-1.5 font-bold">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                        <span class="text-slate-700 dark:text-slate-200">Port Tersedia</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 font-bold">
+                        <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
+                        <span class="text-slate-700 dark:text-slate-200">Port Penuh (0 Kosong)</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 font-bold">
+                        <span class="w-3 h-3 rounded-full bg-indigo-600 inline-block"></span>
+                        <span class="text-slate-700 dark:text-slate-200">Posisi Teknisi (Acuan)</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Daftar ODP -->
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-0 flex flex-col h-[500px]">
-            <div class="p-4 border-b border-slate-200 dark:border-slate-700">
-                <h3 class="font-bold text-slate-900 dark:text-white flex items-center justify-between">
-                    <span>Hasil Pencarian</span>
-                    <span class="bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded-full dark:bg-indigo-900 dark:text-indigo-300">{{ count($odps) }} Ditemukan</span>
-                </h3>
+        {{-- Daftar Hasil Pencarian ODP --}}
+        <div class="lg:col-span-5 xl:col-span-4 flex flex-col h-[520px] bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div class="p-3.5 sm:p-4 border-b border-slate-100 dark:border-slate-700/80 flex items-center justify-between">
+                <div>
+                    <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100">Hasil Pencarian</h3>
+                    <p class="text-[11px] text-slate-400">
+                        {{ !empty($search) ? 'Menampilkan ODP cocok "' . $search . '"' : ($latitude ? 'Berdasarkan radius terdekat' : 'Semua ODP aktif terdaftar') }}
+                    </p>
+                </div>
+                <span class="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-extrabold px-2.5 py-1 rounded-full border border-indigo-200 dark:border-indigo-800">
+                    {{ count($odps) }} ODP
+                </span>
             </div>
-            
-            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+
+            <div class="flex-1 overflow-y-auto p-3.5 space-y-3">
                 @forelse($odps as $odp)
-                    <div class="border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:border-indigo-500 transition-colors cursor-pointer" onclick="focusOdp({{ $odp['latitude'] }}, {{ $odp['longitude'] }})">
-                        <div class="flex justify-between items-start mb-2">
+                    @php
+                        $isAvailable = $odp['available_port_count'] > 0;
+                        $isSelected = ($selectedOdpId === $odp['id']);
+                    @endphp
+                    <div wire:key="odp-card-{{ $odp['id'] }}"
+                         wire:click="selectOdp({{ $odp['id'] }})"
+                         class="p-3 rounded-xl border transition-all cursor-pointer text-xs space-y-2 {{ $isSelected ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/40 shadow-xs' : 'border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 hover:border-indigo-300 hover:bg-slate-50/50 dark:hover:bg-slate-750' }}">
+                        <div class="flex items-start justify-between gap-2">
                             <div>
-                                <h4 class="font-bold text-slate-900 dark:text-white">{{ $odp['code'] }}</h4>
-                                <p class="text-xs text-slate-500 dark:text-slate-400">{{ $odp['name'] }}</p>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="font-black text-slate-900 dark:text-slate-100 text-xs sm:text-sm">{{ $odp['code'] }}</span>
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded {{ $isAvailable ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' }}">
+                                        {{ $isAvailable ? 'Ready' : 'Full' }}
+                                    </span>
+                                </div>
+                                <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">{{ $odp['name'] }}</p>
                             </div>
-                            <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-md">
-                                <span class="material-symbols-outlined notranslate text-[14px]" translate="no">route</span>
-                                {{ $odp['distance'] }} km
-                            </span>
+
+                            @if($odp['distance'] !== null)
+                                <span class="inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-0.5 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 rounded-lg shrink-0">
+                                    <span class="material-symbols-outlined text-[13px] notranslate" translate="no">route</span>
+                                    <span>{{ $odp['distance'] }} km</span>
+                                </span>
+                            @endif
                         </div>
-                        
-                        <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
-                            <div class="bg-slate-50 dark:bg-slate-900 p-2 rounded-lg text-center">
-                                <span class="block text-slate-500 dark:text-slate-400">Total Port</span>
-                                <span class="font-semibold text-slate-900 dark:text-white">{{ $odp['port_count'] }}</span>
+
+                        {{-- Port Stats Pill --}}
+                        <div class="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                            <div class="bg-slate-50 dark:bg-slate-900/60 p-2 rounded-lg text-center border border-slate-100 dark:border-slate-700/50">
+                                <span class="text-slate-400 block text-[10px]">Total Port</span>
+                                <span class="font-bold text-slate-800 dark:text-slate-200">{{ $odp['port_count'] }} Port</span>
                             </div>
-                            <div class="bg-indigo-50 dark:bg-indigo-900/20 p-2 rounded-lg text-center border {{ $odp['available_port_count'] > 0 ? 'border-indigo-200 dark:border-indigo-800' : 'border-red-200 dark:border-red-800' }}">
-                                <span class="block text-slate-500 dark:text-slate-400">Port Kosong</span>
-                                <span class="font-bold {{ $odp['available_port_count'] > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-600 dark:text-red-400' }}">{{ $odp['available_port_count'] }}</span>
+                            <div class="p-2 rounded-lg text-center border {{ $isAvailable ? 'bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300' : 'bg-rose-50/70 border-rose-200 dark:bg-rose-950/40 dark:border-rose-800/60 text-rose-700 dark:text-rose-300' }}">
+                                <span class="block text-[10px] opacity-80">Port Kosong</span>
+                                <span class="font-extrabold">{{ $odp['available_port_count'] }} Port</span>
                             </div>
+                        </div>
+
+                        <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                            <span class="truncate max-w-[200px]" title="{{ $odp['address'] }}">
+                                <span class="material-symbols-outlined text-[13px] align-middle notranslate" translate="no">pin_drop</span>
+                                {{ $odp['address'] }}
+                            </span>
+                            @if($odp['latitude'] && $odp['longitude'])
+                                <a href="https://www.google.com/maps/dir/?api=1&destination={{ $odp['latitude'] }},{{ $odp['longitude'] }}"
+                                   target="_blank"
+                                   onclick="event.stopPropagation();"
+                                   class="text-indigo-600 dark:text-indigo-400 hover:underline font-bold text-[10px] shrink-0 flex items-center gap-0.5">
+                                    <span>Rute GPS</span>
+                                    <span class="material-symbols-outlined text-xs notranslate" translate="no">open_in_new</span>
+                                </a>
+                            @endif
                         </div>
                     </div>
                 @empty
-                    <div class="text-center py-10 text-slate-500 dark:text-slate-400">
-                        <span class="material-symbols-outlined notranslate text-4xl mb-2 opacity-50" translate="no">location_off</span>
-                        <p>Tidak ada ODP ditemukan dalam radius {{ $radius }} km.</p>
-                        <p class="text-xs mt-1">Klik tombol 'Lacak Lokasi Saya' atau klik area mana saja di peta.</p>
+                    <div class="text-center py-12 text-slate-400">
+                        <span class="material-symbols-outlined text-4xl opacity-40 notranslate" translate="no">location_off</span>
+                        <p class="text-xs font-bold text-slate-600 dark:text-slate-300 mt-2">Tidak ada ODP ditemukan</p>
+                        <p class="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto">
+                            Coba ubah kata kunci pencarian, perbesar radius, atau klik tombol "Lacak Lokasi Saya".
+                        </p>
                     </div>
                 @endforelse
             </div>
         </div>
     </div>
-    
-    <!-- Include Leaflet CSS/JS -->
+
+    {{-- Leaflet CSS & JS --}}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
+
     <script>
-        let map, userMarker, odpLayerGroup;
-        
+        let map = null;
+        let userMarker = null;
+        let odpMarkers = {};
+        let odpLayerGroup = null;
+
         document.addEventListener('livewire:initialized', () => {
             initMap();
-            
+
             // Listen for ODP updates from backend
-            Livewire.on('odps-updated', (data) => {
-                const odps = data.odps || [];
-                renderOdpsOnMap(odps);
+            Livewire.on('odps-updated', (event) => {
+                const payload = event[0] || event || {};
+                const odps = payload.odps || [];
+                const center = payload.center || null;
+                const hasGps = payload.hasGps || false;
+                renderOdpsOnMap(odps, center, hasGps);
+            });
+
+            // Listen for single ODP selection/focus
+            Livewire.on('focus-odp', (event) => {
+                const payload = event[0] || event || {};
+                if (payload.lat && payload.lng) {
+                    focusOdp(payload.lat, payload.lng, payload.id);
+                }
             });
         });
 
         function initMap() {
-            // Setup map
-            map = L.map('map').setView([{{ $latitude }}, {{ $longitude }}], 14);
+            if (map !== null) {
+                map.remove();
+            }
+
+            const initialLat = {{ $latitude ?? -6.200000 }};
+            const initialLng = {{ $longitude ?? 106.816666 }};
+
+            map = L.map('map').setView([initialLat, initialLng], 14);
+
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+                attribution: '&copy; OpenStreetMap &copy; CARTO',
+                maxZoom: 19
             }).addTo(map);
-            
+
             odpLayerGroup = L.layerGroup().addTo(map);
-            
-            // Place marker for current center
-            updateUserMarker({{ $latitude }}, {{ $longitude }});
-            
-            // Map click event
+
+            // Render current initial ODPs
+            const initialOdps = @json($odps);
+            renderOdpsOnMap(initialOdps, { lat: initialLat, lng: initialLng }, false);
+
+            // Map click listener
             map.on('click', function(e) {
                 const lat = e.latlng.lat;
                 const lng = e.latlng.lng;
                 updateUserMarker(lat, lng);
-                // Call Livewire Component
                 @this.setLocation(lat, lng);
             });
         }
-        
+
         function updateUserMarker(lat, lng) {
-            if(userMarker) map.removeLayer(userMarker);
-            
+            if (userMarker) {
+                map.removeLayer(userMarker);
+            }
+
             const pinIcon = L.divIcon({
-                className: 'custom-div-icon',
-                html: '<div style="background-color:#4f46e5; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.5);"></div>',
-                iconSize: [16, 16],
-                iconAnchor: [8, 8]
+                className: 'custom-user-pin',
+                html: '<div style="background-color:#4f46e5; width:18px; height:18px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.45);"></div>',
+                iconSize: [18, 18],
+                iconAnchor: [9, 9]
             });
-            
-            userMarker = L.marker([lat, lng], {icon: pinIcon}).addTo(map);
-            userMarker.bindPopup('<b>Titik Acuan Pencarian</b>').openPopup();
+
+            userMarker = L.marker([lat, lng], { icon: pinIcon }).addTo(map);
+            userMarker.bindPopup('<div style="font-size:11px; font-weight:bold;">📍 Titik Acuan Pencarian</div>').openPopup();
         }
-        
-        function renderOdpsOnMap(odps) {
+
+        function renderOdpsOnMap(odps, center, hasGps) {
+            if (!odpLayerGroup) return;
+
             odpLayerGroup.clearLayers();
-            
+            odpMarkers = {};
+
+            if (hasGps && center && center.lat && center.lng) {
+                updateUserMarker(center.lat, center.lng);
+            }
+
+            const boundsGroup = [];
+            if (userMarker) {
+                boundsGroup.push(userMarker);
+            }
+
             odps.forEach(odp => {
-                if(!odp.latitude || !odp.longitude) return;
-                
-                const isFull = odp.available_port_count === 0;
-                const markerColor = isFull ? '#ef4444' : '#10b981'; // red if full, green if available
-                
+                if (!odp.latitude || !odp.longitude) return;
+
+                const isAvailable = (odp.available_port_count > 0);
+                const color = isAvailable ? '#10b981' : '#ef4444';
+
                 const odpIcon = L.divIcon({
-                    className: 'custom-div-icon',
-                    html: <div style="background-color:; width:24px; height:24px; border-radius:8px; border:2px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; color:white; font-size:12px; font-weight:bold;"></div>,
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 12]
+                    className: 'custom-odp-pin',
+                    html: '<div style="background-color:' + color + '; width:26px; height:26px; border-radius:8px; border:2px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:900;">' + (odp.available_port_count) + '</div>',
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 13]
                 });
-                
-                const marker = L.marker([odp.latitude, odp.longitude], {icon: odpIcon}).addTo(odpLayerGroup);
-                
-                marker.bindPopup(
-                    <div class="text-sm">
-                        <strong class="block text-base mb-1"></strong>
-                        <span class="block text-slate-600"></span>
-                        <div class="mt-2 pt-2 border-t border-slate-200">
-                            Port Tersedia: <strong style="color:"></strong> / <br>
-                            Jarak: <strong> km</strong>
-                        </div>
-                    </div>
-                );
+
+                const marker = L.marker([odp.latitude, odp.longitude], { icon: odpIcon }).addTo(odpLayerGroup);
+                odpMarkers[odp.id] = marker;
+                boundsGroup.push(marker);
+
+                const distanceText = odp.distance !== null ? ('<br>Jarak: <b>' + odp.distance + ' km</b>') : '';
+                const gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + odp.latitude + ',' + odp.longitude;
+
+                const popupHtml = '<div style="font-family:inherit; min-width:180px; padding:2px;">' +
+                    '<div style="font-weight:900; font-size:13px; color:#1e293b;">' + odp.code + '</div>' +
+                    '<div style="font-size:11px; color:#64748b; margin-top:2px;">' + odp.name + '</div>' +
+                    '<div style="margin-top:6px; padding-top:6px; border-top:1px solid #e2e8f0; font-size:11px; line-height:1.5;">' +
+                        'Port Kosong: <strong style="color:' + color + ';">' + odp.available_port_count + '</strong> / ' + odp.port_count + ' Total' +
+                        distanceText +
+                    '</div>' +
+                    '<div style="margin-top:8px;">' +
+                        '<a href="' + gmapsUrl + '" target="_blank" style="display:inline-block; font-size:10px; font-weight:bold; color:#4f46e5; text-decoration:none;">➔ Buka Rute Google Maps</a>' +
+                    '</div>' +
+                '</div>';
+
+                marker.bindPopup(popupHtml);
+
+                marker.on('click', function() {
+                    @this.selectOdp(odp.id);
+                });
             });
-            
-            // Adjust bounds if we have ODPs
-            if(odps.length > 0) {
-                const group = new L.featureGroup([userMarker, ...odpLayerGroup.getLayers()]);
-                map.fitBounds(group.getBounds().pad(0.1));
+
+            // Auto-adjust view bounds if markers exist
+            if (boundsGroup.length > 0) {
+                const group = new L.featureGroup(boundsGroup);
+                map.fitBounds(group.getBounds().pad(0.15), { maxZoom: 16 });
+            } else if (center && center.lat && center.lng) {
+                map.setView([center.lat, center.lng], 14);
             }
         }
-        
+
+        function focusOdp(lat, lng, id) {
+            if (!map) return;
+            map.setView([lat, lng], 17);
+            if (odpMarkers[id]) {
+                odpMarkers[id].openPopup();
+            }
+        }
+
         function requestLocation() {
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(function(position) {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
-                    
-                    map.setView([lat, lng], 15);
                     updateUserMarker(lat, lng);
+                    map.setView([lat, lng], 15);
                     @this.setLocation(lat, lng);
                 }, function(error) {
-                    alert("Gagal mendapatkan lokasi. Pastikan izin lokasi (GPS) aktif di browser Anda.");
+                    alert("Gagal mendapatkan lokasi. Pastikan izin lokasi (GPS) diaktifkan di browser Anda.");
                 }, {
                     enableHighAccuracy: true,
                     timeout: 10000
                 });
             } else {
-                alert("Browser Anda tidak mendukung fitur geolokasi.");
+                alert("Browser Anda tidak mendukung geolokasi GPS.");
             }
-        }
-        
-        function focusOdp(lat, lng) {
-            map.setView([lat, lng], 18);
-            // Optionally, open popup
-            odpLayerGroup.eachLayer(function(marker) {
-                if (marker.getLatLng().lat === lat && marker.getLatLng().lng === lng) {
-                    marker.openPopup();
-                }
-            });
         }
     </script>
 </div>
-
-

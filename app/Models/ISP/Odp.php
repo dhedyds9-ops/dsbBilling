@@ -166,6 +166,17 @@ class Odp extends Model
 
     public function scopeNear($query, float $lat, float $lng, int $radiusKm = 5)
     {
+        $driver = $query->getConnection()->getDriverName();
+        if ($driver === 'sqlite') {
+            $latDelta = $radiusKm / 111.0;
+            $cosLat = cos(deg2rad($lat));
+            $lngDelta = $radiusKm / ($cosLat > 0.0001 ? 111.0 * $cosLat : 111.0);
+
+            return $query->whereNotNull('latitude')->whereNotNull('longitude')
+                ->whereBetween('latitude', [$lat - $latDelta, $lat + $latDelta])
+                ->whereBetween('longitude', [$lng - $lngDelta, $lng + $lngDelta]);
+        }
+
         $haversine = "(6371 * acos(cos(radians($lat)) * cos(radians(latitude))
             * cos(radians(longitude) - radians($lng))
             + sin(radians($lat)) * sin(radians(latitude))))";

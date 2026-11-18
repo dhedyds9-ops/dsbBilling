@@ -202,7 +202,7 @@
                     <a href="{{ route('technician.odp.nearest') }}" 
                        class="flex items-center gap-3 px-3 py-2 rounded-xl transition-colors {{ request()->routeIs('technician.odp.*') ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white' }}">
                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:20px">map</span>
-                        <span>Peta ODP Terdekat</span>
+                        <span>Peta & Cari ODP</span>
                     </a>
 
                     <a href="{{ route('technician.audit.form') }}" 
