@@ -465,9 +465,11 @@ class MobileNetworkApiController extends Controller
             $query->where('pon_port_id', $ponPortId);
         }
 
+        $limit = min(5000, max(1, (int) $request->input('limit', 1000)));
+
         $devices = $query->with(['odp', 'olt', 'ponPort'])
             ->orderByDesc('updated_at')
-            ->limit(50)
+            ->limit($limit)
             ->get()
             ->map(function (Onu $onu) {
                 return $this->formatOnuDevice($onu);
@@ -492,7 +494,7 @@ class MobileNetworkApiController extends Controller
                 $acsQuery->forReseller($user);
             }
 
-            $acsMatches = $acsQuery->limit(50)
+            $acsMatches = $acsQuery->limit($limit)
                 ->get()
                 ->map(function ($ad) {
                     $rx = $ad->signal !== null ? (float) $ad->signal : null;
