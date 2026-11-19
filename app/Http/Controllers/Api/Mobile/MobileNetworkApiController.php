@@ -280,14 +280,29 @@ class MobileNetworkApiController extends Controller
         if (empty($unregistered)) {
             $dbQuery = Onu::withoutGlobalScopes()
                 ->where('olt_id', $olt->id)
-                ->whereIn('provision_status', ['unprovisioned', 'pending', 'new']);
-            if ($ponPort !== null) {
-                $dbQuery->where('pon_port', $ponPort);
+                ->where(function ($q) {
+                    $q->whereIn('provision_status', ['unprovisioned', 'pending', 'new'])
+                      ->orWhereDoesntHave('customerService')
+                      ->orWhereHas('customerService', function ($csQ) {
+                          $csQ->withoutGlobalScopes()->whereNull('customer_id');
+                      });
+                });
+
+            // Reseller scope isolation: jangan tampilkan ONU milik reseller lain
+            if ($effectiveResellerId) {
+                \App\Services\Auth\ResellerScopeHelper::excludeOtherResellersCustomers($dbQuery, $effectiveResellerId);
             }
-            $dbOnus = $dbQuery->limit(10)->get();
+
+            if ($ponPort !== null) {
+                $dbQuery->where(function ($pq) use ($ponPort) {
+                    $pq->where('pon_port', $ponPort)
+                       ->orWhereHas('ponPort', fn ($sub) => $sub->where('port_number', $ponPort));
+                });
+            }
+            $dbOnus = $dbQuery->limit(50)->get();
             foreach ($dbOnus as $dbOnu) {
                 $unregistered[] = [
-                    'pon_port' => (int) ($dbOnu->pon_port ?: $ponPort ?: 1),
+                    'pon_port' => (int) ($dbOnu->pon_port ?: $dbOnu->ponPort?->port_number ?: $ponPort ?: 1),
                     'onu_id' => (int) ($dbOnu->onu_id_on_olt ?: 1),
                     'serial_number' => strtoupper($dbOnu->serial_number),
                     'vendor_oui' => strtoupper(substr($dbOnu->serial_number, 0, 4)),
@@ -557,12 +572,14 @@ class MobileNetworkApiController extends Controller
     public function updateName(Request $request, string $id): JsonResponse
     {
         $request->validate([
-            'name' => 'required|string|max:100',
+            'name' => 'nullable|string|max:100',
+            'customer_id' => 'nullable|integer',
         ]);
 
         $user = $request->user();
         $cleanIdentifier = trim(urldecode($id));
-        $newName = trim((string) $request->name);
+        $newName = trim((string) ($request->name ?? ''));
+        $customerId = $request->has('customer_id') ? (int) $request->input('customer_id') : null;
 
         $query = Onu::query()->withoutGlobalScopes();
         if (is_numeric($cleanIdentifier)) {
@@ -596,7 +613,48 @@ class MobileNetworkApiController extends Controller
 
         $onu = $query->first();
         if ($onu) {
-            $onu->update(['name' => $newName]);
+            $customerMsg = '';
+            if ($customerId !== null) {
+                if ($customerId > 0) {
+                    $custQuery = \App\Models\CRM\Customer::withoutGlobalScopes();
+                    if ($effectiveResellerId) {
+                        $custQuery->where('reseller_id', $effectiveResellerId);
+                    }
+                    $customer = $custQuery->findOrFail($customerId);
+
+                    // Lepaskan service yang sebelumnya tertaut pada ONU ini
+                    \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                        ->where('onu_id', $onu->id)
+                        ->update(['onu_id' => null]);
+
+                    // Tautkan service pelanggan ini ke ONU
+                    $cs = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                        ->where('customer_id', $customer->id)
+                        ->first();
+                    if ($cs) {
+                        $cs->onu_id = $onu->id;
+                        $cs->save();
+                    }
+
+                    if (empty($newName) || $newName === 'Modem ONU' || $newName === 'ONT') {
+                        $newName = $customer->name;
+                    }
+                    $customerMsg = " dan ditautkan ke {$customer->name}";
+                } else {
+                    // Lepas tautan pelanggan
+                    \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                        ->where('onu_id', $onu->id)
+                        ->update(['onu_id' => null]);
+                    if (empty($newName)) {
+                        $newName = 'Belum Terikat';
+                    }
+                    $customerMsg = ' (tautan pelanggan dilepas)';
+                }
+            }
+
+            if (!empty($newName)) {
+                $onu->update(['name' => $newName]);
+            }
 
             // Sync with local ACS device if exists
             \App\Models\ACS\ACSDevice::withoutGlobalScopes()
@@ -606,7 +664,7 @@ class MobileNetworkApiController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Nama ONU berhasil diperbarui.',
+                'message' => "Nama ONU berhasil diperbarui{$customerMsg}.",
                 'data' => $this->formatOnuDevice($onu),
             ]);
         }
@@ -641,6 +699,67 @@ class MobileNetworkApiController extends Controller
             'success' => false,
             'message' => 'Perangkat ONU tidak ditemukan atau di luar cakupan akses Anda.',
         ], 404);
+    }
+
+    /**
+     * DELETE /api/mobile/network/devices/{id}
+     */
+    public function deleteDevice(Request $request, string $id): JsonResponse
+    {
+        $user = $request->user();
+        $cleanIdentifier = trim(urldecode($id));
+
+        $query = Onu::query()->withoutGlobalScopes()->with('olt');
+        if (is_numeric($cleanIdentifier)) {
+            $query->where(function ($q) use ($cleanIdentifier) {
+                $q->where('id', (int) $cleanIdentifier)
+                  ->orWhere('serial_number', $cleanIdentifier);
+            });
+        } else {
+            $query->where('serial_number', $cleanIdentifier);
+        }
+
+        $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
+        if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
+            $query->forReseller($user);
+        } elseif ($user && !$user->isSuperAdmin() && !empty($user->branch_id)) {
+            $query->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
+
+        $onu = $query->first();
+        if (!$onu) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Perangkat ONU tidak ditemukan atau di luar wewenang Anda.',
+            ], 404);
+        }
+
+        $sn = $onu->serial_number ?: ('#' . $onu->id);
+        $oltDeleted = false;
+
+        if ($onu->olt) {
+            try {
+                $driver = app(\App\Services\Adapters\Provisioning\OltRegistry::class)->forOlt($onu->olt);
+                $oltDeleted = $driver->deleteOnu($onu);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Mobile delete ONU {$sn} OLT error: " . $e->getMessage());
+            }
+        }
+
+        $onu->delete();
+
+        $msg = "ONU {$sn} berhasil dihapus.";
+        if ($oltDeleted) {
+            $msg .= ' Registrasi di perangkat OLT fisik juga berhasil dihapus.';
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $msg,
+        ]);
     }
 
     /**
