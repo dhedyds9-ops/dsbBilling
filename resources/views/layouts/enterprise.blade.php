@@ -136,8 +136,8 @@
     @livewireStyles
     @stack('styles')
     
-    <!-- Leaflet (Loaded on GIS/Map routes or pushed on demand) -->
-    @if(request()->routeIs('*gis*', '*map*', '*odp*'))
+    <!-- Leaflet (Loaded on GIS/Map routes, Branches, or pushed on demand) -->
+    @if(request()->routeIs('*gis*', '*map*', '*odp*', '*branch*'))
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     @endif
@@ -192,6 +192,7 @@
 
     <!-- Scripts -->
     @livewireScripts
+    @include('components.forms.coordinate-picker-script')
     @stack('scripts')
 
     <!-- Session Keep-Alive & Auto-Refresh Token to Prevent 419 Page Expired -->
