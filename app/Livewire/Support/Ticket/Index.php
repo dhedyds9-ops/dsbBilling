@@ -101,17 +101,24 @@ class Index extends BaseEnterpriseList
         if ($value) {
             $odp = \App\Models\ISP\Odp::withoutGlobalScopes()->find($value);
             if ($odp) {
-                $this->newTicket['manual_customer_name'] = "ODP: {$odp->name}" . ($odp->code ? " ({$odp->code})" : '');
+                if (($this->newTicket['manual_type'] ?? 'customer') === 'network') {
+                    $this->newTicket['manual_customer_name'] = "ODP: {$odp->name}" . ($odp->code ? " ({$odp->code})" : '');
+                }
+
+                if ($odp->latitude !== null && $odp->longitude !== null && (string) $odp->latitude !== '' && (string) $odp->longitude !== '') {
+                    $this->newTicket['latitude'] = (string) $odp->latitude;
+                    $this->newTicket['longitude'] = (string) $odp->longitude;
+                }
 
                 $addressParts = [];
                 if (!empty(trim((string) $odp->address))) {
                     $addressParts[] = trim((string) $odp->address);
                 }
-                if ($odp->latitude !== null && $odp->longitude !== null && (string) $odp->latitude !== '' && (string) $odp->longitude !== '') {
-                    $addressParts[] = "Koordinat: {$odp->latitude}, {$odp->longitude}";
+                if (!empty($this->newTicket['latitude']) && !empty($this->newTicket['longitude'])) {
+                    $addressParts[] = "Koordinat: {$this->newTicket['latitude']}, {$this->newTicket['longitude']}";
                 }
 
-                if (!empty($addressParts)) {
+                if (!empty($addressParts) && (empty($this->newTicket['manual_customer_address']) || str_contains($this->newTicket['manual_customer_address'], 'Koordinat:'))) {
                     $this->newTicket['manual_customer_address'] = implode(' | ', $addressParts);
                 }
 
@@ -194,6 +201,8 @@ class Index extends BaseEnterpriseList
             'manual_network_odp_id' => '',
             'manual_customer_phone' => '',
             'manual_customer_address' => '',
+            'latitude' => '',
+            'longitude' => '',
             'title' => '',
             'description' => '',
             'category' => 'internet',
@@ -425,6 +434,8 @@ class Index extends BaseEnterpriseList
             'manual_network_odp_id' => '',
             'manual_customer_phone' => '',
             'manual_customer_address' => '',
+            'latitude' => '',
+            'longitude' => '',
             'title' => '',
             'description' => '',
             'category' => 'internet',
@@ -500,19 +511,35 @@ class Index extends BaseEnterpriseList
                 $cleanAddress = $rawAddress !== '' ? $rawAddress : '-';
                 $manualType = $data['manual_type'] ?? 'customer';
 
+                // Resolve Lat / Lng from inputs or regex from address
+                $lat = !empty($data['latitude']) ? (float) $data['latitude'] : null;
+                $lng = !empty($data['longitude']) ? (float) $data['longitude'] : null;
+                if (($lat === null || $lng === null) && preg_match('/(?:Koordinat|Titik|GPS)?[:\s]*([+-]?\d+\.\d+)[,\s]+([+-]?\d+\.\d+)/i', $rawAddress, $km)) {
+                    $lat = (float) $km[1];
+                    $lng = (float) $km[2];
+                }
+
                 if ($manualType === 'network') {
                     // Objek jaringan (ODP/Jalur/ODC): tiket tanpa customer_id
                     $data['customer_id'] = null;
                     $objInfo = '[Objek Jaringan: ' . $manualName . ']'
                         . ($cleanAddress !== '-' ? ' Lokasi: ' . $cleanAddress . '.' : '')
-                        . ($cleanPhone !== '-' ? ' PIC: ' . $cleanPhone . '.' : '');
+                        . ($cleanPhone !== '-' ? ' PIC: ' . $cleanPhone . '.' : '')
+                        . ($lat !== null && $lng !== null ? " Titik GPS: {$lat}, {$lng}." : '');
                     $data['description'] = trim($objInfo . "\n" . ($data['description'] ?? ''));
                 } elseif ($isPsb) {
                     // Calon pelanggan baru (PSB): akun pelanggan resmi dibuat di Wizard saat pemasangan
                     $data['customer_id'] = null;
-                    $psbInfo = ['name' => $manualName, 'phone' => $cleanPhone, 'address' => $cleanAddress];
+                    $psbInfo = [
+                        'name' => $manualName,
+                        'phone' => $cleanPhone,
+                        'address' => $cleanAddress,
+                        'latitude' => $lat,
+                        'longitude' => $lng,
+                        'odp_id' => !empty($data['manual_network_odp_id']) ? (int) $data['manual_network_odp_id'] : null,
+                    ];
                     $data['description'] = trim(
-                        '[Calon Pelanggan: ' . $manualName . ' | Telp: ' . $cleanPhone . ' | Alamat: ' . $cleanAddress . "]\n"
+                        '[Calon Pelanggan: ' . $manualName . ' | Telp: ' . $cleanPhone . ' | Alamat: ' . $cleanAddress . ($lat ? " | GPS: {$lat}, {$lng}" : '') . "]\n"
                         . ($data['description'] ?? '')
                     );
                 } else {
@@ -530,6 +557,8 @@ class Index extends BaseEnterpriseList
                         'name' => $manualName,
                         'phone' => $cleanPhone,
                         'address' => $cleanAddress,
+                        'latitude' => $lat,
+                        'longitude' => $lng,
                         'reseller_id' => $resellerId,
                         'status' => 'active',
                         'created_by' => $userId,
@@ -623,8 +652,27 @@ class Index extends BaseEnterpriseList
             $wo->status = $ticket->assigned_to ? 'scheduled' : 'pending';
             $wo->scheduled_date = !empty($data['due_date']) ? $data['due_date'] : now()->addDay()->toDateString();
             $wo->scheduled_time = '09:00';
+
+            $lat = $customer?->latitude ?: ($psbInfo['latitude'] ?? null);
+            $lng = $customer?->longitude ?: ($psbInfo['longitude'] ?? null);
+            if (($lat === null || $lng === null) && !empty($psbInfo['address'])) {
+                if (preg_match('/(?:Koordinat|Titik|GPS)?[:\s]*([+-]?\d+\.\d+)[,\s]+([+-]?\d+\.\d+)/i', $psbInfo['address'], $km)) {
+                    $lat = (float) $km[1];
+                    $lng = (float) $km[2];
+                }
+            }
+            if (($lat === null || $lng === null) && !empty($ticket->description)) {
+                if (preg_match('/(?:Koordinat|Titik|GPS)?[:\s]*([+-]?\d+\.\d+)[,\s]+([+-]?\d+\.\d+)/i', $ticket->description, $km)) {
+                    $lat = (float) $km[1];
+                    $lng = (float) $km[2];
+                }
+            }
+            $wo->latitude = $lat;
+            $wo->longitude = $lng;
+
             $wo->notes = trim('Dari Tiket #' . $ticket->id . ': ' . $ticket->title
                 . ($psbInfo ? "\nTelp: " . $psbInfo['phone'] . ' | Alamat: ' . $psbInfo['address'] : '')
+                . ($lat !== null && $lng !== null ? " | GPS: {$lat}, {$lng}" : '')
                 . ($ticket->description ? "\n" . $ticket->description : ''));
             $wo->created_by = $userId ?: 0;
             $wo->save();

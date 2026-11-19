@@ -842,8 +842,21 @@ class MobileWorkforceApiController extends Controller
     {
         $customer = $wo->customer;
         $customerData = null;
+        $packageName = null;
+        $latitude = null;
+        $longitude = null;
 
         if ($customer) {
+            $activeService = $customer->customerServices()->with('serviceProfile')->first();
+            $packageName = $customer->package_name 
+                ?? $activeService?->serviceProfile?->name 
+                ?? $wo->installation?->package_name 
+                ?? $wo->installation?->package?->name 
+                ?? null;
+
+            $latitude = $customer->latitude ?? $wo->installation?->latitude;
+            $longitude = $customer->longitude ?? $wo->installation?->longitude;
+
             $customerData = [
                 'id' => $customer->id,
                 'name' => $customer->name,
@@ -852,6 +865,9 @@ class MobileWorkforceApiController extends Controller
                 'whatsapp' => $customer->whatsapp ?? $customer->phone ?? null,
                 'address' => $customer->address ?? $customer->wilayah ?? null,
                 'customer_code' => $customer->customer_code,
+                'package_name' => $packageName,
+                'latitude' => $latitude,
+                'longitude' => $longitude,
                 'pppoe_username' => $customer->pppoe_username,
                 'onu_sn' => $customer->onu_sn,
             ];
@@ -859,19 +875,23 @@ class MobileWorkforceApiController extends Controller
             $inst = $wo->installation;
             if ($inst) {
                 if (!$inst->relationLoaded('customer') || !$inst->relationLoaded('reseller') || !$inst->relationLoaded('survey')) {
-                    $inst->loadMissing(['customer.reseller', 'survey.prospect.reseller', 'reseller']);
+                    $inst->loadMissing(['customer.reseller', 'survey.prospect.reseller', 'reseller', 'package']);
                 }
                 $instCust = $inst->customer;
 
                 // Smart Regex Fallback dari notes jika field di tabel masih kosong (kompatibilitas SPK lama)
                 $notesPhone = null;
                 $notesAddress = null;
+                $notesPackage = null;
                 if (!empty($inst->notes)) {
                     if (preg_match('/(?:Telp|Phone|WA|WhatsApp):\s*([0-9+\s\-]+?)(?:\s*\||\n|$)/i', $inst->notes, $m)) {
                         $notesPhone = trim($m[1]);
                     }
                     if (preg_match('/(?:Alamat|Address):\s*([^|\n]+?)(?:\s*\||\n|$)/i', $inst->notes, $m)) {
                         $notesAddress = trim($m[1]);
+                    }
+                    if (preg_match('/(?:Paket|Package):\s*([^|\n]+?)(?:\s*\||\n|$)/i', $inst->notes, $m)) {
+                        $notesPackage = trim($m[1]);
                     }
                 }
 
@@ -897,6 +917,21 @@ class MobileWorkforceApiController extends Controller
                     ?? $inst->survey?->prospect?->reseller?->name 
                     ?? null;
 
+                $packageName = $inst->package_name 
+                    ?? $inst->package?->name 
+                    ?? $instCust?->package_name 
+                    ?? ($notesPackage ?? null);
+
+                $latitude = $inst->latitude 
+                    ?? $instCust?->latitude 
+                    ?? $inst->survey?->latitude 
+                    ?? null;
+
+                $longitude = $inst->longitude 
+                    ?? $instCust?->longitude 
+                    ?? $inst->survey?->longitude 
+                    ?? null;
+
                 $customerData = [
                     'id' => $instCust?->id ?? null,
                     'name' => $instCust?->name ?? ($inst->survey?->prospect?->name ?? ($inst->customer_name ?: 'Pelanggan Baru')),
@@ -907,9 +942,11 @@ class MobileWorkforceApiController extends Controller
                     'customer_code' => $instCust?->code ?? null,
                     'reseller_id' => $resellerId,
                     'reseller_name' => $resellerName,
-                    'package_name' => $inst->package_name ?? null,
+                    'package_name' => $packageName,
+                    'latitude' => $latitude,
+                    'longitude' => $longitude,
                     'pppoe_username' => null,
-                    'onu_sn' => null,
+                    'onu_sn' => $inst->onu_serial_number ?? null,
                 ];
             }
         }
@@ -925,6 +962,10 @@ class MobileWorkforceApiController extends Controller
             'description' => $wo->description ?? '',
             'notes' => $wo->notes ?? '',
             'type' => $wo->type ?? 'maintenance',
+            'package_name' => $packageName,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'maps_url' => ($latitude && $longitude) ? "https://www.google.com/maps/search/?api=1&query={$latitude},{$longitude}" : null,
             'source_type' => $wo->source_type ?: ($wo->ticket_id ? 'ticket' : ($wo->installation_id ? 'installation' : 'manual')),
             'source_id' => $wo->source_id ?: ($wo->ticket_id ?: $wo->installation_id),
             'status' => $wo->status ?? 'pending',

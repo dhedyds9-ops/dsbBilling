@@ -153,6 +153,7 @@ class ConnectionSettingsService
             $data = [
                 'base_url' => $data['base_url'] ?? '',
                 'fs_url' => $data['fs_url'] ?? '',
+                'acs_url' => $data['acs_url'] ?? '',
                 'username' => $data['username'] ?? '',
                 'password' => $data['password'] ?? '',
                 'api_key' => $data['api_key'] ?? '',

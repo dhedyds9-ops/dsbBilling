@@ -242,8 +242,17 @@ class Wizard extends Component
                 }
 
                 $this->ticket_id = $ticket->id;
-                $this->customer_id = (string) $ticket->customer_id;
-                $this->is_new_customer = false;
+                $existingTicketCust = $ticket->customer_id ? Customer::withoutGlobalScopes()->find($ticket->customer_id) : null;
+                if ($existingTicketCust) {
+                    $this->customer_id = (string) $existingTicketCust->id;
+                    $this->is_new_customer = false;
+                } else {
+                    $this->customer_id = null;
+                    $this->is_new_customer = true;
+                    $this->new_customer_name = $ticket->customer?->name ?? 'Pelanggan Baru';
+                    $this->new_customer_phone = $ticket->customer?->phone ?? '-';
+                    $this->new_customer_address = $ticket->customer?->address ?? '-';
+                }
 
                 $ticketResellerId = $ticket->reseller_id ?? $ticket->customer?->reseller_id;
                 if ($ticketResellerId) {
@@ -326,17 +335,20 @@ class Wizard extends Component
                     ?: ($inst->survey?->prospect?->address 
                     ?: ($notesAddress ?? ''))));
 
-                if ($inst->customer_id) {
-                    $this->customer_id = (string) $inst->customer_id;
+                $existingCust = $inst->customer_id ? Customer::withoutGlobalScopes()->find($inst->customer_id) : null;
+                if ($existingCust) {
+                    $this->customer_id = (string) $existingCust->id;
                     $this->is_new_customer = false;
                 } elseif ($inst->survey && $inst->survey->prospect) {
+                    $this->customer_id = null;
                     $this->is_new_customer = true;
                     $this->new_customer_name = $inst->survey->prospect->name;
                     $this->new_customer_phone = $resolvedPhone;
                     $this->new_customer_address = $resolvedAddress;
-                } elseif (!empty($inst->customer_name)) {
+                } else {
+                    $this->customer_id = null;
                     $this->is_new_customer = true;
-                    $this->new_customer_name = $inst->customer_name;
+                    $this->new_customer_name = $inst->customer_name ?: 'Pelanggan Baru';
                     $this->new_customer_phone = $resolvedPhone;
                     $this->new_customer_address = $resolvedAddress;
                 }
@@ -704,7 +716,7 @@ class Wizard extends Component
                 'new_customer_reseller_id' => 'nullable|exists:users,id',
             ]);
         } else {
-            $this->validate(['customer_id' => 'required|exists:customers,id']);
+            $this->validate(['customer_id' => 'required']);
         }
 
         $this->validate([
@@ -862,16 +874,35 @@ class Wizard extends Component
                     }
                     $this->customer_id = $customer->id;
                 } else {
-                    $customer = Customer::withoutGlobalScopes()->findOrFail($this->customer_id);
-                    $updatePayload = [];
-                    if (empty($customer->branch_id) && $branchId) {
-                        $updatePayload['branch_id'] = $branchId;
-                    }
-                    if (!empty($this->new_customer_reseller_id) && $customer->reseller_id != $this->new_customer_reseller_id) {
-                        $updatePayload['reseller_id'] = $this->new_customer_reseller_id;
-                    }
-                    if (!empty($updatePayload)) {
-                        $customer->update($updatePayload);
+                    $customer = Customer::withoutGlobalScopes()->find($this->customer_id);
+                    if (!$customer) {
+                        // Jika record customer_id tidak ditemukan, buat pelanggan baru otomatis agar flow teknisi tidak macet
+                        $customerCode = \App\Services\CRM\CustomerCodeGenerator::generate();
+                        $custName = $this->activeWorkOrder['customer_name'] ?? ($this->new_customer_name ?: 'Pelanggan Baru');
+                        $custPhone = $this->activeWorkOrder['customer_phone'] ?? ($this->new_customer_phone ?: null);
+                        $custAddr = $this->activeWorkOrder['address'] ?? ($this->new_customer_address ?: '-');
+                        $customer = Customer::create([
+                            'code' => $customerCode,
+                            'name' => $custName,
+                            'phone' => $custPhone,
+                            'address' => $custAddr,
+                            'reseller_id' => $this->new_customer_reseller_id ?: null,
+                            'branch_id' => $branchId,
+                            'status' => 'active',
+                            'created_by' => $user->id,
+                        ]);
+                        $this->customer_id = $customer->id;
+                    } else {
+                        $updatePayload = [];
+                        if (empty($customer->branch_id) && $branchId) {
+                            $updatePayload['branch_id'] = $branchId;
+                        }
+                        if (!empty($this->new_customer_reseller_id) && $customer->reseller_id != $this->new_customer_reseller_id) {
+                            $updatePayload['reseller_id'] = $this->new_customer_reseller_id;
+                        }
+                        if (!empty($updatePayload)) {
+                            $customer->update($updatePayload);
+                        }
                     }
                 }
 
@@ -1605,6 +1636,11 @@ class Wizard extends Component
         $acsSettings = \App\Models\Setting::getValue('connection.acs', []);
         $acsUrl = trim((string) ($acsSettings['acs_url'] ?? ''));
 
+        // Abaikan jika berisi domain dummy example.com
+        if (str_contains($acsUrl, 'example.com')) {
+            $acsUrl = '';
+        }
+
         if (empty($acsUrl) && !empty($acsSettings['base_url'])) {
             $parsed = parse_url($acsSettings['base_url']);
             $scheme = $parsed['scheme'] ?? 'http';
@@ -1616,18 +1652,22 @@ class Wizard extends Component
         }
 
         if (empty($acsUrl)) {
-            $envUrl = config('genieacs.cpe_defaults.acs_url', '');
+            $envUrl = env('GENIEACS_PUBLIC_CWMP_URL', config('genieacs.cpe_defaults.acs_url', ''));
             if ($envUrl && !str_contains($envUrl, 'example.com')) {
                 $acsUrl = $envUrl;
             }
         }
 
-        if (empty($acsUrl) && !empty($acsSettings['base_url'])) {
-            $parsed = parse_url($acsSettings['base_url']);
-            $scheme = $parsed['scheme'] ?? 'http';
-            $host = $parsed['host'] ?? '10.10.10.1';
-            $port = $acsSettings['tr069_port'] ?? 7547;
-            $acsUrl = "{$scheme}://{$host}:{$port}";
+        // Jika masih kosong, coba ambil domain/host aktif dari request server
+        if (empty($acsUrl)) {
+            $currentHost = null;
+            try {
+                $currentHost = request()->getHost();
+            } catch (\Throwable $e) {}
+
+            if ($currentHost && !in_array($currentHost, ['localhost', '127.0.0.1', 'example.com'], true)) {
+                $acsUrl = "http://{$currentHost}:7547";
+            }
         }
 
         return $acsUrl ?: 'http://10.10.10.1:7547';

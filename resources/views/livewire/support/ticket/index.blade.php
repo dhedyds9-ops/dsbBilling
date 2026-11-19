@@ -532,20 +532,18 @@ $statusLabels = [
                                         <span>Objek Jaringan (Jalur / ODP / ODC)</span>
                                     </label>
                                 </div>
-                                @if(($newTicket['manual_type'] ?? 'customer') === 'network')
-                                    <div>
-                                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Pilih Dari Data ODP Terdaftar (Opsional)
-                                        </label>
-                                        <select wire:model.live="newTicket.manual_network_odp_id"
-                                                class="w-full px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                            <option value="">-- Ketik Manual atau Pilih ODP Terdaftar --</option>
-                                            @foreach($this->odpOptions as $odpId => $odpName)
-                                                <option value="{{ $odpId }}">{{ $odpName }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                @endif
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                        Pilih Dari Data ODP Terdaftar (Opsional - Alamat & Titik Koordinat Otomatis)
+                                    </label>
+                                    <select wire:model.live="newTicket.manual_network_odp_id"
+                                            class="w-full px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option value="">-- Ketik Manual atau Pilih ODP Terdaftar --</option>
+                                        @foreach($this->odpOptions as $odpId => $odpName)
+                                            <option value="{{ $odpId }}">{{ $odpName }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                                         {{ ($newTicket['manual_type'] ?? 'customer') === 'network' ? 'Nama Objek Gangguan (ODP/Jalur/ODC)' : 'Nama Pelanggan / Pelapor' }} <span class="text-rose-500">*</span>
@@ -574,6 +572,62 @@ $statusLabels = [
                                                wire:model.live="newTicket.manual_customer_address" 
                                                placeholder="Alamat pelanggan atau titik lokasi"
                                                class="w-full px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    </div>
+                                </div>
+
+                                {{-- Titik Koordinat GPS --}}
+                                <div class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40 space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                            <span class="material-symbols-outlined notranslate text-sm text-indigo-500">pin_drop</span>
+                                            Titik Koordinat Lokasi
+                                        </span>
+                                        <div class="flex items-center gap-1.5" x-data="{
+                                            loadingGps: false,
+                                            getGps() {
+                                                if (!navigator.geolocation) {
+                                                    alert('Geolocation tidak didukung di browser ini.');
+                                                    return;
+                                                }
+                                                this.loadingGps = true;
+                                                navigator.geolocation.getCurrentPosition(
+                                                    (pos) => {
+                                                        $wire.set('newTicket.latitude', pos.coords.latitude.toFixed(6));
+                                                        $wire.set('newTicket.longitude', pos.coords.longitude.toFixed(6));
+                                                        this.loadingGps = false;
+                                                    },
+                                                    (err) => {
+                                                        alert('Gagal mengambil GPS: ' + err.message);
+                                                        this.loadingGps = false;
+                                                    },
+                                                    { enableHighAccuracy: true, timeout: 10000 }
+                                                );
+                                            },
+                                            pasteCoords() {
+                                                navigator.clipboard.readText().then(text => {
+                                                    let match = text.match(/([+-]?\d+\.\d+)[,\s]+([+-]?\d+\.\d+)/);
+                                                    if (match) {
+                                                        $wire.set('newTicket.latitude', match[1]);
+                                                        $wire.set('newTicket.longitude', match[2]);
+                                                    } else {
+                                                        alert('Format di clipboard harus: latitude, longitude');
+                                                    }
+                                                }).catch(() => alert('Izin clipboard tidak diizinkan di browser ini.'));
+                                            }
+                                        }">
+                                            <button type="button" @click="getGps()" :disabled="loadingGps" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 flex items-center gap-1 cursor-pointer">
+                                                <span class="material-symbols-outlined notranslate text-[13px]">my_location</span>
+                                                <span x-text="loadingGps ? 'Mencari...' : 'GPS Saya'"></span>
+                                            </button>
+                                            <button type="button" @click="pasteCoords()" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 flex items-center gap-1 cursor-pointer">
+                                                <span class="material-symbols-outlined notranslate text-[13px]">content_paste</span>
+                                                Tempel
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input type="text" wire:model="newTicket.latitude" placeholder="Latitude (-6.xxx)" class="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-slate-900 dark:text-slate-100">
+                                        <input type="text" wire:model="newTicket.longitude" placeholder="Longitude (105.xxx)" class="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-slate-900 dark:text-slate-100">
                                     </div>
                                 </div>
 

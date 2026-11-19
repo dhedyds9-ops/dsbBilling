@@ -60,10 +60,13 @@ class Index extends BaseEnterpriseList
             'survey_id' => '',
             'survey_search' => '',
             'job_type' => '',
+            'manual_odp_id' => '',
             'manual_package' => '',
             'manual_name' => '',
             'manual_phone' => '',
             'manual_address' => '',
+            'latitude' => '',
+            'longitude' => '',
             'customer_id' => '',
             'package_id' => '',
             'scheduled_date' => now()->addDay()->toDateString(),
@@ -431,6 +434,40 @@ class Index extends BaseEnterpriseList
         $this->assignTechId = null;
     }
 
+    public function getOdpOptions(): array
+    {
+        return \App\Models\ISP\Odp::active()->orderBy('name')->pluck('name', 'id')->toArray();
+    }
+
+    public function updatedNewWoManualOdpId($value): void
+    {
+        if ($value) {
+            $odp = \App\Models\ISP\Odp::withoutGlobalScopes()->find($value);
+            if ($odp) {
+                if ($odp->latitude !== null && $odp->longitude !== null && (string) $odp->latitude !== '' && (string) $odp->longitude !== '') {
+                    $this->newWo['latitude'] = (string) $odp->latitude;
+                    $this->newWo['longitude'] = (string) $odp->longitude;
+                }
+
+                $addressParts = [];
+                if (!empty(trim((string) $odp->address))) {
+                    $addressParts[] = trim((string) $odp->address);
+                }
+                if (!empty($this->newWo['latitude']) && !empty($this->newWo['longitude'])) {
+                    $addressParts[] = "Dekat ODP: {$odp->name} [Titik: {$this->newWo['latitude']}, {$this->newWo['longitude']}]";
+                }
+
+                if (!empty($addressParts) && (empty($this->newWo['manual_address']) || str_contains($this->newWo['manual_address'], 'ODP:'))) {
+                    $this->newWo['manual_address'] = implode(' - ', $addressParts);
+                }
+
+                if (!empty($odp->reseller_id) && empty($this->newWo['reseller_id'])) {
+                    $this->newWo['reseller_id'] = (string) $odp->reseller_id;
+                }
+            }
+        }
+    }
+
     public function openCreateWo(): void
     {
         $this->newWo = [
@@ -440,10 +477,13 @@ class Index extends BaseEnterpriseList
             'survey_id' => '',
             'survey_search' => '',
             'job_type' => '',
+            'manual_odp_id' => '',
             'manual_package' => '',
             'manual_name' => '',
             'manual_phone' => '',
             'manual_address' => '',
+            'latitude' => '',
+            'longitude' => '',
             'customer_id' => '',
             'package_id' => '',
             'scheduled_date' => now()->addDay()->toDateString(),
@@ -606,16 +646,26 @@ class Index extends BaseEnterpriseList
                 $package = trim((string) ($this->newWo['manual_package'] ?? ''));
                 $resellerId = !empty($this->newWo['reseller_id']) && $this->newWo['reseller_id'] !== 'direct' ? (int) $this->newWo['reseller_id'] : null;
 
+                $lat = !empty($this->newWo['latitude']) ? (float) $this->newWo['latitude'] : null;
+                $lng = !empty($this->newWo['longitude']) ? (float) $this->newWo['longitude'] : null;
+                if (($lat === null || $lng === null) && preg_match('/(?:Koordinat|Titik|GPS)?[:\s]*([+-]?\d+\.\d+)[,\s]+([+-]?\d+\.\d+)/i', $address, $km)) {
+                    $lat = (float) $km[1];
+                    $lng = (float) $km[2];
+                }
+
                 $wo->customer_name = $name;
                 $wo->customer_phone = $phone;
                 $wo->installation_address = $address;
                 $wo->package_name = $package;
                 $wo->reseller_id = $resellerId;
+                $wo->latitude = $lat;
+                $wo->longitude = $lng;
 
                 $info = array_filter([
                     !empty($phone) ? 'Telp: ' . $phone : null,
                     !empty($address) ? 'Alamat: ' . $address : null,
                     !empty($package) ? 'Paket: ' . $package : null,
+                    ($lat !== null && $lng !== null) ? "GPS: {$lat}, {$lng}" : null,
                 ]);
                 if ($info) {
                     $notes = trim(implode(' | ', $info) . "\n" . $notes);

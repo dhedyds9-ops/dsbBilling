@@ -329,11 +329,84 @@
               </select>
             </div>
           @else
-            <div class="space-y-2">
+            <div class="space-y-3">
               <input type="text" wire:model="newWo.manual_name" placeholder="Nama calon pelanggan *" class="{{ $fieldCls }}">
-              <input type="text" wire:model="newWo.manual_phone" placeholder="No. telepon / WhatsApp" class="{{ $fieldCls }}">
-              <input type="text" wire:model="newWo.manual_address" placeholder="Alamat pemasangan" class="{{ $fieldCls }}">
-              <input type="text" wire:model="newWo.manual_package" placeholder="Paket yang diminta (opsional)" class="{{ $fieldCls }}">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input type="text" wire:model="newWo.manual_phone" placeholder="No. telepon / WhatsApp" class="{{ $fieldCls }}">
+                <input type="text" wire:model="newWo.manual_package" placeholder="Paket yang diminta (opsional)" class="{{ $fieldCls }}">
+              </div>
+
+              {{-- Pilihan ODP Terdekat (Opsional) --}}
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Pilih ODP Terdekat (Alamat & Titik GPS Otomatis)
+                </label>
+                <select wire:model.live="newWo.manual_odp_id" class="{{ $fieldCls }}">
+                  <option value="">-- Pilih ODP Terdaftar (Opsional) --</option>
+                  @foreach($this->getOdpOptions() as $odpId => $odpName)
+                    <option value="{{ $odpId }}">{{ $odpName }}</option>
+                  @endforeach
+                </select>
+              </div>
+
+              <input type="text" wire:model="newWo.manual_address" placeholder="Alamat pemasangan / patokan tiang" class="{{ $fieldCls }}">
+
+              {{-- Titik Koordinat GPS --}}
+              <div class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                    <span class="material-symbols-outlined notranslate text-sm text-indigo-500">pin_drop</span>
+                    Titik Koordinat Lokasi
+                  </span>
+                  <div class="flex items-center gap-1.5" x-data="{
+                    loadingGps: false,
+                    getGps() {
+                      if (!navigator.geolocation) {
+                        alert('Geolocation tidak didukung di browser ini.');
+                        return;
+                      }
+                      this.loadingGps = true;
+                      navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                          $wire.set('newWo.latitude', pos.coords.latitude.toFixed(6));
+                          $wire.set('newWo.longitude', pos.coords.longitude.toFixed(6));
+                          this.loadingGps = false;
+                        },
+                        (err) => {
+                          alert('Gagal mengambil GPS: ' + err.message);
+                          this.loadingGps = false;
+                        },
+                        { enableHighAccuracy: true, timeout: 10000 }
+                      );
+                    },
+                    pasteCoords() {
+                      navigator.clipboard.readText().then(text => {
+                        let match = text.match(/([+-]?\d+\.\d+)[,\s]+([+-]?\d+\.\d+)/);
+                        if (match) {
+                          $wire.set('newWo.latitude', match[1]);
+                          $wire.set('newWo.longitude', match[2]);
+                        } else {
+                          alert('Format di clipboard harus: latitude, longitude');
+                        }
+                      }).catch(() => alert('Izin clipboard tidak diizinkan di browser ini.'));
+                    }
+                  }">
+                    <button type="button" @click="getGps()" :disabled="loadingGps" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 flex items-center gap-1 cursor-pointer">
+                      <span class="material-symbols-outlined notranslate text-[13px]">my_location</span>
+                      <span x-text="loadingGps ? 'Mencari...' : 'GPS Saya'"></span>
+                    </button>
+                    <button type="button" @click="pasteCoords()" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 flex items-center gap-1 cursor-pointer">
+                      <span class="material-symbols-outlined notranslate text-[13px]">content_paste</span>
+                      Tempel
+                    </button>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <input type="text" wire:model="newWo.latitude" placeholder="Latitude (-6.xxx)" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-slate-800 dark:text-slate-100 py-1.5 px-2.5 text-xs font-mono">
+                  <input type="text" wire:model="newWo.longitude" placeholder="Longitude (105.xxx)" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-slate-800 dark:text-slate-100 py-1.5 px-2.5 text-xs font-mono">
+                </div>
+              </div>
+
               <div>
                 <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Owner / Reseller (Opsional)</label>
                 <select wire:model="newWo.reseller_id" class="{{ $fieldCls }}">

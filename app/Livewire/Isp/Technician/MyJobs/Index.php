@@ -842,12 +842,17 @@ class Index extends Component
             }
 
             $installations = $instQuery->latest('scheduled_at')->latest('created_at')->get();
+            $handledTicketIds = $installations->pluck('ticket_id')->filter()->toArray();
+            $handledInstIds = $installations->pluck('id')->toArray();
 
             foreach ($installations as $inst) {
                 $isCompleted = in_array($inst->status, ['completed']);
                 $custName = !empty($inst->customer_name) ? $inst->customer_name : ($inst->customer?->name ?? ($inst->survey?->prospect?->name ?? 'Pelanggan #' . $inst->customer_id));
-                $custPhone = $inst->customer?->phone ?? ($inst->survey?->prospect?->phone ?? '-');
-                $custAddr = $inst->customer?->address ?? ($inst->survey?->prospect?->address ?? 'Alamat tidak tersedia');
+                $custPhone = $inst->customer_phone ?: ($inst->customer?->phone ?? ($inst->survey?->prospect?->phone ?? '-'));
+                $custAddr = $inst->installation_address ?: ($inst->customer?->address ?? ($inst->survey?->prospect?->address ?? 'Alamat tidak tersedia'));
+                $pkgName = $inst->package_name ?: ($inst->package?->name ?: 'Instalasi Pasang Baru');
+                $lat = $inst->latitude ?: ($inst->customer?->latitude ?? $inst->survey?->latitude);
+                $lng = $inst->longitude ?: ($inst->customer?->longitude ?? $inst->survey?->longitude);
 
                 $items->push((object) [
                     'id' => 'inst_' . $inst->id,
@@ -865,7 +870,7 @@ class Index extends Component
                     'phone' => $custPhone,
                     'address' => $custAddr,
                     'username' => null,
-                    'package_name' => 'Instalasi Pasang Baru',
+                    'package_name' => $pkgName,
                     'onu_sn' => $inst->onu_serial_number ?? ($inst->onu?->serial_number ?? null),
                     'onu_name' => $inst->onu?->name ?? null,
                     'date' => $inst->scheduled_at ?? $inst->created_at,
@@ -876,10 +881,10 @@ class Index extends Component
                     'reseller_name' => $inst->customer?->reseller?->name ?? null,
                     'reseller_id' => $inst->customer?->reseller_id ?? null,
                     'photos' => null,
-                    'latitude' => $inst->customer?->latitude ?? $inst->survey?->latitude,
-                    'longitude' => $inst->customer?->longitude ?? $inst->survey?->longitude,
+                    'latitude' => $lat,
+                    'longitude' => $lng,
                     'survey_id' => null,
-                    'ticket_id' => null,
+                    'ticket_id' => $inst->ticket_id ?? null,
                 ]);
             }
         }
@@ -900,6 +905,15 @@ class Index extends Component
                     if ($hasTicketTechIds) {
                         $q->orWhereJsonContains('technician_ids', $userId);
                     }
+                });
+            }
+
+            if (!empty($handledTicketIds)) {
+                $ticketQuery->whereNotIn('id', $handledTicketIds);
+            }
+            if (!empty($handledInstIds) && \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'installation_id')) {
+                $ticketQuery->where(function ($q) use ($handledInstIds) {
+                    $q->whereNull('installation_id')->orWhereNotIn('installation_id', $handledInstIds);
                 });
             }
 
@@ -929,8 +943,19 @@ class Index extends Component
             $tickets = $ticketQuery->latest('created_at')->get();
 
             foreach ($tickets as $ticket) {
+                if (!empty($ticket->installation_id) && in_array($ticket->installation_id, $handledInstIds)) {
+                    continue;
+                }
+
                 $isResolved = in_array($ticket->status, ['resolved', 'closed']);
                 $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
+
+                $payload = method_exists($ticket, 'getNotificationPayload') ? $ticket->getNotificationPayload() : [];
+                $custName = $payload['customer_name'] ?? ($ticket->customer?->name ?? 'Pelanggan #' . ($ticket->customer_id ?? '-'));
+                $custPhone = $payload['customer_phone'] ?? ($ticket->customer?->phone ?? '-');
+                $custAddr = $payload['address'] ?? ($ticket->customer?->address ?? 'Alamat tidak tersedia');
+                $lat = $payload['latitude'] ?? $ticket->customer?->latitude;
+                $lng = $payload['longitude'] ?? $ticket->customer?->longitude;
 
                 $items->push((object) [
                     'id' => 'ticket_' . $ticket->id,
@@ -939,14 +964,14 @@ class Index extends Component
                     'job_type' => 'ticket',
                     'type_badge' => 'Tiket ' . strtoupper($ticket->category ?? 'Gangguan'),
                     'service_type' => 'TIKET',
-                    'title' => $ticket->customer?->name ?? 'Pelanggan #' . ($ticket->customer_id ?? '-'),
+                    'title' => $custName,
                     'subject' => $ticket->title,
                     'description' => $ticket->description,
                     'priority' => $ticket->priority ?? 'medium',
                     'category' => $ticket->category ?? 'gangguan',
                     'code' => $code,
-                    'phone' => $ticket->customer?->phone ?? '-',
-                    'address' => $ticket->customer?->address ?? 'Alamat tidak tersedia',
+                    'phone' => $custPhone,
+                    'address' => $custAddr,
                     'username' => null,
                     'package_name' => $ticket->title,
                     'onu_sn' => null,
@@ -960,8 +985,8 @@ class Index extends Component
                     'customer_id' => $ticket->customer_id,
                     'reseller_name' => $ticket->reseller?->name ?? $ticket->customer?->reseller?->name ?? null,
                     'reseller_id' => $ticket->reseller_id ?? $ticket->customer?->reseller_id ?? null,
-                    'latitude' => $ticket->customer?->latitude,
-                    'longitude' => $ticket->customer?->longitude,
+                    'latitude' => $lat,
+                    'longitude' => $lng,
                     'survey_id' => null,
                     'ticket_id' => $ticket->id,
                     'maint_id' => null,
