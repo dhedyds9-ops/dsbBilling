@@ -401,7 +401,8 @@ class MobileAcsProxyController extends Controller
             if ($devSn !== '') {
                 $existingSns[$devSn] = true;
                 if (str_contains($devSn, '-')) {
-                    $existingSns[end(explode('-', $devSn))] = true;
+                    $snParts = explode('-', $devSn);
+                    $existingSns[end($snParts)] = true;
                 }
             }
         }
@@ -507,34 +508,123 @@ class MobileAcsProxyController extends Controller
 
             if (!empty($candidateSns)) {
                 $custServices = \App\Models\Customer\CustomerService::withoutGlobalScopes()
-                    ->with(['customer:id,name'])
+                    ->with([
+                        'customer' => fn($q) => $q->withoutGlobalScopes(),
+                        'onu' => fn($q) => $q->withoutGlobalScopes()->with(['odp' => fn($o) => $o->withoutGlobalScopes()]),
+                    ])
                     ->where(function ($query) use ($candidateSns) {
                         $query->whereHas('onu', fn($q) => $q->whereIn('serial_number', $candidateSns))
                               ->orWhereIn('onu_serial', $candidateSns);
                     })
                     ->get();
 
-                $custNameMap = [];
+                $dbOnus = \App\Models\ISP\Onu::withoutGlobalScopes()
+                    ->whereIn('serial_number', $candidateSns)
+                    ->with(['odp' => fn($q) => $q->withoutGlobalScopes(), 'customer' => fn($q) => $q->withoutGlobalScopes()])
+                    ->get()
+                    ->keyBy(fn($o) => strtoupper($o->serial_number));
+
+                $dbAcsList = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                    ->whereIn('serial_number', $candidateSns)
+                    ->orWhereIn('uuid', $candidateSns)
+                    ->with(['odp' => fn($q) => $q->withoutGlobalScopes(), 'customerService.customer' => fn($q) => $q->withoutGlobalScopes()])
+                    ->get()
+                    ->keyBy(fn($a) => strtoupper($a->serial_number ?: $a->uuid));
+
+                $metaMap = [];
                 foreach ($custServices as $cs) {
-                    $cName = $cs->customer?->name;
-                    if ($cName) {
-                        if ($cs->onu_serial) {
-                            $custNameMap[strtoupper($cs->onu_serial)] = $cName;
-                        }
-                        if ($cs->onu && $cs->onu->serial_number) {
-                            $custNameMap[strtoupper($cs->onu->serial_number)] = $cName;
-                        }
+                    $keys = array_filter([
+                        $cs->onu_serial ? strtoupper($cs->onu_serial) : null,
+                        $cs->onu?->serial_number ? strtoupper($cs->onu->serial_number) : null
+                    ]);
+                    $meta = [
+                        'customer_name' => $cs->customer?->name,
+                        'pppoe_username' => $cs->username,
+                        'lat' => $cs->customer?->latitude ? (float)$cs->customer->latitude : null,
+                        'lng' => $cs->customer?->longitude ? (float)$cs->customer->longitude : null,
+                        'odp_name' => $cs->onu?->odp?->name ?? $cs->onu?->odp?->code,
+                        'rx_power' => $cs->onu?->rx_power_dbm !== null ? (float)$cs->onu->rx_power_dbm : null,
+                    ];
+                    foreach ($keys as $k) {
+                        $metaMap[$k] = $meta;
                     }
                 }
 
                 foreach ($devices as &$d) {
+                    $devSn = strtoupper(trim((string) ($d['serial_number'] ?? ($d['_id'] ?? ''))));
+                    $snParts = explode('-', $devSn);
+                    $snShort = end($snParts);
+                    
+                    $matched = $metaMap[$devSn] ?? ($metaMap[$snShort] ?? null);
+                    $dbOnu = $dbOnus->get($devSn) ?? $dbOnus->get($snShort);
+                    $dbAcs = $dbAcsList->get($devSn) ?? $dbAcsList->get($snShort);
+
                     if (empty($d['customer_name'])) {
-                        $devSn = strtoupper(trim((string) ($d['serial_number'] ?? ($d['_id'] ?? ''))));
-                        $snShort = str_contains($devSn, '-') ? end(explode('-', $devSn)) : $devSn;
-                        $matchedName = $custNameMap[$devSn] ?? ($custNameMap[$snShort] ?? null);
-                        if ($matchedName) {
-                            $d['customer_name'] = $matchedName;
+                        $d['customer_name'] = $matched['customer_name'] 
+                            ?? $dbOnu?->customer?->name 
+                            ?? $dbAcs?->customerService?->customer?->name 
+                            ?? null;
+                    }
+
+                    if (empty($d['pppoe_username']) || $d['pppoe_username'] === '-') {
+                        $d['pppoe_username'] = $matched['pppoe_username'] 
+                            ?? $dbOnu?->pppoe_username 
+                            ?? $dbAcs?->pppoe_username 
+                            ?? '-';
+                    }
+
+                    $resolvedLat = $matched['lat'] 
+                        ?? ($dbOnu?->latitude ? (float)$dbOnu->latitude : null)
+                        ?? ($dbAcs?->latitude ? (float)$dbAcs->latitude : null)
+                        ?? ($dbOnu?->customer?->latitude ? (float)$dbOnu->customer->latitude : null);
+
+                    $resolvedLng = $matched['lng'] 
+                        ?? ($dbOnu?->longitude ? (float)$dbOnu->longitude : null)
+                        ?? ($dbAcs?->longitude ? (float)$dbAcs->longitude : null)
+                        ?? ($dbOnu?->customer?->longitude ? (float)$dbOnu->customer->longitude : null);
+
+                    $resolvedOdp = $matched['odp_name'] 
+                        ?? $dbOnu?->odp?->name 
+                        ?? $dbAcs?->odp?->name 
+                        ?? null;
+
+                    if ($resolvedLat !== null && $resolvedLng !== null) {
+                        $d['latitude'] = $resolvedLat;
+                        $d['longitude'] = $resolvedLng;
+                        if (!isset($d['tags']) || !is_array($d['tags'])) {
+                            $d['tags'] = [];
                         }
+                        $hasGeoTag = false;
+                        foreach ($d['tags'] as $t) {
+                            if (is_string($t) && str_starts_with($t, 'geo:')) {
+                                $hasGeoTag = true;
+                                break;
+                            }
+                        }
+                        if (!$hasGeoTag) {
+                            $d['tags'][] = "geo:{$resolvedLat},{$resolvedLng}";
+                        }
+                    }
+
+                    if ($resolvedOdp) {
+                        $d['odp_name'] = $resolvedOdp;
+                        if (!isset($d['tags']) || !is_array($d['tags'])) {
+                            $d['tags'] = [];
+                        }
+                        $hasOdpTag = false;
+                        foreach ($d['tags'] as $t) {
+                            if (is_string($t) && str_starts_with($t, 'odp:')) {
+                                $hasOdpTag = true;
+                                break;
+                            }
+                        }
+                        if (!$hasOdpTag) {
+                            $d['tags'][] = "odp:{$resolvedOdp}";
+                        }
+                    }
+
+                    if (!isset($d['rx_power']) && !empty($matched['rx_power'])) {
+                        $d['rx_power'] = $matched['rx_power'];
                     }
                 }
                 unset($d);
@@ -571,7 +661,8 @@ class MobileAcsProxyController extends Controller
 
             // Enrich params with dsBilling database resolution (parity with Web dsBilling)
             $cleanUpper = strtoupper(trim($cleanId));
-            $candidateSn = str_contains($cleanUpper, '-') ? end(explode('-', $cleanUpper)) : $cleanUpper;
+            $cuParts = explode('-', $cleanUpper);
+            $candidateSn = end($cuParts);
 
             $ad = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where(function ($q) use ($cleanUpper, $candidateSn) {
                 $q->where('uuid', $cleanUpper)

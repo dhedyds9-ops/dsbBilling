@@ -2562,6 +2562,10 @@ class MobileNetworkApiController extends Controller
 
         $customer = null;
         $onu = null;
+        $acsDevice = null;
+
+        $devParts = explode('-', $deviceId);
+        $candidateSn = end($devParts);
 
         if (str_starts_with($deviceId, 'cust-')) {
             $cId = (int)substr($deviceId, 5);
@@ -2575,9 +2579,29 @@ class MobileNetworkApiController extends Controller
                 $onu = Onu::withoutGlobalScopes()->find((int)$deviceId);
             }
         } else {
-            $onu = Onu::withoutGlobalScopes()->where('serial_number', $deviceId)->first();
-            if (!$onu) {
-                $customer = Customer::withoutGlobalScopes()->where('code', $deviceId)->first();
+            $onu = Onu::withoutGlobalScopes()->where('serial_number', $deviceId)
+                ->orWhere('serial_number', $candidateSn)
+                ->first();
+
+            $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->where('uuid', $deviceId)
+                ->orWhere('serial_number', $deviceId)
+                ->orWhere('serial_number', $candidateSn)
+                ->first();
+
+            if (!$onu && $acsDevice && $acsDevice->onu_id) {
+                $onu = Onu::withoutGlobalScopes()->find($acsDevice->onu_id);
+            }
+
+            if (!$customer && $acsDevice && $acsDevice->customer_service_id) {
+                $cs = CustomerService::withoutGlobalScopes()->find($acsDevice->customer_service_id);
+                $customer = $cs?->customer;
+            }
+
+            if (!$customer) {
+                $customer = Customer::withoutGlobalScopes()->where('code', $deviceId)
+                    ->orWhere('code', $candidateSn)
+                    ->first();
             }
         }
 
@@ -2610,7 +2634,16 @@ class MobileNetworkApiController extends Controller
             }
         }
 
-        if (!$customer && !$onu) {
+        if ($acsDevice) {
+            $acsDevice->latitude = $lat;
+            $acsDevice->longitude = $lng;
+            if ($odpId) {
+                $acsDevice->odp_id = $odpId;
+            }
+            $acsDevice->save();
+        }
+
+        if (!$customer && !$onu && !$acsDevice) {
             return response()->json([
                 'success' => false,
                 'message' => 'Perangkat/Pelanggan tidak ditemukan dengan ID: ' . $deviceId,
