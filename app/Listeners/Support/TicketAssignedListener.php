@@ -22,6 +22,12 @@ class TicketAssignedListener
             $ticket = Ticket::with(['customer', 'assignedTo', 'installation.survey'])->find((int) $event->ticketId);
             if (!$ticket) return;
 
+            // Cegah duplikasi notifikasi: Jika tiket berjenis PSB / Instalasi,
+            // penugasan teknisi sudah dikirimkan secara resmi via SPK Instalasi (InstallationTechnicianNotifier)
+            if (in_array(strtolower((string) $ticket->category), ['installation', 'psb'], true) || !empty($ticket->installation_id)) {
+                return;
+            }
+
             $technician = User::find((int) $event->assigneeId);
             if (!$technician) return;
 
