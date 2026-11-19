@@ -319,35 +319,48 @@ class MapApiController extends Controller
         $hotspot = $cs?->hotspotUser;
 
         $isOnline = false;
-        $reason = 'Tidak Ada Sesi Aktif';
+        $reason = 'Perangkat Offline';
         $totalClients = 0;
 
+        // Evaluasi Murni Status Hardware Perangkat (OLT, DDM Optical, TR-069 Inform)
+        // JANGAN mengambil sesi aktif PPPoE atau Hotspot karena itu status akun layanan pelanggan, bukan status perangkat fisik
         try {
-            if ($pppoe && $pppoe->is_online) {
+            $rx = ($onu?->rx_power_dbm !== null && $onu?->rx_power_dbm !== '') ? (float) $onu->rx_power_dbm : ($acsDevice?->signal !== null ? (float) $acsDevice->signal : null);
+            $hasOpticalSignal = ($rx !== null && $rx !== 0.0 && $rx > -35.0);
+
+            $lastSeenOlt = $onu?->last_seen_at ? \Illuminate\Support\Carbon::parse($onu->last_seen_at) : null;
+            $isOltActive = in_array(strtolower((string) $onu?->operational_status), ['online', 'active', 'up', 'working'])
+                || in_array(strtolower((string) $onu?->status), ['online', 'active', 'up', 'working'])
+                || ($lastSeenOlt && $lastSeenOlt->diffInMinutes(now()) <= 15);
+
+            $lastInformAcs = $acsDevice?->last_inform ? \Illuminate\Support\Carbon::parse($acsDevice->last_inform) : null;
+            $isAcsActive = $acsDevice && ($acsDevice->status === 'online' || ($lastInformAcs && $lastInformAcs->diffInMinutes(now()) <= 15));
+
+            if ($hasOpticalSignal && $isOltActive) {
                 $isOnline = true;
-                $reason = 'PPPoE Active Session';
-            } elseif ($hotspot && $hotspot->is_online) {
+                $reason = 'Online di OLT & Optik Normal';
+            } elseif ($isAcsActive) {
                 $isOnline = true;
-                $reason = 'Hotspot Active Session';
-            } elseif ($acsDevice && ($acsDevice->status === 'online' || ($acsDevice->last_inform && $acsDevice->last_inform->diffInMinutes(now()) <= 15))) {
+                $reason = 'TR-069 Inform Aktif';
+            } elseif ($isOltActive) {
                 $isOnline = true;
-                $reason = 'TR-069 Active Inform';
-            } elseif ($onu && $onu->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 15) {
+                $reason = 'ONU Terdaftar Aktif di OLT';
+            } elseif ($hasOpticalSignal) {
                 $isOnline = true;
-                $reason = 'ONU Online on OLT';
+                $reason = 'Sinyal Optik DDM Terdeteksi';
             } else {
                 $isOnline = false;
-                if ($cs && strtolower($cs->status ?? '') === 'suspended') {
-                    $reason = 'Layanan Disuspend';
-                } elseif ($cs && strtolower($cs->status ?? '') === 'inactive') {
-                    $reason = 'Layanan Nonaktif';
+                if ($rx !== null && $rx <= -35.0) {
+                    $reason = 'Kabel Optik Putus (LOS Alarm)';
+                } elseif ($onu && $onu->last_seen_at) {
+                    $reason = 'Modem Mati / Terputus dari OLT';
                 } else {
-                    $reason = 'Modem Offline / Sesi Terputus';
+                    $reason = 'Perangkat Tidak Terhubung OLT';
                 }
             }
         } catch (\Throwable) {
-            $isOnline = ($pppoe && in_array(strtolower($pppoe->status ?? ''), ['active', 'online']));
-            $reason = $isOnline ? 'PPPoE Active' : 'Modem Offline';
+            $isOnline = false;
+            $reason = 'Status OLT Tidak Diketahui';
         }
 
         if ($acsDevice && isset($acsDevice->total_associations)) {
@@ -373,7 +386,7 @@ class MapApiController extends Controller
                 if (!empty($wifiInfo['password'])) $ssidPassword = $wifiInfo['password'];
                 if (!empty($wifiInfo['online'])) {
                     $isOnline = true;
-                    $reason = 'TR-069 Active Session';
+                    $reason = 'TR-069 Inform Aktif';
                 }
             } catch (\Throwable $e) {}
         }

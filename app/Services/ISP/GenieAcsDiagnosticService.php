@@ -420,15 +420,16 @@ class GenieAcsDiagnosticService
         ]) ?? $onu->mac_address;
 
         // Device is considered online if:
-        // 1. GenieACS calculateStatus returns online or stale, OR
-        // 2. Optical transceiver is receiving valid RX power, OR
-        // 3. ONU status in database is active
-        $hasOpticalSignal = ($opticalData['rx_power'] !== null && $opticalData['rx_power'] !== 0.0);
-        if ($hasOpticalSignal || in_array(strtolower((string)$onu->status), ['active', 'online'])) {
+        // 1. GenieACS calculateStatus returns online or stale (via TR-069 periodic inform), OR
+        // 2. Optical transceiver is receiving valid RX power (DDM laser active, not LOS <= -35 dBm), OR
+        // 3. ONU physical status on OLT is active/online/working
+        $hasOpticalSignal = ($opticalData['rx_power'] !== null && (float)$opticalData['rx_power'] !== 0.0 && (float)$opticalData['rx_power'] > -35.0);
+        $isOltActive = in_array(strtolower((string)($onu->operational_status ?? $onu->status)), ['active', 'online', 'up', 'working']);
+        if ($hasOpticalSignal || $isOltActive) {
             $isOnline = true;
             if ($onlineStatus === 'offline') {
                 $onlineStatus = 'online';
-                $connectionStatus = 'Connected (Online)';
+                $connectionStatus = 'Connected (Online di OLT)';
                 $statusBadge = 'green';
             }
         }
@@ -770,8 +771,8 @@ class GenieAcsDiagnosticService
      */
     protected function formatUnregisteredDiagnostic(Onu $onu): array
     {
-        $hasOptical = !empty($onu->rx_power_dbm) && (float)$onu->rx_power_dbm < 0;
-        $isOnline = in_array(strtolower((string)$onu->status), ['active', 'online']) || $hasOptical;
+        $hasOptical = !empty($onu->rx_power_dbm) && (float)$onu->rx_power_dbm < 0 && (float)$onu->rx_power_dbm > -35.0;
+        $isOnline = in_array(strtolower((string)($onu->operational_status ?? $onu->status)), ['active', 'online', 'up', 'working']) || $hasOptical;
         $onlineStatus = $isOnline ? 'online' : 'offline';
 
         return [
@@ -830,8 +831,8 @@ class GenieAcsDiagnosticService
      */
     protected function formatNotFoundDiagnostic(Onu $onu, string $deviceId): array
     {
-        $hasOptical = !empty($onu->rx_power_dbm) && (float)$onu->rx_power_dbm < 0;
-        $isOnline = in_array(strtolower((string)$onu->status), ['active', 'online']) || $hasOptical;
+        $hasOptical = !empty($onu->rx_power_dbm) && (float)$onu->rx_power_dbm < 0 && (float)$onu->rx_power_dbm > -35.0;
+        $isOnline = in_array(strtolower((string)($onu->operational_status ?? $onu->status)), ['active', 'online', 'up', 'working']) || $hasOptical;
         $onlineStatus = $isOnline ? 'online' : 'offline';
 
         return [

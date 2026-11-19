@@ -1531,17 +1531,23 @@ class MobileNetworkApiController extends Controller
             }
         }
 
-        // 4. Evaluasi Status Online
-        // Sesuai GenieAcsDiagnosticService: Jika optical transceiver receiving valid RX power atau status active -> ONLINE
-        $hasOpticalSignal = ($rx !== null && $rx !== 0.0);
+        // 4. Evaluasi Murni Status Hardware Perangkat (OLT, DDM Optical, TR-069 Inform)
+        // JANGAN mengambil sesi aktif PPPoE atau Hotspot
+        $hasOpticalSignal = ($rx !== null && $rx !== 0.0 && $rx > -35.0);
+        $isOltActive = in_array(strtolower((string) $onu->operational_status), ['online', 'active', 'up', 'working'])
+            || in_array(strtolower((string) $onu->status), ['online', 'active', 'up', 'working']);
+        $isAcsActive = $ad && (strtolower((string) $ad->status) === 'online' || ($ad->last_inform && $ad->last_inform->diffInMinutes(now()) <= 15));
+
         $isOnline = false;
-        if ($liveDiag && !empty($liveDiag['is_online'])) {
+        if ($liveDiag && !empty($liveDiag['is_online']) && ($rx === null || $rx > -35.0)) {
+            $isOnline = true;
+        } elseif ($hasOpticalSignal && $isOltActive) {
+            $isOnline = true;
+        } elseif ($isOltActive && ($rx === null || $rx > -35.0)) {
             $isOnline = true;
         } elseif ($hasOpticalSignal) {
             $isOnline = true;
-        } elseif ($ad && strtolower((string) $ad->status) === 'online') {
-            $isOnline = true;
-        } elseif (in_array(strtolower((string) $onu->status), ['online', 'active', 'up', 'working'])) {
+        } elseif ($isAcsActive && ($rx === null || $rx > -35.0)) {
             $isOnline = true;
         }
 
@@ -1662,14 +1668,15 @@ class MobileNetworkApiController extends Controller
             }
         }
 
-        // Evaluasi status Online mengikuti logika GenieAcsDiagnosticService:
-        // Jika ada sinyal redaman optik RX valid atau status aktif -> Online
-        $hasOpticalSignal = ($rx !== null && $rx !== 0.0);
-        $isOnline = in_array(strtolower((string) $onu->status), ['active', 'online', 'up', 'working']) || $hasOpticalSignal;
+        // Evaluasi Murni Status Hardware Perangkat (OLT, DDM Optical, TR-069 Inform)
+        // JANGAN mengambil sesi aktif PPPoE atau Hotspot
+        $hasOpticalSignal = ($rx !== null && $rx !== 0.0 && $rx > -35.0);
+        $isOltActive = in_array(strtolower((string) $onu->operational_status), ['active', 'online', 'up', 'working'])
+            || in_array(strtolower((string) $onu->status), ['active', 'online', 'up', 'working']);
+        $isOnline = $isOltActive || $hasOpticalSignal;
 
-        // Evaluasi status Online mengikuti logika Web Portal Reseller / GenieAcsDiagnosticService:
         $stLabel = 'OFFLINE';
-        if ($rx !== null && $rx < -30.0) {
+        if ($rx !== null && ($rx <= -30.0 || $rx === -40.0)) {
             $stLabel = 'LOS';
         } elseif ($rx !== null && $rx < -27.0) {
             $stLabel = 'LOW_RX';

@@ -3192,7 +3192,7 @@
             var tr069Ip = customer.tr069_ip || 'unknown';
             var ssidName = customer.ssid_name || null;
             var lastInform = customer.last_inform || null;
-            var lastReason = customer.last_reason || (isOnline ? 'Active Session' : 'Modem Offline');
+            var lastReason = customer.last_reason || (isOnline ? 'Online di OLT' : 'Modem Offline');
             var serialNumber = customer.serial_number && customer.serial_number !== '-' ? customer.serial_number : null;
             var customerToOdpDistance = '-';
 
@@ -3447,8 +3447,8 @@
                                     statusText.innerText = 'ONLINE';
                                     if (lastReason) {
                                         lastReason.className = 'acs-value acs-value-now-online';
-                                        lastReason.innerText = data.reason || 'Active Session';
-                                        lastReason.setAttribute('title', data.reason || 'Active Session');
+                                        lastReason.innerText = data.reason || 'Online di OLT';
+                                        lastReason.setAttribute('title', data.reason || 'Online di OLT');
                                     }
                                 } else {
                                     statusDot.className = 'status-dot status-offline';

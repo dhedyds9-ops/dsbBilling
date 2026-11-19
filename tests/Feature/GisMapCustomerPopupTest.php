@@ -78,9 +78,10 @@ class GisMapCustomerPopupTest extends TestCase
             'serial_number' => 'ZTEGC1234567',
             'mac_address' => 'AA:BB:CC:DD:EE:01',
             'wifi_ssid' => null, // Belum sinkron TR-069
-            'rx_power_dbm' => -21.5,
-            'tx_power_dbm' => 2.3,
+            'rx_power_dbm' => null, // Tidak ada sinyal optik / LOS
+            'tx_power_dbm' => null,
             'status' => 'inactive',
+            'operational_status' => 'offline',
         ]);
 
         $cs = CustomerService::create([
@@ -98,11 +99,11 @@ class GisMapCustomerPopupTest extends TestCase
             ->assertJson([
                 'success' => true,
                 'is_online' => false,
-                'reason' => 'Modem Offline / Sesi Terputus',
+                'reason' => 'Perangkat Tidak Terhubung OLT',
                 'serial_number' => 'ZTEGC1234567',
                 'mac_address' => 'AA:BB:CC:DD:EE:01',
-                'rx_power' => '-21.5 dBm',
-                'rdm_power' => '2.3 dBm',
+                'rx_power' => null,
+                'rdm_power' => null,
                 'ssid_name' => null,
             ]);
 
@@ -173,7 +174,7 @@ class GisMapCustomerPopupTest extends TestCase
             ->assertJson([
                 'success' => true,
                 'is_online' => true,
-                'reason' => 'PPPoE Active Session',
+                'reason' => 'Online di OLT & Optik Normal',
                 'serial_number' => 'HWTC8899AABB',
                 'mac_address' => '11:22:33:44:55:66',
                 'rx_power' => '-18.2 dBm',

@@ -948,7 +948,7 @@ class GisMap extends Component
                         $q->select(['id', 'customer_id', 'onu_id', 'service_profile_id', 'username', 'status', 'tr069_status', 'offline_reason', 'last_seen_at'])
                           ->with([
                               'onu' => function($oq) {
-                                  $oq->select(['id', 'odp_id', 'name', 'serial_number', 'mac_address', 'wifi_ssid', 'wifi_password', 'rx_power_dbm', 'tx_power_dbm', 'latitude', 'longitude', 'last_seen_at']);
+                                  $oq->select(['id', 'odp_id', 'name', 'serial_number', 'mac_address', 'wifi_ssid', 'wifi_password', 'rx_power_dbm', 'tx_power_dbm', 'latitude', 'longitude', 'last_seen_at', 'status', 'operational_status']);
                               },
                               'pppoeUser' => function($pq) {
                                   $pq->select(['id', 'customer_service_id', 'username', 'odp_id', 'status']);
@@ -988,28 +988,32 @@ class GisMap extends Component
                     $isOnline = false;
                     $lastReason = 'Modem Offline';
 
-                    // 1. Cek sesi PPPoE aktif dari status relasi tanpa N+1 query
-                    if ($pppoe && in_array(strtolower($pppoe->status ?? ''), ['active', 'online'])) {
+                    // Evaluasi Murni Status Hardware Perangkat (OLT, DDM Optical, TR-069 Inform)
+                    // JANGAN mengambil sesi aktif PPPoE atau Hotspot
+                    $rx = ($onu?->rx_power_dbm !== null && $onu?->rx_power_dbm !== '') ? (float) $onu->rx_power_dbm : null;
+                    $hasOpticalSignal = ($rx !== null && $rx !== 0.0 && $rx > -35.0);
+                    $onuLastSeen = $onu?->last_seen_at ? \Illuminate\Support\Carbon::parse($onu->last_seen_at) : null;
+                    $isOltActive = in_array(strtolower((string) $onu?->operational_status), ['online', 'active', 'up', 'working'])
+                        || in_array(strtolower((string) $onu?->status), ['online', 'active', 'up', 'working'])
+                        || ($onuLastSeen && $onuLastSeen->diffInMinutes(now()) <= 15);
+
+                    if ($hasOpticalSignal && $isOltActive) {
                         $isOnline = true;
-                        $lastReason = 'PPPoE Active Session';
-                    }
-                    // 2. Cek sesi Hotspot aktif
-                    elseif ($hotspot && in_array(strtolower($hotspot->status ?? ''), ['active', 'online'])) {
+                        $lastReason = 'Online di OLT & Optik Normal';
+                    } elseif ($isOltActive) {
                         $isOnline = true;
-                        $lastReason = 'Hotspot Active Session';
-                    }
-                    // 3. Cek OLT link fisik
-                    elseif ($onu && $onu->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 15) {
+                        $lastReason = 'ONU Terdaftar Aktif di OLT';
+                    } elseif ($hasOpticalSignal) {
                         $isOnline = true;
-                        $lastReason = 'ONU Active on OLT';
+                        $lastReason = 'Sinyal Optik DDM Terdeteksi';
                     } else {
                         $isOnline = false;
-                        if ($service && strtolower($service->status ?? '') === 'suspended') {
-                            $lastReason = 'Layanan Disuspend';
-                        } elseif ($service && strtolower($service->status ?? '') === 'inactive') {
-                            $lastReason = 'Layanan Nonaktif';
+                        if ($rx !== null && $rx <= -35.0) {
+                            $lastReason = 'Kabel Optik Putus (LOS Alarm)';
+                        } elseif ($onu && $onu->last_seen_at) {
+                            $lastReason = 'Modem Mati / Terputus dari OLT';
                         } else {
-                            $lastReason = 'Modem Offline / Sesi Terputus';
+                            $lastReason = 'Perangkat Tidak Terhubung OLT';
                         }
                     }
 
@@ -1046,7 +1050,8 @@ class GisMap extends Component
                     });
                 })
                 ->map(function($onu) {
-                    $isOnline = $onu->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 15;
+                    $onuLastSeen = $onu->last_seen_at ? \Illuminate\Support\Carbon::parse($onu->last_seen_at) : null;
+                    $isOnline = $onuLastSeen && $onuLastSeen->diffInMinutes(now()) <= 15;
                     return (object)[
                         'id' => 'onu-' . $onu->id,
                         'name' => $onu->name ?: ('ONU ' . ($onu->serial_number ?: $onu->code)),
