@@ -15,7 +15,7 @@
             <div class="p-4 pt-5">
                 <h3 class="text-xs font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest mb-2">Menunggu Aktivasi</h3>
                 <div class="text-2xl font-black text-amber-700 dark:text-amber-300 mb-1">{{ number_format($stats['pending'] ?? 0) }}</div>
-                <div class="text-xs text-slate-500 dark:text-slate-400">Siap diaktifkan & didaftarkan ke radius</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">Antrean SPK instalasi siap diaktifkan & didaftarkan ke radius</div>
             </div>
         </div>
 
@@ -24,24 +24,24 @@
             <div class="p-4 pt-5">
                 <h3 class="text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest mb-2">Pelanggan Aktif</h3>
                 <div class="text-2xl font-black text-emerald-700 dark:text-emerald-300 mb-1">{{ number_format($stats['completed'] ?? 0) }}</div>
-                <div class="text-xs text-slate-500 dark:text-slate-400">Layanan telah berhasil diaktifkan</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">Layanan telah berhasil diaktifkan di lapangan</div>
             </div>
         </div>
     </div>
 
     {{-- Toolbar --}}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-        <div class="relative w-full sm:w-64">
+        <div class="relative w-full sm:w-72">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <span class="material-symbols-outlined notranslate text-slate-400" translate="no" style="font-size:18px">search</span>
             </div>
             <input wire:model.live.debounce.300ms="search" type="text" 
-                class="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900/50 focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 placeholder-slate-400 dark:bg-slate-900 dark:text-slate-100" 
-                placeholder="Cari nama pelanggan...">
+                class="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900/50 focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 placeholder-slate-400" 
+                placeholder="Cari pelanggan, SN ONT, alamat...">
         </div>
 
         <div class="flex items-center gap-2 w-full sm:w-auto">
-            <select wire:model.live="perPage" class="w-full sm:w-auto py-2 pl-3 pr-8 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900/50 focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
+            <select wire:model.live="perPage" class="w-full sm:w-auto py-2 pl-3 pr-8 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900/50 focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
                 <option value="20">20 / hal</option>
                 <option value="50">50 / hal</option>
                 <option value="all">Semua</option>
@@ -54,6 +54,12 @@
         <div class="bg-emerald-50 dark:bg-emerald-900/30 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800/50 flex gap-3 text-emerald-800 dark:text-emerald-400">
             <span class="material-symbols-outlined notranslate shrink-0 mt-0.5" translate="no">check_circle</span>
             <p class="text-sm font-bold">{{ session('success') }}</p>
+        </div>
+    @endif
+    @if(session('info'))
+        <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-xl border border-blue-200 dark:border-blue-800/50 flex gap-3 text-blue-800 dark:text-blue-400">
+            <span class="material-symbols-outlined notranslate shrink-0 mt-0.5" translate="no">info</span>
+            <p class="text-sm font-bold">{{ session('info') }}</p>
         </div>
     @endif
     @error('activation')
@@ -70,46 +76,79 @@
                 <thead class="bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
                     <tr>
                         <th class="px-6 py-4">Prospek / Pelanggan</th>
-                        <th class="px-6 py-4">Kontak</th>
-                        <th class="px-6 py-4">Teknisi / Instalasi</th>
-                        <th class="px-6 py-4">ODP & Jarak</th>
+                        <th class="px-6 py-4">Kontak & Alamat</th>
+                        <th class="px-6 py-4">Teknisi / Jadwal</th>
+                        <th class="px-6 py-4">Paket & Perangkat</th>
                         <th class="px-6 py-4 text-center">Status</th>
                         <th class="px-6 py-4 text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                     @forelse($items as $item)
+                        @php
+                            $customerName = $item->customer?->name ?? $item->customer_name ?? $item->survey?->prospect?->name ?? 'Pelanggan Baru';
+                            $customerPhone = $item->customer?->phone ?? $item->customer_phone ?? $item->survey?->prospect?->phone ?? '-';
+                            $customerAddress = $item->customer?->address ?? $item->installation_address ?? $item->survey?->prospect?->address ?? '-';
+                            $customerCode = $item->customer?->code ?? ('SPK #' . $item->id);
+                            $techName = $item->technician?->name ?? $item->assignedTo?->name ?? $item->survey?->assignedTo?->name ?? 'Belum Ditugaskan';
+                            $packageName = $item->package_name ?? $item->package?->name ?? 'Paket Internet';
+                            $odpName = $item->survey?->odp?->name ?? ($item->onu?->odp?->name ?? null);
+                            $onuSn = $item->onu_serial_number ?? $item->onu?->serial_number ?? null;
+                            $isActivated = in_array($item->status, ['completed', 'verified'], true) && !empty($item->completed_at);
+                        @endphp
                         <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
                             <td class="px-6 py-4">
                                 <div class="flex flex-col gap-1">
-                                    <span class="font-bold text-slate-900 dark:text-slate-100">{{ $item->prospect->name ?? '-' }}</span>
-                                    <span class="text-xs text-slate-500 dark:text-slate-400 font-mono">ID: {{ $item->prospect->id ?? '-' }}</span>
+                                    <span class="font-bold text-slate-900 dark:text-slate-100">{{ $customerName }}</span>
+                                    <span class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ $customerCode }}</span>
                                 </div>
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex flex-col gap-1">
-                                    <span class="text-slate-600 dark:text-slate-300 flex items-center gap-1"><span class="material-symbols-outlined notranslate text-[14px]" translate="no">call</span> {{ $item->prospect->phone ?? '-' }}</span>
+                                    <span class="text-slate-600 dark:text-slate-300 flex items-center gap-1 font-mono text-xs">
+                                        <span class="material-symbols-outlined notranslate text-[14px]" translate="no">call</span> 
+                                        {{ $customerPhone }}
+                                    </span>
+                                    @if($customerAddress !== '-')
+                                        <span class="text-xs text-slate-400 dark:text-slate-500 max-w-xs truncate" title="{{ $customerAddress }}">
+                                            {{ $customerAddress }}
+                                        </span>
+                                    @endif
                                 </div>
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-2">
-                                    <x-display.avatar :name="$item->assignedTo->name ?? 'Unassigned'" size="sm" />
+                                    <x-display.avatar :name="$techName" size="sm" />
                                     <div class="flex flex-col">
-                                        <span class="font-medium text-slate-900 dark:text-slate-100">{{ $item->assignedTo->name ?? 'Belum Ditugaskan' }}</span>
-                                        <span class="text-xs text-slate-500 dark:text-slate-400">{{ $item->updated_at->format('d M Y H:i') }}</span>
+                                        <span class="font-medium text-slate-900 dark:text-slate-100">{{ $techName }}</span>
+                                        <span class="text-xs text-slate-500 dark:text-slate-400">
+                                            {{ $item->scheduled_date ? (is_string($item->scheduled_date) ? substr($item->scheduled_date, 0, 10) : $item->scheduled_date->format('d M Y')) : $item->updated_at->format('d M Y H:i') }}
+                                        </span>
                                     </div>
                                 </div>
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex flex-col gap-1">
-                                    <span class="font-medium text-indigo-600 dark:text-indigo-400">{{ $item->odp->name ?? 'Tidak Ada' }}</span>
-                                    <span class="text-xs text-slate-500 dark:text-slate-400">Jarak: {{ $item->distance ?? 0 }}m | Kabel: {{ $item->cable_estimation ?? 0 }}m</span>
+                                    <span class="font-medium text-indigo-600 dark:text-indigo-400">{{ $packageName }}</span>
+                                    <span class="text-xs text-slate-500 dark:text-slate-400">
+                                        @if($onuSn)
+                                            <span class="font-mono bg-slate-100 dark:bg-slate-700/60 px-1 py-0.5 rounded text-[11px] text-slate-700 dark:text-slate-300">SN: {{ $onuSn }}</span>
+                                        @elseif($odpName)
+                                            ODP: {{ $odpName }}
+                                        @else
+                                            <span class="text-slate-400 italic">Belum scan ONT</span>
+                                        @endif
+                                    </span>
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-center">
-                                @if($item->status === 'activated')
+                                @if($isActivated)
                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
                                         <span class="material-symbols-outlined notranslate text-[14px]" translate="no">check_circle</span> Aktif
+                                    </span>
+                                @elseif($item->status === 'in_progress')
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50">
+                                        <span class="material-symbols-outlined notranslate text-[14px]" translate="no">engineering</span> Proses
                                     </span>
                                 @else
                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50">
@@ -118,11 +157,17 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-right">
-                                @if($item->status !== 'activated')
-                                    <button wire:click="openActivationModal({{ $item->id }})" class="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm">
-                                        <span class="material-symbols-outlined notranslate text-[16px]" translate="no">power</span>
-                                        Aktifkan
-                                    </button>
+                                @if(!$isActivated)
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        <button wire:click="openActivationModal({{ $item->id }}, 'installation')" class="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm">
+                                            <span class="material-symbols-outlined notranslate text-[16px]" translate="no">power</span>
+                                            Aktifkan
+                                        </button>
+                                        <a href="{{ route('technician.installation.wizard') }}?type=installation&id={{ $item->id }}" target="_blank" title="Buka Wizard PSB Lengkap (OLT & GenieACS)" class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60 rounded-lg text-xs font-semibold transition-colors border border-blue-200 dark:border-blue-700/50">
+                                            <span class="material-symbols-outlined notranslate text-[16px]" translate="no">auto_fix_high</span>
+                                            Wizard
+                                        </a>
+                                    </div>
                                 @else
                                     <button disabled class="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-lg text-xs font-semibold cursor-not-allowed">
                                         <span class="material-symbols-outlined notranslate text-[16px]" translate="no">verified</span>
@@ -135,12 +180,12 @@
                         <tr>
                             <td colspan="6" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center">
-                                    <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 dark:text-slate-400 mb-3" translate="no" style="font-size:48px">
+                                    <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 mb-3" translate="no" style="font-size:48px">
                                         {{ $activeTab === 'pending' ? 'inbox' : 'verified' }}
                                     </span>
                                     <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 mb-1">Tidak ada data</h3>
                                     <p class="text-sm text-slate-500 dark:text-slate-400">
-                                        {{ $activeTab === 'pending' ? 'Belum ada prospek yang siap diaktifkan layanannya.' : 'Belum ada layanan pelanggan yang aktif.' }}
+                                        {{ $activeTab === 'pending' ? 'Belum ada antrean instalasi yang siap diaktifkan layanannya.' : 'Belum ada layanan instalasi yang aktif.' }}
                                     </p>
                                 </div>
                             </td>
@@ -173,7 +218,7 @@
 
             {{-- Modal Body --}}
             <form wire:submit="activateService">
-                <div class="p-4 space-y-6">
+                <div class="p-6 space-y-6">
                     {{-- Alert Box --}}
                     <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4 flex gap-3 text-blue-800 dark:text-blue-300">
                         <span class="material-symbols-outlined notranslate shrink-0" translate="no">info</span>
@@ -187,7 +232,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div class="col-span-1 md:col-span-2">
                             <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Network Profile (Router/NAS)</label>
-                            <select wire:model="network_profile_id" required class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
+                            <select wire:model="network_profile_id" required class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100">
                                 <option value="">-- Pilih Jaringan Mikrotik --</option>
                                 @foreach($networkProfiles as $np)
                                     <option value="{{ $np->id }}">{{ $np->name }} (NAS: {{ $np->nas_ip }})</option>
@@ -198,7 +243,7 @@
 
                         <div class="col-span-1 md:col-span-2">
                             <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Service Profile (Paket Internet)</label>
-                            <select wire:model="service_profile_id" required class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
+                            <select wire:model="service_profile_id" required class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100">
                                 <option value="">-- Pilih Paket PPPoE --</option>
                                 @foreach($serviceProfiles as $sp)
                                     <option value="{{ $sp->id }}">{{ $sp->name }} (Rp {{ number_format($sp->price, 0, ',', '.') }})</option>
@@ -209,14 +254,14 @@
 
                         <div>
                             <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Username PPPoE</label>
-                            <input type="text" wire:model="pppoe_username" required class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100">
+                            <input type="text" wire:model="pppoe_username" required class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100 font-mono">
                             @error('pppoe_username') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                         </div>
 
                         <div>
                             <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Password PPPoE</label>
                             <div class="relative">
-                                <input type="text" wire:model="pppoe_password" required class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100 font-mono pr-10 dark:bg-slate-900 dark:text-slate-100">
+                                <input type="text" wire:model="pppoe_password" required class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100 font-mono pr-10">
                             </div>
                             @error('pppoe_password') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                         </div>
@@ -225,7 +270,7 @@
 
                 {{-- Modal Footer --}}
                 <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-end gap-3">
-                    <button type="button" wire:click="$set('showActivationModal', false)" class="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:bg-slate-900/50 transition-colors">
+                    <button type="button" wire:click="$set('showActivationModal', false)" class="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
                         Batal
                     </button>
                     <button type="submit" class="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors flex items-center gap-2">

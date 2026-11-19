@@ -109,7 +109,7 @@ class Installation extends Model
 
     public function package()
     {
-        return $this->belongsTo(\App\Models\Network\ServiceProfile::class, 'package_id');
+        return $this->belongsTo(\App\Models\ISP\ServiceProfile::class, 'package_id');
     }
 
     public function contract()
