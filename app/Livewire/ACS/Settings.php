@@ -11,6 +11,7 @@ class Settings extends BaseACSComponent
     public array $genieAcsForm = [
         'base_url' => 'http://127.0.0.1:7557',
         'fs_url' => 'http://127.0.0.1:7567',
+        'acs_url' => '',
         'username' => '',
         'password' => '',
         'tr069_port' => 7547,
@@ -34,6 +35,16 @@ class Settings extends BaseACSComponent
         $acsConfig = Setting::getValue('connection.acs', []);
         if (!empty($acsConfig)) {
             $this->genieAcsForm = array_merge($this->genieAcsForm, $acsConfig);
+        }
+
+        if (empty($this->genieAcsForm['acs_url']) && !empty($this->genieAcsForm['base_url'])) {
+            $parsed = parse_url($this->genieAcsForm['base_url']);
+            $scheme = $parsed['scheme'] ?? 'http';
+            $host = $parsed['host'] ?? '';
+            $port = $this->genieAcsForm['tr069_port'] ?? 7547;
+            if ($host) {
+                $this->genieAcsForm['acs_url'] = "{$scheme}://{$host}:{$port}";
+            }
         }
         
         // Auto-generate Webhook URL if empty, based on current app domain
@@ -68,6 +79,16 @@ class Settings extends BaseACSComponent
             if (empty($this->genieAcsForm['base_url'])) {
                 $this->addError('genieAcsForm.base_url', 'Base URL wajib diisi.');
                 return;
+            }
+
+            if (empty($this->genieAcsForm['acs_url']) && !empty($this->genieAcsForm['base_url'])) {
+                $parsed = parse_url($this->genieAcsForm['base_url']);
+                $scheme = $parsed['scheme'] ?? 'http';
+                $host = $parsed['host'] ?? '';
+                $port = $this->genieAcsForm['tr069_port'] ?? 7547;
+                if ($host) {
+                    $this->genieAcsForm['acs_url'] = "{$scheme}://{$host}:{$port}";
+                }
             }
             
             $service->saveGenieAcsSettings($this->genieAcsForm);

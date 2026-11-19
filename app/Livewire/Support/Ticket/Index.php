@@ -102,8 +102,21 @@ class Index extends BaseEnterpriseList
             $odp = \App\Models\ISP\Odp::withoutGlobalScopes()->find($value);
             if ($odp) {
                 $this->newTicket['manual_customer_name'] = "ODP: {$odp->name}" . ($odp->code ? " ({$odp->code})" : '');
-                if (!empty($odp->address)) {
-                    $this->newTicket['manual_customer_address'] = $odp->address;
+
+                $addressParts = [];
+                if (!empty(trim((string) $odp->address))) {
+                    $addressParts[] = trim((string) $odp->address);
+                }
+                if ($odp->latitude !== null && $odp->longitude !== null && (string) $odp->latitude !== '' && (string) $odp->longitude !== '') {
+                    $addressParts[] = "Koordinat: {$odp->latitude}, {$odp->longitude}";
+                }
+
+                if (!empty($addressParts)) {
+                    $this->newTicket['manual_customer_address'] = implode(' | ', $addressParts);
+                }
+
+                if (!empty($odp->reseller_id) && empty($this->newTicket['reseller_id'])) {
+                    $this->newTicket['reseller_id'] = (string) $odp->reseller_id;
                 }
             }
         }

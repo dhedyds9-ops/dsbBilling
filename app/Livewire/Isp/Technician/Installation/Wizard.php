@@ -101,7 +101,7 @@ class Wizard extends Component
             ?? NetworkProfile::withoutGlobalScopes()->first()?->id;
 
         $acsSettings = \App\Models\Setting::getValue('connection.acs', []);
-        $this->tr069_acs_url = $acsSettings['acs_url'] ?? (config('genieacs.cpe_defaults.acs_url', '') ?: 'http://10.10.10.1:7547');
+        $this->tr069_acs_url = self::resolveAcsServerUrl();
         $this->tr069_vlan = (string) ($acsSettings['management_vlan'] ?? '901');
 
         $user = auth()->user();
@@ -752,10 +752,10 @@ class Wizard extends Component
 
         $branchId = $user->branch_id;
         if (!$branchId && $this->is_new_customer && $this->new_customer_reseller_id) {
-            $reseller = \App\Models\User::find($this->new_customer_reseller_id);
+            $reseller = \App\Models\User::withoutGlobalScopes()->find($this->new_customer_reseller_id);
             $branchId = $reseller?->branch_id;
         } elseif (!$branchId && $this->customer_id) {
-            $existingCust = Customer::find($this->customer_id);
+            $existingCust = Customer::withoutGlobalScopes()->find($this->customer_id);
             $branchId = $existingCust?->branch_id ?? $existingCust?->reseller?->branch_id;
         }
 
@@ -862,7 +862,7 @@ class Wizard extends Component
                     }
                     $this->customer_id = $customer->id;
                 } else {
-                    $customer = Customer::findOrFail($this->customer_id);
+                    $customer = Customer::withoutGlobalScopes()->findOrFail($this->customer_id);
                     $updatePayload = [];
                     if (empty($customer->branch_id) && $branchId) {
                         $updatePayload['branch_id'] = $branchId;
@@ -1598,6 +1598,39 @@ class Wizard extends Component
             'pendingInstallations' => $this->pendingInstallations,
             'pendingRequisitions' => $this->pendingRequisitions,
         ]);
+    }
+
+    public static function resolveAcsServerUrl(): string
+    {
+        $acsSettings = \App\Models\Setting::getValue('connection.acs', []);
+        $acsUrl = trim((string) ($acsSettings['acs_url'] ?? ''));
+
+        if (empty($acsUrl) && !empty($acsSettings['base_url'])) {
+            $parsed = parse_url($acsSettings['base_url']);
+            $scheme = $parsed['scheme'] ?? 'http';
+            $host = $parsed['host'] ?? '';
+            $port = $acsSettings['tr069_port'] ?? 7547;
+            if ($host && !in_array($host, ['example.com', 'localhost'], true)) {
+                $acsUrl = "{$scheme}://{$host}:{$port}";
+            }
+        }
+
+        if (empty($acsUrl)) {
+            $envUrl = config('genieacs.cpe_defaults.acs_url', '');
+            if ($envUrl && !str_contains($envUrl, 'example.com')) {
+                $acsUrl = $envUrl;
+            }
+        }
+
+        if (empty($acsUrl) && !empty($acsSettings['base_url'])) {
+            $parsed = parse_url($acsSettings['base_url']);
+            $scheme = $parsed['scheme'] ?? 'http';
+            $host = $parsed['host'] ?? '10.10.10.1';
+            $port = $acsSettings['tr069_port'] ?? 7547;
+            $acsUrl = "{$scheme}://{$host}:{$port}";
+        }
+
+        return $acsUrl ?: 'http://10.10.10.1:7547';
     }
 }
 

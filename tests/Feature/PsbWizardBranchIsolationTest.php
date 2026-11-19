@@ -300,4 +300,24 @@ class PsbWizardBranchIsolationTest extends TestCase
             'branch_id' => $branch->id,
         ]);
     }
+
+    public function test_wizard_resolves_genieacs_server_url_dynamically_from_settings(): void
+    {
+        // 1. When connection.acs has explicit acs_url
+        \App\Models\Setting::setValue('connection.acs', [
+            'base_url' => 'http://103.10.10.5:7557',
+            'acs_url' => 'http://103.10.10.5:7547',
+            'tr069_port' => 7547,
+        ]);
+        $url1 = \App\Livewire\Isp\Technician\Installation\Wizard::resolveAcsServerUrl();
+        $this->assertEquals('http://103.10.10.5:7547', $url1);
+
+        // 2. When connection.acs has only base_url without acs_url
+        \App\Models\Setting::setValue('connection.acs', [
+            'base_url' => 'http://genieacs.mstore.id:7557',
+            'tr069_port' => 7547,
+        ]);
+        $url2 = \App\Livewire\Isp\Technician\Installation\Wizard::resolveAcsServerUrl();
+        $this->assertEquals('http://genieacs.mstore.id:7547', $url2);
+    }
 }

@@ -90,6 +90,13 @@
             Parameter TR-069
         </div>
         <div class="p-4 grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="col-span-2">
+              <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                GenieACS Server URL (CWMP Port 7547)
+                <span class="text-xs text-slate-400 font-normal">(URL untuk konfigurasi TR-069 ONT saat aktivasi PSB)</span>
+              </label>
+              <input type="text" wire:model="genieAcsForm.acs_url" class="w-full px-3 py-2 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} font-mono text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500" placeholder="http://10.10.10.1:7547">
+            </div>
             <div>
               <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Port TR-069 (CPE)</label>
               <input type="number" wire:model="genieAcsForm.tr069_port" class="w-full px-3 py-2 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} font-mono text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="7547">
