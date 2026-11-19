@@ -191,15 +191,17 @@ class Onu extends Model
                             \App\Services\Auth\ResellerScopeHelper::excludeOtherResellersCustomers($terrQ, $resellerId);
                         }
 
-                        $terrQ->where(function ($matchQ) use ($ctx, $branchId) {
-                            if ($branchId) {
-                                $matchQ->orWhere('onus.branch_id', $branchId);
+                        $allowedBranchIds = $ctx['allowed_branch_ids'] ?? ($branchId ? [(int) $branchId] : []);
+
+                        $terrQ->where(function ($matchQ) use ($ctx, $allowedBranchIds) {
+                            if (!empty($allowedBranchIds)) {
+                                $matchQ->orWhereIn('onus.branch_id', $allowedBranchIds);
                             }
 
-                            $matchQ->orWhere(function ($parentQ) use ($ctx, $branchId) {
-                                if ($branchId) {
-                                    $parentQ->where(function ($b) use ($branchId) {
-                                        $b->whereNull('onus.branch_id')->orWhere('onus.branch_id', $branchId);
+                            $matchQ->orWhere(function ($parentQ) use ($ctx, $allowedBranchIds) {
+                                if (!empty($allowedBranchIds)) {
+                                    $parentQ->where(function ($b) use ($allowedBranchIds) {
+                                        $b->whereNull('onus.branch_id')->orWhereIn('onus.branch_id', $allowedBranchIds);
                                     });
                                 }
 

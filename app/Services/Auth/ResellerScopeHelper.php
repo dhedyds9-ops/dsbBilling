@@ -31,6 +31,20 @@ class ResellerScopeHelper
         $wilayah = $user->getEffectiveWilayah();
         $keywords = $user->getEffectiveTerritoryKeywords();
 
+        $allowedBranchIds = [];
+        if ($branchId) {
+            $allowedBranchIds[] = (int) $branchId;
+        }
+        if (!empty($keywords)) {
+            $matchedBranchIds = Branch::where(function ($bq) use ($keywords) {
+                foreach ($keywords as $kw) {
+                    $bq->orWhere('name', 'like', "%{$kw}%")
+                       ->orWhere('code', 'like', "%{$kw}%");
+                }
+            })->pluck('id')->all();
+            $allowedBranchIds = array_values(array_unique(array_merge($allowedBranchIds, $matchedBranchIds)));
+        }
+
         $branchArea = null;
         if ($branchId) {
             $branch = Branch::find($branchId);
@@ -49,6 +63,7 @@ class ResellerScopeHelper
             'wilayah'     => $wilayah,
             'keywords'    => $keywords,
             'branch_area' => $branchArea,
+            'allowed_branch_ids' => $allowedBranchIds,
         ];
     }
 
@@ -94,14 +109,15 @@ class ResellerScopeHelper
         $branchId = $ctx['branch_id'];
         $keywords = $ctx['keywords'];
         $branchArea = $ctx['branch_area'];
+        $allowedBranchIds = $ctx['allowed_branch_ids'] ?? ($branchId ? [(int) $branchId] : []);
 
-        if (empty($branchId) && empty($keywords)) {
+        if (empty($allowedBranchIds) && empty($keywords)) {
             $q->orWhereRaw('1 = 0');
             return;
         }
 
-        if (!empty($branchId)) {
-            $q->orWhere("{$table}.branch_id", $branchId);
+        if (!empty($allowedBranchIds)) {
+            $q->orWhereIn("{$table}.branch_id", $allowedBranchIds);
 
             // Fallback untuk OLT lama yang branch_id-nya masih NULL namun nama/alamat/POP cocok dengan nama cabang
             if (!empty($branchArea)) {
@@ -125,11 +141,11 @@ class ResellerScopeHelper
         }
 
         if (!empty($keywords)) {
-            $q->orWhere(function (Builder $wq) use ($table, $keywords, $branchId) {
-                if (!empty($branchId)) {
-                    // Jangan menabrak OLT yang secara eksplisit sudah dikunci ke cabang lain
-                    $wq->where(function (Builder $b) use ($table, $branchId) {
-                        $b->whereNull("{$table}.branch_id")->orWhere("{$table}.branch_id", $branchId);
+            $q->orWhere(function (Builder $wq) use ($table, $keywords, $allowedBranchIds) {
+                if (!empty($allowedBranchIds)) {
+                    // Jangan menabrak OLT yang secara eksplisit sudah dikunci ke cabang lain di luar cakupan izin
+                    $wq->where(function (Builder $b) use ($table, $allowedBranchIds) {
+                        $b->whereNull("{$table}.branch_id")->orWhereIn("{$table}.branch_id", $allowedBranchIds);
                     });
                 }
 
@@ -166,14 +182,15 @@ class ResellerScopeHelper
         $branchId = $ctx['branch_id'];
         $keywords = $ctx['keywords'];
         $branchArea = $ctx['branch_area'];
+        $allowedBranchIds = $ctx['allowed_branch_ids'] ?? ($branchId ? [(int) $branchId] : []);
 
-        if (empty($branchId) && empty($keywords)) {
+        if (empty($allowedBranchIds) && empty($keywords)) {
             $q->orWhereRaw('1 = 0');
             return;
         }
 
-        if (!empty($branchId)) {
-            $q->orWhere("{$table}.branch_id", $branchId);
+        if (!empty($allowedBranchIds)) {
+            $q->orWhereIn("{$table}.branch_id", $allowedBranchIds);
 
             if (!empty($branchArea)) {
                 $q->orWhere(function (Builder $sub) use ($table, $branchArea) {
@@ -189,10 +206,10 @@ class ResellerScopeHelper
         }
 
         if (!empty($keywords)) {
-            $q->orWhere(function (Builder $wq) use ($table, $keywords, $branchId) {
-                if (!empty($branchId)) {
-                    $wq->where(function (Builder $b) use ($table, $branchId) {
-                        $b->whereNull("{$table}.branch_id")->orWhere("{$table}.branch_id", $branchId);
+            $q->orWhere(function (Builder $wq) use ($table, $keywords, $allowedBranchIds) {
+                if (!empty($allowedBranchIds)) {
+                    $wq->where(function (Builder $b) use ($table, $allowedBranchIds) {
+                        $b->whereNull("{$table}.branch_id")->orWhereIn("{$table}.branch_id", $allowedBranchIds);
                     });
                 }
 
@@ -228,14 +245,15 @@ class ResellerScopeHelper
         $branchId = $ctx['branch_id'];
         $keywords = $ctx['keywords'];
         $branchArea = $ctx['branch_area'];
+        $allowedBranchIds = $ctx['allowed_branch_ids'] ?? ($branchId ? [(int) $branchId] : []);
 
-        if (empty($branchId) && empty($keywords)) {
+        if (empty($allowedBranchIds) && empty($keywords)) {
             $q->orWhereRaw('1 = 0');
             return;
         }
 
-        if (!empty($branchId)) {
-            $q->orWhere("{$table}.branch_id", $branchId);
+        if (!empty($allowedBranchIds)) {
+            $q->orWhereIn("{$table}.branch_id", $allowedBranchIds);
 
             if (!empty($branchArea)) {
                 $q->orWhere(function (Builder $sub) use ($table, $branchArea) {
@@ -253,10 +271,10 @@ class ResellerScopeHelper
         }
 
         if (!empty($keywords)) {
-            $q->orWhere(function (Builder $wq) use ($table, $keywords, $branchId) {
-                if (!empty($branchId)) {
-                    $wq->where(function (Builder $b) use ($table, $branchId) {
-                        $b->whereNull("{$table}.branch_id")->orWhere("{$table}.branch_id", $branchId);
+            $q->orWhere(function (Builder $wq) use ($table, $keywords, $allowedBranchIds) {
+                if (!empty($allowedBranchIds)) {
+                    $wq->where(function (Builder $b) use ($table, $allowedBranchIds) {
+                        $b->whereNull("{$table}.branch_id")->orWhereIn("{$table}.branch_id", $allowedBranchIds);
                     });
                 }
 

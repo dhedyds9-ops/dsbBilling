@@ -174,4 +174,62 @@ class MobileResellerNetworkTest extends TestCase
         $resOther = $this->getJson('/api/mobile/network/devices/HWTC99887766/diagnostics');
         $resOther->assertStatus(403);
     }
+
+    public function test_reseller_with_multi_branch_keyword_can_access_shared_pusat_olt_and_onus(): void
+    {
+        $branchCisarap = \App\Models\Master\Branch::create([
+            'name' => 'Cabang Cisarap',
+            'code' => 'CBG-CSR',
+            'is_active' => true,
+        ]);
+
+        $branchPusat = \App\Models\Master\Branch::create([
+            'name' => 'Cabang Pusat',
+            'code' => 'CBG-PST',
+            'is_active' => true,
+        ]);
+
+        $this->resellerUser->update([
+            'branch_id' => $branchCisarap->id,
+            'wilayah' => 'Cisarap, Pusat',
+        ]);
+
+        // Shared OLT placed under Cabang Pusat
+        $oltPusat = Olt::create([
+            'name' => 'OLT Pusat Shared',
+            'code' => 'OLT-PST-01',
+            'ip_address' => '10.10.3.1',
+            'vendor' => 'ZTE',
+            'model' => 'C320',
+            'status' => 'active',
+            'branch_id' => $branchPusat->id,
+            'created_by' => $this->otherUser->id,
+        ]);
+
+        // Unassigned ONU in OLT Pusat (not registered to any customer)
+        $onuPusat = Onu::create([
+            'serial_number' => 'ZTEG77889900',
+            'name' => 'ONT Unconfigured di OLT Pusat',
+            'olt_id' => $oltPusat->id,
+            'branch_id' => $branchPusat->id,
+            'created_by' => $this->otherUser->id,
+            'status' => 'active',
+            'provision_status' => 'unprovisioned',
+            'rx_power_dbm' => -20.0,
+        ]);
+
+        Sanctum::actingAs($this->resellerUser);
+
+        // 1. Reseller can see OLT Pusat in OLT list
+        $resOlt = $this->getJson('/api/mobile/network/olts');
+        $resOlt->assertStatus(200);
+        $oltIds = array_column($resOlt->json('data'), 'id');
+        $this->assertContains($oltPusat->id, $oltIds);
+
+        // 2. Reseller can discover unassigned ONU on OLT Pusat in device list
+        $resDev = $this->getJson('/api/mobile/network/devices?q=ZTEG77889900');
+        $resDev->assertStatus(200);
+        $devSns = array_column($resDev->json('data'), 'serial_number');
+        $this->assertContains('ZTEG77889900', $devSns);
+    }
 }

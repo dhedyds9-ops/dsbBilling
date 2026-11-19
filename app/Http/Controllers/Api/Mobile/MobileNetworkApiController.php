@@ -219,10 +219,29 @@ class MobileNetworkApiController extends Controller
         if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
             $query->forReseller($user);
         } elseif ($user && !empty($user->branch_id)) {
-            $query->where(function ($q) use ($user) {
-                $q->where('branch_id', $user->branch_id)
-                  ->orWhereNull('branch_id');
-            });
+            $branchName = strtolower($user->branch?->name ?? '');
+            $isGlobalBranch = in_array($branchName, ['pusat', 'cabang pusat', 'utama', 'cabang utama', 'head office', 'kantor pusat']);
+
+            if (!$isGlobalBranch) {
+                $userAllowedBranches = [(int) $user->branch_id];
+                if (!empty($user->wilayah)) {
+                    $kws = $user->getEffectiveTerritoryKeywords();
+                    if (!empty($kws)) {
+                        $matched = \App\Models\Master\Branch::where(function ($bq) use ($kws) {
+                            foreach ($kws as $kw) {
+                                $bq->orWhere('name', 'like', "%{$kw}%")
+                                   ->orWhere('code', 'like', "%{$kw}%");
+                            }
+                        })->pluck('id')->all();
+                        $userAllowedBranches = array_values(array_unique(array_merge($userAllowedBranches, $matched)));
+                    }
+                }
+
+                $query->where(function ($q) use ($userAllowedBranches) {
+                    $q->whereIn('branch_id', $userAllowedBranches)
+                      ->orWhereNull('branch_id');
+                });
+            }
         }
 
         $olt = $query->first();
@@ -351,10 +370,29 @@ class MobileNetworkApiController extends Controller
         if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
             $query->forReseller($user);
         } elseif ($user && !empty($user->branch_id)) {
-            $query->where(function ($q) use ($user) {
-                $q->where('branch_id', $user->branch_id)
-                  ->orWhereNull('branch_id');
-            });
+            $branchName = strtolower($user->branch?->name ?? '');
+            $isGlobalBranch = in_array($branchName, ['pusat', 'cabang pusat', 'utama', 'cabang utama', 'head office', 'kantor pusat']);
+
+            if (!$isGlobalBranch) {
+                $userAllowedBranches = [(int) $user->branch_id];
+                if (!empty($user->wilayah)) {
+                    $kws = $user->getEffectiveTerritoryKeywords();
+                    if (!empty($kws)) {
+                        $matched = \App\Models\Master\Branch::where(function ($bq) use ($kws) {
+                            foreach ($kws as $kw) {
+                                $bq->orWhere('name', 'like', "%{$kw}%")
+                                   ->orWhere('code', 'like', "%{$kw}%");
+                            }
+                        })->pluck('id')->all();
+                        $userAllowedBranches = array_values(array_unique(array_merge($userAllowedBranches, $matched)));
+                    }
+                }
+
+                $query->where(function ($q) use ($userAllowedBranches) {
+                    $q->whereIn('branch_id', $userAllowedBranches)
+                      ->orWhereNull('branch_id');
+                });
+            }
         }
 
         // Multi-candidate search query (prefix matching HWTC, ZTEG, customer, etc.)
