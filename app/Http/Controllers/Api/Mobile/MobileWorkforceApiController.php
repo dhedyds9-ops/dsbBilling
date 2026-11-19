@@ -770,9 +770,22 @@ class MobileWorkforceApiController extends Controller
                 }
             }
 
-            // 2. Sync Tiket Gangguan Aktif & Selesai
+            // 2. Sync Tiket Gangguan Aktif & Selesai (Eksklusif Tiket Perbaikan Lapangan - Tiket PSB sudah dihandle oleh SPK Instalasi)
+            $hasTicketInstId = \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'installation_id');
+
+            // Bersihkan duplikat WorkOrder yang berasal dari tiket PSB yang sudah memiliki record SPK Instalasi
+            if ($hasTicketInstId) {
+                WorkOrder::whereIn('ticket_id', function ($sub) {
+                    $sub->select('id')->from('tickets')->whereNotNull('installation_id');
+                })->delete();
+            }
+
             $allTickets = Ticket::withoutGlobalScopes()
                 ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
+                ->whereNotIn('category', ['installation', 'psb'])
+                ->when($hasTicketInstId, function ($q) {
+                    $q->whereNull('installation_id');
+                })
                 ->when($user->isTechnician() && !$this->isManagerOrAdmin($user), function ($q) use ($user, $hasTicketTechIds) {
                     $q->where(function ($sub) use ($user, $hasTicketTechIds) {
                         $sub->where('assigned_to', $user->id)

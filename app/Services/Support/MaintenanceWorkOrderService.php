@@ -24,7 +24,7 @@ class MaintenanceWorkOrderService
         $category = strtolower(trim((string) $ticket->category));
         $fieldCategories = [
             'internet', 'los', 'hardware', 'cable', 'maintenance', 
-            'installation', 'psb', 'optical', 'gangguan', 'kabel_putus', 'ont_rusak'
+            'optical', 'gangguan', 'kabel_putus', 'ont_rusak'
         ];
 
         return in_array($category, $fieldCategories, true);

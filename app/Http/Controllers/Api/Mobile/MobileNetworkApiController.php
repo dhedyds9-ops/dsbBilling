@@ -1089,6 +1089,18 @@ class MobileNetworkApiController extends Controller
                                     'onu_serial_number' => $sn,
                                     'onu_id' => $onu->id,
                                 ]);
+
+                            // Sinkronkan juga tiket terkait jika SPK ini berasal dari tiket PSB
+                            if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'installation_id')) {
+                                \App\Models\Support\Ticket::withoutGlobalScopes()
+                                    ->where('installation_id', $wo->installation_id)
+                                    ->update([
+                                        'status' => 'resolved',
+                                        'resolved_at' => now(),
+                                        'resolved_by' => $user->id,
+                                        'resolution_notes' => "PSB berhasil diaktivasi oleh teknisi {$user->name} (ONT SN: {$sn})",
+                                    ]);
+                            }
                         } catch (\Throwable $ie) {
                             \Log::warning("[provisionOnt] Gagal update installation dari work order: " . $ie->getMessage());
                         }
