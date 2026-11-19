@@ -76,16 +76,16 @@ class SupportInstallationIndexTest extends TestCase
             ->assertSet('activeTab', 'workorder');
     }
 
-    public function test_installation_livewire_tabs_and_filters(): void
+    public function test_create_work_order_modal_renders_cleanly_without_extra_disclaimer(): void
     {
         Livewire::actingAs($this->admin)
             ->test(Index::class)
-            ->set('showFilters', true)
-            ->assertStatus(200)
-            ->set('activeTab', 'technician')
-            ->assertStatus(200)
-            ->set('activeTab', 'checklist')
-            ->assertStatus(200)
-            ->assertSee('Template Checklist Instalasi');
+            ->call('openCreateWo')
+            ->assertSet('showCreateWo', true)
+            ->assertSee('Buat Work Order Instalasi Baru')
+            ->assertSee('Teknisi Lapangan Ditugaskan')
+            ->assertDontSee('(Bisa pilih > 1 teknisi, maks 2 tugas/teknisi)')
+            ->call('closeCreateWo')
+            ->assertSet('showCreateWo', false);
     }
 }

@@ -266,18 +266,18 @@
 
   {{-- Modal 1: Buat Work Order Baru --}}
   @if ($showCreateWo)
-    <div x-data="{ show: true }" x-show="show" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-      <div x-show="show" class="w-full max-w-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/30">
+    <div x-data="{ show: true }" x-show="show" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+      <div x-show="show" class="w-full max-w-lg max-h-[90vh] flex flex-col bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+        <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50/90 dark:bg-slate-900/50 shrink-0">
           <h3 class="font-bold text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
             Buat Work Order Instalasi Baru
           </h3>
-          <button wire:click="closeCreateWo" class="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <button wire:click="closeCreateWo" type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
-        <div class="p-5 space-y-4 text-sm">
+        <div class="p-5 space-y-4 text-sm overflow-y-auto flex-1">
           @php
             $fieldCls = 'w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-slate-800 dark:text-slate-100 py-2 px-3 text-sm focus:ring-blue-500';
             $woSource = $newWo['source'] ?? 'survey';
@@ -365,10 +365,9 @@
           <div>
             <div class="flex items-center justify-between mb-1.5">
               <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Teknisi Lapangan Ditugaskan (Tim / Multi-Teknisi)
-                <span class="text-xs font-normal text-slate-400 dark:text-slate-500">(Bisa pilih > 1 teknisi, maks 2 tugas/teknisi)</span>
+                Teknisi Lapangan Ditugaskan
               </label>
-              <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+              <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800 shrink-0">
                 {{ count($attendedTechs) }} Hadir Hari Ini
               </span>
             </div>
@@ -429,12 +428,18 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Catatan / Detail Lokasi</label>
-            <textarea wire:model="newWo.notes" rows="3" placeholder="Patokan lokasi, ODP target, panjang kabel..." class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-slate-800 dark:text-slate-100 py-2 px-3 text-sm focus:ring-blue-500"></textarea>
+            <textarea wire:model="newWo.notes" rows="2" placeholder="Patokan lokasi, ODP target, panjang kabel..." class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-slate-800 dark:text-slate-100 py-2 px-3 text-sm focus:ring-blue-500"></textarea>
           </div>
         </div>
-        <div class="px-5 py-3.5 bg-slate-50 dark:bg-slate-800/70 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
-          <button wire:click="closeCreateWo" type="button" class="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">Batal</button>
-          <button wire:click="submitCreateWo" type="button" class="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors">Simpan Work Order</button>
+        <div class="px-5 py-3.5 bg-slate-50/90 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end gap-2.5 shrink-0">
+          <button wire:click="closeCreateWo" type="button" class="px-4 py-2 text-sm font-medium rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">Batal</button>
+          <button wire:click="submitCreateWo" type="button" class="px-5 py-2 text-sm font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow transition-all flex items-center gap-1.5">
+            <span wire:loading.remove wire:target="submitCreateWo">Simpan Work Order</span>
+            <span wire:loading wire:target="submitCreateWo" class="inline-flex items-center gap-1.5">
+              <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+              Menyimpan...
+            </span>
+          </button>
         </div>
       </div>
     </div>
@@ -442,15 +447,15 @@
 
   {{-- Modal 2: Assign Teknisi --}}
   @if ($showAssignModal)
-    <div x-data="{ show: true }" x-show="show" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-      <div x-show="show" class="w-full max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/30">
+    <div x-data="{ show: true }" x-show="show" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+      <div x-show="show" class="w-full max-w-md max-h-[90vh] flex flex-col bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+        <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50/90 dark:bg-slate-900/50 shrink-0">
           <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">Tugaskan Teknisi</h3>
-          <button wire:click="cancelBulkAssign" class="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <button wire:click="cancelBulkAssign" type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
-        <div class="p-5 space-y-3">
+        <div class="p-5 space-y-3 overflow-y-auto flex-1">
           <p class="text-xs text-slate-500 dark:text-slate-400">Pilih teknisi yang akan menangani penugasan instalasi ini:</p>
           <div>
             <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Nama Teknisi</label>
@@ -462,9 +467,9 @@
             </select>
           </div>
         </div>
-        <div class="px-5 py-3.5 bg-slate-50 dark:bg-slate-800/70 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
-          <button wire:click="cancelBulkAssign" type="button" class="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">Batal</button>
-          <button wire:click="handleBulkAction('assign', {{ json_encode($selected) }})" type="button" class="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors">Tugaskan Sekarang</button>
+        <div class="px-5 py-3.5 bg-slate-50/90 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2 shrink-0">
+          <button wire:click="cancelBulkAssign" type="button" class="px-4 py-2 text-sm font-medium rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">Batal</button>
+          <button wire:click="handleBulkAction('assign', {{ json_encode($selected) }})" type="button" class="px-5 py-2 text-sm font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow transition-all">Tugaskan Sekarang</button>
         </div>
       </div>
     </div>
