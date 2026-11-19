@@ -53,13 +53,12 @@ class Olt extends Model
         static::saved(function ($model) {
             GisMap::flushCache();
             if ($model->wasChanged('branch_id') && !empty($model->branch_id)) {
+                // Otomatis sinkronkan seluruh ONU dan ODC di bawah OLT ini ke cabang baru
                 Onu::withoutGlobalScopes()
                     ->where('olt_id', $model->id)
-                    ->whereNull('branch_id')
                     ->update(['branch_id' => $model->branch_id]);
                 Odc::withoutGlobalScopes()
                     ->where('olt_id', $model->id)
-                    ->whereNull('branch_id')
                     ->update(['branch_id' => $model->branch_id]);
             }
         });

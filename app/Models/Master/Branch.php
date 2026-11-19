@@ -68,6 +68,18 @@ class Branch extends Model
                 $model->uuid = (string) Str::uuid();
             }
         });
+
+        static::saved(function () {
+            if (class_exists(\App\Services\ISP\GisMap::class)) {
+                \App\Services\ISP\GisMap::flushCache();
+            }
+        });
+
+        static::deleted(function () {
+            if (class_exists(\App\Services\ISP\GisMap::class)) {
+                \App\Services\ISP\GisMap::flushCache();
+            }
+        });
     }
 
     // =============================================

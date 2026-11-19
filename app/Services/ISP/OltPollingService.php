@@ -377,7 +377,7 @@ class OltPollingService
                             'last_seen_at' => $status === 'online' ? now() : $onu->last_seen_at,
                             'status' => $newStatusEnum,
                         ];
-                        if (!empty($olt->branch_id) && empty($onu->branch_id)) {
+                        if (!empty($olt->branch_id) && $onu->branch_id !== $olt->branch_id) {
                             $onuUpdate['branch_id'] = $olt->branch_id;
                         }
                         if (!empty($macAddress)) {
