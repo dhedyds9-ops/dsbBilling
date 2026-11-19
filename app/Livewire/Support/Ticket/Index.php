@@ -56,6 +56,11 @@ class Index extends BaseEnterpriseList
         return $options;
     }
 
+    public function getCompanyNameProperty(): string
+    {
+        return \App\Models\Setting::getValue('company.name', config('app.name', 'dsBilling'));
+    }
+
     public function getFilteredCustomersProperty(): array
     {
         $resellerId = $this->newTicket['reseller_id'] ?? null;
@@ -884,6 +889,7 @@ class Index extends BaseEnterpriseList
     public function render()
     {
         $rows = $this->getRows();
-        return view('livewire.support.ticket.index', compact('rows'));
+        $companyName = $this->companyName;
+        return view('livewire.support.ticket.index', compact('rows', 'companyName'));
     }
 }

@@ -420,7 +420,7 @@ $statusLabels = [
                         </div>
                         <div>
                             <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">Buat Tiket Baru</h3>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">Daftarkan keluhan teknis, billing, atau pemasangan pelanggan</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Daftarkan keluhan Pelanggan, billing, atau pemasangan pelanggan</p>
                         </div>
                     </div>
                     <button type="button" @click="show = false; $wire.closeCreateForm()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
@@ -441,7 +441,7 @@ $statusLabels = [
                     <div>
                         <div class="flex items-center justify-between mb-1.5">
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                Owner / Reseller Mitra
+                                Owner / Reseller / Pengurus
                             </label>
                             @if(!empty($newTicket['reseller_id']))
                                 <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
@@ -592,7 +592,7 @@ $statusLabels = [
                                     @elseif(in_array($newTicket['category'] ?? '', ['installation', 'psb'], true))
                                         <span class="font-medium text-indigo-600 dark:text-indigo-400">Info PSB:</span> Tiket akan otomatis menerbitkan SPK Instalasi baru. Akun pelanggan resmi dibuat saat teknisi selesai pasang dan aktivasi di Wizard.
                                     @else
-                                        <span class="font-medium text-indigo-600 dark:text-indigo-400">Info Pendaftaran Otomatis:</span> Pelapor akan didaftarkan sebagai pelanggan <span>{{ $companyName }}</span>. Teknisi dapat melengkapi data teknis (ODP/ONU) saat perbaikan di lapangan via Sensus.
+                                        <span class="font-medium text-indigo-600 dark:text-indigo-400">Info Pendaftaran Otomatis:</span> Pelapor akan didaftarkan sebagai pelanggan <span class="font-medium text-indigo-600 dark:text-indigo-400">{{ $companyName ?? ($this->companyName ?? \App\Models\Setting::getValue('company.name', config('app.name', 'dsBilling'))) }}</span>. Teknisi dapat melengkapi data teknis (ODP/ONU) saat perbaikan di lapangan via Sensus.
                                     @endif
                                 </p>
                             </div>
@@ -792,11 +792,11 @@ $statusLabels = [
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                                Owner / Reseller Mitra
+                                Owner / Reseller / Pengurus
                             </label>
                             <select wire:model.live="editingTicket.reseller_id"
                                     class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium">
-                                <option value="hq">Kantor Pusat (HQ)</option>
+                                <option value="hq">Kantor Pusat</option>
                                 @foreach ($this->resellerOptions as $id => $name)
                                     <option value="{{ $id }}">{{ $name }}</option>
                                 @endforeach
@@ -877,7 +877,7 @@ $statusLabels = [
                         @endphp
                         <div class="flex items-center justify-between mb-1.5">
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                Teknisi Lapangan (Tim / Multi-Teknisi)
+                                Teknisi Lapangan
                             </label>
                             <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                                 {{ count($attendedTechs) }} Hadir Hari Ini
