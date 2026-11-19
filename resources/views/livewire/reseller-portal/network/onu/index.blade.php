@@ -72,41 +72,64 @@
         </button>
     </div>
 
-    {{-- TOOLBAR & FILTER (SERAGAM DENGAN PORTAL ADMIN) --}}
-    <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-        <div class="flex flex-wrap items-center gap-2 w-full xl:w-auto shrink-0">
+    {{-- TOOLBAR & FILTER (RAPI 2-BARIS SERAGAM DENGAN PORTAL ADMIN) --}}
+    <div class="bg-white dark:bg-slate-800 p-3.5 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
+        {{-- Baris 1: Tombol Navigasi / Aksi & Info Wilayah --}}
+        <div class="flex flex-wrap items-center justify-between gap-2.5">
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="{{ route('reseller-portal.network.olts.index') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:18px">dns</span>
+                    <span>Data OLT</span>
+                </a>
+                <a href="{{ route('reseller-portal.network.acs-devices.index') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">settings_remote</span>
+                    <span>Devices GenieACS</span>
+                </a>
+                <a href="{{ route('reseller-portal.network.swap-ont') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sync_alt</span>
+                    <span>Ganti ONT</span>
+                </a>
+                @if(($summary['offline'] ?? 0) > 0)
+                    <button type="button" 
+                            wire:click="deleteAllOfflineOnu" 
+                            wire:confirm="Yakin ingin menghapus SEMUA ONU Offline ({{ $summary['offline'] }} ONU)? Registrasi di OLT fisik juga akan dibersihkan." 
+                            class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/60 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap"
+                            title="Hapus seluruh ONU offline milik Anda">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete_sweep</span>
+                        <span>Hapus Offline</span>
+                    </button>
+                @endif
+            </div>
+
             @if(!empty($territory['label']))
-                <span class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold {{ ($territory['has_territory'] ?? false) ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/50' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' }}">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold {{ ($territory['has_territory'] ?? false) ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/50' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' }}">
                     <span class="material-symbols-outlined notranslate" style="font-size: 16px" translate="no">location_on</span>
                     {{ $territory['label'] }}
                 </span>
             @endif
-            <a href="{{ route('reseller-portal.network.olts.index') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap">
-                <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:18px">dns</span>
-                <span>Data OLT</span>
-            </a>
-            <a href="{{ route('reseller-portal.network.acs-devices.index') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">settings_remote</span>
-                <span>Devices GenieACS</span>
-            </a>
-            <a href="{{ route('reseller-portal.network.swap-ont') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sync_alt</span>
-                <span>Ganti ONT</span>
-            </a>
         </div>
 
-        <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 w-full xl:w-auto">
-            <div class="relative w-full sm:w-60">
+        {{-- Baris 2: Pencarian & Dropdown Filter --}}
+        <div class="flex flex-col lg:flex-row lg:items-center gap-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-700/60">
+            {{-- Kotak Pencarian Responsif --}}
+            <div class="relative flex-1 min-w-[220px]">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
                 </span>
                 <input type="text" wire:model.live.debounce.400ms="search"
-                       placeholder="Cari SN, MAC, Pelanggan..."
-                       class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                       placeholder="Cari SN, MAC, Nama ONU, Pelanggan..."
+                       class="w-full pl-9 pr-9 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                @if(!empty($search))
+                    <button type="button" wire:click="$set('search', '')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors" title="Hapus Pencarian">
+                        <span class="material-symbols-outlined notranslate" style="font-size:18px">close</span>
+                    </button>
+                @endif
             </div>
-            <div class="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2 w-full sm:w-auto">
+
+            {{-- Filter OLT, PON, Status, Per Halaman, & Reset --}}
+            <div class="flex flex-wrap items-center gap-2">
                 <select wire:model.live="oltFilter"
-                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        class="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                     <option value="">Semua OLT</option>
                     @foreach($olts as $olt)
                         <option value="{{ $olt->id }}">{{ $olt->name }}</option>
@@ -115,7 +138,7 @@
 
                 @if(!empty($oltFilter) && $oltFilter !== 'all')
                     <select wire:model.live="ponFilter"
-                            class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                            class="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                         <option value="">Semua PON</option>
                         @foreach($ponPorts as $pon)
                             <option value="{{ $pon->id }}">{{ $pon->name }}</option>
@@ -124,7 +147,7 @@
                 @endif
 
                 <select wire:model.live="statusFilter"
-                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        class="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                     <option value="all">Semua Status</option>
                     <option value="online">Online</option>
                     <option value="offline">Offline</option>
@@ -133,7 +156,7 @@
                 </select>
 
                 <select wire:model.live="perPage"
-                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        class="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                     <option value="25">25 / hal</option>
                     <option value="50">50 / hal</option>
                     <option value="100">100 / hal</option>
@@ -143,7 +166,7 @@
                 @if($search !== '' || $statusFilter !== 'all' || $oltFilter !== '' || $ponFilter !== '')
                     <button type="button" wire:click="resetFilters"
                             title="Reset Filter"
-                            class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
                         <span>Reset</span>
                     </button>
@@ -210,6 +233,13 @@
                                     @endif
                                     <button type="button" wire:click="startEditName({{ $onu->id }}, '{{ addslashes((string) $onu->name) }}')" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors cursor-pointer" title="Ubah Nama ONU">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
+                                    </button>
+                                    <button type="button" 
+                                            wire:click="deleteOnu({{ $onu->id }})" 
+                                            wire:confirm="Yakin ingin menghapus ONU {{ $onu->serial_number ?: ('#' . $onu->id) }}? Data di dsBilling dan registrasi di perangkat fisik OLT akan dihapus bersamaan." 
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer" 
+                                            title="Hapus ONU">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                     </button>
                                 </div>
                             </td>

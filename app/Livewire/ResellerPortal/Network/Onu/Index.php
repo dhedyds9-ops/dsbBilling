@@ -202,6 +202,77 @@ class Index extends AdminComponent
         }
     }
 
+    public function deleteOnu(int $id): void
+    {
+        try {
+            $onu = Onu::forReseller()->with('olt')->findOrFail($id);
+            $sn = $onu->serial_number ?: ('#' . $onu->id);
+            $oltDeleted = false;
+
+            if ($onu->olt) {
+                try {
+                    $driver = app(\App\Services\Adapters\Provisioning\OltRegistry::class)->forOlt($onu->olt);
+                    $oltDeleted = $driver->deleteOnu($onu);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("Reseller gagal hapus ONU {$sn} dari OLT fisik: " . $e->getMessage());
+                }
+            }
+
+            // Gunakan soft delete agar konsisten dengan sinkronisasi OLT
+            $onu->delete();
+
+            $msg = "ONU {$sn} berhasil dihapus.";
+            if ($oltDeleted) {
+                $msg .= ' Registrasi pada perangkat OLT fisik juga berhasil dihapus.';
+            }
+            session()->flash('success', $msg);
+            $this->dispatch('toast', type: 'success', message: $msg);
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal menghapus ONU: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Gagal menghapus ONU: ' . $e->getMessage());
+        }
+    }
+
+    public function deleteAllOfflineOnu(): void
+    {
+        try {
+            $offlineOnus = Onu::forReseller()->where('status', 'inactive')->with('olt')->get();
+            $count = $offlineOnus->count();
+            if ($count === 0) {
+                session()->flash('error', 'Tidak ada ONU offline yang dapat dihapus.');
+                $this->dispatch('toast', type: 'info', message: 'Tidak ada ONU offline yang dapat dihapus.');
+                return;
+            }
+
+            $registry = app(\App\Services\Adapters\Provisioning\OltRegistry::class);
+            $deletedFromOlt = 0;
+
+            foreach ($offlineOnus as $onu) {
+                if ($onu->olt) {
+                    try {
+                        $driver = $registry->forOlt($onu->olt);
+                        if ($driver->deleteOnu($onu)) {
+                            $deletedFromOlt++;
+                        }
+                    } catch (\Throwable $e) {
+                        // ignore driver error during batch delete
+                    }
+                }
+                $onu->delete();
+            }
+
+            $msg = "Berhasil menghapus {$count} ONU offline.";
+            if ($deletedFromOlt > 0) {
+                $msg .= " ({$deletedFromOlt} registrasi di OLT fisik juga berhasil dibersihkan).";
+            }
+            session()->flash('success', $msg);
+            $this->dispatch('toast', type: 'success', message: $msg);
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal menghapus ONU offline: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Gagal menghapus ONU offline: ' . $e->getMessage());
+        }
+    }
+
     public function getOnuStatus(Onu $onu): string
     {
         if ($onu->status === 'los' || ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -30.0)) {
