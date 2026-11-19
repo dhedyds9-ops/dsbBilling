@@ -88,6 +88,7 @@ class HotspotService
                 'voucher_pool_id' => $voucherPoolId,
                 'status' => 'pending',
                 'reseller_id' => $customerService?->reseller_id ?? ($networkData['reseller_id'] ?? null),
+                'branch_id' => $customerService?->branch_id ?? ($networkData['branch_id'] ?? null),
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ], $networkData));

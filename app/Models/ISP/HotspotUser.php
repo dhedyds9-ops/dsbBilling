@@ -24,7 +24,7 @@ class HotspotUser extends Model
         'uuid', 'username', 'password', 'customer_service_id', 'service_profile_id',
         'voucher_pool_id', 'router_id', 'odp_id', 'port_number', 'mac_address',
         'static_ip', 'time_limit_hours', 'quota_gb', 'status', 'billing_cycle',
-        'setup_fee', 'payment_status', 'reseller_id', 'session_timeout', 'idle_timeout',
+        'setup_fee', 'payment_status', 'reseller_id', 'branch_id', 'session_timeout', 'idle_timeout',
         'simultaneous_use', 'framed_pool', 'address_list', 'expires_at', 'activated_at',
         'suspended_at', 'terminated_at', 'created_by', 'updated_by',
     ];
@@ -41,6 +41,7 @@ class HotspotUser extends Model
     public function createdBy()       { return $this->belongsTo(User::class, 'created_by'); }
     public function updatedBy()       { return $this->belongsTo(User::class, 'updated_by'); }
     public function reseller()        { return $this->belongsTo(User::class, 'reseller_id'); }
+    public function branch()          { return $this->belongsTo(\App\Models\Master\Branch::class, 'branch_id'); }
     public function radiusAccountings() { return $this->hasMany(RadiusAccounting::class, 'hotspot_user_id'); }
     public function vouchers()        { return $this->hasMany(Voucher::class); }
 

@@ -86,6 +86,7 @@ class PPPoEService
                 'service_profile_id' => $serviceProfileId,
                 'ip_allocation_id' => $ipAllocationId,
                 'status' => 'pending',
+                'branch_id' => $customerService->branch_id ?? ($networkData['branch_id'] ?? null),
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ], $networkData));

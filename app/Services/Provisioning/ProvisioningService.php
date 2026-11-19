@@ -166,7 +166,7 @@ class ProvisioningService
             // Step 7: Create PPPoE User
             $networkData = collect($data)->only([
                 'router_id', 'mac_address', 'static_ip', 'odp_id', 'port_number', 'onu_id', 
-                'reseller_id', 'billing_cycle', 'setup_fee'
+                'reseller_id', 'branch_id', 'billing_cycle', 'setup_fee'
             ])->filter(fn($val) => $val !== null && $val !== '')->toArray();
 
             $pppoeUser = $this->pppoeService->createPPPoEUser(
@@ -364,7 +364,7 @@ class ProvisioningService
             // Step 7: Create Hotspot User
             $networkData = collect($data)->only([
                 'router_id', 'mac_address', 'static_ip', 'odp_id', 'port_number', 'onu_id', 
-                'reseller_id', 'billing_cycle', 'setup_fee'
+                'reseller_id', 'branch_id', 'billing_cycle', 'setup_fee'
             ])->filter(fn($val) => $val !== null && $val !== '')->toArray();
 
             $hotspotUser = $this->hotspotService->createHotspotUser(

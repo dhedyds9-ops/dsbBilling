@@ -60,9 +60,16 @@ trait HasBranchScope
 
         static::creating(function ($model) {
             if (auth()->check() && !auth()->user()->isSuperAdmin()) {
-                
-                // Set branch_id for Manager
-                if (auth()->user()->hasRole(UserRole::Manager->value) && empty($model->branch_id) && auth()->user()->branch_id) {
+                $table = $model->getTable();
+                static $createColumnsCache = [];
+                if (!isset($createColumnsCache[$table])) {
+                    $createColumnsCache[$table] = \Illuminate\Support\Facades\Schema::getColumnListing($table);
+                }
+
+                $hasBranchCol = in_array('branch_id', $createColumnsCache[$table], true);
+
+                // Set branch_id for Manager only if the table physically contains branch_id
+                if ($hasBranchCol && auth()->user()->hasRole(UserRole::Manager->value) && empty($model->branch_id) && auth()->user()->branch_id) {
                     $model->branch_id = auth()->user()->branch_id;
                 }
 
@@ -72,6 +79,20 @@ trait HasBranchScope
                     if ($effectiveResellerId) {
                         $model->reseller_id = $effectiveResellerId;
                     }
+                }
+            }
+        });
+
+        static::saving(function ($model) {
+            // Safety guard: prevent inserting/updating branch_id if table doesn't have the column
+            if (array_key_exists('branch_id', $model->getAttributes())) {
+                $table = $model->getTable();
+                static $savingColumnsCache = [];
+                if (!isset($savingColumnsCache[$table])) {
+                    $savingColumnsCache[$table] = \Illuminate\Support\Facades\Schema::getColumnListing($table);
+                }
+                if (!in_array('branch_id', $savingColumnsCache[$table], true)) {
+                    unset($model->attributes['branch_id']);
                 }
             }
         });

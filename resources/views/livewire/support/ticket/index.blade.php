@@ -592,7 +592,7 @@ $statusLabels = [
                                     @elseif(in_array($newTicket['category'] ?? '', ['installation', 'psb'], true))
                                         <span class="font-medium text-indigo-600 dark:text-indigo-400">Info PSB:</span> Tiket akan otomatis menerbitkan SPK Instalasi baru. Akun pelanggan resmi dibuat saat teknisi selesai pasang dan aktivasi di Wizard.
                                     @else
-                                        <span class="font-medium text-indigo-600 dark:text-indigo-400">Info Pendaftaran Otomatis:</span> Pelapor akan didaftarkan sebagai pelanggan resmi dsBilling. Teknisi dapat melengkapi data teknis (ODP/ONU) saat perbaikan di lapangan via Sensus.
+                                        <span class="font-medium text-indigo-600 dark:text-indigo-400">Info Pendaftaran Otomatis:</span> Pelapor akan didaftarkan sebagai pelanggan <span>{{ $companyName }}</span>. Teknisi dapat melengkapi data teknis (ODP/ONU) saat perbaikan di lapangan via Sensus.
                                     @endif
                                 </p>
                             </div>
@@ -659,8 +659,7 @@ $statusLabels = [
                             @endphp
                             <div class="flex items-center justify-between mb-1.5">
                                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                    Teknisi Lapangan Ditugaskan (Tim / Multi-Teknisi)
-                                    <span class="text-xs font-normal text-slate-400 lowercase">(bisa pilih > 1 teknisi, maks 2 tugas aktif)</span>
+                                    Teknisi Lapangan Ditugaskan
                                 </label>
                                 <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                                     {{ count($attendedTechs) }} Hadir Hari Ini
