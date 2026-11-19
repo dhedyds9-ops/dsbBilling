@@ -72,22 +72,44 @@ class Index extends AdminComponent
         try {
             $onu = \App\Models\ISP\Onu::findOrFail($targetId);
             
-            // Unassign current service if exists
-            if ($onu->customerService) {
-                $onu->customerService->onu_id = null;
-                $onu->customerService->save();
+            // Unassign current services linked to this ONU
+            \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                ->where('onu_id', $onu->id)
+                ->update(['onu_id' => null]);
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('onus', 'customer_id')) {
+                $onu->customer_id = null;
+                $onu->save();
             }
 
             if ($this->selectedCustomerId) {
                 // Assign to the first active service of the selected customer
-                $service = \App\Models\Customer\CustomerService::where('customer_id', $this->selectedCustomerId)
+                $service = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                    ->where('customer_id', $this->selectedCustomerId)
                     ->orderBy('id', 'desc')
                     ->first();
                 
                 if ($service) {
                     $service->onu_id = $onu->id;
                     $service->save();
-                    session()->flash('success', 'ONU berhasil dipasangkan ke pelanggan ' . $service->customer->name);
+                    
+                    // Sinkronkan ke ACS Device (GenieACS)
+                    \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                        ->where(function ($q) use ($onu) {
+                            $q->where('onu_id', $onu->id);
+                            if (!empty($onu->serial_number)) {
+                                $q->orWhere('serial_number', $onu->serial_number);
+                            }
+                            if (!empty($onu->mac_address)) {
+                                $q->orWhere('mac_address', $onu->mac_address);
+                            }
+                        })
+                        ->update([
+                            'customer_service_id' => $service->id,
+                            'onu_id' => $onu->id,
+                        ]);
+
+                    session()->flash('success', 'ONU berhasil dipasangkan ke pelanggan ' . ($service->customer?->name ?? 'Pelanggan'));
                 } else {
                     // Buatkan default CustomerService jika belum ada
                     $customer = \App\Models\CRM\Customer::findOrFail($this->selectedCustomerId);
@@ -97,10 +119,41 @@ class Index extends AdminComponent
                         'status' => 'active',
                         'service_status' => 'active',
                     ]);
+
+                    \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                        ->where(function ($q) use ($onu) {
+                            $q->where('onu_id', $onu->id);
+                            if (!empty($onu->serial_number)) {
+                                $q->orWhere('serial_number', $onu->serial_number);
+                            }
+                            if (!empty($onu->mac_address)) {
+                                $q->orWhere('mac_address', $onu->mac_address);
+                            }
+                        })
+                        ->update([
+                            'customer_service_id' => $service->id,
+                            'onu_id' => $onu->id,
+                        ]);
+
                     session()->flash('success', 'ONU berhasil dipasangkan ke pelanggan ' . $customer->name);
                 }
             } else {
-                session()->flash('success', 'ONU berhasil dilepas dari pelanggan');
+                // Lepaskan juga kaitan di ACS Device (GenieACS)
+                \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                    ->where(function ($q) use ($onu) {
+                        $q->where('onu_id', $onu->id);
+                        if (!empty($onu->serial_number)) {
+                            $q->orWhere('serial_number', $onu->serial_number);
+                        }
+                        if (!empty($onu->mac_address)) {
+                            $q->orWhere('mac_address', $onu->mac_address);
+                        }
+                    })
+                    ->update([
+                        'customer_service_id' => null,
+                    ]);
+
+                session()->flash('success', 'ONU berhasil dilepas dari pelanggan dan disinkronkan dengan GenieACS.');
             }
             
             $this->cancelEditCustomer();

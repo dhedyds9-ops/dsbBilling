@@ -116,6 +116,30 @@ class Index extends BaseACSComponent
         session()->flash('success', 'Device berhasil dihapus dari dsBilling dan server GenieACS!');
     }
 
+    public function unlinkCustomer($id)
+    {
+        try {
+            $device = ACSDevice::withoutGlobalScopes()->findOrFail($id);
+            $device->update(['customer_service_id' => null]);
+
+            if ($device->onu_id) {
+                \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                    ->where('onu_id', $device->onu_id)
+                    ->update(['onu_id' => null]);
+
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->find($device->onu_id);
+                if ($onu && \Illuminate\Support\Facades\Schema::hasColumn('onus', 'customer_id')) {
+                    $onu->customer_id = null;
+                    $onu->save();
+                }
+            }
+
+            session()->flash('success', "Kaitan pelanggan pada perangkat {$device->serial_number} berhasil dilepas.");
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal melepas kaitan: ' . $e->getMessage());
+        }
+    }
+
     public function deleteAllOfflineDevices()
     {
         try {
@@ -635,18 +659,23 @@ class Index extends BaseACSComponent
                 if (empty($onu->mac_address) && $mac) {
                     $onu->update(['mac_address' => $mac]);
                 }
-                $cs = \App\Models\Customer\CustomerService::where('onu_id', $onu->id)->first();
+                $cs = \App\Models\Customer\CustomerService::withoutGlobalScopes()->where('onu_id', $onu->id)->first();
                 if ($cs) {
                     $acsDeviceParams['customer_service_id'] = $cs->id;
                 }
             }
 
             if (empty($acsDeviceParams['customer_service_id']) && $mac) {
-                $pppoe = \App\Models\ISP\PPPoEUser::where('mac_address', $mac)->first();
+                $pppoe = \App\Models\ISP\PPPoEUser::withoutGlobalScopes()->where('mac_address', $mac)->first();
                 if ($pppoe && $pppoe->customer_service_id) {
                     $acsDeviceParams['customer_service_id'] = $pppoe->customer_service_id;
                 }
             }
+        }
+
+        // Pastikan jika tidak ada customer yang terikat, eksplisit set null agar DB di-update
+        if (!isset($acsDeviceParams['customer_service_id']) || empty($acsDeviceParams['customer_service_id'])) {
+            $acsDeviceParams['customer_service_id'] = null;
         }
 
         // Validasi status: utamakan lastInform TR-069.

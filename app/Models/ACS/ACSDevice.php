@@ -196,6 +196,12 @@ class ACSDevice extends Model
             $cs = $this->relationLoaded('customerService') && $this->customerService
                 ? $this->customerService
                 : CustomerService::withoutGlobalScopes(['reseller_isolation', 'branch_isolation'])->find($this->customer_service_id);
+            
+            // Validasi: jika ACSDevice memiliki onu_id, pastikan customerService ini juga masih terhubung dengan ONU tersebut
+            if ($cs && $this->onu_id && (int) ($cs->onu_id ?? 0) !== (int) $this->onu_id) {
+                $cs = null;
+            }
+
             if ($cs && $cs->customer_id) {
                 $cust = $cs->relationLoaded('customer') && $cs->customer
                     ? $cs->customer
