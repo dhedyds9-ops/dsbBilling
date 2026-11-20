@@ -105,6 +105,18 @@ class FujitomoOltDriver extends BaseOltDriver
             }
         }
 
+        // Fallback jika masih kosong, coba CTC EPON Standard MIB (.1.3.6.1.4.1.17409.2.3.4)
+        if (empty($serials)) {
+            $ctcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.2' . $base) ?: ($this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.2') ?: []);
+            if (!empty($ctcMacs)) {
+                $serials   = $ctcMacs;
+                $macs      = $ctcMacs;
+                $statuses  = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.7') ?: [];
+                $rxRaw     = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.4.1.4') ?: [];
+                $txRaw     = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.4.1.3') ?: [];
+            }
+        }
+
         foreach ($serials as $idx => $serial) {
             $rxRawVal = (int)($rxRaw[$idx] ?? 0);
             $rx = $rxRawVal !== 0 ? round(($rxRawVal / 100) - 50, 2) : null;
