@@ -753,8 +753,22 @@ class HisfocusOltDriver extends BaseOltDriver
         try {
             $this->initializeCli();
 
-            // Coba berbagai perintah status ONU yang umum pada OLT HISFOCUS / V-SOL / HSGQ
+            // Coba berbagai perintah status ONU yang umum pada OLT HISFOCUS / GBN / Huawei-style (display) & Cisco-style (show)
             $commands = [
+                'display ont info 0 all',
+                'display ont info 1 all',
+                'display ont info 2 all',
+                'display ont info all',
+                'display gpon ont info all',
+                'display onu info all',
+                'display ont optical-info 0 all',
+                'display ont optical-info 1 all',
+                'display ont optical-info 2 all',
+                'display ont optical-info all',
+                'display ont autofind all',
+                'display onu auto-find',
+                'display current-configuration',
+                'display mac-address',
                 'show ont info all',
                 'show onu info all',
                 'show gpon ont info all',
@@ -967,7 +981,10 @@ class HisfocusOltDriver extends BaseOltDriver
     {
         try {
             $this->initializeCli();
-            $output = $this->cli->execute("show ont autofind all\r\n", false);
+            $output = $this->cli->execute("display ont autofind all\r\n", false);
+            if (empty($output) || str_contains(strtolower($output), 'incomplete') || str_contains(strtolower($output), 'invalid') || str_contains(strtolower($output), 'unrecognized')) {
+                $output = $this->cli->execute("show ont autofind all\r\n", false);
+            }
             if (empty($output) || str_contains(strtolower($output), 'incomplete') || str_contains(strtolower($output), 'invalid')) {
                 $output = $this->cli->execute("show onu autofind all\r\n", false);
             }
