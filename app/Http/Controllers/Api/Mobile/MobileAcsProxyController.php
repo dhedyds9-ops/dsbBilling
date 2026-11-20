@@ -257,11 +257,21 @@ class MobileAcsProxyController extends Controller
             // Izinkan operasi diagnostik/monitoring (summon, read, ping, tasks.view) pada perangkat GenieACS unassigned
             // asalkan perangkat belum diklaim/terdaftar oleh reseller lain.
             $isDiagnosticOp = in_array($operation, ['summon', 'read', 'ping', 'tasks.view']);
-            $isUnassigned = (!$cs || empty($cs->reseller_id) || empty($cs->customer_id))
-                && (!$dbOnu || empty($dbOnu->reseller_id))
-                && (!$dbDevice || empty($dbDevice->customer_service_id));
+            $isOwnedByOtherReseller = false;
+            if ($cs) {
+                $csResellerId = $cs->reseller_id;
+                $custResellerId = $cs->customer_id 
+                    ? \App\Models\CRM\Customer::withoutGlobalScopes()->where('id', $cs->customer_id)->value('reseller_id')
+                    : null;
+                if ((!empty($csResellerId) && (int)$csResellerId !== (int)$resellerId) || (!empty($custResellerId) && (int)$custResellerId !== (int)$resellerId)) {
+                    $isOwnedByOtherReseller = true;
+                }
+            }
+            if ($dbOnu && !empty($dbOnu->reseller_id) && (int)$dbOnu->reseller_id !== (int)$resellerId) {
+                $isOwnedByOtherReseller = true;
+            }
 
-            if (!$isOwned && !($isDiagnosticOp && $isUnassigned)) {
+            if (!$isOwned && ($isOwnedByOtherReseller || !$isDiagnosticOp)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Akses ditolak: Perangkat ini berada di luar cakupan kepemilikan akun Reseller Anda.',

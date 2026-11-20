@@ -1534,6 +1534,18 @@ class MobileNetworkApiController extends Controller
                 ->first();
 
             if ($ad) {
+                if ($user && ($user->hasRole('reseller') || $user->isReseller())) {
+                    $effectiveResellerId = $user->getEffectiveResellerId() ?: $user->id;
+                    $adCs = $ad->customerService;
+                    $adCustResellerId = $adCs?->reseller_id ?? $adCs?->customer?->reseller_id;
+                    if (!empty($adCustResellerId) && (int) $adCustResellerId !== (int) $effectiveResellerId) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Akses ditolak: Perangkat ini terdaftar pada pelanggan Mitra Reseller lain.',
+                        ], 403);
+                    }
+                }
+
                 $rx = $ad->signal !== null ? (float) $ad->signal : null;
                 $quality = 'Belum Diukur';
                 if ($rx !== null) {
@@ -1586,17 +1598,37 @@ class MobileNetworkApiController extends Controller
         if ($user) {
             $effectiveResellerId = $user->getEffectiveResellerId() ?: ($user->hasRole('reseller') ? $user->id : null);
             if ($effectiveResellerId) {
-                $allowed = Onu::withoutGlobalScopes()
+                // 1. Cek kepemilikan langsung atau teritori reseller via scope forReseller
+                $isOwned = Onu::withoutGlobalScopes()
+                    ->forReseller($user)
                     ->where('id', $onu->id)
-                    ->where(function ($q) use ($effectiveResellerId) {
-                        \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($q, $effectiveResellerId, 'onus');
-                    })
                     ->exists();
 
-                if (!$allowed) {
+                // 2. Jika belum masuk kepemilikan langsung, cek apakah perangkat unassigned (belum terikat pelanggan reseller lain)
+                $isBoundToOtherReseller = false;
+                if (!$isOwned) {
+                    $isBoundToOtherReseller = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                        ->where('onu_id', $onu->id)
+                        ->where(function ($q) use ($effectiveResellerId) {
+                            $q->where(function ($sub) use ($effectiveResellerId) {
+                                $sub->whereNotNull('reseller_id')
+                                    ->where('reseller_id', '!=', $effectiveResellerId);
+                            })->orWhereHas('customer', function ($cq) use ($effectiveResellerId) {
+                                $cq->withoutGlobalScopes()
+                                    ->whereNotNull('reseller_id')
+                                    ->where('reseller_id', '!=', $effectiveResellerId);
+                            });
+                        })->exists();
+
+                    if (!empty($onu->reseller_id) && (int) $onu->reseller_id !== (int) $effectiveResellerId) {
+                        $isBoundToOtherReseller = true;
+                    }
+                }
+
+                if ($isBoundToOtherReseller) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Perangkat ini berada di luar cakupan izin akun Reseller Anda.',
+                        'message' => 'Akses ditolak: Perangkat ini terdaftar pada pelanggan Mitra Reseller lain.',
                     ], 403);
                 }
             }
@@ -1710,6 +1742,16 @@ class MobileNetworkApiController extends Controller
         $customer = $cs?->customer;
         if (!$customer && !empty($onu->customer_id)) {
             $customer = Customer::withoutGlobalScopes()->find($onu->customer_id);
+        }
+
+        // Reseller Privacy Isolation: Jika perangkat ternyata terikat ke pelanggan milik reseller lain, jangan sertakan data pribadi pelanggan tersebut
+        if ($user && ($user->hasRole('reseller') || $user->isReseller())) {
+            $effectiveResellerId = $user->getEffectiveResellerId() ?: $user->id;
+            $custResellerId = $customer?->reseller_id ?? $cs?->reseller_id;
+            if (!empty($custResellerId) && (int) $custResellerId !== (int) $effectiveResellerId) {
+                $customer = null;
+                $cs = null;
+            }
         }
 
         // 3. Resolusi Redaman Optik (RX & TX)
