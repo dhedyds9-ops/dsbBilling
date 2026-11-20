@@ -34,6 +34,7 @@ class Create extends AdminComponent
     public bool $custom_permissions = false;
     public array $selectedPermissions = [];
     public string $permissionSearch = '';
+    public bool $showAllTechnicalPermissions = false;
 
     // Profil Kepegawaian Otomatis (HR)
     public bool $create_employee_profile = true;
@@ -217,9 +218,22 @@ class Create extends AdminComponent
         $this->selectedPermissions = [];
     }
 
+    public function getActiveRoleName(): ?string
+    {
+        if ($this->selectedRoles) {
+            $role = Role::find($this->selectedRoles);
+            return $role ? $role->name : null;
+        }
+        return null;
+    }
+
     public function toggleCategory(string $categoryKey)
     {
-        $grouped = \App\Services\Auth\PermissionRegistry::getGroupedPermissions();
+        $grouped = \App\Services\Auth\PermissionRegistry::getGroupedPermissions(
+            $this->getActiveRoleName(),
+            null,
+            $this->showAllTechnicalPermissions
+        );
         if (!isset($grouped[$categoryKey])) {
             return;
         }
@@ -383,9 +397,14 @@ class Create extends AdminComponent
     {
         $roles = Role::whereNotIn('name', Role::hiddenInUserManagement())->get();
         $branches = \App\Models\Master\Branch::where('is_active', true)->get();
-        $permissionCategories = \App\Services\Auth\PermissionRegistry::getGroupedPermissions($this->permissionSearch);
+        $activeRoleName = $this->getActiveRoleName();
+        $permissionCategories = \App\Services\Auth\PermissionRegistry::getGroupedPermissions(
+            $activeRoleName,
+            $this->permissionSearch,
+            $this->showAllTechnicalPermissions
+        );
         
-        return view('livewire.admin.user.create', compact('roles', 'branches', 'permissionCategories'));
+        return view('livewire.admin.user.create', compact('roles', 'branches', 'permissionCategories', 'activeRoleName'));
     }
 }
 

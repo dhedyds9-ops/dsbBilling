@@ -203,34 +203,50 @@
 
                     @if($custom_permissions)
                         <!-- Toolbar Aksi Cepat & Pencarian -->
-                        <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-1">
-                            <div class="relative flex-1 max-w-md">
-                                <span class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-sm">search</span>
-                                <input type="text" wire:model.live.debounce.250ms="permissionSearch" placeholder="Cari hak akses (misal: customer, onu, voucher)..."
-                                       class="w-full pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                @if($permissionSearch)
-                                    <button type="button" wire:click="$set('permissionSearch', '')" class="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-0.5">
-                                        <span class="material-symbols-outlined text-sm">close</span>
+                        <div class="space-y-3 pt-1">
+                            <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                                <div class="relative flex-1 max-w-md">
+                                    <span class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-sm">search</span>
+                                    <input type="text" wire:model.live.debounce.250ms="permissionSearch" placeholder="Cari hak akses (misal: customer, onu, voucher)..."
+                                           class="w-full pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    @if($permissionSearch)
+                                        <button type="button" wire:click="$set('permissionSearch', '')" class="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-0.5">
+                                            <span class="material-symbols-outlined text-sm">close</span>
+                                        </button>
+                                    @endif
+                                </div>
+
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <button type="button" wire:click="selectAllRolePermissions" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm">
+                                        <span class="material-symbols-outlined text-[16px]">done_all</span>
+                                        Full Akses
                                     </button>
-                                @endif
+                                    <button type="button" wire:click="resetToRoleDefault" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm">
+                                        <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+                                        Reset Standar Role
+                                    </button>
+                                    <button type="button" wire:click="clearAllPermissions" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm">
+                                        <span class="material-symbols-outlined text-[16px]">clear_all</span>
+                                        Kosongkan
+                                    </button>
+                                    <span class="text-xs font-medium text-slate-500 dark:text-slate-400 ml-1">
+                                        <strong class="text-indigo-600 dark:text-indigo-400 font-bold font-mono">{{ count($selectedPermissions) }}</strong> izin terpilih
+                                    </span>
+                                </div>
                             </div>
 
-                            <div class="flex flex-wrap items-center gap-2">
-                                <button type="button" wire:click="selectAllRolePermissions" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm">
-                                    <span class="material-symbols-outlined text-[16px]">done_all</span>
-                                    Full Akses
-                                </button>
-                                <button type="button" wire:click="resetToRoleDefault" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm">
-                                    <span class="material-symbols-outlined text-[16px]">restart_alt</span>
-                                    Reset Standar Role
-                                </button>
-                                <button type="button" wire:click="clearAllPermissions" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm">
-                                    <span class="material-symbols-outlined text-[16px]">clear_all</span>
-                                    Kosongkan
-                                </button>
-                                <span class="text-xs font-medium text-slate-500 dark:text-slate-400 ml-1">
-                                    <strong class="text-indigo-600 dark:text-indigo-400 font-bold font-mono">{{ count($selectedPermissions) }}</strong> izin terpilih
-                                </span>
+                            <!-- Context Banner: Filter Sesuai Menu Sidebar -->
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2 bg-slate-100/70 dark:bg-slate-800/60 rounded-xl text-xs text-slate-600 dark:text-slate-300">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined notranslate text-[18px] text-indigo-500" translate="no">filter_list</span>
+                                    <span>
+                                        Menampilkan modul & fitur yang selaras dengan menu <strong class="text-indigo-600 dark:text-indigo-400">{{ $activeRoleName ? 'Portal ' . ucwords(str_replace('_', ' ', $activeRoleName)) : 'Sidebar Admin' }}</strong>.
+                                    </span>
+                                </div>
+                                <label class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 select-none">
+                                    <input type="checkbox" wire:model.live="showAllTechnicalPermissions" class="w-3.5 h-3.5 text-indigo-600 rounded border-slate-300 dark:border-slate-600 focus:ring-indigo-500 dark:bg-slate-900">
+                                    <span>Tampilkan seluruh izin teknis backend</span>
+                                </label>
                             </div>
                         </div>
 

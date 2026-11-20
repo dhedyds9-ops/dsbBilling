@@ -42,6 +42,7 @@ class Edit extends AdminComponent
     public bool $custom_permissions = false;
     public array $selectedPermissions = [];
     public string $permissionSearch = '';
+    public bool $showAllTechnicalPermissions = false;
     
     public $showReportSummary = false;
 
@@ -266,9 +267,22 @@ class Edit extends AdminComponent
         $this->selectedPermissions = [];
     }
 
+    public function getActiveRoleName(): ?string
+    {
+        if ($this->selectedRoles) {
+            $role = Role::find($this->selectedRoles);
+            return $role ? $role->name : null;
+        }
+        return null;
+    }
+
     public function toggleCategory(string $categoryKey)
     {
-        $grouped = \App\Services\Auth\PermissionRegistry::getGroupedPermissions();
+        $grouped = \App\Services\Auth\PermissionRegistry::getGroupedPermissions(
+            $this->getActiveRoleName(),
+            null,
+            $this->showAllTechnicalPermissions
+        );
         if (!isset($grouped[$categoryKey])) {
             return;
         }
@@ -431,9 +445,14 @@ class Edit extends AdminComponent
     {
         $roles = Role::whereNotIn('name', Role::hiddenInUserManagement())->get();
         $branches = \App\Models\Master\Branch::where('is_active', true)->orWhere('id', $this->branch_id)->get();
-        $permissionCategories = \App\Services\Auth\PermissionRegistry::getGroupedPermissions($this->permissionSearch);
+        $activeRoleName = $this->getActiveRoleName();
+        $permissionCategories = \App\Services\Auth\PermissionRegistry::getGroupedPermissions(
+            $activeRoleName,
+            $this->permissionSearch,
+            $this->showAllTechnicalPermissions
+        );
 
-        return view('livewire.admin.user.edit', compact('roles', 'branches', 'permissionCategories'));
+        return view('livewire.admin.user.edit', compact('roles', 'branches', 'permissionCategories', 'activeRoleName'));
     }
 }
 

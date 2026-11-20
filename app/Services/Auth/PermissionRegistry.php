@@ -281,12 +281,149 @@ class PermissionRegistry
     }
 
     /**
-     * Mengelompokkan seluruh permission di database ke dalam kategori modul sistem.
-     * Digunakan oleh UI Manajemen User (Create / Edit) untuk matriks hak akses.
+     * Mengelompokkan permission di database ke dalam kategori modul sistem yang selaras dengan Menu Sidebar.
+     * Secara cerdas menyaring izin berdasarkan Role yang sedang dipilih agar tidak membingungkan pengguna
+     * dengan izin-izin teknis internal database yang tidak ada di antarmuka menu sidebar.
      */
-    public static function getGroupedPermissions(?string $search = null): array
+    public static function getGroupedPermissions(?string $roleName = null, ?string $search = null, bool $showAllTechnical = false): array
     {
-        $allPermissions = Permission::orderBy('name')->get();
+        $allowedNames = null;
+
+        if (!$showAllTechnical) {
+            $roleLower = strtolower((string)$roleName);
+            if ($roleLower === 'reseller') {
+                $allowedNames = [
+                    // Pelanggan & Layanan Internet
+                    'customer.view', 'customer.create', 'customer.update', 'customer.delete', 'customer.export',
+                    'pppoe-user.view', 'pppoe-user.create', 'pppoe-user.update',
+                    'hotspot-user.view', 'hotspot-user.create', 'hotspot-user.update',
+                    'voucher.view', 'voucher.create', 'voucher.print',
+                    'service-profile.view',
+                    // Tagihan & Pembayaran
+                    'invoice.view', 'invoice.payment', 'invoice.create',
+                    'payment.view',
+                    'finance.view', 'finance.report', 'finance.settlement', 'report.view',
+                    // Jaringan & GIS
+                    'gis.view', 'olt.view', 'odc.view', 'odp.view',
+                    'onu.view', 'onu.diagnose', 'onu.reboot', 'onu.configure.wifi',
+                    // Support & Material
+                    'ticket.view', 'ticket.create', 'ticket.update',
+                    'inventory.view', 'inventory.requisition', 'inventory.custody',
+                ];
+            } elseif ($roleLower === 'teknisi' || $roleLower === 'technician') {
+                $allowedNames = [
+                    'technician.portal',
+                    'workforce.jobs.view',
+                    'workforce.jobs.execute',
+                    'workforce.qc.view',
+                    'workforce.qc.execute',
+                    'ticket.view',
+                    'ticket.update',
+                    'workforce.attendance.execute',
+                    'onu.view',
+                    'onu.diagnose',
+                    'onu.configure.wifi',
+                    'onu.configure.wan',
+                    'onu.reboot',
+                    'odp.view',
+                    'gis.view',
+                    'olt.view',
+                    'inventory.view',
+                    'inventory.custody',
+                    'inventory.usage',
+                    'inventory.return',
+                    'inventory.requisition',
+                    'workforce.material.view',
+                    'workforce.material.execute',
+                ];
+            } elseif ($roleLower === 'admin_gudang') {
+                $allowedNames = [
+                    'inventory.view', 'inventory.manage', 'warehouse.view', 'warehouse.manage',
+                    'inventory.inbound', 'inventory.requisition', 'inventory.dispatch',
+                    'inventory.custody', 'inventory.usage', 'inventory.return',
+                    'inventory.opname', 'inventory.stock-card', 'inventory.report',
+                    'workforce.attendance.execute',
+                ];
+            } elseif ($roleLower === 'kasir') {
+                $allowedNames = [
+                    'customer.view',
+                    'invoice.view', 'invoice.create', 'invoice.payment',
+                    'payment.view', 'payment.create',
+                    'report.view',
+                    'workforce.attendance.execute',
+                ];
+            } elseif ($roleLower === 'customer_service') {
+                $allowedNames = [
+                    'customer.view', 'customer.create', 'customer.update',
+                    'ticket.view', 'ticket.create', 'ticket.update', 'ticket.assign',
+                    'workforce.attendance.execute',
+                ];
+            } elseif ($roleLower === 'noc') {
+                $allowedNames = [
+                    'router.view', 'router.create', 'router.update', 'router.delete',
+                    'olt.view', 'olt.create', 'olt.update', 'olt.delete',
+                    'odc.view', 'odp.view', 'pop.view', 'gis.view',
+                    'onu.view', 'onu.diagnose', 'onu.reboot', 'onu.configure.wifi', 'onu.configure.wan',
+                    'noc.portal',
+                    'workforce.attendance.execute',
+                ];
+            } elseif ($roleLower === 'marketing') {
+                $allowedNames = [
+                    'customer.view', 'customer.create', 'customer.update',
+                    'voucher.view', 'voucher.create', 'voucher.print',
+                    'report.view',
+                    'workforce.attendance.execute',
+                ];
+            } else {
+                // Administrator / Manager / Default: Selaras 100% dengan Menu Sidebar Admin
+                $allowedNames = [
+                    // List Pelanggan
+                    'customer.view', 'customer.create', 'customer.update', 'customer.delete', 'customer.export',
+                    'pppoe-user.view', 'pppoe-user.create', 'pppoe-user.update', 'pppoe-user.delete',
+                    'hotspot-user.view', 'hotspot-user.create', 'hotspot-user.update', 'hotspot-user.delete',
+                    'voucher.view', 'voucher.create', 'voucher.print', 'voucher.delete',
+                    'service-profile.view', 'service-profile.create', 'service-profile.update', 'service-profile.delete',
+                    'voucher-template.view', 'voucher-template.create', 'voucher-template.update', 'voucher-template.delete',
+                    // Data Tagihan
+                    'invoice.view', 'invoice.create', 'invoice.update', 'invoice.delete', 'invoice.payment', 'invoice.export',
+                    'payment.view', 'payment.create', 'payment.update', 'payment.delete',
+                    // Data Keuangan
+                    'finance.view', 'finance.report', 'finance.settlement', 'report.view',
+                    // Infrastruktur Fiber & Router
+                    'router.view', 'router.create', 'router.update', 'router.delete',
+                    'olt.view', 'olt.create', 'olt.update', 'olt.delete',
+                    'odc.view', 'odc.create', 'odc.update', 'odc.delete',
+                    'odp.view', 'odp.create', 'odp.update', 'odp.delete',
+                    'pop.view', 'pop.create', 'pop.update', 'pop.delete',
+                    'vendor.view', 'vendor.create', 'vendor.update', 'vendor.delete',
+                    'gis.view',
+                    // GenieACS & Perangkat ONU
+                    'onu.view', 'onu.diagnose', 'onu.reboot', 'onu.configure.wifi', 'onu.configure.wan', 'onu.configure.admin',
+                    // Inventaris & Pergudangan
+                    'inventory.view', 'inventory.manage', 'inventory.inbound', 'inventory.requisition', 'inventory.dispatch', 'inventory.custody', 'inventory.usage', 'inventory.return', 'inventory.opname', 'inventory.stock-card', 'inventory.report',
+                    'warehouse.view', 'warehouse.manage',
+                    // Kepegawaian & HR
+                    'workforce.attendance.execute',
+                    // Support & Tiket
+                    'ticket.view', 'ticket.create', 'ticket.update', 'ticket.delete', 'ticket.assign',
+                    'workforce.jobs.view', 'workforce.jobs.execute', 'workforce.qc.view', 'workforce.qc.execute',
+                    'workforce.material.view', 'workforce.material.execute',
+                    // Sistem & Pengaturan
+                    'settings.view', 'settings.update',
+                    'user.view', 'user.create', 'user.update', 'user.delete',
+                    'role.view', 'role.manage',
+                    'branch.view', 'branch.create', 'branch.update', 'branch.delete',
+                    'pengaturan.perusahaan',
+                ];
+            }
+        }
+
+        $query = Permission::orderBy('name');
+        if ($allowedNames !== null) {
+            $query->whereIn('name', $allowedNames);
+        }
+        $allPermissions = $query->get();
+
         if ($search && trim($search) !== '') {
             $q = strtolower(trim($search));
             $allPermissions = $allPermissions->filter(function($p) use ($q) {
@@ -334,7 +471,7 @@ class PermissionRegistry
             }
         }
 
-        // Filter kategori yang memiliki permission (terutama jika ada pencarian)
+        // Filter kategori yang memiliki permission (terutama jika ada pencarian atau filter role)
         return array_filter($grouped, fn($g) => $g['permissions']->isNotEmpty());
     }
 
