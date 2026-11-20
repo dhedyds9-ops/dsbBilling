@@ -251,6 +251,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/vouchers', \App\Livewire\Isp\Voucher\Index::class)->name('vouchers.index');
             Route::post('/vouchers/print', [\App\Http\Controllers\ISP\VoucherPrintController::class, 'print'])->name('vouchers.print');
             Route::get('/evouchers', \App\Livewire\Isp\EVoucher\Index::class)->name('evouchers.index');
+            Route::get('/voucher-requests', \App\Livewire\Isp\VoucherRequest\Index::class)->name('voucher-requests.index');
 
             // Router & NAS = Jaringan > Router & NAS
             Route::get('/routers', \App\Livewire\Isp\Router\Index::class)->name('routers.index');
@@ -637,6 +638,8 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::post('/voucher', [\App\Http\Controllers\ISP\VoucherPrintController::class, 'print']);
             Route::get('/voucher/preview-template/{id}', [\App\Http\Controllers\ISP\VoucherPrintController::class, 'previewTemplate']);
         });
+
+        Route::get('/voucher-requests', \App\Livewire\ResellerPortal\VoucherRequest\Index::class)->name('voucher-requests.index');
 
         Route::prefix('network')->name('network.')->group(function() {
             Route::get('/map', \App\Livewire\ResellerPortal\Network\Map\Index::class)->name('map');

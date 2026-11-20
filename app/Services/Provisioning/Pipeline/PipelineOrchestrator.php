@@ -48,8 +48,8 @@ class PipelineOrchestrator
         // Update pipeline current_step counter
         $pipeline->update(['current_step' => $step->order]);
         
-        // Dispatch the specific job
-        $jobClass::dispatch($step)->onQueue('provisioning');
+        // Dispatch the specific job after database transaction commits
+        $jobClass::dispatch($step)->onQueue('provisioning')->afterCommit();
     }
 
     protected function resolveJobClass(string $type): ?string

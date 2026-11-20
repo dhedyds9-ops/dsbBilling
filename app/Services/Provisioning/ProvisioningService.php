@@ -755,7 +755,11 @@ class ProvisioningService
 
             $this->createPipelineSteps($pipeline, $customerService);
 
-            Event::dispatch(new ServiceInstanceCreatedEvent($serviceInstance->uuid, $customerService->id));
+            try {
+                Event::dispatch(new ServiceInstanceCreatedEvent($serviceInstance->uuid, $customerService->id));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[ProvisioningService] Legacy ServiceInstanceCreatedEvent dispatch ignored: ' . $e->getMessage());
+            }
 
             app(\App\Services\Provisioning\Pipeline\PipelineOrchestrator::class)->processNext($pipeline);
 

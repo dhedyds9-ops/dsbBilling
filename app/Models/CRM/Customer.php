@@ -24,6 +24,7 @@ class Customer extends Model
         'user_id',
         'code',
         'reseller_id',
+        'branch_id',
         'latitude',
         'longitude',
         'name',

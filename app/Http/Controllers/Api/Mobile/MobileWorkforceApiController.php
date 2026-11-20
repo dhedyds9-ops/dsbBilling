@@ -93,7 +93,7 @@ class MobileWorkforceApiController extends Controller
     {
         $user = $request->user();
 
-        $query = WorkOrder::with(['customer', 'technician', 'approver', 'ticket', 'checklists', 'materialUsages', 'installation.customer.reseller', 'installation.reseller', 'installation.survey.prospect.reseller'])
+        $query = WorkOrder::with(['customer', 'technician', 'approver', 'ticket', 'checklists', 'materialUsages', 'installation.customer.reseller', 'installation.reseller', 'installation.survey.prospect'])
             ->orderByRaw("CASE 
                 WHEN priority = 'urgent' THEN 1 
                 WHEN priority = 'high' THEN 2 

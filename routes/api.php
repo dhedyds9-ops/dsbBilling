@@ -211,6 +211,9 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
         Route::get('/tickets', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'tickets']);
         Route::post('/tickets', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'createTicket']);
         Route::get('/vouchers', [\App\Http\Controllers\Api\Mobile\MobileVoucherApiController::class, 'index']);
+        Route::get('/vouchers/packages', [\App\Http\Controllers\Api\Mobile\MobileVoucherApiController::class, 'packages']);
+        Route::get('/vouchers/requests', [\App\Http\Controllers\Api\Mobile\MobileVoucherApiController::class, 'requests']);
+        Route::post('/vouchers/requests', [\App\Http\Controllers\Api\Mobile\MobileVoucherApiController::class, 'storeRequest']);
 
         // Direct aliases for /api/mobile/work-orders
         Route::prefix('work-orders')->name('work-orders.')->group(function () {

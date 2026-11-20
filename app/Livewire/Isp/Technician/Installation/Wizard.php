@@ -955,6 +955,16 @@ class Wizard extends Component
                     ?: NetworkProfile::withoutGlobalScopes()->where('type', $this->service_type)->orderByDesc('vlan_id')->value('id')
                     ?: NetworkProfile::withoutGlobalScopes()->value('id');
 
+                $npModel = $npId ? NetworkProfile::withoutGlobalScopes()->find($npId) : null;
+                $targetRouterId = $npModel?->router_id 
+                    ?: (\App\Models\ISP\Router::withoutGlobalScopes()->where('branch_id', $branchId)->value('id')
+                    ?: \App\Models\ISP\Router::withoutGlobalScopes()->value('id'));
+
+                // Pastikan targetRouterId benar-benar ada di tabel routers untuk menghindari foreign key violation
+                $resolvedRouterId = ($targetRouterId && \App\Models\ISP\Router::withoutGlobalScopes()->where('id', $targetRouterId)->exists())
+                    ? $targetRouterId 
+                    : null;
+
                 $data = [
                     'customer_id' => $customer->id,
                     'name' => $customer->name,
@@ -963,11 +973,11 @@ class Wizard extends Component
                     'address' => $customer->address,
                     'service_profile_id' => $this->service_profile_id,
                     'network_profile_id' => $npId,
-                    'router_id' => $npId,
+                    'router_id' => $resolvedRouterId,
                     'username' => $username,
                     'password' => $password,
                     'status' => 'active',
-                    'reseller_id' => $customer->reseller_id,
+                    'reseller_id' => $customer->reseller_id ?: ($this->new_customer_reseller_id ?: null),
                     'branch_id' => $branchId,
                     'odp_id' => $this->odp_id,
                     'onu_id' => $onu->id,
@@ -977,20 +987,22 @@ class Wizard extends Component
                 if ($this->service_type === 'pppoe') {
                     $result = $provisioningService->activatePPPoEService($data, $user->id);
                     $cs = $result['customer_service'];
-                    $serviceInstance = $provisioningService->startProvisioning($cs, $user->id);
 
                     return [
                         'type' => 'pppoe',
-                        'pipeline_id' => $serviceInstance->provisionPipeline->id,
+                        'customer_service' => $cs,
                         'onu' => $onu,
                         'username' => $username,
                         'password' => $password,
                         'network_profile_id' => $npId,
                     ];
                 } else {
-                    $provisioningService->activateHotspotService($data, $user->id);
+                    $result = $provisioningService->activateHotspotService($data, $user->id);
+                    $cs = $result['customer_service'] ?? null;
+
                     return [
                         'type' => 'hotspot',
+                        'customer_service' => $cs,
                         'onu' => $onu,
                         'username' => $username,
                         'password' => $password,
@@ -1004,38 +1016,22 @@ class Wizard extends Component
             $username = $executionResult['username'] ?? '';
             $password = $executionResult['password'] ?? '';
             $npId = $executionResult['network_profile_id'] ?? null;
+            $cs = $executionResult['customer_service'] ?? null;
             $this->completed_onu_id = $onu->id;
             $this->last_provisioned_at = now()->format('d M Y H:i:s');
 
-            // Eksekusi Injeksi WAN & IP Host TR-069 OMCI ke OLT (Zero-Touch Provisioning)
-            if ($this->enable_tr069_iphost && !empty($this->olt_id)) {
+            if ($executionResult['type'] === 'pppoe' && $cs) {
                 try {
-                    $oltModel = Olt::withoutGlobalScopes()->find($this->olt_id);
-                    if ($oltModel) {
-                        $driver = app(\App\Services\Adapters\Provisioning\OltRegistry::class)->forOlt($oltModel);
-                        $npVlan = $npId ? (\App\Models\ISP\NetworkProfile::withoutGlobalScopes()->where('id', $npId)->value('vlan_id') ?? 200) : 200;
-                        $driver->pushOnuWanConfig($onu, [
-                            'mode' => $this->service_type === 'hotspot' ? 'dhcp' : 'pppoe',
-                            'vlan_id' => $npVlan,
-                            'username' => $username,
-                            'password' => $password,
-                            'tr069_mode' => $this->tr069_mode,
-                            'tr069_vlan' => (int) ($this->tr069_vlan ?: 901),
-                            'tr069_static_ip' => $this->tr069_static_ip,
-                            'tr069_netmask' => $this->tr069_netmask,
-                            'tr069_gateway' => $this->tr069_gateway,
-                            'acs_url' => $this->tr069_acs_url,
-                        ]);
-                    }
-                } catch (\Throwable $oe) {
-                    \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal push IP Host TR-069 ke OLT via OMCI: ' . $oe->getMessage());
+                    $serviceInstance = $provisioningService->startProvisioning($cs, $user->id);
+                    $this->completed_pipeline_id = $serviceInstance->provisionPipeline?->id;
+                    $this->provisioning_status = 'queued';
+                    $this->provisioning_message = 'Instalasi PPPoE berhasil disimpan. Task provisioning ONT telah dikirim ke GenieACS NBI.';
+                } catch (\Throwable $pe) {
+                    \Illuminate\Support\Facades\Log::warning('[Wizard] Pipeline provisioning post-commit non-fatal: ' . $pe->getMessage());
+                    $this->completed_pipeline_id = null;
+                    $this->provisioning_status = 'pending';
+                    $this->provisioning_message = 'Data pelanggan & layanan PPPoE berhasil disimpan. Task hardware OLT dijadwalkan ulang: ' . $pe->getMessage();
                 }
-            }
-
-            if ($executionResult['type'] === 'pppoe') {
-                $this->completed_pipeline_id = $executionResult['pipeline_id'];
-                $this->provisioning_status = 'queued';
-                $this->provisioning_message = 'Instalasi PPPoE berhasil disimpan. Task provisioning ONT telah dikirim ke GenieACS NBI.';
             } else {
                 $this->completed_pipeline_id = null;
                 try {
@@ -1072,6 +1068,31 @@ class Wizard extends Component
 
                 $this->provisioning_status = 'queued';
                 $this->provisioning_message = 'Layanan Hotspot Member & konfigurasi Bridge (PPPoE_Bridged + LAN 1-4 + SSID 1) berhasil dieksekusi.';
+            }
+
+            // Eksekusi Injeksi WAN & IP Host TR-069 OMCI ke OLT (Zero-Touch Provisioning)
+            if ($this->enable_tr069_iphost && !empty($this->olt_id)) {
+                try {
+                    $oltModel = Olt::withoutGlobalScopes()->find($this->olt_id);
+                    if ($oltModel) {
+                        $driver = app(\App\Services\Adapters\Provisioning\OltRegistry::class)->forOlt($oltModel);
+                        $npVlan = $npId ? (\App\Models\ISP\NetworkProfile::withoutGlobalScopes()->where('id', $npId)->value('vlan_id') ?? 200) : 200;
+                        $driver->pushOnuWanConfig($onu, [
+                            'mode' => $this->service_type === 'hotspot' ? 'dhcp' : 'pppoe',
+                            'vlan_id' => $npVlan,
+                            'username' => $username,
+                            'password' => $password,
+                            'tr069_mode' => $this->tr069_mode,
+                            'tr069_vlan' => (int) ($this->tr069_vlan ?: 901),
+                            'tr069_static_ip' => $this->tr069_static_ip,
+                            'tr069_netmask' => $this->tr069_netmask,
+                            'tr069_gateway' => $this->tr069_gateway,
+                            'acs_url' => $this->tr069_acs_url,
+                        ]);
+                    }
+                } catch (\Throwable $oe) {
+                    \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal push IP Host TR-069 ke OLT via OMCI: ' . $oe->getMessage());
+                }
             }
 
             // ==========================================

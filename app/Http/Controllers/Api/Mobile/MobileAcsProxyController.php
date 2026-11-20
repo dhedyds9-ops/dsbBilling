@@ -130,11 +130,13 @@ class MobileAcsProxyController extends Controller
         }
 
         // 3. Strict Device Resolution (preventing device ID manipulation / loose substring spoofing)
-        $dbDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where(function ($q) use ($cleanUpper) {
-            $q->where('serial_number', $cleanUpper)
-              ->orWhere('uuid', $cleanUpper)
-              ->orWhere('mac_address', $cleanUpper);
-        })->first();
+        $dbDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where(function ($q) use ($cleanUpper) {
+                $q->where('serial_number', $cleanUpper)
+                  ->orWhere('uuid', $cleanUpper)
+                  ->orWhere('mac_address', $cleanUpper);
+            })->first();
 
         $extractedSn = null;
         if (!$dbDevice && str_contains($cleanUpper, '-')) {
@@ -142,6 +144,7 @@ class MobileAcsProxyController extends Controller
             $candidateSn = end($parts);
             if (!empty($candidateSn) && strlen($candidateSn) >= 4) {
                 $dbDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                    ->whereNull('deleted_at')
                     ->where('serial_number', $candidateSn)
                     ->first();
                 if ($dbDevice) {
@@ -152,17 +155,19 @@ class MobileAcsProxyController extends Controller
 
         $dbOnu = null;
         if ($dbDevice && $dbDevice->onu_id) {
-            $dbOnu = \App\Models\ISP\Onu::withoutGlobalScopes()->find($dbDevice->onu_id);
+            $dbOnu = \App\Models\ISP\Onu::withoutGlobalScopes()->whereNull('deleted_at')->find($dbDevice->onu_id);
         }
         if (!$dbOnu) {
-            $dbOnu = \App\Models\ISP\Onu::withoutGlobalScopes()->where(function ($q) use ($cleanUpper, $extractedSn) {
-                $q->where('serial_number', $cleanUpper)
-                  ->orWhere('code', $cleanUpper)
-                  ->orWhere('mac_address', $cleanUpper);
-                if ($extractedSn) {
-                    $q->orWhere('serial_number', $extractedSn);
-                }
-            })->first();
+            $dbOnu = \App\Models\ISP\Onu::withoutGlobalScopes()
+                ->whereNull('deleted_at')
+                ->where(function ($q) use ($cleanUpper, $extractedSn) {
+                    $q->where('serial_number', $cleanUpper)
+                      ->orWhere('code', $cleanUpper)
+                      ->orWhere('mac_address', $cleanUpper);
+                    if ($extractedSn) {
+                        $q->orWhere('serial_number', $extractedSn);
+                    }
+                })->first();
         }
 
         // Must exist in registered database records, or exist in GenieACS for diagnostic operations
@@ -250,9 +255,11 @@ class MobileAcsProxyController extends Controller
             }
 
             // Izinkan operasi diagnostik/monitoring (summon, read, ping, tasks.view) pada perangkat GenieACS unassigned
-            // asalkan perangkat belum diklaim/terdaftar oleh reseller lain atau cabang lain.
+            // asalkan perangkat belum diklaim/terdaftar oleh reseller lain.
             $isDiagnosticOp = in_array($operation, ['summon', 'read', 'ping', 'tasks.view']);
-            $isUnassigned = !$cs && (!$dbOnu || (empty($dbOnu->reseller_id) && empty($dbOnu->branch_id))) && (!$dbDevice || empty($dbDevice->customer_service_id));
+            $isUnassigned = (!$cs || empty($cs->reseller_id) || empty($cs->customer_id))
+                && (!$dbOnu || empty($dbOnu->reseller_id))
+                && (!$dbDevice || empty($dbDevice->customer_service_id));
 
             if (!$isOwned && !($isDiagnosticOp && $isUnassigned)) {
                 return response()->json([
@@ -284,7 +291,11 @@ class MobileAcsProxyController extends Controller
             }
 
             // Cross-branch operation is permitted for checked-in staff with valid assignment or manager oversight
-            if ($deviceBranchId && (int) $deviceBranchId !== (int) $user->branch_id) {
+            // Reseller examining unassigned devices from upstream OLT is also exempted from cross-branch rejection
+            $isResellerUser = ($user->hasRole('reseller') || $user->isReseller());
+            $isUnassignedForReseller = $isResellerUser && (!$cs || empty($cs->customer_id));
+
+            if ($deviceBranchId && (int) $deviceBranchId !== (int) $user->branch_id && !$isUnassignedForReseller) {
                 $hasAssignedWo = false;
                 if ($cs && $cs->customer_id) {
                     $hasAssignedWo = \App\Models\Workforce\WorkOrder::where('customer_id', $cs->customer_id)
@@ -371,17 +382,21 @@ class MobileAcsProxyController extends Controller
 
         if ($user && $user->hasRole('reseller')) {
             $dbOnus = \App\Models\ISP\Onu::withoutGlobalScopes()
+                ->whereNull('deleted_at')
                 ->forReseller($user)
                 ->with(['customerService.customer', 'customerService.pppoeUser', 'odp', 'olt', 'vendor'])
                 ->get();
             $dbAcs = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->whereNull('deleted_at')
                 ->forReseller($user)
                 ->with(['customerService.customer', 'onu', 'odp', 'olt'])
                 ->get();
         } else {
             $onusQuery = \App\Models\ISP\Onu::withoutGlobalScopes()
+                ->whereNull('deleted_at')
                 ->with(['customerService.customer', 'customerService.pppoeUser', 'odp', 'olt', 'vendor']);
             $acsQuery = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->whereNull('deleted_at')
                 ->with(['customerService.customer', 'onu', 'odp', 'olt']);
 
             if ($user && !empty($user->branch_id) && !$user->isSuperAdmin() && !$user->hasRole('administrator')) {

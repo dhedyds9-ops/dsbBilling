@@ -35,6 +35,11 @@ class ProvisionPipelineStep extends Model
 
     public function pipeline()
     {
-        return $this->belongsTo(ProvisionPipeline::class);
+        return $this->belongsTo(ProvisionPipeline::class, 'provision_pipeline_id');
+    }
+
+    public function provisionPipeline()
+    {
+        return $this->belongsTo(ProvisionPipeline::class, 'provision_pipeline_id');
     }
 }

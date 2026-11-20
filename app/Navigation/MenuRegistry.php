@@ -175,6 +175,7 @@ class MenuRegistry
                             ['label' => 'Cookies', 'route' => 'isp.hotspot-cookies.index', 'active' => 'isp.hotspot-cookies.*', 'permission' => 'hotspot-user.view'],
                             ['label' => 'Voucher', 'route' => 'isp.vouchers.index', 'active' => 'isp.vouchers.*', 'permission' => 'voucher.view'],
                             ['label' => 'E-Voucher', 'route' => 'isp.evouchers.index', 'active' => 'isp.evouchers.*', 'permission' => 'voucher.view'],
+                            ['label' => 'Permintaan Cetak Voucher', 'route' => 'isp.voucher-requests.index', 'active' => 'isp.voucher-requests.*', 'permission' => 'voucher.view'],
                             ['label' => 'Online', 'route' => 'isp.user-online.index', 'active' => 'isp.user-online.*', 'permission' => 'customer.view'],
                             ['label' => 'Isolir', 'route' => 'pelanggan.isolir', 'active' => 'pelanggan.isolir', 'permission' => 'customer.view'],
                         ]
@@ -489,6 +490,7 @@ class MenuRegistry
                             ['label' => 'PPPoE', 'route' => 'reseller-portal.customers.pppoe', 'active' => 'reseller-portal.customers.pppoe', 'permission' => 'pppoe-user.view'],
                             ['label' => 'Hotspot', 'route' => 'reseller-portal.customers.hotspot', 'active' => 'reseller-portal.customers.hotspot', 'permission' => 'hotspot-user.view'],
                             ['label' => 'Voucher', 'route' => 'reseller-portal.sales.voucher', 'active' => 'reseller-portal.sales.voucher', 'permission' => 'voucher.view'],
+                            ['label' => 'Permintaan Cetak', 'route' => 'reseller-portal.voucher-requests.index', 'active' => 'reseller-portal.voucher-requests.*', 'permission' => 'voucher.view'],
                             ['label' => 'Online', 'route' => 'reseller-portal.customers.user-online', 'active' => 'reseller-portal.customers.user-online', 'permission' => 'customer.view'],
                             ['label' => 'Riwayat Instalasi', 'route' => 'reseller-portal.customers.installation-history', 'active' => 'reseller-portal.customers.installation-history', 'permission' => 'customer.view'],
                             ['label' => 'Terisolir', 'route' => 'reseller-portal.customers.isolated', 'active' => 'reseller-portal.customers.isolated', 'permission' => 'customer.view'],

@@ -279,6 +279,7 @@ class MobileNetworkApiController extends Controller
         // Brownfield/Offline fallback: jika hardware OLT belum terhubung langsung, ambil dari database inventory unprovisioned
         if (empty($unregistered)) {
             $dbQuery = Onu::withoutGlobalScopes()
+                ->whereNull('deleted_at')
                 ->where('olt_id', $olt->id)
                 ->where(function ($q) {
                     $q->whereIn('provision_status', ['unprovisioned', 'pending', 'new'])
@@ -288,9 +289,40 @@ class MobileNetworkApiController extends Controller
                       });
                 });
 
-            // Reseller scope isolation: jangan tampilkan ONU milik reseller lain
-            if ($effectiveResellerId) {
-                \App\Services\Auth\ResellerScopeHelper::excludeOtherResellersCustomers($dbQuery, $effectiveResellerId);
+            // 1. Reseller scope isolation: hanya tampilkan modem milik reseller bersangkutan
+            if ($isReseller && $effectiveResellerId) {
+                $dbQuery->where('reseller_id', $effectiveResellerId);
+            } elseif ($user && ($user->isTechnician() || $user->hasRole('technician') || $user->hasRole('teknisi')) && !$user->isSuperAdmin() && !$user->hasRole(['administrator', 'admin', 'manager', 'admin_gudang'])) {
+                // 2. Teknisi Lapangan: HANYA boleh mengambil modem yang berada di tangan/custody teknisi sendiri!
+                // Jangan biarkan teknisi tanpa stok mengambil stok dari gudang pusat.
+                $itemSerials = [];
+                try {
+                    $itemSerials = \App\Models\Inventory\ItemSerial::where('custodian_id', $user->id)
+                        ->where('status', 'in_custody_technician')
+                        ->pluck('serial_number')
+                        ->toArray();
+                } catch (\Throwable $e) {}
+
+                $custodySerials = [];
+                try {
+                    $custodySerials = \App\Models\Inventory\InventoryCustody::where('holder_id', $user->id)
+                        ->whereRaw('(quantity - used_quantity - returned_quantity) > 0')
+                        ->whereNotNull('item_serial_id')
+                        ->with('itemSerial')
+                        ->get()
+                        ->map(fn($c) => $c->itemSerial?->serial_number)
+                        ->filter()
+                        ->toArray();
+                } catch (\Throwable $e) {}
+
+                $allowedSerials = array_values(array_unique(array_filter(array_map('strtoupper', array_map('trim', array_merge($itemSerials, $custodySerials))))));
+
+                if (!empty($allowedSerials)) {
+                    $dbQuery->whereIn(\Illuminate\Support\Facades\DB::raw('UPPER(serial_number)'), $allowedSerials);
+                } else {
+                    // Teknisi tidak memiliki stok modem di tangannya: kunci query agar stok gudang pusat tidak bocor
+                    $dbQuery->whereRaw('1 = 0');
+                }
             }
 
             if ($ponPort !== null) {
@@ -311,11 +343,17 @@ class MobileNetworkApiController extends Controller
             }
         }
 
+        $message = count($unregistered) > 0
+            ? 'Ditemukan ' . count($unregistered) . ' ONT unconfigured di OLT ' . $olt->name . ($ponPort ? " (Port PON {$ponPort})" : '') . '.'
+            : 'Tidak ada ONT unconfigured yang terdeteksi di OLT ' . $olt->name . ($ponPort ? " (Port PON {$ponPort})" : '') . '.';
+
+        if (count($unregistered) === 0 && $user && ($user->isTechnician() || $user->hasRole('technician') || $user->hasRole('teknisi')) && !$user->isSuperAdmin() && !$user->hasRole(['administrator', 'admin', 'manager', 'admin_gudang'])) {
+            $message = 'Tidak ada ONT di stok/custody Anda. Silakan ajukan permintaan barang ke gudang terlebih dahulu.';
+        }
+
         return response()->json([
             'success' => true,
-            'message' => count($unregistered) > 0
-                ? 'Ditemukan ' . count($unregistered) . ' ONT unconfigured di OLT ' . $olt->name . ($ponPort ? " (Port PON {$ponPort})" : '') . '.'
-                : 'Tidak ada ONT unconfigured yang terdeteksi di OLT ' . $olt->name . ($ponPort ? " (Port PON {$ponPort})" : '') . '.',
+            'message' => $message,
             'count' => count($unregistered),
             'data' => $unregistered,
         ]);
@@ -2112,11 +2150,28 @@ class MobileNetworkApiController extends Controller
 
         // 1. OLTs (Tidak dibatasi role agar topologi fisik terlihat utuh)
         $oltsQuery = Olt::withoutGlobalScopes();
+        // Unified photo URL formatter (handles Base64 Data URI, full URL, and relative storage path)
+        $baseUrl = config('app.url') ?? '';
         $formatPhotos = function ($rawPhotos) {
             return array_values(array_filter(array_map(function ($p) {
                 if (empty($p)) return null;
-                if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, '/storage/')) return $p;
-                return '/storage/' . ltrim($p, '/');
+                $p = trim((string) $p);
+                if (empty($p)) return null;
+                // Preserve Data URIs intact (do not prepend /storage/)
+                if (str_starts_with($p, 'data:image/') || str_starts_with($p, 'data:application/')) {
+                    return $p;
+                }
+                // Strip broken legacy /storage/data: or storage/data: prefixes
+                if (str_starts_with($p, '/storage/data:') || str_starts_with($p, 'storage/data:')) {
+                    return preg_replace('#^/?storage/#', '', $p);
+                }
+                // If already a full HTTP(S) URL, keep it
+                if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) {
+                    return $p;
+                }
+                // Ensure absolute storage URL
+                $clean = ltrim(preg_replace('#^/?storage/#', '', $p), '/');
+                return url('storage/' . $clean);
             }, (array) ($rawPhotos ?? []))));
         };
 

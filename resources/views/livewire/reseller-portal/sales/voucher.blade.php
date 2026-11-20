@@ -93,6 +93,10 @@
                     <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size: 18px">add</span>
                     Generate Voucher
                 </button>
+                <a href="{{ route('reseller-portal.voucher-requests.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size: 18px">local_printshop</span>
+                    Minta Cetak Voucher
+                </a>
             </div>
             
             <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto flex-1 lg:justify-end">

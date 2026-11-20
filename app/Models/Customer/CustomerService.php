@@ -46,6 +46,7 @@ class CustomerService extends Model
         'suspended_at',
         'attributes',
         'reseller_id',
+        'branch_id',
         'created_by',
         'updated_by',
     ];
