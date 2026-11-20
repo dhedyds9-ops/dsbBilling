@@ -261,17 +261,19 @@ class User extends Authenticatable
     public function hasPermission(string $permission): bool
     {
         // 1. Bypass untuk administrator (Akses penuh seluruh sistem)
-        if ($this->hasRole(\App\Enums\UserRole::Administrator->value)) {
+        if ($this->hasRole(\App\Enums\UserRole::Administrator->value) || $this->isSuperAdmin()) {
             return true;
         }
 
-        // 2. Direct permissions spesifik diutamakan jika ada
-        if ($this->directPermissions->isNotEmpty() && $this->directPermissions->contains('name', $permission)) {
-            return true;
+        // 2. Kustomisasi Hak Akses Spesifik Per-User (Granular Custom Permissions)
+        // Jika user memiliki direct permissions di tabel pivot permission_user,
+        // maka hak akses user STRICTLY dievaluasi berdasarkan permissions yang diberikan.
+        // Dengan ini, Reseller A dan Reseller B atau Teknisi A dan Teknisi B dapat dibedakan hak aksesnya secara mandiri!
+        if ($this->directPermissions->isNotEmpty()) {
+            return $this->directPermissions->contains('name', $permission);
         }
 
-        // 3. Proteksi Pembatasan Izin Berdasarkan Jabatan (Job Title) & Role Spesifik
-        // Mencegah kebocoran menu superadmin/router/keuangan pada staf gudang, kasir, teknisi, dll.
+        // 3. Fallback jika user TIDAK memiliki custom permissions (Mengikuti Role Standar & Jabatan)
         $title = strtolower((string)($this->job_title ?? ''));
         if ($this->isWarehouseAdmin()) {
             return str_starts_with($permission, 'inventory.') || str_starts_with($permission, 'warehouse.');

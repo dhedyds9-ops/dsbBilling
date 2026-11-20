@@ -39,7 +39,9 @@ class Edit extends AdminComponent
     public $is_topup_enabled;
     public $ubah_saldo;
     
-    public $selectedPermissions = [];
+    public bool $custom_permissions = false;
+    public array $selectedPermissions = [];
+    public string $permissionSearch = '';
     
     public $showReportSummary = false;
 
@@ -160,7 +162,14 @@ class Edit extends AdminComponent
         $this->is_topup_enabled = $this->user->is_topup_enabled;
         
         $this->selectedRoles = $this->user->roles->first()->id ?? '';
-        $this->selectedPermissions = $this->user->directPermissions->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        
+        $hasCustom = $this->user->directPermissions()->count() > 0;
+        $this->custom_permissions = $hasCustom;
+        if ($hasCustom) {
+            $this->selectedPermissions = $this->user->directPermissions->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        } else {
+            $this->selectedPermissions = [];
+        }
         
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
@@ -220,37 +229,57 @@ class Edit extends AdminComponent
         }
     }
 
-    public function checkAllPermissions()
+    public function updatedCustomPermissions($value)
     {
+        if ($value && empty($this->selectedPermissions)) {
+            $this->resetToRoleDefault();
+        }
+    }
+
+    public function selectAllRolePermissions()
+    {
+        if ($this->selectedRoles) {
+            $role = Role::find($this->selectedRoles);
+            if ($role && $role->name === \App\Enums\UserRole::Reseller->value) {
+                $resellerPermNames = \App\Enums\UserPermission::defaultResellerPermissions();
+                $this->selectedPermissions = Permission::whereIn('name', $resellerPermNames)->pluck('id')->map(fn($id) => (string)$id)->toArray();
+                return;
+            }
+        }
         $this->selectedPermissions = Permission::pluck('id')->map(fn($id) => (string)$id)->toArray();
     }
 
-    public function uncheckAllPermissions()
+    public function resetToRoleDefault()
+    {
+        if ($this->selectedRoles) {
+            $role = Role::with('permissions')->find($this->selectedRoles);
+            if ($role) {
+                $this->selectedPermissions = $role->permissions->pluck('id')->map(fn($id) => (string)$id)->toArray();
+                return;
+            }
+        }
+        $this->selectedPermissions = [];
+    }
+
+    public function clearAllPermissions()
     {
         $this->selectedPermissions = [];
     }
 
-    public function toggleGroup($groupName)
+    public function toggleCategory(string $categoryKey)
     {
-        $permsInGroup = Permission::all()->filter(function($p) use ($groupName) {
-            $name = $p->display_name ?? $p->name;
-            $parts = explode(' ', $name, 2);
-            $group = count($parts) > 1 ? $parts[1] : 'Lainnya';
-            return $group === $groupName;
-        })->pluck('id')->map(fn($id) => (string)$id)->toArray();
-
-        $allSelected = true;
-        foreach ($permsInGroup as $id) {
-            if (!in_array($id, $this->selectedPermissions)) {
-                $allSelected = false;
-                break;
-            }
+        $grouped = \App\Services\Auth\PermissionRegistry::getGroupedPermissions();
+        if (!isset($grouped[$categoryKey])) {
+            return;
         }
 
-        if ($allSelected) {
-            $this->selectedPermissions = array_values(array_diff($this->selectedPermissions, $permsInGroup));
+        $categoryPermIds = $grouped[$categoryKey]['permissions']->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        $isAllSelected = count(array_intersect($categoryPermIds, $this->selectedPermissions)) === count($categoryPermIds);
+
+        if ($isAllSelected) {
+            $this->selectedPermissions = array_values(array_diff($this->selectedPermissions, $categoryPermIds));
         } else {
-            $this->selectedPermissions = array_unique(array_merge($this->selectedPermissions, $permsInGroup));
+            $this->selectedPermissions = array_values(array_unique(array_merge($this->selectedPermissions, $categoryPermIds)));
         }
     }
 
@@ -371,8 +400,13 @@ class Edit extends AdminComponent
             $this->user->roles()->detach();
         }
         
-        $this->user->directPermissions()->sync($this->selectedPermissions);
-        $newPermissionIds = array_map('intval', $this->selectedPermissions);
+        $newPermissionIds = [];
+        if ($this->custom_permissions) {
+            $this->user->directPermissions()->sync($this->selectedPermissions);
+            $newPermissionIds = array_map('intval', $this->selectedPermissions);
+        } else {
+            $this->user->directPermissions()->detach();
+        }
 
         // WRITE AUDIT LOGS (role.manage gate tidak enforced di sini karena AdminComponent
         // sudah diakses hanya oleh administrator via route middleware role:administrator,manager
@@ -397,14 +431,9 @@ class Edit extends AdminComponent
     {
         $roles = Role::whereNotIn('name', Role::hiddenInUserManagement())->get();
         $branches = \App\Models\Master\Branch::where('is_active', true)->orWhere('id', $this->branch_id)->get();
-        
-        $permissionsGrouped = Permission::all()->groupBy(function($p) {
-            $name = $p->display_name ?? $p->name;
-            $parts = explode(' ', $name, 2);
-            return count($parts) > 1 ? $parts[1] : 'Lainnya';
-        });
+        $permissionCategories = \App\Services\Auth\PermissionRegistry::getGroupedPermissions($this->permissionSearch);
 
-        return view('livewire.admin.user.edit', compact('roles', 'branches', 'permissionsGrouped'));
+        return view('livewire.admin.user.edit', compact('roles', 'branches', 'permissionCategories'));
     }
 }
 

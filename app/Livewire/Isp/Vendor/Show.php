@@ -27,6 +27,9 @@ class Show extends AdminComponent
 
     public function render()
     {
-        return view('livewire.isp.vendor.show');
+        return view('livewire.isp.vendor.show', [
+            'vendor' => $this->vendor,
+            'breadcrumbs' => $this->breadcrumbs,
+        ]);
     }
 }

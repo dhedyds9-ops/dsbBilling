@@ -24,7 +24,7 @@
     </div>
 
     <div class="space-y-6">
-        <x-admin.breadcrumbs :breadcrumbs="$this->breadcrumbs" />
+        <x-admin.breadcrumbs :breadcrumbs="$breadcrumbs" />
         <div class="flex items-center gap-4">
             <a href="{{ route('isp.vendors.index') }}" class="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:bg-slate-800">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

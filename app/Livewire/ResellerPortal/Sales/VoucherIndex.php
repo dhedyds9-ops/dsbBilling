@@ -405,11 +405,24 @@ class VoucherIndex extends \App\Livewire\ISP\BaseNetworkComponent
         $nasDevices = \App\Models\ISP\NasDevice::active()->get();
         $userQueryService = app(\App\Services\Auth\UserQueryService::class);
         
-        $serviceProfiles = \App\Models\ISP\ServiceProfile::active()
-            ->where(function($q) {
-                $q->where('service_type', 'voucher')
-                  ->orWhere('service_type', 'hotspot')
-                  ->orWhere('service_type', 'combined');
+        $serviceProfiles = \App\Models\ISP\ServiceProfile::withoutGlobalScope('reseller_isolation')
+            ->where(function ($q) {
+                $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(service_type, ""))'), 'voucher')
+                  ->orWhere('service_type', 'LIKE', '%voucher%')
+                  ->orWhere('name', 'LIKE', '%voucher%')
+                  ->orWhereHas('serviceProfileType', function ($tq) {
+                      $tq->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(code, ""))'), 'voucher')
+                         ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(name, ""))'), 'like', '%voucher%');
+                  });
+            })
+            ->where(function ($q) {
+                $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(service_type, ""))'), '!=', 'pppoe')
+                  ->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(service_type, ""))'), '!=', 'hotspot');
+            })
+            ->where(function ($q) {
+                $q->where('status', 'active')
+                  ->orWhere('status', 'ACTIVE')
+                  ->orWhereNull('status');
             })->get();
 
         return view('livewire.reseller-portal.sales.voucher', compact('vouchers', 'stats', 'voucherPools', 'nasDevices', 'serviceProfiles'));

@@ -125,6 +125,11 @@ class HsgqOltDriver extends BaseOltDriver
                 }
             }
         }
+
+        if (empty($ports)) {
+            return $this->getStandardIfMibPonPorts();
+        }
+
         return $ports;
     }
 

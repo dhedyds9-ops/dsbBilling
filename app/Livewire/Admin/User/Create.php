@@ -31,7 +31,9 @@ class Create extends AdminComponent
     public $wilayah = '';
     public $selectedRoles = '';
     
-    public $selectedPermissions = [];
+    public bool $custom_permissions = false;
+    public array $selectedPermissions = [];
+    public string $permissionSearch = '';
 
     // Profil Kepegawaian Otomatis (HR)
     public bool $create_employee_profile = true;
@@ -178,37 +180,57 @@ class Create extends AdminComponent
         }
     }
 
-    public function checkAllPermissions()
+    public function updatedCustomPermissions($value)
     {
+        if ($value && empty($this->selectedPermissions)) {
+            $this->resetToRoleDefault();
+        }
+    }
+
+    public function selectAllRolePermissions()
+    {
+        if ($this->selectedRoles) {
+            $role = Role::find($this->selectedRoles);
+            if ($role && $role->name === \App\Enums\UserRole::Reseller->value) {
+                $resellerPermNames = \App\Enums\UserPermission::defaultResellerPermissions();
+                $this->selectedPermissions = Permission::whereIn('name', $resellerPermNames)->pluck('id')->map(fn($id) => (string)$id)->toArray();
+                return;
+            }
+        }
         $this->selectedPermissions = Permission::pluck('id')->map(fn($id) => (string)$id)->toArray();
     }
 
-    public function uncheckAllPermissions()
+    public function resetToRoleDefault()
+    {
+        if ($this->selectedRoles) {
+            $role = Role::with('permissions')->find($this->selectedRoles);
+            if ($role) {
+                $this->selectedPermissions = $role->permissions->pluck('id')->map(fn($id) => (string)$id)->toArray();
+                return;
+            }
+        }
+        $this->selectedPermissions = [];
+    }
+
+    public function clearAllPermissions()
     {
         $this->selectedPermissions = [];
     }
 
-    public function toggleGroup($groupName)
+    public function toggleCategory(string $categoryKey)
     {
-        $permsInGroup = Permission::all()->filter(function($p) use ($groupName) {
-            $name = $p->display_name ?? $p->name;
-            $parts = explode(' ', $name, 2);
-            $group = count($parts) > 1 ? $parts[1] : 'Lainnya';
-            return $group === $groupName;
-        })->pluck('id')->map(fn($id) => (string)$id)->toArray();
-
-        $allSelected = true;
-        foreach ($permsInGroup as $id) {
-            if (!in_array($id, $this->selectedPermissions)) {
-                $allSelected = false;
-                break;
-            }
+        $grouped = \App\Services\Auth\PermissionRegistry::getGroupedPermissions();
+        if (!isset($grouped[$categoryKey])) {
+            return;
         }
 
-        if ($allSelected) {
-            $this->selectedPermissions = array_values(array_diff($this->selectedPermissions, $permsInGroup));
+        $categoryPermIds = $grouped[$categoryKey]['permissions']->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        $isAllSelected = count(array_intersect($categoryPermIds, $this->selectedPermissions)) === count($categoryPermIds);
+
+        if ($isAllSelected) {
+            $this->selectedPermissions = array_values(array_diff($this->selectedPermissions, $categoryPermIds));
         } else {
-            $this->selectedPermissions = array_unique(array_merge($this->selectedPermissions, $permsInGroup));
+            $this->selectedPermissions = array_values(array_unique(array_merge($this->selectedPermissions, $categoryPermIds)));
         }
     }
 
@@ -309,8 +331,13 @@ class Create extends AdminComponent
             $newRoleIds = [(int) $this->selectedRoles];
         }
         
-        $user->directPermissions()->sync($this->selectedPermissions);
-        $newPermissionIds = array_map('intval', $this->selectedPermissions);
+        $newPermissionIds = [];
+        if ($this->custom_permissions) {
+            $user->directPermissions()->sync($this->selectedPermissions);
+            $newPermissionIds = array_map('intval', $this->selectedPermissions);
+        } else {
+            $user->directPermissions()->detach();
+        }
 
         // WRITE AUDIT LOGS untuk create user + role/permission assignment
         $auditService = app(\App\Services\Auth\AuditLogService::class);
@@ -356,13 +383,9 @@ class Create extends AdminComponent
     {
         $roles = Role::whereNotIn('name', Role::hiddenInUserManagement())->get();
         $branches = \App\Models\Master\Branch::where('is_active', true)->get();
-        $permissionsGrouped = Permission::all()->groupBy(function($p) {
-            $name = $p->display_name ?? $p->name;
-            $parts = explode(' ', $name, 2);
-            return count($parts) > 1 ? $parts[1] : 'Lainnya';
-        });
+        $permissionCategories = \App\Services\Auth\PermissionRegistry::getGroupedPermissions($this->permissionSearch);
         
-        return view('livewire.admin.user.create', compact('roles', 'branches', 'permissionsGrouped'));
+        return view('livewire.admin.user.create', compact('roles', 'branches', 'permissionCategories'));
     }
 }
 

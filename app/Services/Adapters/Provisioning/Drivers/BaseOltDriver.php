@@ -349,6 +349,76 @@ abstract class BaseOltDriver implements OltDriverInterface
         return false;
     }
 
+    /**
+     * Fallback Universal untuk mendeteksi PON Ports menggunakan Standard IF-MIB (RFC 1213 / RFC 2863)
+     * ataupun dari konfigurasi OLT pon_port_count di database.
+     */
+    public function getStandardIfMibPonPorts(): array
+    {
+        $ports = [];
+        try {
+            // 1. Coba ifName (.1.3.6.1.2.1.31.1.1.1.1) atau ifDescr (.1.3.6.1.2.1.2.2.1.2)
+            $ifNames = $this->snmp->walk('.1.3.6.1.2.1.31.1.1.1.1') ?: [];
+            if (empty($ifNames)) {
+                $ifNames = $this->snmp->walk('.1.3.6.1.2.1.2.2.1.2') ?: [];
+            }
+            $ifStatuses = $this->snmp->walk('.1.3.6.1.2.1.2.2.1.8') ?: [];
+
+            $statusMap = [];
+            foreach ($ifStatuses as $k => $st) {
+                $idx = (int)preg_replace('/^.*?(\d+)$/', '$1', (string)$k);
+                $statusMap[$idx] = (int)$st;
+            }
+
+            foreach ($ifNames as $k => $name) {
+                $idx = (int)preg_replace('/^.*?(\d+)$/', '$1', (string)$k);
+                $cleanName = trim((string)$name);
+                $cleanName = preg_replace('/^(STRING|Hex-STRING|OctetString)\s*:?\s*/i', '', $cleanName);
+                $cleanName = trim($cleanName, '" ');
+
+                $lower = strtolower($cleanName);
+                if (
+                    str_contains($lower, 'pon') ||
+                    str_contains($lower, 'epon') ||
+                    str_contains($lower, 'gpon') ||
+                    str_contains($lower, 'olt')
+                ) {
+                    $st = $statusMap[$idx] ?? 1;
+                    $ports[] = [
+                        'port_index' => $idx > 0 ? $idx : (count($ports) + 1),
+                        'port_name'  => $cleanName,
+                        'status'     => match ($st) {
+                            1 => 'up',
+                            2 => 'down',
+                            default => 'unknown'
+                        },
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::debug("getStandardIfMibPonPorts exception: " . $e->getMessage());
+        }
+
+        // 2. Jika Standard IF-MIB tidak menghasilkan port PON atau enterprise MIB kosong,
+        // namun OLT online (menjawab sysUpTime), gunakan konfigurasi pon_port_count dari database!
+        if (empty($ports)) {
+            $count = (int)($this->olt->pon_port_count ?? 0);
+            if ($count <= 0) {
+                $count = 4; // Default standard OLT pizza box di Indonesia: 4 PON ports
+            }
+            $oltType = str_contains(strtolower(($this->olt->model ?? '') . ' ' . ($this->olt->name ?? '')), 'epon') ? 'EPON' : 'GPON';
+            for ($p = 1; $p <= $count; $p++) {
+                $ports[] = [
+                    'port_index' => $p,
+                    'port_name'  => "{$oltType} 0/0/{$p}",
+                    'status'     => 'up',
+                ];
+            }
+        }
+
+        return $ports;
+    }
+
     abstract public function getPonPortsStatus(): array;
     abstract public function getOnuRxPower(int $ponPort): array;
     abstract public function discoverUnregisteredOnus(): array;

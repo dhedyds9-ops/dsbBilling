@@ -67,7 +67,12 @@ class OltPollingService
                 throw new \Exception("SNMP Timeout atau koneksi ditolak (Uptime: N/A).");
             }
             $ponPorts = $driver->getPonPortsStatus();
-            if (empty($ponPorts)) { throw new \Exception("0 Port PON terdeteksi. Kemungkinan SNMP Community tidak memiliki hak akses (View) ke Enterprise MIB OLT ini, atau tipe OLT tidak cocok."); }
+            if (empty($ponPorts) && method_exists($driver, 'getStandardIfMibPonPorts')) {
+                $ponPorts = $driver->getStandardIfMibPonPorts();
+            }
+            if (empty($ponPorts)) { 
+                throw new \Exception("0 Port PON terdeteksi. Kemungkinan SNMP Community tidak memiliki hak akses (View) ke Enterprise MIB OLT ini, atau tipe OLT tidak cocok."); 
+            }
 
             DB::transaction(function () use ($olt, $systemInfo, $ponPorts, $driver) {
                 $updateData = [

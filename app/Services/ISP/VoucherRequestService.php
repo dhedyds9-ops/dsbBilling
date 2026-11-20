@@ -21,12 +21,12 @@ class VoucherRequestService
     public function createRequest(array $data, User $reseller): VoucherRequest
     {
         return DB::transaction(function () use ($data, $reseller) {
-            $serviceProfile = ServiceProfile::findOrFail($data['service_profile_id']);
+            $serviceProfile = ServiceProfile::withoutGlobalScope('reseller_isolation')->findOrFail($data['service_profile_id']);
             $quantity = (int) ($data['quantity'] ?? 50);
 
             // Calculate unit price (retail) and cost price (reseller modal)
-            $unitPrice = (float) ($serviceProfile->promo_price ?: ($serviceProfile->base_price ?: 0));
-            $costPrice = (float) ($serviceProfile->reseller_price ?: ($serviceProfile->cost_price ?: 0));
+            $unitPrice = (float) ($serviceProfile->promo_price ?: ($serviceProfile->base_price ?: ($serviceProfile->price ?: 0)));
+            $costPrice = (float) ($serviceProfile->reseller_price ?: ($serviceProfile->cost_price ?: $unitPrice));
             $totalAmount = $costPrice * $quantity;
 
             // Generate unique request number VR-YYYYMMDD-XXXX

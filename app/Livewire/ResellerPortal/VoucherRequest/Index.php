@@ -54,9 +54,36 @@ class Index extends BaseNetworkComponent
     public function openCreateModal()
     {
         $this->resetCreateForm();
-        $defaultProfile = ServiceProfile::whereIn(DB::raw('LOWER(service_type)'), ['hotspot', 'voucher'])
-            ->where('status', 'active')
-            ->first();
+        $user = Auth::user();
+        $branchId = $user?->branch_id;
+
+        $defaultProfileQuery = ServiceProfile::withoutGlobalScope('reseller_isolation')
+            ->where(function ($q) {
+                $q->where(DB::raw('LOWER(COALESCE(service_type, ""))'), 'voucher')
+                  ->orWhere('service_type', 'LIKE', '%voucher%')
+                  ->orWhere('name', 'LIKE', '%voucher%')
+                  ->orWhereHas('serviceProfileType', function ($tq) {
+                      $tq->where(DB::raw('LOWER(COALESCE(code, ""))'), 'voucher')
+                         ->orWhere(DB::raw('LOWER(COALESCE(name, ""))'), 'like', '%voucher%');
+                  });
+            })
+            ->where(function ($q) {
+                $q->where(DB::raw('LOWER(COALESCE(service_type, ""))'), '!=', 'pppoe')
+                  ->where(DB::raw('LOWER(COALESCE(service_type, ""))'), '!=', 'hotspot');
+            })
+            ->where(function ($q) {
+                $q->where('status', 'active')
+                  ->orWhere('status', 'ACTIVE')
+                  ->orWhereNull('status');
+            });
+
+        if ($branchId && !$user->isSuperAdmin()) {
+            $defaultProfileQuery->where(function ($q) use ($branchId) {
+                $q->whereNull('branch_id')->orWhere('branch_id', $branchId);
+            });
+        }
+
+        $defaultProfile = $defaultProfileQuery->orderBy('name')->first();
 
         if ($defaultProfile) {
             $this->service_profile_id = $defaultProfile->id;
@@ -115,10 +142,10 @@ class Index extends BaseNetworkComponent
             return;
         }
 
-        $profile = ServiceProfile::find($this->service_profile_id);
+        $profile = ServiceProfile::withoutGlobalScope('reseller_isolation')->find($this->service_profile_id);
         if ($profile) {
-            $this->calc_unit_price = (float) ($profile->promo_price ?: ($profile->base_price ?: 0));
-            $this->calc_cost_price = (float) ($profile->reseller_price ?: ($profile->cost_price ?: 0));
+            $this->calc_unit_price = (float) ($profile->promo_price ?: ($profile->base_price ?: ($profile->price ?: 0)));
+            $this->calc_cost_price = (float) ($profile->reseller_price ?: ($profile->cost_price ?: $this->calc_unit_price));
             $this->calc_total_amount = $this->calc_cost_price * $this->quantity;
             $this->calc_estimated_profit = max(0, ($this->calc_unit_price - $this->calc_cost_price) * $this->quantity);
         }
@@ -216,10 +243,33 @@ class Index extends BaseNetworkComponent
         $requests = $query->orderBy($this->sortField, $this->sortDirection)
             ->paginate((int) $this->perPage);
 
-        $packages = ServiceProfile::whereIn(DB::raw('LOWER(service_type)'), ['hotspot', 'voucher'])
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get();
+        $packageQuery = ServiceProfile::withoutGlobalScope('reseller_isolation')
+            ->where(function ($q) {
+                $q->where(DB::raw('LOWER(COALESCE(service_type, ""))'), 'voucher')
+                  ->orWhere('service_type', 'LIKE', '%voucher%')
+                  ->orWhere('name', 'LIKE', '%voucher%')
+                  ->orWhereHas('serviceProfileType', function ($tq) {
+                      $tq->where(DB::raw('LOWER(COALESCE(code, ""))'), 'voucher')
+                         ->orWhere(DB::raw('LOWER(COALESCE(name, ""))'), 'like', '%voucher%');
+                  });
+            })
+            ->where(function ($q) {
+                $q->where(DB::raw('LOWER(COALESCE(service_type, ""))'), '!=', 'pppoe')
+                  ->where(DB::raw('LOWER(COALESCE(service_type, ""))'), '!=', 'hotspot');
+            })
+            ->where(function ($q) {
+                $q->where('status', 'active')
+                  ->orWhere('status', 'ACTIVE')
+                  ->orWhereNull('status');
+            });
+
+        if ($user->branch_id && !$user->isSuperAdmin()) {
+            $packageQuery->where(function ($q) use ($user) {
+                $q->whereNull('branch_id')->orWhere('branch_id', $user->branch_id);
+            });
+        }
+
+        $packages = $packageQuery->orderBy('name')->get();
 
         $templates = VoucherTemplate::where('is_active', true)->orderBy('name')->get();
 

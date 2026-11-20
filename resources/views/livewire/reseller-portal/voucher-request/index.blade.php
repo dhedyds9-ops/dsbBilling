@@ -259,8 +259,8 @@
                             <option value="">-- Pilih Paket Layanan --</option>
                             @foreach($packages as $pkg)
                                 @php
-                                    $pkgRetail = $pkg->promo_price ?: ($pkg->base_price ?: 0);
-                                    $pkgCost = $pkg->reseller_price ?: ($pkg->cost_price ?: 0);
+                                    $pkgRetail = $pkg->promo_price ?: ($pkg->base_price ?: ($pkg->price ?: 0));
+                                    $pkgCost = $pkg->reseller_price ?: ($pkg->cost_price ?: $pkgRetail);
                                 @endphp
                                 <option value="{{ $pkg->id }}">
                                     {{ $pkg->name }} (Jual: Rp {{ number_format($pkgRetail) }} | Modal: Rp {{ number_format($pkgCost) }})

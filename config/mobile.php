@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10119,
-        'latest_version_name' => '1.1.19',
+        'latest_version_code' => 10120,
+        'latest_version_name' => '1.1.20',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'https://winets.mstore.id') . '/downloads/dsbilling-mobile.apk',
-        'release_notes' => "dsBilling Staff & Teknisi v1.1.19:\n- Peta Jaringan HD & Foto ODP: Dukungan pratinjau foto langsung dalam peta (Lightbox preview) tanpa popup error dan resolusi Base64/Storage path yang aman.\n- Pengelolaan Perangkat TR-069: Tombol Hapus berfungsi optimal, sinkronisasi penghapusan perangkat soft-delete, dan aksi diagnosa/ganti ONT.\n- Keamanan Stok Material & Custody: Alokasi modem Wizard PSB eksklusif untuk stok di tangan teknisi/reseller (mencegah pemilihan stok gudang pusat tanpa otorisasi).\n- Perbaikan SPK Lapangan: Memperbaiki kendala pemuatan daftar SPK/Work Order dan sinkronisasi tugas aktif.\n- Cakupan Detail Modem Reseller: Izin melihat detail diagnostik modem baru/unassigned dari OLT untuk kemudahan aktivasi mitra reseller.",
+        'release_notes' => "dsBilling Staff & Reseller v1.1.20:\n- Permintaan Cetak Voucher Reseller: Pengajuan batch cetak voucher hotspot langsung dari aplikasi/portal dengan estimasi modal, kalkulasi margin profit, dan verifikasi saldo deposit otomatis.\n- Perbaikan Katalog Paket Voucher: Seluruh paket voucher master ISP kini tampil lengkap dan responsif pada formulir permintaan voucher.\n- Peta Jaringan & Marker GIS: Interaktivitas klik marker ODP, ODC, OLT, dan pelanggan dengan detail modal informatif.\n- Form Work Order & SPK: Perapihan formulir penugasan teknisi dan batas kapasitas tugas lapangan.",
     ],
     'customer' => [
         'latest_version_code' => 10107,

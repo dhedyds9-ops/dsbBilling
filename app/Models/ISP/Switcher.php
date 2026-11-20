@@ -10,6 +10,8 @@ class Switcher extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $table = 'switches';
+
     protected $fillable = [
         'pop_id',
         'vendor_id',

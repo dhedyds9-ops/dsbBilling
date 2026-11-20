@@ -281,6 +281,64 @@ class PermissionRegistry
     }
 
     /**
+     * Mengelompokkan seluruh permission di database ke dalam kategori modul sistem.
+     * Digunakan oleh UI Manajemen User (Create / Edit) untuk matriks hak akses.
+     */
+    public static function getGroupedPermissions(?string $search = null): array
+    {
+        $allPermissions = Permission::orderBy('name')->get();
+        if ($search && trim($search) !== '') {
+            $q = strtolower(trim($search));
+            $allPermissions = $allPermissions->filter(function($p) use ($q) {
+                return str_contains(strtolower($p->name), $q)
+                    || str_contains(strtolower($p->display_name ?? ''), $q)
+                    || str_contains(strtolower($p->description ?? ''), $q);
+            });
+        }
+
+        $categories = self::getAllCategorizedPermissions();
+        $grouped = [];
+
+        foreach ($categories as $catKey => $catData) {
+            $grouped[$catKey] = [
+                'key'         => $catKey,
+                'title'       => $catData['title'],
+                'icon'        => $catData['icon'] ?? 'folder',
+                'description' => $catData['description'] ?? '',
+                'permissions' => collect(),
+            ];
+        }
+
+        $grouped['other'] = [
+            'key'         => 'other',
+            'title'       => 'Lainnya / Tambahan',
+            'icon'        => 'more_horiz',
+            'description' => 'Izin modul sistem lainnya.',
+            'permissions' => collect(),
+        ];
+
+        foreach ($allPermissions as $perm) {
+            $matched = false;
+            foreach ($categories as $catKey => $catData) {
+                $modules = array_keys($catData['modules']);
+                foreach ($modules as $mod) {
+                    if ($perm->name === $mod || str_starts_with($perm->name, $mod . '.')) {
+                        $grouped[$catKey]['permissions']->push($perm);
+                        $matched = true;
+                        break 2;
+                    }
+                }
+            }
+            if (!$matched) {
+                $grouped['other']['permissions']->push($perm);
+            }
+        }
+
+        // Filter kategori yang memiliki permission (terutama jika ada pencarian)
+        return array_filter($grouped, fn($g) => $g['permissions']->isNotEmpty());
+    }
+
+    /**
      * Label aksi yang ramah pengguna.
      */
     public static function formatActionLabel(string $action): string
@@ -458,8 +516,18 @@ class PermissionRegistry
                 ]
             );
 
-            // Sync izin jika role baru dibuat atau belum memiliki permission
-            if ($role->permissions()->count() === 0 || in_array($role->name, [UserRole::Administrator->value, UserRole::AdminGudang->value, UserRole::Kasir->value, UserRole::CustomerService->value, UserRole::Noc->value, UserRole::Teknisi->value, UserRole::Marketing->value])) {
+            // Sync izin jika role baru dibuat atau belum memiliki permission lengkap
+            if ($role->permissions()->count() === 0 || in_array($role->name, [
+                UserRole::Administrator->value,
+                UserRole::Manager->value,
+                UserRole::Reseller->value,
+                UserRole::AdminGudang->value,
+                UserRole::Kasir->value,
+                UserRole::CustomerService->value,
+                UserRole::Noc->value,
+                UserRole::Teknisi->value,
+                UserRole::Marketing->value
+            ])) {
                 $perms = Permission::whereIn('name', $rData['permissions'])->get();
                 $role->permissions()->sync($perms);
             }

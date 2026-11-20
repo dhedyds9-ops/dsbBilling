@@ -105,9 +105,25 @@ class MobileVoucherApiController extends Controller
     {
         $user = $request->user();
 
-        $query = ServiceProfile::query()
-            ->whereIn(DB::raw('LOWER(service_type)'), ['hotspot', 'voucher'])
-            ->where('status', 'active');
+        $query = ServiceProfile::withoutGlobalScope('reseller_isolation')
+            ->where(function ($q) {
+                $q->where(DB::raw('LOWER(COALESCE(service_type, ""))'), 'voucher')
+                  ->orWhere('service_type', 'LIKE', '%voucher%')
+                  ->orWhere('name', 'LIKE', '%voucher%')
+                  ->orWhereHas('serviceProfileType', function ($tq) {
+                      $tq->where(DB::raw('LOWER(COALESCE(code, ""))'), 'voucher')
+                         ->orWhere(DB::raw('LOWER(COALESCE(name, ""))'), 'like', '%voucher%');
+                  });
+            })
+            ->where(function ($q) {
+                $q->where(DB::raw('LOWER(COALESCE(service_type, ""))'), '!=', 'pppoe')
+                  ->where(DB::raw('LOWER(COALESCE(service_type, ""))'), '!=', 'hotspot');
+            })
+            ->where(function ($q) {
+                $q->where('status', 'active')
+                  ->orWhere('status', 'ACTIVE')
+                  ->orWhereNull('status');
+            });
 
         if ($user->branch_id && !$user->isSuperAdmin()) {
             $query->where(function ($q) use ($user) {
@@ -119,8 +135,8 @@ class MobileVoucherApiController extends Controller
         $packages = $query->orderBy('name')
             ->get()
             ->map(function (ServiceProfile $sp) {
-                $retailPrice = (float) ($sp->promo_price ?: ($sp->base_price ?: 0));
-                $costPrice = (float) ($sp->reseller_price ?: ($sp->cost_price ?: 0));
+                $retailPrice = (float) ($sp->promo_price ?: ($sp->base_price ?: ($sp->price ?: 0)));
+                $costPrice = (float) ($sp->reseller_price ?: ($sp->cost_price ?: $retailPrice));
 
                 return [
                     'id' => $sp->id,

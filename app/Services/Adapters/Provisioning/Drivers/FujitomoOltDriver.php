@@ -29,18 +29,54 @@ class FujitomoOltDriver extends BaseOltDriver
     {
         $statuses = $this->snmp->walk($this->ponStatusOid);
         $ports = [];
-        foreach ($statuses as $idx => $status) {
-            $ports[] = [
-                'port_index' => $idx,
-                'port_name' => "PON0/$idx",
-                'status' => match ((int)$status) {
-                    1 => 'up',
-                    2 => 'down',
-                    default => 'unknown'
-                },
-            ];
+        if (!empty($statuses)) {
+            foreach ($statuses as $idx => $status) {
+                $portIdx = (int)preg_replace('/^.*?(\d+)$/', '$1', (string)$idx);
+                $ports[] = [
+                    'port_index' => $portIdx > 0 ? $portIdx : (int)$idx,
+                    'port_name' => "PON0/" . ($portIdx > 0 ? $portIdx : $idx),
+                    'status' => match ((int)$status) {
+                        1 => 'up',
+                        2 => 'down',
+                        default => 'unknown'
+                    },
+                ];
+            }
+            return $ports;
         }
-        return $ports;
+
+        // Coba OID HSGQ 50224 (Banyak OLT Fujitomo OEM berbasis HSGQ hardware)
+        $hsgqStatuses = $this->snmp->walk('.1.3.6.1.4.1.50224.3.2.1.1.6') ?: ($this->snmp->walk('.1.3.6.1.4.1.50224.3.3.1.1.6') ?: []);
+        if (!empty($hsgqStatuses)) {
+            $names = $this->snmp->walk('.1.3.6.1.4.1.50224.3.2.1.1.2') ?: ($this->snmp->walk('.1.3.6.1.4.1.50224.3.3.1.1.2') ?: []);
+            foreach ($hsgqStatuses as $idx => $status) {
+                $portIdx = (int)preg_replace('/^.*?(\d+)$/', '$1', (string)$idx);
+                $pName = isset($names[$idx]) ? trim((string)$names[$idx], '" ') : "PON0/$portIdx";
+                $ports[] = [
+                    'port_index' => $portIdx,
+                    'port_name' => $pName,
+                    'status' => ((int)$status === 2 || (int)$status === 1) ? 'up' : 'down',
+                ];
+            }
+            return $ports;
+        }
+
+        // Coba CTC EPON Standard MIB (.1.3.6.1.4.1.17409.2.3.1.2.1.1)
+        $ctcPorts = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.1.2.1.1');
+        if (!empty($ctcPorts)) {
+            foreach ($ctcPorts as $idx => $val) {
+                $portIdx = (int)preg_replace('/^.*?(\d+)$/', '$1', (string)$idx);
+                $ports[] = [
+                    'port_index' => $portIdx,
+                    'port_name' => "PON0/$portIdx",
+                    'status' => 'up',
+                ];
+            }
+            return $ports;
+        }
+
+        // Fallback Universal: Standard IF-MIB & Database Port Count
+        return $this->getStandardIfMibPonPorts();
     }
 
     public function getOnuRxPower(int $ponPort): array
@@ -55,6 +91,19 @@ class FujitomoOltDriver extends BaseOltDriver
         $macs      = $this->snmp->walk($this->onuMacOid . $base);
         $firmwares = $this->snmp->walk($this->onuFwOid . $base);
         $models    = $this->snmp->walk($this->onuModelOid . $base);
+
+        // Fallback jika enterprise OID Fujitomo kosong, coba HSGQ 50224
+        if (empty($serials)) {
+            $serials = $this->snmp->walk('.1.3.6.1.4.1.50224.3.12.2.1.15' . $base) ?: ($this->snmp->walk('.1.3.6.1.4.1.50224.3.12.2.1.15') ?: []);
+            if (!empty($serials)) {
+                $rxRaw     = $this->snmp->walk('.1.3.6.1.4.1.50224.3.12.3.1.4') ?: [];
+                $txRaw     = $this->snmp->walk('.1.3.6.1.4.1.50224.3.12.3.1.5') ?: [];
+                $statuses  = $this->snmp->walk('.1.3.6.1.4.1.50224.3.12.2.1.22') ?: [];
+                $tempRaw   = $this->snmp->walk('.1.3.6.1.4.1.50224.3.12.3.1.7') ?: [];
+                $firmwares = $this->snmp->walk('.1.3.6.1.4.1.50224.3.12.2.1.11') ?: [];
+                $models    = $this->snmp->walk('.1.3.6.1.4.1.50224.3.12.2.1.9') ?: [];
+            }
+        }
 
         foreach ($serials as $idx => $serial) {
             $rxRawVal = (int)($rxRaw[$idx] ?? 0);

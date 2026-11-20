@@ -433,27 +433,31 @@ class CDataOltDriver extends BaseOltDriver
             }
 
             // Attempt 2: Interface-level commands (standard C-Data requirement on older/modular firmware)
-            if ($isBad($infoOut)) {
+            if ($isBad($infoOut) || $isBad($optOut)) {
                 $this->cli->execute("config\r\n", false);
                 $inGpon = $this->cli->execute("interface gpon 0/{$slot}\r\n", false);
                 if ($isBad($inGpon)) {
-                    $inGpon = $this->cli->execute("interface gpon 0/0\r\n", false);
+                    $inGpon = $this->cli->execute("interface gpon 0/1\r\n", false);
                 }
                 if ($isBad($inGpon)) {
-                    $inGpon = $this->cli->execute("interface gpon 0/1\r\n", false);
+                    $inGpon = $this->cli->execute("interface gpon 0/0\r\n", false);
                 }
 
                 if (!$isBad($inGpon)) {
-                    $infoOut = $this->cli->execute("show ont info all\r\n", false);
                     if ($isBad($infoOut)) {
-                        $infoOut = $this->cli->execute("show ont info 1 all\r\n", false);
+                        $infoOut = $this->cli->execute("show ont info all\r\n", false);
+                        if ($isBad($infoOut)) {
+                            $infoOut = $this->cli->execute("show ont info 1 all\r\n", false);
+                        }
+                        if ($isBad($infoOut)) {
+                            $infoOut = $this->cli->execute("show ont info 0/0 1 all\r\n", false);
+                        }
                     }
-                    if ($isBad($infoOut)) {
-                        $infoOut = $this->cli->execute("show ont info 0/0 1 all\r\n", false);
-                    }
-                    $optOut = $this->cli->execute("show ont optical-info all\r\n", false);
                     if ($isBad($optOut)) {
-                        $optOut = $this->cli->execute("show ont optical-info 1 all\r\n", false);
+                        $optOut = $this->cli->execute("show ont optical-info all\r\n", false);
+                        if ($isBad($optOut)) {
+                            $optOut = $this->cli->execute("show ont optical-info 1 all\r\n", false);
+                        }
                     }
                 } else {
                     $inEpon = $this->cli->execute("interface epon 0/{$slot}\r\n", false);
@@ -461,16 +465,21 @@ class CDataOltDriver extends BaseOltDriver
                         $inEpon = $this->cli->execute("interface epon 0/0\r\n", false);
                     }
                     if (!$isBad($inEpon)) {
-                        $infoOut = $this->cli->execute("show onu info all\r\n", false);
                         if ($isBad($infoOut)) {
-                            $infoOut = $this->cli->execute("show onu info 1 all\r\n", false);
+                            $infoOut = $this->cli->execute("show onu info all\r\n", false);
+                            if ($isBad($infoOut)) {
+                                $infoOut = $this->cli->execute("show onu info 1 all\r\n", false);
+                            }
                         }
-                        $optOut = $this->cli->execute("show onu optical-info all\r\n", false);
                         if ($isBad($optOut)) {
-                            $optOut = $this->cli->execute("show onu optical-info 1 all\r\n", false);
+                            $optOut = $this->cli->execute("show onu optical-info all\r\n", false);
+                            if ($isBad($optOut)) {
+                                $optOut = $this->cli->execute("show onu optical-info 1 all\r\n", false);
+                            }
                         }
                     }
                 }
+                $this->cli->execute("exit\r\n", false);
                 $this->cli->execute("exit\r\n", false);
             }
 
@@ -638,15 +647,26 @@ class CDataOltDriver extends BaseOltDriver
                         }
                     }
 
-                    // CASE 3: Multi-port format: "0/0/2 1" or "0/2 1" or "0/0 2 1"
+                    // CASE 3: Multi-port format: "0/1/1 1 -20.71", "0/0/2 1", "0/2 1", or "0/0 2 1"
                     if ($lPort === null || $lOnuId === null) {
-                        if (count($cols) >= 3 && str_contains($cols[0], '/') && is_numeric($cols[1]) && is_numeric($cols[2])) {
-                            $lPort = (int)$cols[1];
-                            $lOnuId = (int)$cols[2];
-                        } elseif (count($cols) >= 2 && str_contains($cols[0], '/') && is_numeric($cols[1])) {
+                        if (str_contains($cols[0], '/')) {
                             $pParts = explode('/', $cols[0]);
-                            $lPort = (int)end($pParts);
-                            $lOnuId = (int)$cols[1];
+                            // Format 0/1/1 1 -20.71... (F/S/P lengkap di cols[0], ONU ID di cols[1])
+                            if (count($pParts) >= 3 && is_numeric(end($pParts)) && isset($cols[1]) && is_numeric($cols[1]) && (int)$cols[1] > 0 && !str_contains($cols[1], '.')) {
+                                $lPort = (int)end($pParts);
+                                $lOnuId = (int)$cols[1];
+                            }
+                            // Format 0/0 2 1 -20.71... (Slot di cols[0], Port di cols[1], ONU ID di cols[2])
+                            // Hanya berlaku jika cols[2] bilangan bulat positif tanpa titik desimal/minus!
+                            elseif (count($pParts) === 2 && count($cols) >= 3 && is_numeric($cols[1]) && is_numeric($cols[2]) && !str_contains($cols[2], '.') && (int)$cols[2] > 0) {
+                                $lPort = (int)$cols[1];
+                                $lOnuId = (int)$cols[2];
+                            }
+                            // Format 0/2 1 -20.71... (Port di akhir cols[0], ONU ID di cols[1])
+                            elseif (count($cols) >= 2 && is_numeric($cols[1]) && (int)$cols[1] > 0 && !str_contains($cols[1], '.')) {
+                                $lPort = (int)end($pParts);
+                                $lOnuId = (int)$cols[1];
+                            }
                         } elseif (preg_match('/^(?:gpon|epon|pon)?\s*(?:0\/0\/|0\/)?(\d+)[\s:\/]+(\d+)\b/i', $line, $pm)) {
                             $lPort = (int)$pm[1];
                             $lOnuId = (int)$pm[2];

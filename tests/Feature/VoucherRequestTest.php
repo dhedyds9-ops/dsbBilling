@@ -64,13 +64,13 @@ class VoucherRequestTest extends TestCase
         ]);
         $this->otherReseller->roles()->attach($resellerRole->id);
 
-        $type = ServiceProfileType::firstOrCreate(['code' => 'HOTSPOT'], ['name' => 'Hotspot', 'status' => 'active']);
+        $type = ServiceProfileType::firstOrCreate(['code' => 'VOUCHER'], ['name' => 'Voucher', 'status' => 'active']);
 
         $this->hotspotProfile = ServiceProfile::create([
             'service_profile_type_id' => $type->id,
-            'name' => 'Paket Hotspot 5 Jam',
-            'code' => 'HS-5H',
-            'service_type' => 'Hotspot',
+            'name' => 'Paket Voucher 5 Jam',
+            'code' => 'VC-5H',
+            'service_type' => 'voucher',
             'package_type' => 'time_based',
             'duration_value' => 5,
             'duration_unit' => 'hours',
@@ -236,7 +236,7 @@ class VoucherRequestTest extends TestCase
             ])
             ->assertJsonFragment([
                 'id' => $this->hotspotProfile->id,
-                'name' => 'Paket Hotspot 5 Jam',
+                'name' => 'Paket Voucher 5 Jam',
                 'unit_price' => 10000,
                 'cost_price' => 7000,
                 'margin' => 3000,
@@ -275,12 +275,43 @@ class VoucherRequestTest extends TestCase
                 'count' => 1,
             ])
             ->assertJsonFragment([
-                'service_profile_name' => 'Paket Hotspot 5 Jam',
+                'service_profile_name' => 'Paket Voucher 5 Jam',
                 'quantity' => 50,
                 'cost_price' => 7000,
                 'total_amount' => 350000,
                 'delivery_type' => 'physical_print',
                 'status' => 'pending',
+            ]);
+    }
+
+    public function test_reseller_can_see_isp_admin_voucher_packages_with_private_visibility(): void
+    {
+        $type = ServiceProfileType::firstOrCreate(['code' => 'VOUCHER'], ['name' => 'Voucher', 'status' => 'active']);
+
+        ServiceProfile::create([
+            'service_profile_type_id' => $type->id,
+            'name' => 'Voucher 2 Jam ISP',
+            'code' => 'VC-2H',
+            'service_type' => 'voucher',
+            'owner_id' => $this->admin->id,
+            'visibility' => 'private',
+            'base_price' => 5000,
+            'cost_price' => 3500,
+            'reseller_price' => 3500,
+            'status' => 'active',
+        ]);
+
+        Livewire::actingAs($this->reseller)
+            ->test(ResellerVoucherRequestIndex::class)
+            ->call('openCreateModal')
+            ->assertStatus(200)
+            ->assertSee('Voucher 2 Jam ISP');
+
+        Sanctum::actingAs($this->reseller, ['*']);
+        $this->getJson('/api/mobile/vouchers/packages')
+            ->assertStatus(200)
+            ->assertJsonFragment([
+                'name' => 'Voucher 2 Jam ISP',
             ]);
     }
 
@@ -297,7 +328,7 @@ class VoucherRequestTest extends TestCase
             ->test(AdminVoucherRequestIndex::class)
             ->assertStatus(200)
             ->assertSee('Total Request')
-            ->assertSee('Paket Hotspot 5 Jam');
+            ->assertSee('Paket Voucher 5 Jam');
 
         // Test HTTP Page
         $this->actingAs($this->admin)
@@ -319,12 +350,57 @@ class VoucherRequestTest extends TestCase
             ->test(ResellerVoucherRequestIndex::class)
             ->assertStatus(200)
             ->assertSee('Minta Cetak Voucher Baru')
-            ->assertSee('Paket Hotspot 5 Jam');
+            ->assertSee('Paket Voucher 5 Jam');
 
         // Test HTTP Page
         $this->actingAs($this->reseller)
             ->get('/reseller-portal/voucher-requests')
             ->assertStatus(200)
             ->assertSee('Permintaan Cetak Voucher');
+    }
+
+    public function test_pppoe_and_pure_hotspot_packages_are_excluded_from_voucher_request(): void
+    {
+        $pppoeType = ServiceProfileType::firstOrCreate(['code' => 'PPPOE'], ['name' => 'PPPoE', 'status' => 'active']);
+        $hotspotType = ServiceProfileType::firstOrCreate(['code' => 'HOTSPOT'], ['name' => 'Hotspot', 'status' => 'active']);
+
+        // 1. PPPoE Package
+        ServiceProfile::create([
+            'service_profile_type_id' => $pppoeType->id,
+            'name' => 'Member PPPoE Home 20M',
+            'code' => 'PPP-20M',
+            'service_type' => 'pppoe',
+            'base_price' => 150000,
+            'status' => 'active',
+        ]);
+
+        // 2. Pure Hotspot Member Package
+        ServiceProfile::create([
+            'service_profile_type_id' => $hotspotType->id,
+            'name' => 'Member Lite 1 User',
+            'code' => 'HS-MBR-1U',
+            'service_type' => 'hotspot',
+            'base_price' => 60000,
+            'status' => 'active',
+        ]);
+
+        // Assert Mobile API excludes both
+        Sanctum::actingAs($this->reseller, ['*']);
+        $response = $this->getJson('/api/mobile/vouchers/packages');
+        $response->assertStatus(200);
+
+        $packageNames = collect($response->json('data'))->pluck('name')->all();
+        $this->assertNotContains('Member PPPoE Home 20M', $packageNames);
+        $this->assertNotContains('Member Lite 1 User', $packageNames);
+        $this->assertContains('Paket Voucher 5 Jam', $packageNames);
+
+        // Assert Web Reseller Portal excludes both
+        Livewire::actingAs($this->reseller)
+            ->test(ResellerVoucherRequestIndex::class)
+            ->call('openCreateModal')
+            ->assertStatus(200)
+            ->assertDontSee('Member PPPoE Home 20M')
+            ->assertDontSee('Member Lite 1 User')
+            ->assertSee('Paket Voucher 5 Jam');
     }
 }
