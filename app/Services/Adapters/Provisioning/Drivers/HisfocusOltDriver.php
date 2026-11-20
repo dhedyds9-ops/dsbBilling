@@ -755,6 +755,15 @@ class HisfocusOltDriver extends BaseOltDriver
 
             // Coba berbagai perintah status ONU yang umum pada OLT HISFOCUS / GBN / Huawei-style (display) & Cisco-style (show)
             $commands = [
+                'display current-config',
+                'display ont info 2/1 all',
+                'display ont info 2/2 all',
+                'display ont optical-info 2/1 all',
+                'display ont optical-info 2/2 all',
+                'display rssi-detect 2/1 all',
+                'display rssi-detect 2/2 all',
+                'display ont-autofind',
+                'display ont-learned-mac',
                 'display ont info 0 all',
                 'display ont info 1 all',
                 'display ont info 2 all',
@@ -765,9 +774,6 @@ class HisfocusOltDriver extends BaseOltDriver
                 'display ont optical-info 1 all',
                 'display ont optical-info 2 all',
                 'display ont optical-info all',
-                'display ont autofind all',
-                'display onu auto-find',
-                'display current-configuration',
                 'display mac-address',
                 'show ont info all',
                 'show onu info all',
@@ -795,9 +801,42 @@ class HisfocusOltDriver extends BaseOltDriver
                 $clean = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', (string)$infoOut);
                 $snCounter = 1;
 
+                // 1. Parsing format asli OLT GP210 / GBN dari display current-config:
+                // rule-profile 2/1/1 name AUTO_ONT_2/1/1
+                // sn-auth string-hex HWUD-0F456BB3 line-profile 10
+                if (preg_match_all('/rule-profile\s+(?:2\/)?(\d+)\/(\d+)\s+name\s+([^\r\n]+)\s+sn-auth\s+string-hex\s+([A-Za-z0-9-]+)/i', $clean, $rules, PREG_SET_ORDER)) {
+                    $seenSns = [];
+                    foreach ($rules as $r) {
+                        $p = (int)$r[1]; // 1 = Port 1 (2/1), 2 = Port 2 (2/2)
+                        $onuId = (int)$r[2];
+                        $name = trim($r[3]);
+                        $rawSn = str_replace(['-', ':', ' '], '', trim($r[4]));
+                        $sn = strtoupper($rawSn);
+                        if (empty($sn) || isset($seenSns[$sn])) continue;
+                        $seenSns[$sn] = true;
+
+                        $onus[] = [
+                            'pon_port'         => $p > 0 ? $p : 1,
+                            'raw_port_idx'     => $p,
+                            'onu_index'        => $onuId,
+                            'serial_number'    => $sn,
+                            'mac_address'      => null,
+                            'rx_power_dbm'     => null,
+                            'tx_power_dbm'     => null,
+                            'snr_db'           => null,
+                            'temperature'      => null,
+                            'firmware_version' => null,
+                            'model'            => null,
+                            'name'             => $name,
+                            'status'           => 'online',
+                        ];
+                    }
+                }
+
+                // 2. Parsing baris-per-baris untuk format tabel info / optical-info
                 foreach (explode("\n", $clean) as $line) {
                     $line = trim($line);
-                    if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, '=') || str_starts_with($line, 'F/S') || str_starts_with($line, 'Slot') || str_starts_with($line, 'Port') || str_starts_with($line, 'show') || str_starts_with($line, 'Total:') || str_contains($line, '#')) {
+                    if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, '=') || str_starts_with($line, 'F/S') || str_starts_with($line, 'Slot') || str_starts_with($line, 'Port') || str_starts_with($line, 'show') || str_starts_with($line, 'display') || str_starts_with($line, 'Total:') || str_contains($line, '#')) {
                         continue;
                     }
 
@@ -807,6 +846,7 @@ class HisfocusOltDriver extends BaseOltDriver
                         $sn = $this->cleanSnmpSerialOrMac($rawSn);
                         if (empty($sn)) continue;
 
+                        $cleanSn = str_replace([':', '-', ' '], '', $sn);
                         $isOnline = preg_match('/\b(online|working|operation|operational|up|ok|enable|active)\b/i', $line);
 
                         // Ekstrak redaman Rx jika ada (misal -21.50)
@@ -817,27 +857,45 @@ class HisfocusOltDriver extends BaseOltDriver
 
                         // Ekstrak port number dari baris CLI
                         $detectedPort = 1;
-                        if (preg_match('/(?:gpon|epon|pon|port)?\s*(?:0\/0\/|0\/)?(\d+)[\s:\/]+(\d+)/i', $line, $pm)) {
+                        if (preg_match('/(?:gpon|epon|pon|port)?\s*(?:0\/0\/|0\/|2\/)?(\d+)[\s:\/]+(\d+)/i', $line, $pm)) {
                             $detectedPort = (int)$pm[1];
                         } elseif (preg_match('/\/(\d+)\//', $line, $pm)) {
                             $detectedPort = (int)$pm[1];
                         }
 
-                        $onus[] = [
-                            'pon_port'         => $detectedPort > 0 ? $detectedPort : 1,
-                            'raw_port_idx'     => $detectedPort,
-                            'onu_index'        => $snCounter++,
-                            'serial_number'    => str_replace(':', '', $sn),
-                            'mac_address'      => str_contains($sn, ':') ? $sn : null,
-                            'rx_power_dbm'     => ($rxVal !== null && $rxVal >= -45.0 && $rxVal <= -5.0) ? $rxVal : null,
-                            'tx_power_dbm'     => null,
-                            'snr_db'           => null,
-                            'temperature'      => null,
-                            'firmware_version' => null,
-                            'model'            => null,
-                            'name'             => null,
-                            'status'           => $isOnline ? 'online' : 'offline',
-                        ];
+                        // Jika ONU sudah ada dari rule-profile, update rx_power atau statusnya
+                        $existingIdx = null;
+                        foreach ($onus as $idx => $existing) {
+                            if ($existing['serial_number'] === $cleanSn) {
+                                $existingIdx = $idx;
+                                break;
+                            }
+                        }
+
+                        if ($existingIdx !== null) {
+                            if ($rxVal !== null) {
+                                $onus[$existingIdx]['rx_power_dbm'] = $rxVal;
+                            }
+                            if ($isOnline) {
+                                $onus[$existingIdx]['status'] = 'online';
+                            }
+                        } else {
+                            $onus[] = [
+                                'pon_port'         => $detectedPort > 0 ? $detectedPort : 1,
+                                'raw_port_idx'     => $detectedPort,
+                                'onu_index'        => $snCounter++,
+                                'serial_number'    => $cleanSn,
+                                'mac_address'      => str_contains($sn, ':') ? $sn : null,
+                                'rx_power_dbm'     => ($rxVal !== null && $rxVal >= -45.0 && $rxVal <= -5.0) ? $rxVal : null,
+                                'tx_power_dbm'     => null,
+                                'snr_db'           => null,
+                                'temperature'      => null,
+                                'firmware_version' => null,
+                                'model'            => null,
+                                'name'             => null,
+                                'status'           => $isOnline ? 'online' : 'offline',
+                            ];
+                        }
                     }
                 }
             }
