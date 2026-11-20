@@ -11,6 +11,7 @@ use App\Services\Adapters\Provisioning\OltRegistry;
 use App\Services\ISP\RootCauseAnalysisEngine;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 class OltPollingService
@@ -132,7 +133,8 @@ class OltPollingService
                     }
                     $portStatus = $port['status'] === 'up' ? 'active' : 'inactive';
 
-                    $dbPort = PonPort::where('olt_id', $olt->id)
+                    $dbPort = PonPort::withTrashed()
+                        ->where('olt_id', $olt->id)
                         ->where(function ($q) use ($portName, $portNumber, $idx) {
                             $q->where('name', $portName)
                               ->orWhere('port_number', $portNumber)
@@ -140,10 +142,24 @@ class OltPollingService
                         })
                         ->first();
 
+                    if (!$dbPort) {
+                        $dbPort = PonPort::withTrashed()
+                            ->where('olt_id', $olt->id)
+                            ->where('code', $olt->code . '-PON-' . $portNumber)
+                            ->first();
+                    }
+
+                    if ($dbPort && $dbPort->trashed()) {
+                        $dbPort->restore();
+                    }
+
                     $portCode = $olt->code . '-PON-' . $portNumber;
                     if (!$dbPort) {
-                        if (PonPort::where('code', $portCode)->exists()) {
+                        if (PonPort::withTrashed()->where('code', $portCode)->exists()) {
                             $portCode = $olt->code . '-PON-' . $olt->id . '-' . $portNumber;
+                        }
+                        if (PonPort::withTrashed()->where('code', $portCode)->exists()) {
+                            $portCode = $olt->code . '-PON-' . $olt->id . '-' . $portNumber . '-' . Str::lower(Str::random(4));
                         }
                         $dbPort = PonPort::create([
                             'olt_id' => $olt->id,
@@ -199,6 +215,12 @@ class OltPollingService
                             Onu::withoutGlobalScopes()->where('pon_port_id', $stale->id)
                                 ->update(['pon_port_id' => $matchingActive->id]);
                         }
+
+                        // Ubah code stale port agar tidak bentrok dengan unique constraint MySQL jika di-soft delete
+                        try {
+                            $stale->update(['code' => $stale->code . '-old-' . time() . '-' . Str::lower(Str::random(4))]);
+                        } catch (\Throwable) {}
+
                         $stale->delete();
                     }
                 }
@@ -243,12 +265,14 @@ class OltPollingService
                     $portNumber = $idx;
                 }
 
-                $dbPort = PonPort::where('olt_id', $olt->id)
+                $dbPort = PonPort::withTrashed()
+                    ->where('olt_id', $olt->id)
                     ->where('name', $portName)
                     ->first();
 
                 if (!$dbPort) {
-                    $dbPort = PonPort::where('olt_id', $olt->id)
+                    $dbPort = PonPort::withTrashed()
+                        ->where('olt_id', $olt->id)
                         ->where('port_number', $portNumber)
                         ->first();
                 }

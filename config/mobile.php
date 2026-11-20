@@ -2,17 +2,17 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10120,
-        'latest_version_name' => '1.1.20',
+        'latest_version_code' => 10121,
+        'latest_version_name' => '1.1.21',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'https://winets.mstore.id') . '/downloads/dsbilling-mobile.apk',
-        'release_notes' => "dsBilling Staff & Reseller v1.1.20:\n- Permintaan Cetak Voucher Reseller: Pengajuan batch cetak voucher hotspot langsung dari aplikasi/portal dengan estimasi modal, kalkulasi margin profit, dan verifikasi saldo deposit otomatis.\n- Perbaikan Katalog Paket Voucher: Seluruh paket voucher master ISP kini tampil lengkap dan responsif pada formulir permintaan voucher.\n- Peta Jaringan & Marker GIS: Interaktivitas klik marker ODP, ODC, OLT, dan pelanggan dengan detail modal informatif.\n- Form Work Order & SPK: Perapihan formulir penugasan teknisi dan batas kapasitas tugas lapangan.",
+        'release_notes' => "dsBilling Staff & Reseller v1.1.21:\n- Khusus Paket Voucher: Filter katalog diperketat sehingga hanya paket bertipe Voucher yang tampil (paket PPPoE dan Hotspot member otomatis disaring keluar).\n- Dialog Form Permintaan Voucher Baru (Mobile): Tampilan popup permintaan cetak voucher dirombak menjadi BottomSheet interaktif lengkap setara web portal reseller, dilengkapi pemilihan paket, preset jumlah (50/100/200/500/custom), kartu estimasi modal & margin keuntungan realtime, jenis penyerahan fisik/digital, metode pembayaran deposit, dan catatan permohonan.\n- Sinkronisasi Status & Riwayat: Pengajuan batch voucher terhubung langsung ke dashboard review Admin ISP.",
     ],
     'customer' => [
-        'latest_version_code' => 10107,
-        'latest_version_name' => '1.1.7',
+        'latest_version_code' => 10108,
+        'latest_version_name' => '1.1.8',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'https://winets.mstore.id') . '/downloads/dsbilling-customer-release.apk',
-        'release_notes' => "dsBilling Customer v1.1.7:\n- Tampilan Baru Segar: Desain identitas visual Fresh Emerald & Modern Teal ramah pelanggan.\n- Smart Auto-Cluster Login: Masuk langsung tanpa perlu mengetik atau mengatur URL server secara manual.\n- Kartu Kemitraan Resmi ISP: Menampilkan legalitas & izin upstream Kominfo RI resmi tersinkronisasi otomatis dari landing web.\n- Stabilitas & Performa: Optimalisasi koneksi TR-069 WiFi Self-Service, Speedtest, dan pembayaran tagihan.",
+        'release_notes' => "dsBilling Customer v1.1.8:\n- Fitur Mandiri Ganti Akun Hotspot: Pelanggan hotspot/member dapat mengubah username & password akun secara mandiri atau beralih ke Single-Code login.\n- Smart Service Router: Deteksi tipe layanan otomatis (Hotspot vs FTTH/PPPoE) saat membuka menu pengaturan jaringan.\n- Desain Segar Fresh Emerald & Modern Teal: Tampilan baru dengan kartu embossed hero, 8 grid aksi cepat, dan pintasan ubah password akun.\n- Stabilitas & Keamanan: Enkripsi AES-256 GCM pada penyimpanan kredensial dan optimalisasi Speedtest engine.",
     ],
 ];
