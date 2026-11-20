@@ -60,6 +60,8 @@ class OltPollingService
 
     public function pollOlt(Olt $olt): array
     {
+        @set_time_limit(180);
+        @ini_set('max_execution_time', '180');
         try {
             $driver = $this->registry->forOlt($olt);
             $systemInfo = $driver->getSystemInfo();

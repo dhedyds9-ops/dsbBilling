@@ -47,6 +47,8 @@ class Show extends AdminComponent
 
     public function syncOlt()
     {
+        @set_time_limit(180);
+        @ini_set('max_execution_time', '180');
         try {
             $res = app(\App\Services\ISP\OltPollingService::class)->pollOlt($this->olt);
             if (isset($res['success']) && !$res['success']) {

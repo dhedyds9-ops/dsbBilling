@@ -271,7 +271,12 @@ class HisfocusOltDriver extends BaseOltDriver
 
         // 3. Jika SNMP tidak mengembalikan ONU untuk port ini, coba CLI Scraping (Telnet/SSH)
         if ($this->cachedCliOnus === null) {
-            $this->cachedCliOnus = $this->collectAllOnusFromCli();
+            $this->cachedCliOnus = [];
+            try {
+                $this->cachedCliOnus = $this->collectAllOnusFromCli();
+            } catch (\Throwable $e) {
+                Log::warning("Hisfocus CLI scraping error: " . $e->getMessage());
+            }
         }
 
         $cliMatched = $this->filterOnusByPort($this->cachedCliOnus, $ponPort);
@@ -337,6 +342,16 @@ class HisfocusOltDriver extends BaseOltDriver
             }
         } catch (\Throwable $e) {
             Log::debug("Hisfocus GBN 8888 SNMP error: " . $e->getMessage());
+        }
+
+        $isGbn = str_contains(strtolower($this->olt->model ?? ''), 'gp210') ||
+                 str_contains(strtolower($this->olt->name ?? ''), 'gp210') ||
+                 $this->systemOids['sysTemperature'] === '.1.3.6.1.4.1.8888.1.2.1.1.2.26.0';
+
+        if ($isGbn) {
+            // Pada GBN GP210, SNMP walk tidak menyediakan tabel ONU.
+            // Langsung lewati vendor lain agar tidak membuang waktu 25 detik SNMP timeout!
+            return $onus;
         }
 
         // --- Sumber 1: V-SOL GPON Modern (.1.3.6.1.4.1.65000.1.3.4) ---
@@ -722,7 +737,8 @@ class HisfocusOltDriver extends BaseOltDriver
                 $password,
                 $this->cliMode,
                 $port,
-                $this->olt->enable_secret ?? ''
+                $this->olt->enable_secret ?? '',
+                4
             );
         } catch (\Throwable $e) {
             // Coba alternatif default root/admin jika kredensial admin gagal
@@ -735,7 +751,8 @@ class HisfocusOltDriver extends BaseOltDriver
                         'admin',
                         $this->cliMode,
                         $port,
-                        $this->olt->enable_secret ?? ''
+                        $this->olt->enable_secret ?? '',
+                        4
                     );
                     return;
                 } catch (\Throwable) {}
@@ -753,47 +770,55 @@ class HisfocusOltDriver extends BaseOltDriver
         try {
             $this->initializeCli();
 
-            // Coba berbagai perintah status ONU yang umum pada OLT HISFOCUS / GBN / Huawei-style (display) & Cisco-style (show)
-            $commands = [
-                'display current-config',
-                'display ont info 2/1 all',
-                'display ont info 2/2 all',
-                'display ont optical-info 2/1 all',
-                'display ont optical-info 2/2 all',
-                'display rssi-detect 2/1 all',
-                'display rssi-detect 2/2 all',
-                'display ont-autofind',
-                'display ont-learned-mac',
-                'display ont info 0 all',
-                'display ont info 1 all',
-                'display ont info 2 all',
-                'display ont info all',
-                'display gpon ont info all',
-                'display onu info all',
-                'display ont optical-info 0 all',
-                'display ont optical-info 1 all',
-                'display ont optical-info 2 all',
-                'display ont optical-info all',
-                'display mac-address',
-                'show ont info all',
-                'show onu info all',
-                'show gpon ont info all',
-                'show gpon onu info all',
-                'show ont optical-info all',
-                'show onu optical-info all',
-                'show gpon onu-optical-info all',
-                'show epon onu-info',
-                'show onu status all',
-                'show mac-address dynamic',
-                'show mac',
-            ];
+            $isGbn = str_contains(strtolower($this->olt->model ?? ''), 'gp210') ||
+                     str_contains(strtolower($this->olt->name ?? ''), 'gp210') ||
+                     $this->systemOids['sysTemperature'] === '.1.3.6.1.4.1.8888.1.2.1.1.2.26.0';
+
+            if ($isGbn) {
+                // Untuk GP210 / GBN VRP OLT, jalankan perintah langsung yang cepat dan terarah
+                $commands = [
+                    'display rule-profile',
+                    'display ont info 2/1 all',
+                    'display ont info 2/2 all',
+                    'display ont optical-info 2/1 all',
+                    'display ont optical-info 2/2 all',
+                ];
+            } else {
+                $commands = [
+                    'show ont info all',
+                    'show onu info all',
+                    'show gpon ont info all',
+                    'show ont optical-info all',
+                    'show onu optical-info all',
+                    'show epon onu-info',
+                    'display ont info all',
+                    'display ont optical-info all',
+                ];
+            }
 
             $infoOut = '';
             foreach ($commands as $cmd) {
-                $res = $this->cli->execute("{$cmd}\r\n", false);
-                $lower = strtolower((string)$res);
-                if (!empty($res) && !str_contains($lower, 'incomplete') && !str_contains($lower, 'invalid') && !str_contains($lower, 'unrecognized') && !str_contains($lower, 'error')) {
-                    $infoOut .= "\n" . $res;
+                try {
+                    $res = $this->cli->execute("{$cmd}\r\n", false);
+                    $lower = strtolower((string)$res);
+                    if (!empty($res) && !str_contains($lower, 'incomplete') && !str_contains($lower, 'invalid') && !str_contains($lower, 'unrecognized') && !str_contains($lower, 'error')) {
+                        $infoOut .= "\n" . $res;
+                    }
+                } catch (\Throwable $e) {
+                    Log::debug("CLI cmd {$cmd} error: " . $e->getMessage());
+                }
+            }
+
+            // Fallback: Jika display rule-profile kosong atau belum berisi rule-profile sn-auth, jalankan display current-config
+            if ($isGbn && (empty($infoOut) || !str_contains($infoOut, 'sn-auth'))) {
+                try {
+                    $res = $this->cli->execute("display current-config\r\n", false);
+                    $lower = strtolower((string)$res);
+                    if (!empty($res) && !str_contains($lower, 'unrecognized') && !str_contains($lower, 'error')) {
+                        $infoOut .= "\n" . $res;
+                    }
+                } catch (\Throwable $e) {
+                    Log::debug("CLI display current-config error: " . $e->getMessage());
                 }
             }
 
@@ -801,15 +826,15 @@ class HisfocusOltDriver extends BaseOltDriver
                 $clean = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', (string)$infoOut);
                 $snCounter = 1;
 
-                // 1. Parsing format asli OLT GP210 / GBN dari display current-config:
+                // 1. Parsing format asli OLT GP210 / GBN dari rule-profile / current-config:
                 // rule-profile 2/1/1 name AUTO_ONT_2/1/1
                 // sn-auth string-hex HWUD-0F456BB3 line-profile 10
-                if (preg_match_all('/rule-profile\s+(?:2\/)?(\d+)\/(\d+)\s+name\s+([^\r\n]+)\s+sn-auth\s+string-hex\s+([A-Za-z0-9-]+)/i', $clean, $rules, PREG_SET_ORDER)) {
+                if (preg_match_all('/rule-profile\s+(?:\d+\/)?(\d+)\/(\d+)(?:[^\r\n]*name\s+([^\r\n]+))?[\r\n\s]+sn-auth\s+string-hex\s+([A-Za-z0-9-]+)/i', $clean, $rules, PREG_SET_ORDER)) {
                     $seenSns = [];
                     foreach ($rules as $r) {
                         $p = (int)$r[1]; // 1 = Port 1 (2/1), 2 = Port 2 (2/2)
                         $onuId = (int)$r[2];
-                        $name = trim($r[3]);
+                        $name = !empty($r[3]) ? trim($r[3]) : ("ONT-{$p}-{$onuId}");
                         $rawSn = str_replace(['-', ':', ' '], '', trim($r[4]));
                         $sn = strtoupper($rawSn);
                         if (empty($sn) || isset($seenSns[$sn])) continue;
