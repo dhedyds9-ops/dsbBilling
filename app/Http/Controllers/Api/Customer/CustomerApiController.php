@@ -771,6 +771,10 @@ class CustomerApiController extends Controller
         }
 
         $wlanIndex = max(1, min(4, (int) $request->input('wlan_index', 1)));
+        $pppoeUsername = $service->username 
+            ?? $service->pppoeUser?->username 
+            ?? null;
+
         $availableModes = [
             ['code' => 'WPA_WPA2', 'name' => 'WPA/WPA2 Mixed (Rekomendasi)'],
             ['code' => 'WPA2', 'name' => 'WPA2-Personal (AES)'],
@@ -785,9 +789,10 @@ class CustomerApiController extends Controller
         ];
 
         try {
-            $wifi = $this->selfService->getOnuWifiCredentials($customer->id, $service->onu_id, $wlanIndex);
+            $wifi = $this->selfService->getOnuWifiCredentials($customer->id, $service->onu_id, $wlanIndex, $pppoeUsername);
             $devices = $this->selfService->getOnuConnectedDevices($customer->id, $service->onu_id);
             $isOnline = $wifi['is_online'] ?? true;
+            $resolvedWlanIndex = (int)($wifi['wlan_index'] ?? $wlanIndex);
 
             if (!empty($wifi['all_ssids'])) {
                 $availableSsids = [];
@@ -796,6 +801,7 @@ class CustomerApiController extends Controller
                         'index' => $opt['index'],
                         'name' => $opt['name'],
                         'ssid' => $opt['ssid'],
+                        'is_pppoe_bound' => $opt['is_pppoe_bound'] ?? true,
                     ];
                 }
             }
@@ -806,8 +812,8 @@ class CustomerApiController extends Controller
                     'onu_id' => $service->onu_id,
                     'model' => $service->onu?->model ?? 'ONT Terminal',
                     'serial_number' => $service->onu?->serial_number,
-                    'wlan_index' => $wlanIndex,
-                    'ssid' => $wifi['ssid'] ?? ($service->onu?->wifi_ssid ?? "dsBilling_WiFi_{$wlanIndex}"),
+                    'wlan_index' => $resolvedWlanIndex,
+                    'ssid' => $wifi['ssid'] ?? ($service->onu?->wifi_ssid ?? "dsBilling_WiFi_{$resolvedWlanIndex}"),
                     'password' => $wifi['password'] ?? ($service->onu?->wifi_password ?? '••••••••'),
                     'security_mode' => $wifi['security_mode'] ?? 'WPA_WPA2',
                     'is_enabled' => $wifi['is_enabled'] ?? true,
@@ -887,6 +893,7 @@ class CustomerApiController extends Controller
         }
 
         $newSsid = trim($request->input('ssid'));
+        $pppoeUsername = $service->username ?? $service->pppoeUser?->username ?? null;
 
         try {
             $result = $this->selfService->changeOnuWifiCredentials(
@@ -895,7 +902,8 @@ class CustomerApiController extends Controller
                 newSsid: $newSsid,
                 newPassword: $newPassword,
                 wlanIndex: $wlanIndex,
-                securityMode: $securityMode
+                securityMode: $securityMode,
+                pppoeUsername: $pppoeUsername
             );
 
             if ($wlanIndex === 1) {
@@ -909,6 +917,11 @@ class CustomerApiController extends Controller
                 'success' => true,
                 'message' => $result['message'] ?? "Pengaturan SSID {$wlanIndex} berhasil diperbarui.",
             ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 403);
         } catch (\Throwable $e) {
             if ($wlanIndex === 1) {
                 $service->onu?->update([
@@ -1440,6 +1453,18 @@ class CustomerApiController extends Controller
      */
     public function changePassword(Request $request): JsonResponse
     {
+        // Normalize confirmation parameter name
+        if (!$request->has('new_password_confirmation')) {
+            $conf = $request->input('password_confirmation') ?? $request->input('confirm_password');
+            if ($conf !== null) {
+                $request->merge(['new_password_confirmation' => $conf]);
+            }
+        }
+        // Normalize new password parameter name
+        if (!$request->has('new_password') && $request->has('password')) {
+            $request->merge(['new_password' => $request->input('password')]);
+        }
+
         $request->validate([
             'current_password' => 'required|string',
             'new_password' => 'required|string|min:6|confirmed',

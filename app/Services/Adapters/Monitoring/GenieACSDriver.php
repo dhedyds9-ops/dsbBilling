@@ -203,7 +203,7 @@ class GenieACSDriver
         ];
     }
 
-    public function getWifiCredentials(string $deviceId, string $vendor = 'default', int $wlanIndex = 1): array
+    public function getWifiCredentials(string $deviceId, string $vendor = 'default', int $wlanIndex = 1, ?string $pppoeUsername = null): array
     {
         $params = $this->getDeviceParameters($deviceId);
         if (empty($params)) {
@@ -214,7 +214,21 @@ class GenieACSDriver
                 'is_enabled' => true,
                 'real_device_id' => null,
                 'all_ssids' => [],
+                'wlan_index' => $wlanIndex,
+                'allowed_wlan_indices' => [],
+                'bridge_wlan_indices' => [],
             ];
+        }
+
+        // Resolve WAN-to-WLAN bindings: distinguish Customer PPPoE from Bridge/Hotspot SSIDs
+        $bindingInfo = $this->resolveWanWlanBindings($params, $pppoeUsername);
+        $allowedWlanIndices = $bindingInfo['allowed_wlan_indices'] ?? [];
+        $bridgeWlanIndices = $bindingInfo['bridge_wlan_indices'] ?? [];
+
+        // If requested $wlanIndex is explicitly bound to a Bridge WAN or not in PPPoE allowed list,
+        // automatically redirect to the primary allowed PPPoE slot (e.g. slot 2 instead of slot 1)
+        if (!empty($allowedWlanIndices) && (!in_array($wlanIndex, $allowedWlanIndices, true) || in_array($wlanIndex, $bridgeWlanIndices, true))) {
+            $wlanIndex = reset($allowedWlanIndices);
         }
         
         $extract = function (string $path) use ($params) {
@@ -380,9 +394,18 @@ class GenieACSDriver
             }
         }
 
-        // Extract All SSIDs (1-4) for Chip Tabs
+        // Extract All SSIDs (1-4) for Chip Tabs, strictly omitting any Bridge / Hotspot SSIDs
         $allSsids = [];
         for ($i = 1; $i <= 4; $i++) {
+            // Exclude if bound to Bridge WAN (e.g. ISP voucher hotspot SSID)
+            if (in_array($i, $bridgeWlanIndices, true)) {
+                continue;
+            }
+            // If explicit PPPoE WAN binding exists, only show SSIDs assigned to customer PPPoE
+            if (!empty($allowedWlanIndices) && !in_array($i, $allowedWlanIndices, true)) {
+                continue;
+            }
+
             $sVal = $extract("InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$i}.SSID") 
                 ?? $extract("Device.WiFi.SSID.{$i}.SSID")
                 ?? ($i === $wlanIndex ? $ssid : null);
@@ -391,6 +414,7 @@ class GenieACSDriver
                 'index' => $i,
                 'name' => "SSID {$i}" . ($i === 1 ? ' (Utama)' : ''),
                 'ssid' => $sVal ?: "SSID {$i}",
+                'is_pppoe_bound' => in_array($i, $allowedWlanIndices, true),
             ];
         }
 
@@ -401,6 +425,237 @@ class GenieACSDriver
             'is_enabled' => $isEnabled,
             'real_device_id' => $params['_id'] ?? null,
             'all_ssids' => $allSsids,
+            'wlan_index' => $wlanIndex,
+            'allowed_wlan_indices' => $allowedWlanIndices,
+            'bridge_wlan_indices' => $bridgeWlanIndices,
+        ];
+    }
+
+    /**
+     * Check if a specific WLAN index is authorized for customer self-service (rejecting Bridge/Hotspot slots).
+     */
+    public function isWlanAllowedForCustomer(string $deviceId, int $wlanIndex, ?string $pppoeUsername = null): bool
+    {
+        $params = $this->getDeviceParameters($deviceId);
+        if (empty($params)) {
+            return true; // Fallback if device parameters cannot be retrieved
+        }
+
+        $bindingInfo = $this->resolveWanWlanBindings($params, $pppoeUsername);
+        $allowedWlanIndices = $bindingInfo['allowed_wlan_indices'] ?? [];
+        $bridgeWlanIndices = $bindingInfo['bridge_wlan_indices'] ?? [];
+
+        if (in_array($wlanIndex, $bridgeWlanIndices, true)) {
+            return false;
+        }
+
+        if (!empty($allowedWlanIndices) && !in_array($wlanIndex, $allowedWlanIndices, true)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Resolve WAN-to-WLAN port bindings to distinguish Customer PPPoE from Bridge/Hotspot SSIDs.
+     */
+    public function resolveWanWlanBindings(array $params, ?string $pppoeUsername = null): array
+    {
+        $zteBindings = [];
+        $bridgeWlanIndices = [];
+        $pppoeWlanIndices = [];
+        $hasBridgeWan = false;
+        $pppoeWanFound = false;
+
+        // 1. Parse ZTE PortBinding table if present (nested or flat)
+        $zteNode = data_get($params, 'InternetGatewayDevice.X_ZTE-COM_PortBinding') 
+            ?? $params['InternetGatewayDevice']['X_ZTE-COM_PortBinding'] 
+            ?? [];
+        if (is_array($zteNode)) {
+            foreach ($zteNode as $k => $bNode) {
+                if ($k === '_object' || !is_array($bNode)) continue;
+                $wanIf = $bNode['WANInterface']['_value'] ?? $bNode['WANInterface'] ?? '';
+                $lanIf = $bNode['LANInterface']['_value'] ?? $bNode['LANInterface'] ?? '';
+                if ($wanIf && $lanIf) {
+                    $zteBindings[$wanIf] = (string)$lanIf;
+                }
+            }
+        }
+        // Also check flat keys for X_ZTE-COM_PortBinding
+        foreach ($params as $key => $val) {
+            if (is_string($key) && preg_match('/InternetGatewayDevice\.X_ZTE-COM_PortBinding\.(\d+)\.WANInterface/i', $key, $m)) {
+                $idx = $m[1];
+                $wanVal = is_array($val) ? ($val['_value'] ?? '') : (string)$val;
+                $lanKey = "InternetGatewayDevice.X_ZTE-COM_PortBinding.{$idx}.LANInterface";
+                $lanVal = data_get($params, $lanKey . '._value') ?? data_get($params, $lanKey);
+                if ($wanVal && $lanVal) {
+                    $zteBindings[$wanVal] = is_array($lanVal) ? ($lanVal['_value'] ?? '') : (string)$lanVal;
+                }
+            }
+        }
+
+        // Helper to extract integer WLAN indices from a binding string
+        $extractWlans = function (?string $bindStr): array {
+            if (empty($bindStr)) return [];
+            $wlans = [];
+            $tokens = preg_split('/[,;\s]+/', $bindStr);
+            foreach ($tokens as $token) {
+                $token = trim($token);
+                if (empty($token)) continue;
+                if (preg_match('/WLANConfiguration\.(\d+)/i', $token, $m)) {
+                    $w = (int)$m[1];
+                    // Normalize ZTE dual-band: WLAN 5 is often 5GHz SSID 1 or SSID 2
+                    $wlans[] = $w > 4 ? ($w === 5 ? 2 : 4) : $w;
+                } elseif (preg_match('/WiFi\.(?:SSID|AccessPoint)\.(\d+)/i', $token, $m)) {
+                    $w = (int)$m[1];
+                    $wlans[] = $w > 4 ? 2 : $w;
+                } elseif (preg_match('/\bSSID(\d+)\b/i', $token, $m)) {
+                    $wlans[] = (int)$m[1];
+                } elseif (preg_match('/\bWLAN(\d+)\b/i', $token, $m)) {
+                    $wlans[] = (int)$m[1];
+                }
+            }
+            return array_values(array_unique($wlans));
+        };
+
+        // 2. Discover WAN connections (both nested and flat)
+        $wans = [];
+
+        // Check nested tree
+        $wanDevices = $params['InternetGatewayDevice']['WANDevice'] ?? [];
+        if (is_array($wanDevices)) {
+            foreach ($wanDevices as $wdIndex => $wdNode) {
+                if (!is_numeric($wdIndex) || !is_array($wdNode)) continue;
+                $connDevices = $wdNode['WANConnectionDevice'] ?? [];
+                if (!is_array($connDevices)) continue;
+                foreach ($connDevices as $cdIndex => $cdNode) {
+                    if (!is_numeric($cdIndex) || !is_array($cdNode)) continue;
+                    foreach (['WANPPPConnection', 'WANIPConnection'] as $slot) {
+                        $conns = $cdNode[$slot] ?? [];
+                        if (is_array($conns)) {
+                            foreach ($conns as $cIndex => $cNode) {
+                                if (!is_numeric($cIndex) || !is_array($cNode)) continue;
+                                $fullPath = "InternetGatewayDevice.WANDevice.$wdIndex.WANConnectionDevice.$cdIndex.$slot.$cIndex";
+                                $name = $cNode['Name']['_value'] ?? $cNode['Name'] ?? '';
+                                $connType = $cNode['ConnectionType']['_value'] ?? $cNode['ConnectionType'] ?? '';
+                                $uName = $cNode['Username']['_value'] ?? $cNode['Username'] ?? '';
+                                $nat = $cNode['NATEnabled']['_value'] ?? $cNode['NATEnabled'] ?? null;
+                                
+                                $portBind = $cNode['X_ZTE-COM_LANInterface']['_value'] 
+                                    ?? $cNode['X_ZTE-COM_LanInterface']['_value']
+                                    ?? $cNode['X_ZTE-COM_PortBind']['_value']
+                                    ?? $cNode['X_FH_LanInterface']['_value']
+                                    ?? $cNode['X_HW_LANBinding']['_value']
+                                    ?? ($zteBindings[$fullPath] ?? null);
+
+                                $wans[] = [
+                                    'path' => $fullPath,
+                                    'name' => (string)$name,
+                                    'connection_type' => (string)$connType,
+                                    'username' => (string)$uName,
+                                    'nat' => $nat,
+                                    'port_bind' => (string)$portBind,
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // If no nested WANs found, scan flat keys
+        if (empty($wans)) {
+            $discoveredPaths = [];
+            foreach ($params as $k => $v) {
+                if (is_string($k) && preg_match('/^(InternetGatewayDevice\.WANDevice\.\d+\.WANConnectionDevice\.\d+\.(?:WANPPPConnection|WANIPConnection)\.\d+)/i', $k, $m)) {
+                    $discoveredPaths[$m[1]] = true;
+                }
+            }
+            foreach (array_keys($discoveredPaths) as $basePath) {
+                $name = data_get($params, "{$basePath}.Name._value") ?? data_get($params, "{$basePath}.Name") ?? '';
+                $connType = data_get($params, "{$basePath}.ConnectionType._value") ?? data_get($params, "{$basePath}.ConnectionType") ?? '';
+                $uName = data_get($params, "{$basePath}.Username._value") ?? data_get($params, "{$basePath}.Username") ?? '';
+                $nat = data_get($params, "{$basePath}.NATEnabled._value") ?? data_get($params, "{$basePath}.NATEnabled") ?? null;
+                $portBind = data_get($params, "{$basePath}.X_ZTE-COM_LANInterface._value")
+                    ?? data_get($params, "{$basePath}.X_ZTE-COM_LANInterface")
+                    ?? data_get($params, "{$basePath}.X_FH_LanInterface._value")
+                    ?? data_get($params, "{$basePath}.X_HW_LANBinding._value")
+                    ?? ($zteBindings[$basePath] ?? null);
+
+                $wans[] = [
+                    'path' => $basePath,
+                    'name' => (string)$name,
+                    'connection_type' => (string)$connType,
+                    'username' => (string)$uName,
+                    'nat' => $nat,
+                    'port_bind' => (string)$portBind,
+                ];
+            }
+        }
+
+        // 3. Classify WAN connections into PPPoE vs Bridge
+        $cleanCustomerUser = !empty($pppoeUsername) ? strtolower(trim($pppoeUsername)) : null;
+
+        foreach ($wans as $wan) {
+            $nameLower = strtolower($wan['name']);
+            $connType = $wan['connection_type'];
+            $wanUser = strtolower(trim($wan['username']));
+            $isBridge = false;
+            $isCustomerPppoe = false;
+
+            // Check if Bridge
+            if (in_array($connType, ['PPPoE_Bridged', 'IP_Bridged'], true) 
+                || str_contains($nameLower, 'bridge') 
+                || str_contains($nameLower, 'hotspot') 
+                || str_contains($nameLower, 'voucher')) {
+                $isBridge = true;
+            }
+
+            // Check if Customer PPPoE
+            if (!$isBridge && $cleanCustomerUser && !empty($wanUser) && $wanUser === $cleanCustomerUser) {
+                $isCustomerPppoe = true;
+            } elseif (!$isBridge && in_array($connType, ['IP_Routed', 'PPPoE_Routed'], true) && ($wan['nat'] === true || $wan['nat'] === 'true' || $wan['nat'] === 1)) {
+                $isCustomerPppoe = true;
+            }
+
+            $boundWlans = $extractWlans($wan['port_bind']);
+
+            if ($isBridge) {
+                $hasBridgeWan = true;
+                foreach ($boundWlans as $w) {
+                    $bridgeWlanIndices[] = $w;
+                }
+            }
+
+            if ($isCustomerPppoe) {
+                $pppoeWanFound = true;
+                foreach ($boundWlans as $w) {
+                    $pppoeWlanIndices[] = $w;
+                }
+            }
+        }
+
+        $bridgeWlanIndices = array_values(array_unique($bridgeWlanIndices));
+        $pppoeWlanIndices = array_values(array_unique($pppoeWlanIndices));
+
+        // 4. Resolve Allowed WLAN Indices
+        if (!empty($pppoeWlanIndices)) {
+            // Explicit PPPoE binding found: only allow SSIDs explicitly bound to PPPoE and not in bridge
+            $allowedWlanIndices = array_values(array_diff($pppoeWlanIndices, $bridgeWlanIndices));
+        } elseif (!empty($bridgeWlanIndices)) {
+            // Bridge WAN found with specific SSIDs: allow any SSID (1..4) except those bound to bridge
+            $allowedWlanIndices = array_values(array_diff([1, 2, 3, 4], $bridgeWlanIndices));
+        } else {
+            // Normal setup without port-binding differentiation
+            $allowedWlanIndices = [1, 2, 3, 4];
+        }
+
+        return [
+            'allowed_wlan_indices' => $allowedWlanIndices,
+            'bridge_wlan_indices' => $bridgeWlanIndices,
+            'pppoe_wlan_indices' => $pppoeWlanIndices,
+            'has_bridge_wan' => $hasBridgeWan,
+            'pppoe_wan_found' => $pppoeWanFound,
         ];
     }
 

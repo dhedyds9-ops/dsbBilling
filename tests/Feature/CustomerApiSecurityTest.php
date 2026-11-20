@@ -196,4 +196,62 @@ class CustomerApiSecurityTest extends TestCase
                 ],
             ]);
     }
+
+    public function test_customer_can_change_password_via_both_endpoints()
+    {
+        [$user, $customer] = $this->createCustomerWithUser('CUSTCHPASS01', 'custchpass01@example.com');
+        Sanctum::actingAs($user, ['customer']);
+
+        // Test 1: POST /api/customer/change-password
+        $res1 = $this->postJson('/api/customer/change-password', [
+            'current_password' => 'password123',
+            'password' => 'newpassword456',
+            'confirm_password' => 'newpassword456',
+        ]);
+
+        $res1->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Kata sandi berhasil diubah.',
+            ]);
+
+        $user->refresh();
+        $this->assertTrue(Hash::check('newpassword456', $user->password));
+
+        // Test 2: POST /api/customer/profile/change-password
+        $res2 = $this->postJson('/api/customer/profile/change-password', [
+            'current_password' => 'newpassword456',
+            'new_password' => 'newpassword789',
+            'new_password_confirmation' => 'newpassword789',
+        ]);
+
+        $res2->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Kata sandi berhasil diubah.',
+            ]);
+
+        $user->refresh();
+        $this->assertTrue(Hash::check('newpassword789', $user->password));
+    }
+
+    public function test_customer_change_password_fails_with_invalid_current_password()
+    {
+        [$user, $customer] = $this->createCustomerWithUser('CUSTCHPASS02', 'custchpass02@example.com');
+        Sanctum::actingAs($user, ['customer']);
+
+        $response = $this->postJson('/api/customer/change-password', [
+            'current_password' => 'wrongcurrentpassword',
+            'new_password' => 'newpassword999',
+            'new_password_confirmation' => 'newpassword999',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+            ]);
+
+        $user->refresh();
+        $this->assertFalse(Hash::check('newpassword999', $user->password));
+    }
 }

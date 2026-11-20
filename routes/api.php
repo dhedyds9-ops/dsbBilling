@@ -405,6 +405,8 @@ Route::prefix('customer')->name('api.customer.')->group(function () {
         // Profile & Security
         Route::post('/profile', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'updateProfile'])->name('profile.update');
         Route::post('/profile/change-password', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'changePassword'])->name('profile.change-password');
+        Route::post('/change-password', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'changePassword'])->name('change-password');
+        Route::post('/auth/change-password', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'changePassword'])->name('auth.change-password');
 
         // Auxiliary & Contacts
         Route::get('/support/contact', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'contactAdmin'])->name('support.contact');

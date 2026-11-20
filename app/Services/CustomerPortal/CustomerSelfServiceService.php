@@ -22,9 +22,9 @@ class CustomerSelfServiceService
 
 
 
-    public function getOnuWifiCredentials(int $customerId, int $onuId, int $wlanIndex = 1): array
+    public function getOnuWifiCredentials(int $customerId, int $onuId, int $wlanIndex = 1, ?string $pppoeUsername = null): array
     {
-        return $this->genieAcsService->getWifiCredentials($customerId, $onuId, $wlanIndex);
+        return $this->genieAcsService->getWifiCredentials($customerId, $onuId, $wlanIndex, $pppoeUsername);
     }
 
     public function getOnuConnectedDevices(int $customerId, int $onuId): array
@@ -49,7 +49,8 @@ class CustomerSelfServiceService
         int $wlanIndex = 1,
         string $securityMode = 'WPA_WPA2',
         ?bool $isHidden = null,
-        ?bool $isEnabled = null
+        ?bool $isEnabled = null,
+        ?string $pppoeUsername = null
     ): array {
         return $this->genieAcsService->updateWifiSsidAndPassword(
             $customerId,
@@ -59,7 +60,8 @@ class CustomerSelfServiceService
             $wlanIndex,
             $securityMode,
             $isHidden,
-            $isEnabled
+            $isEnabled,
+            $pppoeUsername
         );
     }
 

@@ -156,10 +156,16 @@ class GenieAcsService
         return $onu->serial_number ?: null;
     }
 
-    public function getWifiCredentials(int $customerId, int $onuId, int $wlanIndex = 1): array
+    public function getWifiCredentials(int $customerId, int $onuId, int $wlanIndex = 1, ?string $pppoeUsername = null): array
     {
         $onu = $this->resolveCustomerOnu($customerId, $onuId);
         $deviceId = $this->resolveGenieAcsDeviceId($onu, $customerId);
+
+        if (empty($pppoeUsername)) {
+            $pppoeUsername = $onu->customerService?->username
+                ?? $onu->customerService?->pppoeUser?->username
+                ?? null;
+        }
 
         $vendor = $onu->vendor?->name ?? 'default';
 
@@ -173,7 +179,10 @@ class GenieAcsService
         if (!empty($deviceId)) {
             try {
                 $isOnline = $this->genieACSDriver->isDeviceOnline($deviceId);
-                $live = $this->genieACSDriver->getWifiCredentials($deviceId, $vendor, $wlanIndex);
+                $live = $this->genieACSDriver->getWifiCredentials($deviceId, $vendor, $wlanIndex, $pppoeUsername);
+                if (isset($live['wlan_index'])) {
+                    $wlanIndex = (int)$live['wlan_index'];
+                }
                 if (!empty($live['ssid'])) {
                     $ssid = $live['ssid'];
                 }
@@ -247,7 +256,10 @@ class GenieAcsService
             'security_mode' => $securityMode,
             'is_enabled' => $isEnabled,
             'is_online' => $isOnline,
+            'wlan_index' => $wlanIndex,
             'all_ssids' => $live['all_ssids'] ?? null,
+            'allowed_wlan_indices' => $live['allowed_wlan_indices'] ?? [],
+            'bridge_wlan_indices' => $live['bridge_wlan_indices'] ?? [],
         ];
     }
 
@@ -285,12 +297,32 @@ class GenieAcsService
         int $wlanIndex = 1,
         string $securityMode = 'WPA_WPA2',
         ?bool $isHidden = null,
-        ?bool $isEnabled = null
+        ?bool $isEnabled = null,
+        ?string $pppoeUsername = null
     ): array {
         $onu = $this->resolveCustomerOnu($customerId, $onuId);
         $deviceId = $this->resolveGenieAcsDeviceId($onu, $customerId);
-        if (!empty($deviceId) && empty($onu->genieacs_device_id)) {
-            try { $onu->update(['genieacs_device_id' => $deviceId]); } catch (\Throwable) {}
+
+        if (empty($pppoeUsername)) {
+            $pppoeUsername = $onu->customerService?->username
+                ?? $onu->customerService?->pppoeUser?->username
+                ?? null;
+        }
+
+        if (!empty($deviceId)) {
+            try {
+                if (!$this->genieACSDriver->isWlanAllowedForCustomer($deviceId, $wlanIndex, $pppoeUsername)) {
+                    throw new \InvalidArgumentException("Slot Wi-Fi (SSID {$wlanIndex}) dialokasikan untuk jaringan Hotspot / Bridge publik ISP dan tidak dapat diubah oleh pelanggan.");
+                }
+            } catch (\InvalidArgumentException $e) {
+                throw $e;
+            } catch (\Throwable $e) {
+                Log::warning("GenieACS isWlanAllowedForCustomer check error for ONU {$onuId}: " . $e->getMessage());
+            }
+
+            if (empty($onu->genieacs_device_id)) {
+                try { $onu->update(['genieacs_device_id' => $deviceId]); } catch (\Throwable) {}
+            }
         }
         return $this->provisioningService->updateSsidAndPassword(
             $onu, 
