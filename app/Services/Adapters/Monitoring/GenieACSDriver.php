@@ -1027,9 +1027,25 @@ JS;
     public function deleteDevice(string $deviceId): bool
     {
         try {
-            $url = rtrim($this->baseUrl, '/') . '/devices/' . urlencode($deviceId);
-            $response = \Illuminate\Support\Facades\Http::timeout($this->timeout)->delete($url);
-            return $response->successful();
+            $realDeviceId = $this->resolveDeviceId($deviceId);
+            $url = rtrim($this->baseUrl, '/') . '/devices/' . urlencode($realDeviceId);
+            $response = \Illuminate\Support\Facades\Http::withBasicAuth($this->username, $this->password)
+                ->timeout($this->timeout)
+                ->delete($url);
+
+            if ($response->successful() || $response->status() === 404) {
+                return true;
+            }
+
+            if ($realDeviceId !== $deviceId) {
+                $urlFallback = rtrim($this->baseUrl, '/') . '/devices/' . urlencode($deviceId);
+                $respFallback = \Illuminate\Support\Facades\Http::withBasicAuth($this->username, $this->password)
+                    ->timeout($this->timeout)
+                    ->delete($urlFallback);
+                return $respFallback->successful() || $respFallback->status() === 404;
+            }
+
+            return false;
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning("GenieACSDriver: Failed to delete device {$deviceId}: " . $e->getMessage());
             return false;

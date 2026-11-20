@@ -7,7 +7,9 @@ use App\Models\CRM\Customer;
 use App\Models\Customer\CustomerService;
 use App\Models\ISP\HotspotActiveSession;
 use App\Models\ISP\HotspotUser;
+use App\Models\ISP\OnlineSession;
 use App\Models\ISP\PppActiveSession;
+use App\Models\ISP\RadiusAccounting;
 use App\Models\Notification\Notification;
 use App\Models\Setting;
 use App\Models\Support\Ticket;
@@ -433,7 +435,7 @@ class CustomerApiController extends Controller
                     'phone' => $companyPhone,
                     'email' => $companyEmail,
                 ],
-                'warning_password_change' => empty($user->password_changed_at),
+                'warning_password_change' => Hash::check('123456', $user->password) || (empty($user->password_changed_at) && Hash::check('123456', $user->password)),
                 'customer' => [
                     'id' => $customer->id,
                     'code' => $customer->code,
@@ -968,16 +970,58 @@ class CustomerApiController extends Controller
             }
         }
 
-        // HOTSPOT CUSTOMER: Ambil data aktif dari HotspotActiveSession MikroTik
+        // Cek status isolir / suspended pada customer atau layanan
+        $custStatus = strtolower($customer->status ?? 'active');
+        $primaryService = $customerServices->first();
+        $svcStatus = strtolower($primaryService?->status ?? 'active');
+        $isSuspended = in_array($custStatus, ['suspended', 'isolated', 'inactive'])
+            || in_array($svcStatus, ['suspended', 'isolated', 'inactive']);
+
+        // HOTSPOT CUSTOMER: Ambil data aktif dari HotspotActiveSession MikroTik & RADIUS
         if ($isHotspot) {
             $usernames = $customerServices->pluck('username')->filter()->values()->all();
             if ($hotspotUsers->isNotEmpty()) {
                 $usernames = array_unique(array_merge($usernames, $hotspotUsers->pluck('username')->filter()->values()->all()));
             }
 
+            // Jika pelanggan dalam status suspended/isolir, internet putus -> bersihkan sesi mati
+            if ($isSuspended) {
+                if (!empty($usernames)) {
+                    HotspotActiveSession::whereIn('user', $usernames)->delete();
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'service_type' => 'hotspot',
+                    'is_hotspot' => true,
+                    'is_online' => false,
+                    'total_devices' => 0,
+                    'data' => [],
+                    'message' => 'Layanan internet ditangguhkan (Isolir). Tidak ada perangkat aktif.',
+                ]);
+            }
+
             $sessions = HotspotActiveSession::with('router')
                 ->whereIn('user', $usernames)
                 ->get();
+
+            // Cross-check dengan RadiusAccounting dan OnlineSession
+            $radiusActive = RadiusAccounting::whereIn('username', $usernames)
+                ->whereNull('acct_stop_time')
+                ->pluck('username')
+                ->all();
+            $onlineSessionUsers = OnlineSession::whereIn('username', $usernames)
+                ->pluck('username')
+                ->all();
+            $trulyActiveUsers = array_unique(array_merge($radiusActive, $onlineSessionUsers));
+
+            if (!empty($trulyActiveUsers)) {
+                $sessions = $sessions->filter(fn($s) => in_array($s->user, $trulyActiveUsers));
+            } elseif ($sessions->isNotEmpty()) {
+                // Jika RADIUS mencatat offline dan sesi tidak ada di online sessions, hapus sesi zombie
+                HotspotActiveSession::whereIn('user', $usernames)->delete();
+                $sessions = collect();
+            }
 
             $formatted = $sessions->map(function ($s) {
                 $bytesTotal = (int)($s->bytes_in ?? 0) + (int)($s->bytes_out ?? 0);
@@ -1001,12 +1045,24 @@ class CustomerApiController extends Controller
                 'success' => true,
                 'service_type' => 'hotspot',
                 'is_hotspot' => true,
+                'is_online' => $formatted->isNotEmpty(),
                 'total_devices' => $formatted->count(),
                 'data' => $formatted,
             ]);
         }
 
         // PPPOE CUSTOMER: Ambil data perangkat dari ONU & GenieACS
+        if ($isSuspended) {
+            return response()->json([
+                'success' => true,
+                'service_type' => 'pppoe',
+                'is_hotspot' => false,
+                'is_online' => false,
+                'total_devices' => 0,
+                'data' => [],
+                'message' => 'Layanan internet ditangguhkan (Isolir). Tidak ada perangkat aktif.',
+            ]);
+        }
         $service = $customerServices->first(fn($s) => !empty($s->onu_id)) ?? $customerServices->first();
         $onu = $service?->onu;
         $devices = [];
@@ -1480,6 +1536,8 @@ class CustomerApiController extends Controller
         if (!$result['success']) {
             return response()->json(['success' => false, 'message' => $result['message']], 422);
         }
+
+        $user->update(['password_changed_at' => now()]);
 
         return response()->json([
             'success' => true,

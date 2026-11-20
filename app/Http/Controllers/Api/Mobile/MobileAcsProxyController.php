@@ -776,6 +776,115 @@ class MobileAcsProxyController extends Controller
                 $connectedDevices = $this->driver->getConnectedDevices($cleanId);
             } catch (\Throwable) {}
 
+            // Heuristic extraction for CPU, RAM, and Temperature metrics
+            $flat = [];
+            $scalarVal = function ($node) {
+                if ($node === null) return null;
+                if (is_scalar($node)) return trim((string) $node);
+                if (is_array($node)) {
+                    if (isset($node['_value']) && is_scalar($node['_value'])) {
+                        return trim((string) $node['_value']);
+                    }
+                    if (isset($node[0]) && is_scalar($node[0])) {
+                        return trim((string) $node[0]);
+                    }
+                }
+                return null;
+            };
+            $flatten = function ($data, $prefix = '') use (&$flatten, &$flat, $scalarVal) {
+                if (!is_array($data)) return;
+                foreach ($data as $k => $v) {
+                    if ($k === '_timestamp' || $k === '_object' || $k === '_writable') continue;
+                    $key = $prefix ? "$prefix.$k" : (string) $k;
+                    if (is_array($v)) {
+                        $s = $scalarVal($v);
+                        if ($s !== null) {
+                            $flat[$key] = $s;
+                        }
+                        $flatten($v, $key);
+                    } elseif (is_scalar($v)) {
+                        $flat[$key] = (string) $v;
+                    }
+                }
+            };
+            $flatten($params);
+
+            // CPU Usage
+            $rawCpu = $flat['VirtualParameters.cpu']
+                ?? $flat['VirtualParameters.cpu_usage']
+                ?? $flat['VirtualParameters.CPU']
+                ?? $flat['VirtualParameters.CPUUsage']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.ProcessStatus.CPUUsage']
+                ?? $flat['Device.DeviceInfo.ProcessStatus.CPUUsage']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.X_ZTE-COM_CPUUsage']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.X_HW_CPUUsage']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.X_FH_CPUUsage']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.X_CMCC_CPUUsage']
+                ?? ($ad?->cpu !== null ? (string)$ad->cpu : null);
+
+            $cpuUsage = null;
+            if ($rawCpu !== null && is_numeric($rawCpu)) {
+                $cpuUsage = round((float)$rawCpu, 1) . '%';
+            } elseif ($rawCpu !== null && trim($rawCpu) !== '') {
+                $cpuUsage = str_ends_with(trim($rawCpu), '%') ? trim($rawCpu) : trim($rawCpu) . '%';
+            }
+
+            // RAM Usage
+            $rawRam = $flat['VirtualParameters.ram']
+                ?? $flat['VirtualParameters.ram_usage']
+                ?? $flat['VirtualParameters.RAM']
+                ?? $flat['VirtualParameters.MemoryUsage']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.X_ZTE-COM_MemoryUsage']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.X_HW_MemoryUsage']
+                ?? ($ad?->memory !== null ? (string)$ad->memory : null);
+
+            $ramUsage = null;
+            if ($rawRam !== null && is_numeric($rawRam)) {
+                $ramUsage = round((float)$rawRam, 1) . '%';
+            } elseif ($rawRam !== null && trim($rawRam) !== '') {
+                $ramUsage = str_ends_with(trim($rawRam), '%') ? trim($rawRam) : trim($rawRam) . '%';
+            } else {
+                // Try MemoryStatus Total & Free
+                $memTotal = $flat['InternetGatewayDevice.DeviceInfo.MemoryStatus.Total'] ?? $flat['Device.DeviceInfo.MemoryStatus.Total'] ?? null;
+                $memFree = $flat['InternetGatewayDevice.DeviceInfo.MemoryStatus.Free'] ?? $flat['Device.DeviceInfo.MemoryStatus.Free'] ?? null;
+                if ($memTotal && $memFree && is_numeric($memTotal) && is_numeric($memFree) && (float)$memTotal > 0) {
+                    $usedPct = round(((float)$memTotal - (float)$memFree) / (float)$memTotal * 100, 1);
+                    $ramUsage = $usedPct . '%';
+                }
+            }
+
+            // Temperature
+            $rawTemp = $flat['InternetGatewayDevice.DeviceInfo.X_ZTE-COM_Temperature']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.X_HW_Temperature']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.X_FH_Temperature']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.Temperature']
+                ?? $flat['Device.DeviceInfo.Temperature']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.TemperatureStatus.TemperatureSensor.1.Value']
+                ?? $flat['Device.DeviceInfo.TemperatureStatus.TemperatureSensor.1.Value']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TransceiverTemperature']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TransceiverTemperature']
+                ?? $flat['VirtualParameters.opticalTemperature']
+                ?? $flat['VirtualParameters.temperature']
+                ?? $flat['VirtualParameters.suhu']
+                ?? ($ad?->temperature !== null ? (string)$ad->temperature : null)
+                ?? ($onu?->temperature !== null ? (string)$onu->temperature : null);
+
+            $temperature = null;
+            if ($rawTemp !== null && trim((string)$rawTemp) !== '' && is_numeric($rawTemp)) {
+                $numTemp = (float) $rawTemp;
+                if ($numTemp != 0.0) {
+                    $t = (abs($numTemp) > 1000) ? round($numTemp / 1000, 1) : ((abs($numTemp) > 100) ? round($numTemp / 10, 1) : round($numTemp, 1));
+                    $temperature = $t . ' °C';
+                }
+            } elseif ($rawTemp !== null && trim($rawTemp) !== '') {
+                $temperature = str_contains(trim($rawTemp), '°C') ? trim($rawTemp) : trim($rawTemp) . ' °C';
+            }
+
+            $params['cpu_usage'] = $cpuUsage;
+            $params['ram_usage'] = $ramUsage;
+            $params['temperature'] = $temperature;
+            $params['connected_devices'] = $connectedDevices;
+
             return response()->json([
                 'success' => true,
                 'data' => $params,
@@ -1608,6 +1717,18 @@ class MobileAcsProxyController extends Controller
                 'success' => false,
                 'message' => 'Gagal membersihkan perangkat offline: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * Resolve actual GenieACS device _id from alias/serial number.
+     */
+    protected function resolveGenieAcsDeviceId(string $cleanId): string
+    {
+        try {
+            return $this->driver->resolveDeviceId($cleanId);
+        } catch (\Throwable) {
+            return $cleanId;
         }
     }
 }

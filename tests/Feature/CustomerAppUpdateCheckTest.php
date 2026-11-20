@@ -15,8 +15,8 @@ class CustomerAppUpdateCheckTest extends TestCase
                 'success' => true,
                 'data' => [
                     'app' => 'customer',
-                    'latest_version_code' => 10107,
-                    'latest_version_name' => '1.1.7',
+                    'latest_version_code' => config('mobile.customer.latest_version_code', 10110),
+                    'latest_version_name' => config('mobile.customer.latest_version_name', '1.1.10'),
                     'update_available' => true,
                 ],
             ]);
