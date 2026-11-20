@@ -108,13 +108,21 @@ class OltPollingService
 
                 $this->recordMetric($olt, 'temperature', (float)($systemInfo['temperature'] ?? 0), 'C');
 
+                $syncedPortIds = [];
+                $portCount = count($ponPorts);
+
                 foreach ($ponPorts as $port) {
                     $idx = (int)($port['port_index'] ?? 0);
                     $portName = $port['port_name'];
                     if (preg_match('/\/(\d+)\/(\d+)$/', $portName, $sp)) {
                         $slotNum = (int)$sp[1];
                         $rawPortNum = (int)$sp[2];
-                        $portNumber = ($slotNum > 0) ? (($slotNum - 1) * 16 + $rawPortNum) : $rawPortNum;
+                        // Untuk pizza-box / compact OLT (<= 8 PON), gunakan nomor port fisik langsung ($rawPortNum)
+                        if ($portCount <= 8 || ($olt->pon_port_count > 0 && $olt->pon_port_count <= 8)) {
+                            $portNumber = $rawPortNum;
+                        } else {
+                            $portNumber = ($slotNum > 0) ? (($slotNum - 1) * 16 + $rawPortNum) : $rawPortNum;
+                        }
                     } elseif (preg_match_all('/\d+/', $portName, $m)) {
                         $portNumber = (int)end($m[0]);
                     } else {
@@ -154,6 +162,8 @@ class OltPollingService
                         ]);
                     }
 
+                    $syncedPortIds[] = $dbPort->id;
+
                     // Optional DDM Optical Tx Power on SFP
                     try {
                         $sfpTx = $port['tx_power_dbm'] ?? $driver->getPonPortTxPower($idx);
@@ -169,6 +179,26 @@ class OltPollingService
                         null,
                         $idx
                     );
+                }
+
+                // Bersihkan port usang / dummy (seperti port dummy GPON 0/0/1 atau port 17/18 yang salah hitung)
+                if (!empty($syncedPortIds)) {
+                    $stalePorts = PonPort::where('olt_id', $olt->id)
+                        ->whereNotIn('id', $syncedPortIds)
+                        ->get();
+
+                    foreach ($stalePorts as $stale) {
+                        $matchingActive = PonPort::where('olt_id', $olt->id)
+                            ->whereIn('id', $syncedPortIds)
+                            ->where('port_number', $stale->port_number)
+                            ->first();
+
+                        if ($matchingActive) {
+                            Onu::withoutGlobalScopes()->where('pon_port_id', $stale->id)
+                                ->update(['pon_port_id' => $matchingActive->id]);
+                        }
+                        $stale->delete();
+                    }
                 }
             });
 
@@ -200,7 +230,11 @@ class OltPollingService
                 if (preg_match('/\/(\d+)\/(\d+)$/', $portName, $sp)) {
                     $slotNum = (int)$sp[1];
                     $rawPortNum = (int)$sp[2];
-                    $portNumber = ($slotNum > 0) ? (($slotNum - 1) * 16 + $rawPortNum) : $rawPortNum;
+                    if (count($ponPorts) <= 8 || ($olt->pon_port_count > 0 && $olt->pon_port_count <= 8)) {
+                        $portNumber = $rawPortNum;
+                    } else {
+                        $portNumber = ($slotNum > 0) ? (($slotNum - 1) * 16 + $rawPortNum) : $rawPortNum;
+                    }
                 } elseif (preg_match_all('/\d+/', $portName, $m)) {
                     $portNumber = (int)end($m[0]);
                 } else {

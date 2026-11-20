@@ -3,7 +3,7 @@
 namespace App\Services\Adapters\Provisioning\Drivers;
 
 use App\Models\ISP\Onu;
-use App\Services\Adapters\Provisioning\TelnetSshClient;
+use App\Services\Adapters\Provisioning\Support\TelnetSshClient;
 use Illuminate\Support\Facades\Log;
 
 class HisfocusOltDriver extends BaseOltDriver
@@ -911,10 +911,10 @@ class HisfocusOltDriver extends BaseOltDriver
      */
     protected function filterOnusByPort(array $onus, int $targetPort): array
     {
-        // Normalisasi untuk GPON pizza box OLT (misal gpon0/2/1 dengan IfIndex 5 -> Port 1, gpon0/2/2 dengan IfIndex 6 -> Port 2)
+        // Normalisasi untuk GPON pizza box OLT (misal gpon0/2/1 dengan IfIndex 5 / port 17 -> Port 1, gpon0/2/2 dengan IfIndex 6 / port 18 -> Port 2)
         $altTarget = match ($targetPort) {
-            5 => 1,
-            6 => 2,
+            5, 17 => 1,
+            6, 18 => 2,
             1 => 5,
             2 => 6,
             default => $targetPort,
