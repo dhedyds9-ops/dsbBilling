@@ -47,6 +47,9 @@ class InvoiceService
             }
             $totalAmount = round($totalAmount, 2);
 
+            // Fetch customer profile to get settlement prices, reseller_id, and branch_id
+            $customer = \App\Models\CRM\Customer::withoutGlobalScopes()->with('customerServices.serviceProfile')->find($customerId);
+
             $invoice = $this->invoiceRepository->create([
                 'uuid' => (string) Str::uuid(),
                 'customer_id' => $customerId,
@@ -59,12 +62,11 @@ class InvoiceService
                 'currency' => $currency,
                 'status' => $status,
                 'item_details' => $this->normalizeItemDetails($items),
+                'reseller_id' => $customer?->reseller_id ?? null,
+                'branch_id' => $customer?->branch_id ?? null,
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ]);
-
-            // Fetch customer profile to get settlement prices if missing
-            $customer = \App\Models\CRM\Customer::with('customerServices.serviceProfile')->find($customerId);
             $sp = $customer && $customer->customerServices->isNotEmpty() 
                 ? $customer->customerServices->first()->serviceProfile 
                 : null;

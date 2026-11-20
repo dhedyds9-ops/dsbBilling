@@ -212,7 +212,9 @@ class Index extends BaseCrmComponent
             'customerServices.hotspotUser',
             'customerServices.onu.acsDevice',
             'customerServices.acsDevice',
+            'customerServices.reseller',
             'reseller',
+            'branch',
         ]);
 
         if ($this->search) {

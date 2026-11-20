@@ -174,7 +174,9 @@
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
                     @forelse($customers as $customer)
                         @php
-                            $svc = $customer->customerServices->first();
+                            // Ambil layanan utama: prioritaskan yang statusnya active, atau yang terbaru
+                            $svc = $customer->customerServices->firstWhere('status', 'active') 
+                                ?? $customer->customerServices->sortByDesc('updated_at')->first();
                             $isOnline = false;
                             $ipAddress = '-';
                             $username = '-';
@@ -205,7 +207,8 @@
                             $tglIsolir = $svc?->suspended_at?->format('d-m-Y')
                                 ?? ($svc?->pppoeUser?->suspended_at?->format('d-m-Y')
                                 ?? ($svc?->hotspotUser?->suspended_at?->format('d-m-Y') ?? '-'));
-                            $reseller = $customer->reseller->name ?? 'Default';
+                            $reseller = $customer->reseller->name 
+                                ?? ($svc?->reseller?->name ?? 'Default');
                             $dynamicId = $customer->display_id;
 
                             $isSuspended = in_array($customer->status, ['suspend', 'suspended'])
@@ -331,8 +334,11 @@
                             
                             {{-- Layanan --}}
                             <td class="px-4 py-3 whitespace-nowrap">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold {{ $layanan === 'PPPoE' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' }}">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold {{ $layanan === 'PPPoE' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400' : ($layanan === 'Hotspot' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400') }}">
                                     {{ $layanan }}
+                                    @if($customer->customerServices->count() > 1)
+                                        <span class="ml-1 text-[10px] px-1 bg-white/60 dark:bg-black/30 rounded" title="{{ $customer->customerServices->count() }} total layanan">+{{ $customer->customerServices->count() }}</span>
+                                    @endif
                                 </span>
                             </td>
                             
@@ -349,12 +355,12 @@
                             {{-- Owner/Reseller --}}
                             <td class="px-4 py-3 whitespace-nowrap">
                                 @if($reseller !== 'Default')
-                                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400">
+                                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400" title="Reseller: {{ $reseller }}">
                                         {{ $reseller }}
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400">
-                                        Pusat (HQ)
+                                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400" title="Kantor Pusat">
+                                        {{ $customer->branch?->name ? 'Pusat (' . $customer->branch->name . ')' : 'Pusat (HQ)' }}
                                     </span>
                                 @endif
                             </td>

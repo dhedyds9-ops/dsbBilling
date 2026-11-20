@@ -859,6 +859,7 @@ class Wizard extends Component
                             'reseller_id' => $this->new_customer_reseller_id ?: $customer->reseller_id,
                             'branch_id' => $branchId,
                         ]);
+                        $customer->refresh();
                     } else {
                         $customerCode = \App\Services\CRM\CustomerCodeGenerator::generate();
                         $customer = Customer::create([
@@ -866,7 +867,7 @@ class Wizard extends Component
                             'name' => $this->new_customer_name,
                             'phone' => $this->new_customer_phone,
                             'address' => $this->new_customer_address,
-                            'reseller_id' => $this->new_customer_reseller_id,
+                            'reseller_id' => $this->new_customer_reseller_id ?: null,
                             'branch_id' => $branchId,
                             'status' => 'active',
                             'created_by' => $user->id,
@@ -925,6 +926,7 @@ class Wizard extends Component
                     $onu = \App\Models\ISP\Onu::create([
                         'olt_id' => $this->olt_id,
                         'pon_port' => $this->pon_port,
+                        'odp_id' => $this->odp_id ?: null,
                         'serial_number' => $sn,
                         'vendor_id' => $this->onu_vendor_id,
                         'model' => $this->onu_model,
@@ -940,6 +942,7 @@ class Wizard extends Component
                     $existingOnu->update([
                         'olt_id' => $this->olt_id ?: $existingOnu->olt_id,
                         'pon_port' => $this->pon_port ?: $existingOnu->pon_port,
+                        'odp_id' => $this->odp_id ?: $existingOnu->odp_id,
                         'vendor_id' => $this->onu_vendor_id ?: $existingOnu->vendor_id,
                         'model' => $this->onu_model ?: $existingOnu->model,
                         'name' => 'ONU ' . $customer->name,

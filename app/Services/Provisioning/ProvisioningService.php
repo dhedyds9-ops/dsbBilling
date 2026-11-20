@@ -107,7 +107,8 @@ class ProvisioningService
                 'username' => $data['username'],
                 'password' => $data['password'],
                 'status' => $data['status'] ?? 'active',
-                'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : null,
+                'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : ($customer->reseller_id ?? null),
+                'branch_id' => !empty($data['branch_id']) ? $data['branch_id'] : ($customer->branch_id ?? null),
                 'activated_at' => isset($data['activation_date']) ? \Illuminate\Support\Carbon::parse($data['activation_date']) : now(),
                 'attributes' => [
                     'name' => $data['name'],
@@ -303,7 +304,8 @@ class ProvisioningService
                 'username' => $data['username'],
                 'password' => $data['password'],
                 'status' => $data['status'] ?? 'active',
-                'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : null,
+                'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : ($customer->reseller_id ?? null),
+                'branch_id' => !empty($data['branch_id']) ? $data['branch_id'] : ($customer->branch_id ?? null),
                 'activated_at' => isset($data['activation_date']) ? \Illuminate\Support\Carbon::parse($data['activation_date']) : now(),
                 'attributes' => [
                     'name' => $data['name'],
@@ -570,6 +572,7 @@ class ProvisioningService
                         'latitude' => $data['latitude'] ?? null,
                         'longitude' => $data['longitude'] ?? null,
                         'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : null,
+                        'branch_id' => !empty($data['branch_id']) ? $data['branch_id'] : null,
                         'status' => 'active',
                         'created_by' => $userId,
                         'updated_by' => $userId,
@@ -649,8 +652,12 @@ class ProvisioningService
                 if (!empty($data['reseller_id']) && empty($customer->reseller_id)) {
                     $updateFields['reseller_id'] = $data['reseller_id'];
                 }
+                if (!empty($data['branch_id']) && empty($customer->branch_id)) {
+                    $updateFields['branch_id'] = $data['branch_id'];
+                }
                 if (!empty($updateFields)) {
                     $customer->update($updateFields);
+                    $customer->refresh();
                 }
             }
 

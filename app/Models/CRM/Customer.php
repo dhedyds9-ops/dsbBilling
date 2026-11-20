@@ -127,6 +127,11 @@ class Customer extends Model
         return $this->belongsTo(User::class, 'reseller_id');
     }
 
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Master\Branch::class, 'branch_id');
+    }
+
     public function customerServices(): HasMany
     {
         return $this->hasMany(CustomerService::class, 'customer_id');

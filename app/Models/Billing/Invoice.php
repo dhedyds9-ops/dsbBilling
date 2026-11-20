@@ -31,9 +31,27 @@ class Invoice extends Model
         'status',
         'item_details',
         'reseller_id',
+        'branch_id',
         'created_by',
         'updated_by',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($invoice) {
+            if ($invoice->customer_id) {
+                $customer = Customer::withoutGlobalScopes()->find($invoice->customer_id);
+                if ($customer) {
+                    if (empty($invoice->reseller_id)) {
+                        $invoice->reseller_id = $customer->reseller_id;
+                    }
+                    if (empty($invoice->branch_id)) {
+                        $invoice->branch_id = $customer->branch_id;
+                    }
+                }
+            }
+        });
+    }
 
     protected $casts = [
         'issue_date' => 'datetime',
@@ -56,6 +74,11 @@ class Invoice extends Model
     public function reseller()
     {
         return $this->belongsTo(User::class, 'reseller_id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(\App\Models\Master\Branch::class, 'branch_id');
     }
 
     public function payments()
