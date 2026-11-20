@@ -74,7 +74,13 @@ class OltPollingService
                 throw new \Exception("0 Port PON terdeteksi. Kemungkinan SNMP Community tidak memiliki hak akses (View) ke Enterprise MIB OLT ini, atau tipe OLT tidak cocok."); 
             }
 
-            DB::transaction(function () use ($olt, $systemInfo, $ponPorts, $driver) {
+            // Batasi ponPorts jika pon_port_count di database sudah ditentukan user (misal 2 port)
+            $configuredCount = (int)($olt->pon_port_count ?? 0);
+            if ($configuredCount > 0 && count($ponPorts) > $configuredCount) {
+                $ponPorts = array_slice($ponPorts, 0, $configuredCount);
+            }
+
+            DB::transaction(function () use ($olt, $systemInfo, $ponPorts, $driver, $configuredCount) {
                 $updateData = [
                     'status' => 'active',
                     'last_polled_at' => now(),
@@ -82,7 +88,7 @@ class OltPollingService
                     'temperature' => $systemInfo['temperature'] ?? null,
                     'firmware_version' => $systemInfo['firmware'] ?? $olt->firmware_version,
                     'active_port_count' => collect($ponPorts)->where('status', 'up')->count(),
-                    'pon_port_count' => count($ponPorts),
+                    'pon_port_count' => $configuredCount > 0 ? $configuredCount : count($ponPorts),
                     'status' => ($systemInfo['status'] ?? 'offline') === 'online' ? 'active' : 'inactive',
                     'last_polled_at' => now(),
                 ];

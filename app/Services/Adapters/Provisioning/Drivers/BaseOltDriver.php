@@ -399,13 +399,16 @@ abstract class BaseOltDriver implements OltDriverInterface
             Log::debug("getStandardIfMibPonPorts exception: " . $e->getMessage());
         }
 
-        // 2. Jika Standard IF-MIB tidak menghasilkan port PON atau enterprise MIB kosong,
+        // 2. Jika user mengonfigurasi pon_port_count secara spesifik di database (misal 2 port)
+        $userConfiguredCount = (int)($this->olt->pon_port_count ?? 0);
+        if ($userConfiguredCount > 0 && count($ports) > $userConfiguredCount) {
+            $ports = array_slice($ports, 0, $userConfiguredCount);
+        }
+
+        // 3. Jika Standard IF-MIB tidak menghasilkan port PON atau enterprise MIB kosong,
         // namun OLT online (menjawab sysUpTime), gunakan konfigurasi pon_port_count dari database!
         if (empty($ports)) {
-            $count = (int)($this->olt->pon_port_count ?? 0);
-            if ($count <= 0) {
-                $count = 4; // Default standard OLT pizza box di Indonesia: 4 PON ports
-            }
+            $count = $userConfiguredCount > 0 ? $userConfiguredCount : 2; // Default 2 PON untuk pizza box OLT jika belum diset
             $oltType = str_contains(strtolower(($this->olt->model ?? '') . ' ' . ($this->olt->name ?? '')), 'epon') ? 'EPON' : 'GPON';
             for ($p = 1; $p <= $count; $p++) {
                 $ports[] = [

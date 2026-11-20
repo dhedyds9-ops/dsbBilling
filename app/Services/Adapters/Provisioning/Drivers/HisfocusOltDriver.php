@@ -3,6 +3,7 @@
 namespace App\Services\Adapters\Provisioning\Drivers;
 
 use App\Models\ISP\Onu;
+use App\Services\Adapters\Provisioning\TelnetSshClient;
 use Illuminate\Support\Facades\Log;
 
 class HisfocusOltDriver extends BaseOltDriver
@@ -13,7 +14,7 @@ class HisfocusOltDriver extends BaseOltDriver
         'sysName'        => '.1.3.6.1.2.1.1.5.0',
         'sysUpTime'      => '.1.3.6.1.2.1.1.3.0',
         'sysDescr'       => '.1.3.6.1.2.1.1.1.0',
-        'sysTemperature' => '.1.3.6.1.4.1.50224.3.1.1.18.0',
+        'sysTemperature' => '.1.3.6.1.4.1.65000.1.1.1.0', // V-SOL / RicherLink temperature
     ];
 
     /**
@@ -33,21 +34,91 @@ class HisfocusOltDriver extends BaseOltDriver
     {
         $ports = [];
 
-        // 1. Coba OID HSGQ Modern (50224) - sering dipakai di HISFOCUS GPON (HF-G04/G08)
+        // 1. Coba OID V-SOL GPON Modern (65000) - standar V-SOL V1600G series (HF-G02, HF-G04)
+        try {
+            $vsolPorts = $this->snmp->walk('.1.3.6.1.4.1.65000.1.3.2.1.2') ?: [];
+            if (!empty($vsolPorts)) {
+                $statusMap = $this->snmp->walk('.1.3.6.1.4.1.65000.1.3.2.1.4') ?: [];
+                foreach ($vsolPorts as $idx => $name) {
+                    $cleanOid = str_replace(['iso', 'SNMPv2-SMI::enterprises.'], ['.1', '.1.3.6.1.4.1.'], (string)$idx);
+                    $parts = explode('.', trim($cleanOid, '. '));
+                    $pNum = (int)end($parts);
+                    $cleanName = trim((string)$name);
+                    $cleanName = preg_replace('/^(STRING|Hex-STRING|OctetString)\s*:?\s*/i', '', $cleanName);
+                    $cleanName = trim($cleanName, '" ');
+                    $st = (int)($statusMap[$idx] ?? 1);
+                    $ports[] = [
+                        'port_index' => $pNum > 0 ? $pNum : (count($ports) + 1),
+                        'port_name'  => !empty($cleanName) && str_contains(strtoupper($cleanName), 'PON') ? $cleanName : "GPON 0/0/{$pNum}",
+                        'status'     => match ($st) {
+                            1 => 'up',
+                            2 => 'down',
+                            default => 'up'
+                        },
+                    ];
+                }
+                if (!empty($ports)) {
+                    return $this->capPonPortsToOltConfig($ports);
+                }
+            }
+        } catch (\Throwable) {}
+
+        // 2. Coba OID RicherLink / V-SOL OEM (37950)
+        try {
+            $rlPorts = $this->snmp->walk('.1.3.6.1.4.1.37950.1.1.5.10.1.1.2') ?: [];
+            if (!empty($rlPorts)) {
+                foreach ($rlPorts as $idx => $name) {
+                    $cleanOid = str_replace(['iso', 'SNMPv2-SMI::enterprises.'], ['.1', '.1.3.6.1.4.1.'], (string)$idx);
+                    $parts = explode('.', trim($cleanOid, '. '));
+                    $pNum = (int)end($parts);
+                    $cleanName = trim((string)$name, '" ');
+                    $ports[] = [
+                        'port_index' => $pNum > 0 ? $pNum : (count($ports) + 1),
+                        'port_name'  => !empty($cleanName) && str_contains(strtoupper($cleanName), 'PON') ? $cleanName : "GPON 0/0/{$pNum}",
+                        'status'     => 'up',
+                    ];
+                }
+                if (!empty($ports)) {
+                    return $this->capPonPortsToOltConfig($ports);
+                }
+            }
+        } catch (\Throwable) {}
+
+        // 3. Coba OID C-Data GPON (34592)
+        try {
+            $cdPorts = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.2.1.1.4') ?: [];
+            if (!empty($cdPorts)) {
+                foreach ($cdPorts as $idx => $st) {
+                    $cleanOid = str_replace(['iso', 'SNMPv2-SMI::enterprises.'], ['.1', '.1.3.6.1.4.1.'], (string)$idx);
+                    $parts = explode('.', trim($cleanOid, '. '));
+                    $pNum = (int)end($parts);
+                    $ports[] = [
+                        'port_index' => $pNum > 0 ? $pNum : (count($ports) + 1),
+                        'port_name'  => "GPON 0/0/{$pNum}",
+                        'status'     => (int)$st === 1 ? 'up' : 'down',
+                    ];
+                }
+                if (!empty($ports)) {
+                    return $this->capPonPortsToOltConfig($ports);
+                }
+            }
+        } catch (\Throwable) {}
+
+        // 4. Coba OID HSGQ Modern (50224) - sering dipakai di HISFOCUS GPON (HF-G04/G08)
         try {
             $names = $this->snmp->walk('.1.3.6.1.4.1.50224.3.2.1.1.2') ?: ($this->snmp->walk('.1.3.6.1.4.1.50224.3.3.1.1.2') ?: []);
             $statuses = $this->snmp->walk('.1.3.6.1.4.1.50224.3.2.1.1.6') ?: ($this->snmp->walk('.1.3.6.1.4.1.50224.3.3.1.1.6') ?: []);
             if (!empty($names) || !empty($statuses)) {
                 $statusMap = [];
                 foreach ($statuses as $idx => $val) {
-                    $cleanOid = str_replace('iso', '.1', (string)$idx);
-                    $parts = explode('.', $cleanOid);
+                    $cleanOid = str_replace(['iso', 'SNMPv2-SMI::enterprises.'], ['.1', '.1.3.6.1.4.1.'], (string)$idx);
+                    $parts = explode('.', trim($cleanOid, '. '));
                     $portIdx = (int)end($parts);
                     $statusMap[$portIdx] = (int)$val;
                 }
                 foreach ($names as $idx => $name) {
-                    $cleanOid = str_replace('iso', '.1', (string)$idx);
-                    $parts = explode('.', $cleanOid);
+                    $cleanOid = str_replace(['iso', 'SNMPv2-SMI::enterprises.'], ['.1', '.1.3.6.1.4.1.'], (string)$idx);
+                    $parts = explode('.', trim($cleanOid, '. '));
                     $portIdx = (int)end($parts);
                     $cleanName = trim((string)$name);
                     $cleanName = preg_replace('/^(STRING|Hex-STRING|OctetString)\s*:?\s*/i', '', $cleanName);
@@ -62,12 +133,12 @@ class HisfocusOltDriver extends BaseOltDriver
                     }
                 }
                 if (!empty($ports)) {
-                    return $ports;
+                    return $this->capPonPortsToOltConfig($ports);
                 }
             }
         } catch (\Throwable) {}
 
-        // 2. Coba CTC EPON Standard MIB (.1.3.6.1.4.1.17409.2.3.1.2.1.1) - standar HISFOCUS EPON (HF-E04/E08)
+        // 5. Coba CTC EPON Standard MIB (.1.3.6.1.4.1.17409.2.3.1.2.1.1) - standar HISFOCUS EPON (HF-E04/E08)
         try {
             $ctcPorts = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.1.2.1.1');
             if (!empty($ctcPorts)) {
@@ -81,12 +152,12 @@ class HisfocusOltDriver extends BaseOltDriver
                     ];
                 }
                 if (!empty($ports)) {
-                    return $ports;
+                    return $this->capPonPortsToOltConfig($ports);
                 }
             }
         } catch (\Throwable) {}
 
-        // 3. Coba OID HSGQ Legacy (5875)
+        // 6. Coba OID HSGQ Legacy (5875)
         try {
             $statuses = $this->snmp->walk('.1.3.6.1.4.1.5875.901.10.1.1.1.1.5');
             if (!empty($statuses)) {
@@ -103,13 +174,40 @@ class HisfocusOltDriver extends BaseOltDriver
                     ];
                 }
                 if (!empty($ports)) {
-                    return $ports;
+                    return $this->capPonPortsToOltConfig($ports);
                 }
             }
         } catch (\Throwable) {}
 
-        // 4. Fallback Universal: Standard IF-MIB RFC 2863 & Database Port Count
-        return $this->getStandardIfMibPonPorts();
+        // 7. Fallback Universal: Standard IF-MIB RFC 2863 & Database Port Count
+        return $this->capPonPortsToOltConfig($this->getStandardIfMibPonPorts());
+    }
+
+    /**
+     * Membatasi jumlah port PON agar sesuai dengan spesifikasi perangkat fisik (misal 2 Port OLT).
+     */
+    protected function capPonPortsToOltConfig(array $ports): array
+    {
+        $configured = (int)($this->olt->pon_port_count ?? 0);
+
+        // Deteksi cerdas dari Nama atau Model OLT jika database belum diset
+        // Misal: HF-G02, 2 PORT, 2PON, 2P, V1600G1, V1600G-02
+        if ($configured <= 0) {
+            $ident = strtolower(($this->olt->model ?? '') . ' ' . ($this->olt->name ?? ''));
+            if (preg_match('/\b(g0?2|e0?2|2\s*p(?:ort)?|v1600g1|v1600g-02)\b/i', $ident)) {
+                $configured = 2;
+            } elseif (preg_match('/\b(g0?4|e0?4|4\s*p(?:ort)?|v1600g2|v1600g-04)\b/i', $ident)) {
+                $configured = 4;
+            } elseif (preg_match('/\b(g0?8|e0?8|8\s*p(?:ort)?|v1600g-08)\b/i', $ident)) {
+                $configured = 8;
+            }
+        }
+
+        if ($configured > 0 && count($ports) > $configured) {
+            $ports = array_slice($ports, 0, $configured);
+        }
+
+        return $ports;
     }
 
     /**
@@ -139,11 +237,11 @@ class HisfocusOltDriver extends BaseOltDriver
             return $cliMatched;
         }
 
-        // 4. Fallback: Jika target port adalah port pertama (1) dan ada ONU terdeteksi tanpa port spesifik
-        if (($ponPort === 1 || ($this->olt->pon_port_count ?? 0) === 1) && !empty($this->cachedSnmpOnus)) {
+        // 4. Fallback: Jika target port adalah port pertama (1) atau port count OLT <= 2 dan semua ONU ada di port 1/flat
+        if ($ponPort === 1 && !empty($this->cachedSnmpOnus)) {
             return $this->cachedSnmpOnus;
         }
-        if (($ponPort === 1 || ($this->olt->pon_port_count ?? 0) === 1) && !empty($this->cachedCliOnus)) {
+        if ($ponPort === 1 && !empty($this->cachedCliOnus)) {
             return $this->cachedCliOnus;
         }
 
@@ -151,13 +249,202 @@ class HisfocusOltDriver extends BaseOltDriver
     }
 
     /**
-     * Mengumpulkan seluruh data ONU dari berbagai OID SNMP (HSGQ 50224, CTC EPON 17409, HSGQ 5875, VSOL).
+     * Mengumpulkan seluruh data ONU dari berbagai OID SNMP:
+     * 1. V-SOL GPON Modern (65000) - OEM utama HISFOCUS GPON (HF-G02/G04)
+     * 2. C-Data GPON (34592)
+     * 3. RicherLink GPON (37950)
+     * 4. HSGQ Modern (50224)
+     * 5. CTC EPON (17409)
+     * 6. HSGQ Legacy (5875)
+     * 7. Bridge FDB (17.4.3.1.1)
      */
     protected function collectAllOnusFromSnmp(): array
     {
         $onus = [];
 
-        // --- Sumber A: HSGQ Modern OID (.1.3.6.1.4.1.50224.3.12) ---
+        // --- Sumber 1: V-SOL GPON Modern (.1.3.6.1.4.1.65000.1.3.4) ---
+        // Sering dipakai pada OLT HISFOCUS GPON (HF-G02 / HF-G04)
+        try {
+            $vsolSerials = $this->snmp->walk('.1.3.6.1.4.1.65000.1.3.4.1.5') ?: [];
+            if (!empty($vsolSerials)) {
+                $vsolStatuses = $this->snmp->walk('.1.3.6.1.4.1.65000.1.3.4.1.3') ?: [];
+                $vsolRx       = $this->snmp->walk('.1.3.6.1.4.1.65000.1.3.4.1.14') ?: [];
+                $vsolTx       = $this->snmp->walk('.1.3.6.1.4.1.65000.1.3.4.1.15') ?: [];
+                $vsolTemps    = $this->snmp->walk('.1.3.6.1.4.1.65000.1.3.4.1.16') ?: [];
+                $vsolMacs     = $this->snmp->walk('.1.3.6.1.4.1.65000.1.3.4.1.6') ?: [];
+                $vsolFws      = $this->snmp->walk('.1.3.6.1.4.1.65000.1.3.4.1.11') ?: [];
+                $vsolModels   = $this->snmp->walk('.1.3.6.1.4.1.65000.1.3.4.1.10') ?: [];
+                $vsolNames    = $this->snmp->walk('.1.3.6.1.4.1.65000.1.3.4.1.2') ?: [];
+
+                foreach ($vsolSerials as $idx => $serialRaw) {
+                    $parsed = $this->parsePortAndOnuIndex((string)$idx);
+                    $sn = $this->cleanSnmpSerialOrMac($serialRaw);
+                    if (empty($sn)) continue;
+
+                    $rxRawVal = (float)($vsolRx[$idx] ?? 0);
+                    $rxVal = null;
+                    if ($rxRawVal != 0) {
+                        if ($rxRawVal > 1000 && $rxRawVal < 65000) {
+                            $rxVal = round(($rxRawVal / 100) - 50, 2);
+                        } elseif ($rxRawVal > 100 || $rxRawVal < -100) {
+                            $rxVal = round($rxRawVal / 100, 2);
+                        } else {
+                            $rxVal = round($rxRawVal, 2);
+                        }
+                        if ($rxVal > 0 && $rxVal <= 45) {
+                            $rxVal = -abs($rxVal);
+                        }
+                    }
+
+                    $txRawVal = (float)($vsolTx[$idx] ?? 0);
+                    $txVal = null;
+                    if ($txRawVal != 0) {
+                        if ($txRawVal > 1000 && $txRawVal < 65000) {
+                            $txVal = round(($txRawVal / 100) - 50, 2);
+                        } elseif ($txRawVal > 100 || $txRawVal < -100) {
+                            $txVal = round($txRawVal / 100, 2);
+                        } else {
+                            $txVal = round($txRawVal, 2);
+                        }
+                    }
+
+                    $tempVal = null;
+                    if (!empty($vsolTemps[$idx])) {
+                        $t = (float)$vsolTemps[$idx];
+                        $tempVal = $t > 1000 ? round($t / 100, 1) : $t;
+                    }
+
+                    $st = (int)($vsolStatuses[$idx] ?? 0);
+                    $isOnline = in_array($st, [1, 3, 10], true) || ($rxVal !== null && $rxVal >= -38.0 && $rxVal <= -6.0);
+
+                    $mac = !empty($vsolMacs[$idx]) ? $this->cleanSnmpSerialOrMac($vsolMacs[$idx]) : (str_contains($sn, ':') ? $sn : null);
+
+                    $onus[] = [
+                        'pon_port'         => $parsed['port'],
+                        'raw_port_idx'     => $parsed['raw_port'],
+                        'onu_index'        => $parsed['onu'],
+                        'serial_number'    => str_replace(':', '', $sn),
+                        'mac_address'      => $mac,
+                        'rx_power_dbm'     => ($rxVal !== null && $rxVal >= -45.0 && $rxVal <= -5.0) ? $rxVal : null,
+                        'tx_power_dbm'     => ($txVal !== null && $txVal >= -10.0 && $txVal <= 15.0) ? $txVal : null,
+                        'snr_db'           => null,
+                        'temperature'      => $tempVal,
+                        'firmware_version' => isset($vsolFws[$idx]) ? trim((string)$vsolFws[$idx], '" ') : null,
+                        'model'            => isset($vsolModels[$idx]) ? trim((string)$vsolModels[$idx], '" ') : null,
+                        'name'             => isset($vsolNames[$idx]) ? trim((string)$vsolNames[$idx], '" ') : null,
+                        'status'           => $isOnline ? 'online' : 'offline',
+                    ];
+                }
+
+                if (!empty($onus)) {
+                    return $onus;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::debug("Hisfocus V-SOL 65000 SNMP error: " . $e->getMessage());
+        }
+
+        // --- Sumber 2: C-Data GPON MIB (.1.3.6.1.4.1.34592.1.5.1 / 34592.1.3.100) ---
+        try {
+            $cdSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.3')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.3') ?: []);
+            if (!empty($cdSerials)) {
+                $cdStatuses = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.8')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.8') ?: []);
+                $cdRx = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.1.3')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.3') ?: []);
+                $cdTx = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.1.4') ?: [];
+
+                foreach ($cdSerials as $idx => $serialRaw) {
+                    $parsed = $this->parsePortAndOnuIndex((string)$idx);
+                    $sn = $this->cleanSnmpSerialOrMac($serialRaw);
+                    if (empty($sn)) continue;
+
+                    $rxVal = (float)($cdRx[$idx] ?? 0);
+                    if ($rxVal > 100 || $rxVal < -100) $rxVal = round($rxVal / 100, 2);
+                    if ($rxVal > 0) $rxVal = -abs($rxVal);
+
+                    $txVal = (float)($cdTx[$idx] ?? 0);
+                    if ($txVal > 100 || $txVal < -100) $txVal = round($txVal / 100, 2);
+
+                    $st = (int)($cdStatuses[$idx] ?? 0);
+                    $isOnline = in_array($st, [1, 2, 8], true) || ($rxVal >= -38.0 && $rxVal <= -6.0);
+
+                    $onus[] = [
+                        'pon_port'         => $parsed['port'],
+                        'raw_port_idx'     => $parsed['raw_port'],
+                        'onu_index'        => $parsed['onu'],
+                        'serial_number'    => str_replace(':', '', $sn),
+                        'mac_address'      => str_contains($sn, ':') ? $sn : null,
+                        'rx_power_dbm'     => ($rxVal >= -45.0 && $rxVal <= -5.0) ? $rxVal : null,
+                        'tx_power_dbm'     => ($txVal >= -10.0 && $txVal <= 15.0) ? $txVal : null,
+                        'snr_db'           => null,
+                        'temperature'      => null,
+                        'firmware_version' => null,
+                        'model'            => null,
+                        'name'             => null,
+                        'status'           => $isOnline ? 'online' : 'offline',
+                    ];
+                }
+
+                if (!empty($onus)) {
+                    return $onus;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::debug("Hisfocus C-Data 34592 SNMP error: " . $e->getMessage());
+        }
+
+        // --- Sumber 3: RicherLink GPON MIB (.1.3.6.1.4.1.37950) ---
+        try {
+            $rlSerials = $this->snmp->walk('.1.3.6.1.4.1.37950.1.1.5.12.1.15')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.37950.1.1.5.12.1.25') ?: []);
+            if (!empty($rlSerials)) {
+                $rlStatuses = $this->snmp->walk('.1.3.6.1.4.1.37950.1.1.5.12.1.2') ?: [];
+                $rlRx       = $this->snmp->walk('.1.3.6.1.4.1.37950.1.1.5.12.2.1.4') ?: [];
+                $rlTx       = $this->snmp->walk('.1.3.6.1.4.1.37950.1.1.5.12.2.1.3') ?: [];
+
+                foreach ($rlSerials as $idx => $serialRaw) {
+                    $parsed = $this->parsePortAndOnuIndex((string)$idx);
+                    $sn = $this->cleanSnmpSerialOrMac($serialRaw);
+                    if (empty($sn)) continue;
+
+                    $rxVal = (float)($rlRx[$idx] ?? 0);
+                    if ($rxVal > 100 || $rxVal < -100) $rxVal = round($rxVal / 100, 2);
+                    if ($rxVal > 0) $rxVal = -abs($rxVal);
+
+                    $txVal = (float)($rlTx[$idx] ?? 0);
+                    if ($txVal > 100 || $txVal < -100) $txVal = round($txVal / 100, 2);
+
+                    $st = (int)($rlStatuses[$idx] ?? 0);
+                    $isOnline = ($st === 1 || ($rxVal >= -38.0 && $rxVal <= -6.0));
+
+                    $onus[] = [
+                        'pon_port'         => $parsed['port'],
+                        'raw_port_idx'     => $parsed['raw_port'],
+                        'onu_index'        => $parsed['onu'],
+                        'serial_number'    => str_replace(':', '', $sn),
+                        'mac_address'      => str_contains($sn, ':') ? $sn : null,
+                        'rx_power_dbm'     => ($rxVal >= -45.0 && $rxVal <= -5.0) ? $rxVal : null,
+                        'tx_power_dbm'     => ($txVal >= -10.0 && $txVal <= 15.0) ? $txVal : null,
+                        'snr_db'           => null,
+                        'temperature'      => null,
+                        'firmware_version' => null,
+                        'model'            => null,
+                        'name'             => null,
+                        'status'           => $isOnline ? 'online' : 'offline',
+                    ];
+                }
+
+                if (!empty($onus)) {
+                    return $onus;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::debug("Hisfocus RicherLink 37950 SNMP error: " . $e->getMessage());
+        }
+
+        // --- Sumber 4: HSGQ Modern OID (.1.3.6.1.4.1.50224.3.12) ---
         try {
             $rawSerials = $this->snmp->walk('.1.3.6.1.4.1.50224.3.12.2.1.15') ?: [];
             if (!empty($rawSerials)) {
@@ -209,7 +496,7 @@ class HisfocusOltDriver extends BaseOltDriver
             Log::debug("Hisfocus HSGQ 50224 SNMP error: " . $e->getMessage());
         }
 
-        // --- Sumber B: CTC EPON Standard MIB (.1.3.6.1.4.1.17409.2.3.4) untuk OLT HISFOCUS EPON ---
+        // --- Sumber 5: CTC EPON Standard MIB (.1.3.6.1.4.1.17409.2.3.4) untuk OLT HISFOCUS EPON ---
         try {
             $ctcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.2') ?: [];
             if (!empty($ctcMacs)) {
@@ -257,7 +544,7 @@ class HisfocusOltDriver extends BaseOltDriver
             Log::debug("Hisfocus CTC EPON SNMP error: " . $e->getMessage());
         }
 
-        // --- Sumber C: HSGQ Legacy MIB (.1.3.6.1.4.1.5875.901.10.3) ---
+        // --- Sumber 6: HSGQ Legacy MIB (.1.3.6.1.4.1.5875.901.10.3) ---
         try {
             $legSerials = $this->snmp->walk('.1.3.6.1.4.1.5875.901.10.3.1.1.1.1') ?: [];
             if (!empty($legSerials)) {
@@ -301,7 +588,7 @@ class HisfocusOltDriver extends BaseOltDriver
             Log::debug("Hisfocus HSGQ 5875 SNMP error: " . $e->getMessage());
         }
 
-        // --- Sumber D: Standard Bridge FDB / MAC Table (.1.3.6.1.2.1.17.4.3.1.1) Fallback ---
+        // --- Sumber 7: Standard Bridge FDB / MAC Table (.1.3.6.1.2.1.17.4.3.1.1) Fallback ---
         try {
             $fdbMacs = $this->snmp->walk('.1.3.6.1.2.1.17.4.3.1.1') ?: [];
             $fdbPorts = $this->snmp->walk('.1.3.6.1.2.1.17.4.3.1.2') ?: [];
@@ -335,6 +622,52 @@ class HisfocusOltDriver extends BaseOltDriver
     }
 
     /**
+     * Inisialisasi koneksi CLI dengan auto-fallback kredensial umum admin/admin atau root/admin.
+     */
+    protected function initializeCli(): void
+    {
+        if ($this->cli !== null) {
+            return;
+        }
+
+        $username = !empty($this->olt->username) ? $this->olt->username : 'admin';
+        $password = !empty($this->olt->password) ? $this->olt->password : 'admin';
+        $port = (int)($this->olt->cli_port ?? 0);
+        if ($port <= 0) {
+            $port = $this->cliMode === 'ssh' ? 22 : 23;
+        }
+
+        $this->cli = new TelnetSshClient();
+        try {
+            $this->cli->connect(
+                $this->olt->ip_address,
+                $username,
+                $password,
+                $this->cliMode,
+                $port,
+                $this->olt->enable_secret ?? ''
+            );
+        } catch (\Throwable $e) {
+            // Coba alternatif default root/admin jika kredensial admin gagal
+            if ($username === 'admin') {
+                try {
+                    $this->cli = new TelnetSshClient();
+                    $this->cli->connect(
+                        $this->olt->ip_address,
+                        'root',
+                        'admin',
+                        $this->cliMode,
+                        $port,
+                        $this->olt->enable_secret ?? ''
+                    );
+                    return;
+                } catch (\Throwable) {}
+            }
+            throw $e;
+        }
+    }
+
+    /**
      * Mengumpulkan data ONU via CLI Scraping Telnet/SSH.
      */
     protected function collectAllOnusFromCli(): array
@@ -343,11 +676,15 @@ class HisfocusOltDriver extends BaseOltDriver
         try {
             $this->initializeCli();
 
-            // Coba berbagai perintah status ONU yang umum pada OLT HISFOCUS / HSGQ / EPON
+            // Coba berbagai perintah status ONU yang umum pada OLT HISFOCUS / V-SOL / HSGQ
             $commands = [
                 'show ont info all',
                 'show onu info all',
-                'show onu info 1 all',
+                'show gpon ont info all',
+                'show gpon onu info all',
+                'show ont optical-info all',
+                'show onu optical-info all',
+                'show gpon onu-optical-info all',
                 'show epon onu-info',
                 'show onu status all',
                 'show mac-address dynamic',
@@ -364,12 +701,6 @@ class HisfocusOltDriver extends BaseOltDriver
             }
 
             if (!empty($infoOut)) {
-                // Coba ambil optical info juga jika ada
-                $optOut = $this->cli->execute("show ont optical-info all\r\n", false);
-                if (empty($optOut) || str_contains(strtolower($optOut), 'invalid') || str_contains(strtolower($optOut), 'unrecognized')) {
-                    $optOut = $this->cli->execute("show onu optical-info all\r\n", false);
-                }
-
                 $clean = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', (string)$infoOut);
                 $snCounter = 1;
 
@@ -380,13 +711,18 @@ class HisfocusOltDriver extends BaseOltDriver
                     }
 
                     // Cocokkan Serial Number GPON atau MAC Address EPON
-                    // Mendukung: ZTEGC85E2D31, HWTC415EAA9B, 28:6D:DA:7C:1B:D9, 28-6D-DA..., 286D.DA7C.1BD9, atau 12-karakter Hex
                     if (preg_match('/([A-Z]{4}[0-9A-F]{8,12}|(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}|(?:[0-9A-Fa-f]{4}\.){2}[0-9A-Fa-f]{4}|\b[0-9A-Fa-f]{12}\b)/i', $line, $snMatch)) {
                         $rawSn = $snMatch[1];
                         $sn = $this->cleanSnmpSerialOrMac($rawSn);
                         if (empty($sn)) continue;
 
                         $isOnline = preg_match('/\b(online|working|operation|operational|up|ok|enable|active)\b/i', $line);
+
+                        // Ekstrak redaman Rx jika ada (misal -21.50)
+                        $rxVal = null;
+                        if (preg_match('/(-[1-4]\d(?:\.\d+)?)\s*(?:dBm)?/i', $line, $rxMatch)) {
+                            $rxVal = (float)$rxMatch[1];
+                        }
 
                         // Ekstrak port number dari baris CLI
                         $detectedPort = 1;
@@ -402,7 +738,7 @@ class HisfocusOltDriver extends BaseOltDriver
                             'onu_index'        => $snCounter++,
                             'serial_number'    => str_replace(':', '', $sn),
                             'mac_address'      => str_contains($sn, ':') ? $sn : null,
-                            'rx_power_dbm'     => null,
+                            'rx_power_dbm'     => ($rxVal !== null && $rxVal >= -45.0 && $rxVal <= -5.0) ? $rxVal : null,
                             'tx_power_dbm'     => null,
                             'snr_db'           => null,
                             'temperature'      => null,
@@ -462,17 +798,21 @@ class HisfocusOltDriver extends BaseOltDriver
 
     /**
      * Mem-parsing port number dan ONU ID dari index OID SNMP.
-     * Mendukung: 32-bit int (16777473), OID dotted (.1.5), dan flat index.
+     * Mendukung dotted OID (V-SOL / C-Data: .1.5) dan 32-bit integer (HSGQ: 16777473).
      */
     protected function parsePortAndOnuIndex(string $rawOid): array
     {
-        $clean = preg_replace('/^(\.?iso|\.?1)(?:\.\d+)*\.(?=\d+(?:\.\d+)?$)/i', '', trim($rawOid));
-        $parts = explode('.', $clean);
+        $cleanOid = str_replace(['iso', 'SNMPv2-SMI::enterprises.'], ['.1', '.1.3.6.1.4.1.'], trim($rawOid));
+        $parts = explode('.', trim($cleanOid, '. '));
 
         if (count($parts) >= 2) {
-            $p = (int)$parts[0];
-            $o = (int)$parts[1];
-            return ['port' => $p > 0 ? $p : 1, 'raw_port' => $p, 'onu' => $o > 0 ? $o : 1];
+            $onu = (int)array_pop($parts);
+            $port = (int)array_pop($parts);
+            return [
+                'port'     => $port > 0 ? $port : 1,
+                'raw_port' => $port,
+                'onu'      => $onu > 0 ? $onu : 1,
+            ];
         }
 
         $num = (int)$parts[0];
@@ -502,11 +842,11 @@ class HisfocusOltDriver extends BaseOltDriver
         if (preg_match('/^[0-9A-Fa-f]{2}(?:\s+[0-9A-Fa-f]{2})+$/', $str)) {
             $hexClean = str_replace(' ', '', $str);
 
-            // Decode ITU-T GPON: 4 bytes pertama adalah Vendor ID (ZTEG, HWTC, HSGQ, dsb)
+            // Decode ITU-T GPON: 4 bytes pertama adalah Vendor ID (ZTEG, HWTC, HSGQ, VSOL, dsb)
             if (strlen($hexClean) === 16) {
                 $vendorPrefix = @hex2bin(substr($hexClean, 0, 8));
-                if ($vendorPrefix && preg_match('/^[A-Z]{4}$/', $vendorPrefix)) {
-                    return $vendorPrefix . strtoupper(substr($hexClean, 8));
+                if ($vendorPrefix && preg_match('/^[A-Za-z0-9]{4}$/', $vendorPrefix)) {
+                    return strtoupper($vendorPrefix) . strtoupper(substr($hexClean, 8));
                 }
             }
 
@@ -544,6 +884,9 @@ class HisfocusOltDriver extends BaseOltDriver
             $output = $this->cli->execute("show ont autofind all\r\n", false);
             if (empty($output) || str_contains(strtolower($output), 'incomplete') || str_contains(strtolower($output), 'invalid')) {
                 $output = $this->cli->execute("show onu autofind all\r\n", false);
+            }
+            if (empty($output) || str_contains(strtolower($output), 'invalid')) {
+                $output = $this->cli->execute("show gpon auth-fail\r\n", false);
             }
             $onus = [];
             foreach (explode("\n", (string)$output) as $line) {
