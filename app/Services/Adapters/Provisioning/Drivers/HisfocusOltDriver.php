@@ -14,8 +14,50 @@ class HisfocusOltDriver extends BaseOltDriver
         'sysName'        => '.1.3.6.1.2.1.1.5.0',
         'sysUpTime'      => '.1.3.6.1.2.1.1.3.0',
         'sysDescr'       => '.1.3.6.1.2.1.1.1.0',
-        'sysTemperature' => '.1.3.6.1.4.1.65000.1.1.1.0', // V-SOL / RicherLink temperature
+        'sysTemperature' => '.1.3.6.1.4.1.8888.1.2.1.1.2.26.0', // GBN / GP210 temperature (52 C)
     ];
+
+    /**
+     * Override getSystemInfo untuk membaca spesifikasi asli dari OLT GBN / GP210 (.1.3.6.1.4.1.8888)
+     */
+    public function getSystemInfo(): array
+    {
+        $info = parent::getSystemInfo();
+
+        try {
+            // Model OLT (GP210)
+            $model = $this->snmp->get('.1.3.6.1.4.1.8888.1.2.1.1.2.15.0');
+            if (!empty($model)) {
+                $cleanModel = trim((string)$model, '" ');
+                $cleanModel = preg_replace('/^(STRING|Hex-STRING)\s*:?\s*/i', '', $cleanModel);
+                $info['model'] = trim($cleanModel);
+            }
+
+            // Serial Number OLT
+            $serial = $this->snmp->get('.1.3.6.1.4.1.8888.1.2.1.1.2.19.0');
+            if (!empty($serial)) {
+                $cleanSerial = trim((string)$serial, '" ');
+                $cleanSerial = preg_replace('/^(STRING|Hex-STRING)\s*:?\s*/i', '', $cleanSerial);
+                $info['serial_number'] = trim($cleanSerial);
+            }
+
+            // Firmware Version
+            $fw = $this->snmp->get('.1.3.6.1.4.1.8888.1.2.1.1.2.2.0');
+            if (!empty($fw)) {
+                $cleanFw = trim((string)$fw, '" ');
+                $cleanFw = preg_replace('/^(STRING|Hex-STRING)\s*:?\s*/i', '', $cleanFw);
+                $info['firmware'] = trim($cleanFw);
+            }
+
+            // Suhu (°C)
+            $temp = $this->snmp->get('.1.3.6.1.4.1.8888.1.2.1.1.2.26.0');
+            if ($temp !== null && is_numeric($temp) && (int)$temp > 0 && (int)$temp < 120) {
+                $info['temperature'] = (int)$temp;
+            }
+        } catch (\Throwable) {}
+
+        return $info;
+    }
 
     /**
      * Cache hasil walk SNMP agar tidak melakukan walk berulang untuk setiap port.
@@ -237,11 +279,11 @@ class HisfocusOltDriver extends BaseOltDriver
             return $cliMatched;
         }
 
-        // 4. Fallback: Jika target port adalah port pertama (1) atau port count OLT <= 2 dan semua ONU ada di port 1/flat
-        if ($ponPort === 1 && !empty($this->cachedSnmpOnus)) {
+        // 4. Fallback: Jika target port adalah port pertama (1 atau 5) atau port count OLT <= 2 dan semua ONU ada di port 1/flat
+        if (($ponPort === 1 || $ponPort === 5) && !empty($this->cachedSnmpOnus)) {
             return $this->cachedSnmpOnus;
         }
-        if ($ponPort === 1 && !empty($this->cachedCliOnus)) {
+        if (($ponPort === 1 || $ponPort === 5) && !empty($this->cachedCliOnus)) {
             return $this->cachedCliOnus;
         }
 
@@ -261,6 +303,41 @@ class HisfocusOltDriver extends BaseOltDriver
     protected function collectAllOnusFromSnmp(): array
     {
         $onus = [];
+
+        // --- Sumber 0: GBN / GP210 Enterprise MIB (.1.3.6.1.4.1.8888) ---
+        try {
+            foreach (['.1.3.6.1.4.1.8888.3', '.1.3.6.1.4.1.8888.2', '.1.3.6.1.4.1.8888.1.3', '.1.3.6.1.4.1.8888.4'] as $baseBranch) {
+                $rawWalk = $this->snmp->walk($baseBranch);
+                if (empty($rawWalk)) continue;
+
+                foreach ($rawWalk as $idx => $val) {
+                    $sn = $this->cleanSnmpSerialOrMac($val);
+                    if (!empty($sn) && (preg_match('/^[A-Z]{4}[0-9A-F]{8,12}$/i', $sn) || str_contains($sn, ':'))) {
+                        $parsed = $this->parsePortAndOnuIndex((string)$idx);
+                        $onus[] = [
+                            'pon_port'         => $parsed['port'],
+                            'raw_port_idx'     => $parsed['raw_port'],
+                            'onu_index'        => $parsed['onu'],
+                            'serial_number'    => str_replace(':', '', $sn),
+                            'mac_address'      => str_contains($sn, ':') ? $sn : null,
+                            'rx_power_dbm'     => null,
+                            'tx_power_dbm'     => null,
+                            'snr_db'           => null,
+                            'temperature'      => null,
+                            'firmware_version' => null,
+                            'model'            => null,
+                            'name'             => null,
+                            'status'           => 'online',
+                        ];
+                    }
+                }
+                if (!empty($onus)) {
+                    return $onus;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::debug("Hisfocus GBN 8888 SNMP error: " . $e->getMessage());
+        }
 
         // --- Sumber 1: V-SOL GPON Modern (.1.3.6.1.4.1.65000.1.3.4) ---
         // Sering dipakai pada OLT HISFOCUS GPON (HF-G02 / HF-G04)
@@ -762,14 +839,23 @@ class HisfocusOltDriver extends BaseOltDriver
      */
     protected function filterOnusByPort(array $onus, int $targetPort): array
     {
+        // Normalisasi untuk GPON pizza box OLT (misal gpon0/2/1 dengan IfIndex 5 -> Port 1, gpon0/2/2 dengan IfIndex 6 -> Port 2)
+        $altTarget = match ($targetPort) {
+            5 => 1,
+            6 => 2,
+            1 => 5,
+            2 => 6,
+            default => $targetPort,
+        };
+
         $filtered = [];
         foreach ($onus as $item) {
             $p = (int)($item['pon_port'] ?? 1);
             $rawP = (int)($item['raw_port_idx'] ?? $p);
 
             // Pencocokan fleksibel:
-            // 1. Port sama persis
-            if ($p === $targetPort || $rawP === $targetPort) {
+            // 1. Port sama persis atau cocok dengan target alternatif (IfIndex 5 <-> Port 1, IfIndex 6 <-> Port 2)
+            if ($p === $targetPort || $rawP === $targetPort || $p === $altTarget || $rawP === $altTarget) {
                 $filtered[] = $item;
                 continue;
             }
