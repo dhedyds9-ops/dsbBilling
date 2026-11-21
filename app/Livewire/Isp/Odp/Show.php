@@ -92,13 +92,15 @@ class Show extends AdminComponent
     {
         $this->odp = OdpModel::with([
             'odc.olt',
+            'odc.parentOdc.olt',
+            'odc.parentOdc.splitters',
             'odc.splitters',
             'olt',
             'splitters.ports.target',
             'splitters.ports.customer',
             'branch',
             'reseller',
-            'parent',
+            'parent.odc.olt',
             'children',
         ])->findOrFail($this->odpId);
     }

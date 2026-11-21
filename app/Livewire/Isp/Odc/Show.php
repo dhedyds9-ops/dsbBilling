@@ -72,7 +72,18 @@ class Show extends AdminComponent
         $this->odcId = $id;
 
         $this->odc = OdcModel::withoutGlobalScopes()
-            ->with(['olt.pop', 'pop', 'odps', 'splitters.ports.target', 'branch', 'createdBy'])
+            ->with([
+                'olt.pop',
+                'parentOdc.olt',
+                'parentOdc.splitters',
+                'childOdcs.odps.onus.customerService.customer',
+                'pop',
+                'odps.onus.customerService.customer',
+                'odps.splitters.ports',
+                'splitters.ports.target',
+                'branch',
+                'createdBy',
+            ])
             ->findOrFail($id);
 
         $this->breadcrumbs = [
@@ -476,6 +487,28 @@ class Show extends AdminComponent
             $this->search,
             $this->customerServiceFilter
         );
+    }
+
+    #[Computed]
+    public function connectedOdps()
+    {
+        return \App\Models\ISP\Odp::withoutGlobalScopes()
+            ->where('odc_id', $this->odcId)
+            ->with([
+                'splitters.ports.target',
+                'onus.customerService.customer',
+            ])
+            ->orderByRaw('COALESCE(odc_port, 999) asc')
+            ->get();
+    }
+
+    #[Computed]
+    public function childOdcs()
+    {
+        return OdcModel::withoutGlobalScopes()
+            ->where('parent_odc_id', $this->odcId)
+            ->with(['odps.onus.customerService.customer'])
+            ->get();
     }
 
     #[Computed]

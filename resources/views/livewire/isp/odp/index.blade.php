@@ -160,9 +160,17 @@
                                 <div class="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">{{ $odp->code }}</div>
                             </td>
                             <td class="px-4 py-3.5 whitespace-nowrap">
-                                <div class="text-sm font-medium text-slate-700 dark:text-slate-200">{{ $odp->odc?->name ?? '-' }}</div>
-                                @if($odp->odc?->code)
-                                    <div class="text-xs font-mono text-slate-400">{{ $odp->odc->code }}</div>
+                                @if($odp->parent)
+                                    <div class="text-sm font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                        <span class="material-symbols-outlined notranslate text-xs">subdirectory_arrow_right</span>
+                                        Cascade: {{ $odp->parent->name }}
+                                    </div>
+                                    <div class="text-xs text-slate-400">ODC: {{ $odp->odc?->name ?? '-' }}</div>
+                                @else
+                                    <div class="text-sm font-medium text-slate-700 dark:text-slate-200">{{ $odp->odc?->name ?? '-' }}</div>
+                                    @if($odp->odc?->code)
+                                        <div class="text-xs font-mono text-slate-400">{{ $odp->odc->code }}</div>
+                                    @endif
                                 @endif
                             </td>
                             <td class="px-4 py-3.5 whitespace-nowrap">

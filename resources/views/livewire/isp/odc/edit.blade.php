@@ -61,14 +61,36 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">OLT Induk</label>
-                        <select wire:model.live="olt_id" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
-                            <option value="">-- Pilih OLT --</option>
-                            @foreach($olts as $olt)
-                                <option value="{{ $olt->id }}">{{ $olt->code }} - {{ $olt->name }}</option>
-                            @endforeach
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tipe Uplink ODC <span class="text-red-500">*</span></label>
+                        <select wire:model.live="uplink_type" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer font-medium">
+                            <option value="olt">Uplink Langsung ke OLT (Tier-1 Feeder)</option>
+                            <option value="odc">Uplink ke Induk ODC (Tier-2 Cascade Sub-ODC)</option>
                         </select>
                     </div>
+
+                    @if($uplink_type === 'olt')
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">OLT Induk</label>
+                            <select wire:model.live="olt_id" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
+                                <option value="">-- Pilih OLT --</option>
+                                @foreach($olts as $olt)
+                                    <option value="{{ $olt->id }}">{{ $olt->code }} - {{ $olt->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @else
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Induk ODC (Parent Tier-1) <span class="text-red-500">*</span></label>
+                            <select wire:model.live="parent_odc_id" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
+                                <option value="">-- Pilih Induk ODC --</option>
+                                @foreach($parentOdcs as $p)
+                                    <option value="{{ $p->id }}">{{ $p->code }} - {{ $p->name }}</option>
+                                @endforeach
+                            </select>
+                            <span class="text-xs text-slate-400 mt-1 block">Digunakan untuk topologi cascade ODC (ODC 1:4 ➔ Sub-ODC 1:4 / 1:8). OLT & Cabang otomatis diwarisi dari Induk.</span>
+                            @error('parent_odc_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                    @endif
 
                     <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cabang / Wilayah Kantor <span class="text-xs text-slate-400 font-normal">(Opsional)</span></label>

@@ -135,7 +135,8 @@ class MapApiController extends Controller
                     $model->address = $request->input('address');
                     $model->description = $request->input('description');
                     $model->port_count = $request->input('port_count') ?: 144;
-                    if ($request->has('olt_id')) $model->olt_id = $request->input('olt_id');
+                    if ($request->has('olt_id')) $model->olt_id = $request->input('olt_id') ?: null;
+                    if ($request->has('parent_odc_id')) $model->parent_odc_id = $request->input('parent_odc_id') ?: null;
                 }
                 break;
             case 'odp':

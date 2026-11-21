@@ -285,4 +285,184 @@ class OpticalLinkBudgetTest extends TestCase
         $this->assertGreaterThan(2100, $dist);
         $this->assertLessThan(2300, $dist);
     }
+
+    public function test_cascade_odc_optical_link_budget_calculates_all_three_splitter_tiers_and_subfeeder(): void
+    {
+        // Tier-1: Parent ODC (1:4)
+        $parentOdc = Odc::create([
+            'olt_id' => $this->olt->id,
+            'name' => 'ODC Melati Tier-1',
+            'code' => 'ODC-MLT-T1',
+            'latitude' => -6.2040,
+            'longitude' => 106.8040,
+            'port_count' => 48,
+            'status' => 'active',
+        ]);
+
+        Splitter::create([
+            'odc_id' => $parentOdc->id,
+            'code' => 'SPL-ODC-T1',
+            'name' => 'Splitter Tier-1 (1:4)',
+            'type' => 'plc',
+            'ratio_label' => '1:4',
+            'port_count' => 4,
+            'insertion_loss_db' => 7.20,
+            'status' => 'active',
+        ]);
+
+        // Tier-2: Sub-ODC Cascade (1:4)
+        $subOdc = Odc::create([
+            'parent_odc_id' => $parentOdc->id,
+            'name' => 'ODC Melati Sub Tier-2',
+            'code' => 'ODC-MLT-T2',
+            'latitude' => -6.2080,
+            'longitude' => 106.8080,
+            'port_count' => 24,
+            'status' => 'active',
+        ]);
+
+        Splitter::create([
+            'odc_id' => $subOdc->id,
+            'code' => 'SPL-ODC-T2',
+            'name' => 'Splitter Tier-2 (1:4)',
+            'type' => 'plc',
+            'ratio_label' => '1:4',
+            'port_count' => 4,
+            'insertion_loss_db' => 7.20,
+            'status' => 'active',
+        ]);
+
+        // Tier-3: ODP (1:8) connected to Sub-ODC
+        $cascadeOdp = Odp::create([
+            'odc_id' => $subOdc->id,
+            'olt_id' => $this->olt->id,
+            'name' => 'ODP Sub-Cascade 01',
+            'code' => 'ODP-CSC-01',
+            'latitude' => -6.2120,
+            'longitude' => 106.8120,
+            'port_count' => 8,
+            'status' => 'active',
+        ]);
+
+        Splitter::create([
+            'odp_id' => $cascadeOdp->id,
+            'code' => 'SPL-ODP-CSC',
+            'name' => 'Splitter Tier-3 ODP (1:8)',
+            'type' => 'plc',
+            'ratio_label' => '1:8',
+            'port_count' => 8,
+            'insertion_loss_db' => 10.50,
+            'status' => 'active',
+        ]);
+
+        $onu = Onu::create([
+            'olt_id' => $this->olt->id,
+            'pon_port_id' => $this->ponPort->id,
+            'odp_id' => $cascadeOdp->id,
+            'name' => 'ONU Cascade User',
+            'serial_number' => 'ZTEGC99887766',
+            'rx_power_dbm' => -23.10,
+            'status' => 'active',
+        ]);
+
+        /** @var OpticalLinkBudgetService $service */
+        $service = app(OpticalLinkBudgetService::class);
+        $result = $service->calculateOnuBudget($onu);
+
+        $this->assertTrue($result['success']);
+        $this->assertEquals($subOdc->id, $result['odc']['id']);
+        $this->assertEquals($parentOdc->id, $result['parent_odc']['id']);
+
+        $segmentKeys = array_column($result['segments'], 'key');
+        $this->assertContains('olt_tx', $segmentKeys);
+        $this->assertContains('feeder', $segmentKeys);
+        $this->assertContains('parent_odc_splitter', $segmentKeys);
+        $this->assertContains('sub_feeder', $segmentKeys);
+        $this->assertContains('odc_splitter', $segmentKeys);
+        $this->assertContains('distribution', $segmentKeys);
+        $this->assertContains('odp_splitter', $segmentKeys);
+
+        // Sum of splitters alone = 7.20 + 7.20 + 10.50 = 24.90 dB
+        // Plus cable loss + connectors => total estimated loss around 26-28 dB
+        $this->assertGreaterThan(25.0, $result['metrics']['total_estimated_loss_db']);
+    }
+
+    public function test_sub_odc_auto_inherits_olt_and_branch_from_parent(): void
+    {
+        $parentOdc = Odc::create([
+            'olt_id' => $this->olt->id,
+            'name' => 'Parent ODC Auto Inherit',
+            'code' => 'ODC-AUTO-P',
+            'latitude' => -6.2000,
+            'longitude' => 106.8000,
+            'port_count' => 48,
+            'status' => 'active',
+        ]);
+
+        $subOdc = Odc::create([
+            'parent_odc_id' => $parentOdc->id,
+            'name' => 'Sub ODC Auto Inherit',
+            'code' => 'ODC-AUTO-S',
+            'latitude' => -6.2050,
+            'longitude' => 106.8050,
+            'port_count' => 24,
+            'status' => 'active',
+        ]);
+
+        $this->assertEquals($parentOdc->olt_id, $subOdc->olt_id);
+        $this->assertEquals($parentOdc->id, $subOdc->parentOdc->id);
+        $this->assertTrue($parentOdc->childOdcs->contains($subOdc));
+    }
+
+    public function test_map_api_controller_can_store_and_update_cascade_odc(): void
+    {
+        $parentOdc = Odc::create([
+            'olt_id' => $this->olt->id,
+            'name' => 'Induk ODC API Test',
+            'code' => 'ODC-API-P',
+            'latitude' => -6.2010,
+            'longitude' => 106.8010,
+            'port_count' => 48,
+            'status' => 'active',
+        ]);
+
+        // Test POST create cascade ODC
+        $postData = [
+            'name' => 'Sub-ODC API Test',
+            'code' => 'ODC-API-SUB',
+            'latitude' => -6.2060,
+            'longitude' => 106.8060,
+            'port_count' => 24,
+            'parent_odc_id' => $parentOdc->id,
+            'uplink_type' => 'odc',
+        ];
+
+        $res = $this->actingAs($this->user)->postJson('/map/node/odc', $postData);
+        $res->assertStatus(200);
+        $newId = $res->json('id');
+        $this->assertNotNull($newId);
+
+        $savedSubOdc = Odc::find($newId);
+        $this->assertEquals($parentOdc->id, $savedSubOdc->parent_odc_id);
+        $this->assertEquals($this->olt->id, $savedSubOdc->olt_id);
+
+        // Test PUT update to point back to OLT directly
+        $putData = [
+            'name' => 'Sub-ODC API Test Renamed',
+            'code' => 'ODC-API-SUB',
+            'latitude' => -6.2060,
+            'longitude' => 106.8060,
+            'port_count' => 24,
+            'olt_id' => $this->olt->id,
+            'parent_odc_id' => null,
+            'uplink_type' => 'olt',
+        ];
+
+        $resUpdate = $this->actingAs($this->user)->putJson("/map/node/odc/{$newId}", $putData);
+        $resUpdate->assertStatus(200);
+
+        $savedSubOdc->refresh();
+        $this->assertNull($savedSubOdc->parent_odc_id);
+        $this->assertEquals($this->olt->id, $savedSubOdc->olt_id);
+    }
 }

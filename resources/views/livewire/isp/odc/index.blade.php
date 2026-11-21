@@ -160,8 +160,16 @@
                                 <div class="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">{{ $odc->code }}</div>
                             </td>
                             <td class="px-4 py-3.5 whitespace-nowrap">
-                                <div class="text-sm font-medium text-slate-700 dark:text-slate-200">{{ $odc->olt?->name ?? '-' }}</div>
-                                <div class="text-xs text-slate-500 dark:text-slate-400">POP: {{ $odc->pop?->name ?? '-' }}</div>
+                                @if($odc->parentOdc)
+                                    <div class="text-sm font-medium text-cyan-700 dark:text-cyan-400 flex items-center gap-1">
+                                        <span class="material-symbols-outlined notranslate text-xs">subdirectory_arrow_right</span>
+                                        Induk: {{ $odc->parentOdc->name }}
+                                    </div>
+                                    <div class="text-xs text-slate-500 dark:text-slate-400">OLT: {{ $odc->olt?->name ?? '-' }}</div>
+                                @else
+                                    <div class="text-sm font-medium text-slate-700 dark:text-slate-200">{{ $odc->olt?->name ?? '-' }}</div>
+                                    <div class="text-xs text-slate-500 dark:text-slate-400">POP: {{ $odc->pop?->name ?? '-' }}</div>
+                                @endif
                             </td>
                             <td class="px-4 py-3.5 whitespace-nowrap">
                                 @if($odc->branch)

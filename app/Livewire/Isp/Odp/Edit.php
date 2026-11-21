@@ -20,6 +20,8 @@ class Edit extends AdminComponent
     public $branch_id;
     public $odc_id;
     public $odc_port;
+    public $parent_odp_id;
+    public $uplink_type = 'odc'; // 'odc' or 'odp'
     public $code;
     public $name;
     public $description;
@@ -37,6 +39,31 @@ class Edit extends AdminComponent
     public $croppedPhotoData = null;
     public $existingPhotos = [];
 
+    public function updatedUplinkType($val)
+    {
+        if ($val === 'odc') {
+            $this->parent_odp_id = null;
+        } else {
+            $this->odc_id = null;
+            $this->odc_port = null;
+        }
+    }
+
+    public function updatedParentOdpId($parentId)
+    {
+        if ($parentId) {
+            $parent = OdpModel::find($parentId);
+            if ($parent) {
+                if ($parent->branch_id && empty($this->branch_id)) {
+                    $this->branch_id = $parent->branch_id;
+                }
+                if ($parent->odc_id && empty($this->odc_id)) {
+                    $this->odc_id = $parent->odc_id;
+                }
+            }
+        }
+    }
+
     public function mount($id = null)
     {
         parent::mount();
@@ -48,6 +75,8 @@ class Edit extends AdminComponent
         $this->branch_id = $this->odp->branch_id;
         $this->odc_id = $this->odp->odc_id;
         $this->odc_port = $this->odp->odc_port;
+        $this->parent_odp_id = $this->odp->parent_odp_id;
+        $this->uplink_type = $this->odp->parent_odp_id ? 'odp' : 'odc';
         $this->code = $this->odp->code;
         $this->name = $this->odp->name;
         $this->description = $this->odp->description;
@@ -75,6 +104,7 @@ class Edit extends AdminComponent
     {
         $this->validate([
             'branch_id' => 'nullable|exists:branches,id',
+            'parent_odp_id' => 'nullable|exists:odps,id',
             'code' => 'required|unique:odps,code,' . $this->odpId,
             'name' => 'required|string|max:255',
             'status' => 'required|in:active,inactive',
@@ -98,8 +128,9 @@ class Edit extends AdminComponent
         $service = app(OdpService::class);
         $service->update($this->odp, [
             'branch_id' => $this->branch_id === '' ? null : $this->branch_id,
-            'odc_id' => $this->odc_id,
-            'odc_port' => $this->odc_port ? (int) $this->odc_port : null,
+            'odc_id' => $this->uplink_type === 'odc' ? $this->odc_id : null,
+            'parent_odp_id' => $this->uplink_type === 'odp' ? $this->parent_odp_id : null,
+            'odc_port' => $this->uplink_type === 'odc' && $this->odc_port ? (int) $this->odc_port : null,
             'code' => $this->code,
             'name' => $this->name,
             'description' => $this->description,
@@ -135,7 +166,8 @@ class Edit extends AdminComponent
     public function render()
     {
         $branches = Branch::where('is_active', true)->orderBy('name')->get();
-        $odcs = Odc::active()->get();
-        return view('livewire.isp.odp.edit', compact('branches', 'odcs'));
+        $odcs = Odc::active()->with('parentOdc')->orderBy('name')->get();
+        $parentOdps = OdpModel::active()->where('id', '!=', $this->odpId)->orderBy('name')->get();
+        return view('livewire.isp.odp.edit', compact('branches', 'odcs', 'parentOdps'));
     }
 }

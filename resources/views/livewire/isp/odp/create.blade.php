@@ -61,19 +61,44 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ODC Induk</label>
-                        <select wire:model.live="odc_id" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
-                            <option value="">-- Pilih ODC --</option>
-                            @foreach($odcs as $odc)
-                                <option value="{{ $odc->id }}">{{ $odc->code }} - {{ $odc->name }}</option>
-                            @endforeach
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tipe Uplink ODP <span class="text-red-500">*</span></label>
+                        <select wire:model.live="uplink_type" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer font-medium">
+                            <option value="odc">Uplink ke ODC (Distribusi Standar)</option>
+                            <option value="odp">Uplink ke Induk ODP (Cascade Sub-ODP)</option>
                         </select>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nomor Port ODC Induk <span class="text-xs text-slate-400 font-normal">(1..N)</span></label>
-                        <input type="number" wire:model="odc_port" min="1" placeholder="Contoh: 1, 2, 3..." class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
-                    </div>
+                    @if($uplink_type === 'odc')
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ODC Induk</label>
+                            <select wire:model.live="odc_id" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
+                                <option value="">-- Pilih ODC --</option>
+                                @foreach($odcs as $odc)
+                                    <option value="{{ $odc->id }}">
+                                        {{ $odc->code }} - {{ $odc->name }}
+                                        {{ $odc->parent_odc_id ? '(Sub-ODC ➔ ' . ($odc->parentOdc?->code ?? 'Induk') . ')' : '(ODC Tier-1)' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nomor Port ODC Induk <span class="text-xs text-slate-400 font-normal">(1..N)</span></label>
+                            <input type="number" wire:model="odc_port" min="1" placeholder="Contoh: 1, 2, 3..." class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                        </div>
+                    @else
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Induk ODP (Parent ODP) <span class="text-red-500">*</span></label>
+                            <select wire:model.live="parent_odp_id" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
+                                <option value="">-- Pilih Induk ODP --</option>
+                                @foreach($parentOdps as $p)
+                                    <option value="{{ $p->id }}">{{ $p->code }} - {{ $p->name }}</option>
+                                @endforeach
+                            </select>
+                            <span class="text-xs text-slate-400 mt-1 block">Digunakan untuk topologi cascade ODP. ODC dan cabang otomatis diwarisi dari ODP induk.</span>
+                            @error('parent_odp_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                    @endif
 
                     <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cabang / Wilayah Kantor <span class="text-xs text-slate-400 font-normal">(Opsional)</span></label>

@@ -131,7 +131,7 @@ class User extends Authenticatable
 
     public function customerServices(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
-        return $this->hasMany(\App\Models\CRM\CustomerService::class, 'user_id');
+        return $this->hasMany(\App\Models\Customer\CustomerService::class, 'user_id');
     }
 
     public function isSuperAdmin(): bool

@@ -86,14 +86,21 @@ class OpticalLinkBudgetService
 
         // 4. Hitung Jarak & Loss Tiap Segmen
 
-        // Segmen A: Feeder Cable (OLT/POP ➔ ODC)
+        // Cek apakah ODC terhubung ke Parent ODC (Cascade Tier-1 -> Tier-2)
+        $parentOdc = null;
+        if ($odc && $odc->parent_odc_id) {
+            $parentOdc = $odc->parentOdc ?: Odc::withoutGlobalScopes()->find($odc->parent_odc_id);
+        }
+
+        // Segmen A: Feeder Cable (OLT/POP ➔ ODC Utama / Tier-1)
+        $feederTargetOdc = $parentOdc ?: $odc;
         $feederDistMeters = 1200; // default 1.2 km
-        if ($olt && $odc && $olt->latitude && $olt->longitude && $odc->latitude && $odc->longitude) {
+        if ($olt && $feederTargetOdc && $olt->latitude && $olt->longitude && $feederTargetOdc->latitude && $feederTargetOdc->longitude) {
             $geoDist = self::calculateHaversineDistance(
                 (float) $olt->latitude,
                 (float) $olt->longitude,
-                (float) $odc->latitude,
-                (float) $odc->longitude
+                (float) $feederTargetOdc->latitude,
+                (float) $feederTargetOdc->longitude
             );
             if ($geoDist && $geoDist > 10) {
                 $feederDistMeters = round($geoDist * 1.25); // Tortuosity factor 1.25x jalan
@@ -101,7 +108,37 @@ class OpticalLinkBudgetService
         }
         $feederLoss = round(($feederDistMeters / 1000) * self::FIBER_LOSS_PER_KM + (2 * self::CONNECTOR_PAIR_LOSS), 2);
 
-        // Segmen B: Splitter ODC (Tier 1)
+        // Segmen B1: Splitter Parent ODC (Tier-1) & Sub-Feeder Cable (jika ada cascade)
+        $parentOdcSplitterLoss = 0.0;
+        $parentOdcSplitterRatio = '1:4';
+        $subFeederDistMeters = 0;
+        $subFeederLoss = 0.0;
+
+        if ($parentOdc) {
+            $parentOdcSplitterLoss = 7.2;
+            if ($parentOdc->splitters && $parentOdc->splitters->isNotEmpty()) {
+                $spParent = $parentOdc->splitters->first();
+                $parentOdcSplitterLoss = (float) ($spParent->insertion_loss_db ?: 7.2);
+                $parentOdcSplitterRatio = $spParent->ratio_label ?: ("1:" . ($spParent->ratio ?: 4));
+            }
+
+            // Sub-Feeder Cable (Parent ODC ➔ Sub-ODC)
+            $subFeederDistMeters = 600; // default 600m
+            if ($parentOdc->latitude && $parentOdc->longitude && $odc->latitude && $odc->longitude) {
+                $geoDist = self::calculateHaversineDistance(
+                    (float) $parentOdc->latitude,
+                    (float) $parentOdc->longitude,
+                    (float) $odc->latitude,
+                    (float) $odc->longitude
+                );
+                if ($geoDist && $geoDist > 5) {
+                    $subFeederDistMeters = round($geoDist * 1.25);
+                }
+            }
+            $subFeederLoss = round(($subFeederDistMeters / 1000) * self::FIBER_LOSS_PER_KM + self::CONNECTOR_PAIR_LOSS, 2);
+        }
+
+        // Segmen B2: Splitter ODC (Tier-2 jika cascade, atau Tier-1 jika direct)
         $odcSplitterLoss = 7.2; // default 1:4 (7.2 dB)
         $odcSplitterRatio = '1:4';
         if ($odc && $odc->splitters && $odc->splitters->isNotEmpty()) {
@@ -138,7 +175,7 @@ class OpticalLinkBudgetService
         }
         $distLoss = round(($distDistMeters / 1000) * self::FIBER_LOSS_PER_KM + self::CONNECTOR_PAIR_LOSS, 2);
 
-        // Segmen D: Splitter ODP (Tier 2)
+        // Segmen D: Splitter ODP (Tier-2 jika direct, atau Tier-3 jika cascade)
         $odpSplitterLoss = 10.5; // default 1:8 (10.5 dB)
         $odpSplitterRatio = '1:8';
         if ($odp && $odp->splitters && $odp->splitters->isNotEmpty()) {
@@ -163,7 +200,7 @@ class OpticalLinkBudgetService
         $dropLoss = round(($dropDistMeters / 1000) * self::FIBER_LOSS_PER_KM + (2 * self::CONNECTOR_PAIR_LOSS), 2);
 
         // 5. Total Estimasi Redaman Pasif & Nilai Teoretis
-        $totalEstimatedLoss = round($feederLoss + $odcSplitterLoss + $distLoss + $odpSplitterLoss + $dropLoss, 2);
+        $totalEstimatedLoss = round($feederLoss + $parentOdcSplitterLoss + $subFeederLoss + $odcSplitterLoss + $distLoss + $odpSplitterLoss + $dropLoss, 2);
         $theoreticalRx = round($txOlt - $totalEstimatedLoss, 2);
 
         // 6. Ambil Pengukuran Aktual (Ground Truth)
@@ -204,7 +241,7 @@ class OpticalLinkBudgetService
         $deviation = round($actualRx - $theoreticalRx, 2);
 
         // Jarak Kumulatif GIS vs OLT RTT
-        $totalGisDistMeters = $feederDistMeters + $distDistMeters + $dropDistMeters;
+        $totalGisDistMeters = $feederDistMeters + $subFeederDistMeters + $distDistMeters + $dropDistMeters;
         $rttDistMeters = $onu->distance_meters;
         $distanceDeltaMeters = $rttDistMeters ? ($rttDistMeters - $totalGisDistMeters) : null;
 
@@ -217,6 +254,104 @@ class OpticalLinkBudgetService
             deviation: $deviation,
             distanceDeltaMeters: $distanceDeltaMeters
         );
+
+        $segments = [
+            [
+                'key' => 'olt_tx',
+                'name' => 'OLT Transceiver SFP',
+                'node_type' => 'active_source',
+                'value' => $txOlt,
+                'unit' => 'dBm',
+                'loss_db' => 0.0,
+                'details' => "Port {$ponPort?->name} ({$sfpClass})",
+                'device_name' => $olt?->name,
+            ],
+            [
+                'key' => 'feeder',
+                'name' => $parentOdc ? 'Kabel Feeder (OLT ➔ Induk ODC)' : 'Kabel Feeder (OLT ➔ ODC)',
+                'node_type' => 'cable',
+                'distance_meters' => $feederDistMeters,
+                'loss_db' => $feederLoss,
+                'unit' => 'dB',
+                'details' => "{$feederDistMeters}m @ 0.25dB/km + konektor patch panel",
+                'device_name' => $parentOdc ? "Kabel Feeder {$parentOdc->name}" : "Kabel Feeder {$odc?->name}",
+            ],
+        ];
+
+        if ($parentOdc) {
+            $segments[] = [
+                'key' => 'parent_odc_splitter',
+                'name' => "Splitter Induk ODC Tier-1 ({$parentOdcSplitterRatio})",
+                'node_type' => 'splitter',
+                'ratio' => $parentOdcSplitterRatio,
+                'loss_db' => $parentOdcSplitterLoss,
+                'unit' => 'dB',
+                'details' => "Induk ODC: {$parentOdc->name} ({$parentOdc->code})",
+                'device_name' => $parentOdc->name,
+            ];
+            $segments[] = [
+                'key' => 'sub_feeder',
+                'name' => 'Kabel Sub-Feeder (Induk ODC ➔ Sub-ODC)',
+                'node_type' => 'cable',
+                'distance_meters' => $subFeederDistMeters,
+                'loss_db' => $subFeederLoss,
+                'unit' => 'dB',
+                'details' => "{$subFeederDistMeters}m @ 0.25dB/km + adapter",
+                'device_name' => "Kabel {$parentOdc->name} ➔ {$odc?->name}",
+            ];
+            $segments[] = [
+                'key' => 'odc_splitter',
+                'name' => "Splitter Sub-ODC Tier-2 ({$odcSplitterRatio})",
+                'node_type' => 'splitter',
+                'ratio' => $odcSplitterRatio,
+                'loss_db' => $odcSplitterLoss,
+                'unit' => 'dB',
+                'details' => "Sub-ODC: {$odc?->name} ({$odc?->code})",
+                'device_name' => $odc?->name,
+            ];
+        } else {
+            $segments[] = [
+                'key' => 'odc_splitter',
+                'name' => "Splitter ODC Tier-1 ({$odcSplitterRatio})",
+                'node_type' => 'splitter',
+                'ratio' => $odcSplitterRatio,
+                'loss_db' => $odcSplitterLoss,
+                'unit' => 'dB',
+                'details' => "ODC: {$odc?->name} ({$odc?->code})",
+                'device_name' => $odc?->name,
+            ];
+        }
+
+        $segments[] = [
+            'key' => 'distribution',
+            'name' => $parentOdc ? 'Kabel Distribusi (Sub-ODC ➔ ODP)' : 'Kabel Distribusi (ODC ➔ ODP)',
+            'node_type' => 'cable',
+            'distance_meters' => $distDistMeters,
+            'loss_db' => $distLoss,
+            'unit' => 'dB',
+            'details' => "{$distDistMeters}m @ 0.25dB/km + adapter input ODP",
+            'device_name' => "Kabel Distribusi ke {$odp?->name}",
+        ];
+        $segments[] = [
+            'key' => 'odp_splitter',
+            'name' => $parentOdc ? "Splitter ODP Tier-3 ({$odpSplitterRatio})" : "Splitter ODP Tier-2 ({$odpSplitterRatio})",
+            'node_type' => 'splitter',
+            'ratio' => $odpSplitterRatio,
+            'loss_db' => $odpSplitterLoss,
+            'unit' => 'dB',
+            'details' => "ODP: {$odp?->name} ({$odp?->code})",
+            'device_name' => $odp?->name,
+        ];
+        $segments[] = [
+            'key' => 'drop_cable',
+            'name' => 'Kabel Drop & Roset (ODP ➔ Rumah)',
+            'node_type' => 'drop',
+            'distance_meters' => $dropDistMeters,
+            'loss_db' => $dropLoss,
+            'unit' => 'dB',
+            'details' => "{$dropDistMeters}m + 2x Fast Connector SC/UPC",
+            'device_name' => 'Drop Core Rumah Pelanggan',
+        ];
 
         return [
             'success' => true,
@@ -244,68 +379,22 @@ class OpticalLinkBudgetService
                 'sfp_class' => $sfpClass,
                 'tx_power_dbm' => $txOlt,
             ],
-            'segments' => [
-                [
-                    'key' => 'olt_tx',
-                    'name' => 'OLT Transceiver SFP',
-                    'node_type' => 'active_source',
-                    'value' => $txOlt,
-                    'unit' => 'dBm',
-                    'loss_db' => 0.0,
-                    'details' => "Port {$ponPort?->name} ({$sfpClass})",
-                    'device_name' => $olt?->name,
-                ],
-                [
-                    'key' => 'feeder',
-                    'name' => 'Kabel Feeder (OLT ➔ ODC)',
-                    'node_type' => 'cable',
-                    'distance_meters' => $feederDistMeters,
-                    'loss_db' => $feederLoss,
-                    'unit' => 'dB',
-                    'details' => "{$feederDistMeters}m @ 0.25dB/km + konektor patch panel",
-                    'device_name' => "Kabel Feeder {$odc?->name}",
-                ],
-                [
-                    'key' => 'odc_splitter',
-                    'name' => "Splitter ODC Tier-1 ({$odcSplitterRatio})",
-                    'node_type' => 'splitter',
-                    'ratio' => $odcSplitterRatio,
-                    'loss_db' => $odcSplitterLoss,
-                    'unit' => 'dB',
-                    'details' => "ODC: {$odc?->name} ({$odc?->code})",
-                    'device_name' => $odc?->name,
-                ],
-                [
-                    'key' => 'distribution',
-                    'name' => 'Kabel Distribusi (ODC ➔ ODP)',
-                    'node_type' => 'cable',
-                    'distance_meters' => $distDistMeters,
-                    'loss_db' => $distLoss,
-                    'unit' => 'dB',
-                    'details' => "{$distDistMeters}m @ 0.25dB/km + adapter input ODP",
-                    'device_name' => "Kabel Distribusi ke {$odp?->name}",
-                ],
-                [
-                    'key' => 'odp_splitter',
-                    'name' => "Splitter ODP Tier-2 ({$odpSplitterRatio})",
-                    'node_type' => 'splitter',
-                    'ratio' => $odpSplitterRatio,
-                    'loss_db' => $odpSplitterLoss,
-                    'unit' => 'dB',
-                    'details' => "ODP: {$odp?->name} ({$odp?->code})",
-                    'device_name' => $odp?->name,
-                ],
-                [
-                    'key' => 'drop_cable',
-                    'name' => 'Kabel Drop & Roset (ODP ➔ Rumah)',
-                    'node_type' => 'drop',
-                    'distance_meters' => $dropDistMeters,
-                    'loss_db' => $dropLoss,
-                    'unit' => 'dB',
-                    'details' => "{$dropDistMeters}m + 2x Fast Connector SC/UPC",
-                    'device_name' => 'Drop Core Rumah Pelanggan',
-                ],
-            ],
+            'odc' => $odc ? [
+                'id' => $odc->id,
+                'name' => $odc->name,
+                'code' => $odc->code,
+            ] : null,
+            'parent_odc' => $parentOdc ? [
+                'id' => $parentOdc->id,
+                'name' => $parentOdc->name,
+                'code' => $parentOdc->code,
+            ] : null,
+            'odp' => $odp ? [
+                'id' => $odp->id,
+                'name' => $odp->name,
+                'code' => $odp->code,
+            ] : null,
+            'segments' => $segments,
             'metrics' => [
                 'total_estimated_loss_db' => $totalEstimatedLoss,
                 'theoretical_rx_dbm' => $theoreticalRx,

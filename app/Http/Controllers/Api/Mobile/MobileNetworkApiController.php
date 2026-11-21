@@ -224,7 +224,8 @@ class MobileNetworkApiController extends Controller
         $query = Olt::withoutGlobalScope(\App\Traits\HasBranchScope::class)->whereNull('deleted_at')->where('id', $id);
 
         $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
-        if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
+        $isReseller = ($effectiveResellerId !== null || ($user && ($user->hasRole('reseller') || (method_exists($user, 'isReseller') && $user->isReseller()))));
+        if ($effectiveResellerId || $isReseller) {
             $query->forReseller($user);
         } elseif ($user && !empty($user->branch_id)) {
             $branchName = strtolower($user->branch?->name ?? '');
@@ -299,7 +300,34 @@ class MobileNetworkApiController extends Controller
 
             // 1. Reseller scope isolation: hanya tampilkan modem milik reseller bersangkutan
             if ($isReseller && $effectiveResellerId) {
-                $dbQuery->where('reseller_id', $effectiveResellerId);
+                $resellerSerials = [];
+                try {
+                    $resellerWarehouses = \App\Models\Inventory\Warehouse::where('reseller_id', $effectiveResellerId)->pluck('id')->all();
+                    if (!empty($resellerWarehouses)) {
+                        $wSerials = \App\Models\Inventory\ItemSerial::whereIn('warehouse_id', $resellerWarehouses)
+                            ->where('status', 'available')
+                            ->pluck('serial_number')
+                            ->all();
+                        $resellerSerials = array_merge($resellerSerials, $wSerials);
+                    }
+                } catch (\Throwable) {}
+
+                try {
+                    $cSerials = \App\Models\Inventory\ItemSerial::where('custodian_id', $effectiveResellerId)
+                        ->whereIn('status', ['in_custody_reseller', 'in_custody_technician', 'available'])
+                        ->pluck('serial_number')
+                        ->all();
+                    $resellerSerials = array_merge($resellerSerials, $cSerials);
+                } catch (\Throwable) {}
+
+                $allowedResellerSerials = array_values(array_unique(array_filter(array_map('strtoupper', array_map('trim', $resellerSerials)))));
+
+                $dbQuery->where(function ($rq) use ($effectiveResellerId, $allowedResellerSerials) {
+                    $rq->where('reseller_id', $effectiveResellerId);
+                    if (!empty($allowedResellerSerials)) {
+                        $rq->orWhereIn(\Illuminate\Support\Facades\DB::raw('UPPER(serial_number)'), $allowedResellerSerials);
+                    }
+                });
             } elseif ($user && ($user->isTechnician() || $user->hasRole('technician') || $user->hasRole('teknisi')) && !$user->isSuperAdmin() && !$user->hasRole(['administrator', 'admin', 'manager', 'admin_gudang'])) {
                 // 2. Teknisi Lapangan: HANYA boleh mengambil modem yang berada di tangan/custody teknisi sendiri!
                 // Jangan biarkan teknisi tanpa stok mengambil stok dari gudang pusat.
@@ -428,7 +456,8 @@ class MobileNetworkApiController extends Controller
 
         // Scope by reseller if user is a reseller, otherwise by branch
         $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
-        if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
+        $isReseller = ($effectiveResellerId !== null || ($user && ($user->hasRole('reseller') || (method_exists($user, 'isReseller') && $user->isReseller()))));
+        if ($effectiveResellerId || $isReseller) {
             $query->forReseller($user);
         } elseif ($user && !empty($user->branch_id)) {
             $branchName = strtolower($user->branch?->name ?? '');
@@ -2213,13 +2242,13 @@ class MobileNetworkApiController extends Controller
                 if (empty($p)) return null;
                 $p = trim((string) $p);
                 if (empty($p)) return null;
-                // Preserve Data URIs intact (do not prepend /storage/)
-                if (str_starts_with($p, 'data:image/') || str_starts_with($p, 'data:application/')) {
-                    return $p;
+                // Preserve Data URIs intact: extract clean data:image/ or data:application/ even if prefixed
+                $dataPos = strpos($p, 'data:image/');
+                if ($dataPos === false) {
+                    $dataPos = strpos($p, 'data:application/');
                 }
-                // Strip broken legacy /storage/data: or storage/data: prefixes
-                if (str_starts_with($p, '/storage/data:') || str_starts_with($p, 'storage/data:')) {
-                    return preg_replace('#^/?storage/#', '', $p);
+                if ($dataPos !== false) {
+                    return substr($p, $dataPos);
                 }
                 // If already a full HTTP(S) URL, keep it
                 if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) {

@@ -219,13 +219,30 @@
                         <input type="number" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odc_port_count" name="port_count" value="48" required>
                     </div>
                     <div class="mb-3">
-                        <label for="odc_olt" class="form-label">{{ __('OLT') }}</label>
-                        <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" id="odc_olt" name="olt_id" required>
+                        <label for="odc_uplink_type" class="form-label font-semibold">{{ __('Tipe Uplink ODC') }}</label>
+                        <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="odc_uplink_type" name="uplink_type" onchange="toggleOdcUplinkType()">
+                            <option value="olt">{{ __('Uplink Langsung ke OLT (Tier-1 Feeder)') }}</option>
+                            <option value="odc">{{ __('Uplink ke Induk ODC (Tier-2 Cascade Sub-ODC)') }}</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="odc_olt_group">
+                        <label for="odc_olt" class="form-label font-semibold">{{ __('OLT') }}</label>
+                        <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="odc_olt" name="olt_id">
                             <option value="">{{ __('Pilih OLT') }}</option>
                             @foreach($oltModels ?? [] as $olt)
                                 <option value="{{ $olt->id }}">{{ $olt->name }}</option>
                             @endforeach
                         </select>
+                    </div>
+                    <div class="mb-3 d-none" id="odc_parent_group">
+                        <label for="odc_parent_odc" class="form-label font-semibold">{{ __('Induk ODC (Parent ODC)') }}</label>
+                        <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="odc_parent_odc" name="parent_odc_id">
+                            <option value="">{{ __('Pilih Induk ODC') }}</option>
+                            @foreach($odcModels ?? [] as $parentCandidate)
+                                <option value="{{ $parentCandidate->id }}">{{ $parentCandidate->name }} ({{ $parentCandidate->code }})</option>
+                            @endforeach
+                        </select>
+                        <small class="text-xs text-slate-400">{{ __('Gunakan untuk topologi ODC cascade (ODC 1:4 ➔ ODC 1:4 / 1:8)') }}</small>
                     </div>
                     <div class="mb-3">
                         <label for="odc_description" class="form-label">{{ __('Deskripsi') }}</label>
@@ -2204,16 +2221,25 @@
                 editLayer.clearLayers();
             }
 
-            // OLT -> ODC
+            // OLT -> ODC & Parent ODC -> Child ODC (Cascade)
             odcs.forEach(function(odc) {
                 if (odc.latitude && odc.longitude) {
-                    var uplinkOlt = olts.find(o => o.id == odc.olt_id);
-                    if (uplinkOlt && uplinkOlt.latitude && uplinkOlt.longitude) {
+                    var uplinkNode = null;
+                    var uplinkType = 'olt';
+                    if (odc.parent_odc_id) {
+                        uplinkNode = odcs.find(o => o.id == odc.parent_odc_id);
+                        uplinkType = 'odc';
+                    } else if (odc.olt_id) {
+                        uplinkNode = olts.find(o => o.id == odc.olt_id);
+                        uplinkType = 'olt';
+                    }
+
+                    if (uplinkNode && uplinkNode.latitude && uplinkNode.longitude) {
                         var colorKey = (odc.color || '').toUpperCase();
-                        var lineColor = colorMap[colorKey] || odc.color || '#6f42c1';
+                        var lineColor = colorMap[colorKey] || odc.color || (uplinkType === 'odc' ? '#00e5ff' : '#6f42c1');
                         
-                        var key = getConnectionKey('olt', uplinkOlt.id, 'odc', odc.id);
-                        var pathPoints = [[uplinkOlt.latitude, uplinkOlt.longitude]];
+                        var key = getConnectionKey(uplinkType, uplinkNode.id, 'odc', odc.id);
+                        var pathPoints = [[uplinkNode.latitude, uplinkNode.longitude]];
                         (waypoints[key] || []).forEach(function(p){ pathPoints.push([p.lat, p.lng]); });
                         pathPoints.push([odc.latitude, odc.longitude]);
 
@@ -2750,7 +2776,20 @@
             if (odc.latitude && odc.longitude) {
                 var oltName = 'N/A';
                 var odcToServerDistance = '-';
-                if (odc.olt_id) {
+                if (odc.parent_odc_id) {
+                    var parentOdc = odcs.find(o => o.id == odc.parent_odc_id);
+                    if (parentOdc) {
+                        oltName = 'Induk ODC: ' + parentOdc.name;
+                        var odcLineKey = getConnectionKey('odc', parentOdc.id, 'odc', odc.id);
+                        odcToServerDistance = formatDistance(getLineDistanceMeters(
+                            parentOdc.latitude,
+                            parentOdc.longitude,
+                            odc.latitude,
+                            odc.longitude,
+                            odcLineKey
+                        ));
+                    }
+                } else if (odc.olt_id) {
                     var olt = olts.find(o => o.id == odc.olt_id);
                     if (olt) {
                         oltName = olt.name;
@@ -3637,6 +3676,9 @@
                 document.getElementById('odc_id').value = ''; // Clear ID for new
                 document.getElementById('odc_lat').value = lat;
                 document.getElementById('odc_lng').value = lng;
+                safeSetVal('odc_uplink_type', 'olt');
+                safeSetVal('odc_parent_odc', '');
+                if (typeof toggleOdcUplinkType === 'function') toggleOdcUplinkType();
                 var odcFullBtn = document.getElementById('odcFullEditBtn');
                 if (odcFullBtn) odcFullBtn.classList.add('d-none');
                 document.getElementById('odcModalLabel').innerText = '{{ __('Tambah ODC') }}'; // Set title
@@ -3762,6 +3804,20 @@
             }
         }
 
+        window.toggleOdcUplinkType = function() {
+            var el = document.getElementById('odc_uplink_type');
+            var uplinkType = el ? el.value : 'olt';
+            var oltGroup = document.getElementById('odc_olt_group');
+            var parentGroup = document.getElementById('odc_parent_group');
+            if (uplinkType === 'odc') {
+                if (oltGroup) oltGroup.classList.add('d-none');
+                if (parentGroup) parentGroup.classList.remove('d-none');
+            } else {
+                if (oltGroup) oltGroup.classList.remove('d-none');
+                if (parentGroup) parentGroup.classList.add('d-none');
+            }
+        };
+
         window.editOdc = function(id) {
             var odc = odcs.find(o => o.id == id);
             if (odc) {
@@ -3771,6 +3827,13 @@
                 safeSetVal('odc_lng', odc.longitude);
                 safeSetVal('odc_port_count', odc.port_count || odc.capacity || 48);
                 safeSetVal('odc_olt', odc.olt_id || '');
+                safeSetVal('odc_parent_odc', odc.parent_odc_id || '');
+                if (odc.parent_odc_id) {
+                    safeSetVal('odc_uplink_type', 'odc');
+                } else {
+                    safeSetVal('odc_uplink_type', 'olt');
+                }
+                toggleOdcUplinkType();
                 safeSetVal('odc_description', odc.description || '');
                 safeSetVal('odc_address', odc.address || odc.area || '');
                 safeSetVal('odc_code', odc.code || odc.cable_no || '');
@@ -4275,6 +4338,11 @@
             var method = id ? 'PUT' : 'POST';
             var formData = new FormData(document.getElementById('odcForm'));
             var data = Object.fromEntries(formData.entries());
+            if (data.uplink_type === 'odc') {
+                data.olt_id = '';
+            } else {
+                data.parent_odc_id = '';
+            }
 
             fetch(url, {
                 method: method,

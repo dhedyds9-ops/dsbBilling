@@ -15,6 +15,17 @@ class Odc extends Model
     protected static function booted()
     {
         static::saving(function ($model) {
+            if (!empty($model->parent_odc_id)) {
+                $parent = Odc::withoutGlobalScopes()->find($model->parent_odc_id);
+                if ($parent) {
+                    if (empty($model->olt_id)) {
+                        $model->olt_id = $parent->olt_id;
+                    }
+                    if (empty($model->branch_id)) {
+                        $model->branch_id = $parent->branch_id;
+                    }
+                }
+            }
             if (empty($model->branch_id) && !empty($model->olt_id)) {
                 $model->branch_id = Olt::withoutGlobalScopes()->where('id', $model->olt_id)->value('branch_id');
             }
@@ -41,6 +52,7 @@ class Odc extends Model
 
     protected $fillable = [
         'olt_id',
+        'parent_odc_id',
         'pop_id',
         'code',
         'name',
@@ -133,6 +145,16 @@ class Odc extends Model
     public function olt()
     {
         return $this->belongsTo(Olt::class);
+    }
+
+    public function parentOdc()
+    {
+        return $this->belongsTo(Odc::class, 'parent_odc_id');
+    }
+
+    public function childOdcs()
+    {
+        return $this->hasMany(Odc::class, 'parent_odc_id');
     }
 
     public function pop()

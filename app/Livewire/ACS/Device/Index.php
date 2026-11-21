@@ -600,13 +600,19 @@ class Index extends BaseACSComponent
         if ($pppoeUsername) {
             $customerService = \App\Models\Customer\CustomerService::where('username', $pppoeUsername)->first();
             if ($customerService) {
-                $acsDeviceParams['customer_service_id'] = $customerService->id;
-                if (!empty($customerService->olt_id)) {
-                    $acsDeviceParams['olt_id'] = $customerService->olt_id;
-                }
-                
                 // Cari Onu
                 $onu = $findOnu($serialNumber, $mac);
+
+                // Jika ONU ini sudah ada di database dan secara eksplisit kaitan pelanggan telah dilepas oleh admin,
+                // jangan otomatis mengaitkan kembali ke pelanggan lama hanya karena sisa konfigurasi WAN di modem.
+                $isExplicitlyUnlinked = $onu && empty($onu->customer_id) && (!$onu->relationLoaded('customerService') || !$onu->customerService);
+
+                if (!$isExplicitlyUnlinked) {
+                    $acsDeviceParams['customer_service_id'] = $customerService->id;
+                    if (!empty($customerService->olt_id)) {
+                        $acsDeviceParams['olt_id'] = $customerService->olt_id;
+                    }
+                }
 
                 // Auto-create Onu jika belum terdaftar di tabel onus namun customer dan OLT diketahui
                 if (!$onu && !empty($serialNumber) && !empty($acsDeviceParams['olt_id'])) {

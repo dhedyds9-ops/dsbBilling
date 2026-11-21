@@ -64,6 +64,7 @@ class GisMap extends Component
     // Parent selector fields
     public ?string $nodeFormOltId       = null;
     public ?string $nodeFormOdcId       = null;
+    public ?string $nodeFormParentOdcId = null;
     public ?string $nodeFormOdpId       = null;
     public ?string $nodeFormParentOdpId = null;
     
@@ -170,6 +171,7 @@ class GisMap extends Component
                     return [
                         'id' => $odc->id,
                         'olt_id' => $odc->olt_id,
+                        'parent_odc_id' => $odc->parent_odc_id,
                         'name' => $odc->name,
                         'code' => $odc->code,
                         'lat' => (float) $odc->latitude,
@@ -314,6 +316,7 @@ class GisMap extends Component
         // Reset parent
         $this->nodeFormOltId = null;
         $this->nodeFormOdcId = null;
+        $this->nodeFormParentOdcId = null;
         $this->nodeFormOdpId = null;
         $this->nodeFormParentOdpId = null;
 
@@ -330,6 +333,9 @@ class GisMap extends Component
         if ($original) {
             $this->nodeFormOltId = (string) ($original->olt_id ?? '');
             $this->nodeFormOdcId = (string) ($original->odc_id ?? '');
+            if ($nodeType === 'odc') {
+                $this->nodeFormParentOdcId = (string) ($original->parent_odc_id ?? '');
+            }
             if ($nodeType === 'odp') {
                 $this->nodeFormParentOdpId = (string) ($original->parent_odp_id ?? '');
             }
@@ -503,6 +509,8 @@ class GisMap extends Component
             'name' => $odc->name,
             'code' => $odc->code,
             'status' => $odc->status,
+            'parent_odc_id' => $odc->parent_odc_id,
+            'parent_odc_name' => $odc->parentOdc?->name,
             'capacity' => [
                 'total' => $total,
                 'used' => $used,
@@ -771,6 +779,7 @@ class GisMap extends Component
         $this->nodeFormStatus  = 'active';
         $this->nodeFormOltId       = null;
         $this->nodeFormOdcId       = null;
+        $this->nodeFormParentOdcId = null;
         $this->nodeFormOdpId       = null;
         $this->nodeFormParentOdpId = null;
         $this->nodeFormMessage = null;
@@ -818,6 +827,7 @@ class GisMap extends Component
             'nodeFormStatus'  => 'required|in:active,inactive,suspended,terminated',
             'nodeFormOltId'       => 'nullable|exists:olts,id',
             'nodeFormOdcId'       => 'nullable|exists:odcs,id',
+            'nodeFormParentOdcId' => 'nullable|exists:odcs,id',
             'nodeFormOdpId'       => 'nullable|exists:odps,id',
             'nodeFormParentOdpId' => 'nullable|exists:odps,id',
         ];
@@ -857,6 +867,9 @@ class GisMap extends Component
 
         if ($this->nodeFormOltId)   $common['olt_id']   = $this->nodeFormOltId;
         if ($this->nodeFormOdcId)   $common['odc_id']   = $this->nodeFormOdcId;
+        if ($this->nodeFormType === 'odc') {
+            $common['parent_odc_id'] = $this->nodeFormParentOdcId ?: null;
+        }
         if ($this->nodeFormType === 'odp' && $this->nodeFormParentOdpId) $common['parent_odp_id'] = $this->nodeFormParentOdpId;
         if ($this->nodeFormType === 'htb' && $this->nodeFormOdpId)       $common['odp_id']         = $this->nodeFormOdpId;
         

@@ -567,9 +567,36 @@ class Wizard extends Component
 
         // Brownfield / Offline Inventory Fallback jika belum ada ont unconfigured realtime
         if (empty($discovered)) {
+            $user = auth()->user();
             $dbQuery = \App\Models\ISP\Onu::withoutGlobalScopes()
                 ->where('olt_id', $olt->id)
                 ->whereIn('provision_status', ['unprovisioned', 'pending', 'new']);
+
+            // Jika teknisi lapangan, HANYA boleh menampilkan modem yang ada di custody/tangan teknisi
+            if ($user && ($user->isTechnician() || $user->hasRole('technician') || $user->hasRole('teknisi')) && !$user->isSuperAdmin() && !$user->hasRole(['administrator', 'admin', 'manager', 'admin_gudang'])) {
+                $techSerials = [];
+                try {
+                    $itemSerials = \App\Models\Inventory\ItemSerial::where('custodian_id', $user->id)
+                        ->where('status', 'in_custody_technician')
+                        ->pluck('serial_number')
+                        ->toArray();
+                    $custodySerials = \App\Models\Inventory\InventoryCustody::where('holder_id', $user->id)
+                        ->whereRaw('(quantity - used_quantity - returned_quantity) > 0')
+                        ->whereNotNull('item_serial_id')
+                        ->with('itemSerial')
+                        ->get()
+                        ->map(fn($c) => $c->itemSerial?->serial_number)
+                        ->filter()
+                        ->toArray();
+                    $techSerials = array_values(array_unique(array_filter(array_map('strtoupper', array_map('trim', array_merge($itemSerials, $custodySerials))))));
+                } catch (\Throwable $e) {}
+
+                if (!empty($techSerials)) {
+                    $dbQuery->whereIn(\Illuminate\Support\Facades\DB::raw('UPPER(serial_number)'), $techSerials);
+                } else {
+                    $dbQuery->whereRaw('1 = 0');
+                }
+            }
             
             $dbOnus = $dbQuery->limit(10)->get();
             foreach ($dbOnus as $dbOnu) {

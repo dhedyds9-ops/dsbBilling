@@ -16,6 +16,20 @@ class Odp extends Model
     protected static function booted()
     {
         static::saving(function ($model) {
+            if (!empty($model->parent_odp_id)) {
+                $parent = Odp::withoutGlobalScopes()->find($model->parent_odp_id);
+                if ($parent) {
+                    if (empty($model->odc_id)) {
+                        $model->odc_id = $parent->odc_id;
+                    }
+                    if (empty($model->olt_id)) {
+                        $model->olt_id = $parent->olt_id;
+                    }
+                    if (empty($model->branch_id)) {
+                        $model->branch_id = $parent->branch_id;
+                    }
+                }
+            }
             if (empty($model->branch_id)) {
                 if (!empty($model->odc_id)) {
                     $model->branch_id = Odc::withoutGlobalScopes()->where('id', $model->odc_id)->value('branch_id');

@@ -170,9 +170,9 @@ class MobileAcsProxyController extends Controller
                 })->first();
         }
 
-        // Must exist in registered database records, or exist in GenieACS for diagnostic operations
+        // Must exist in registered database records, or exist in GenieACS for diagnostic/provisioning operations
         if (!$dbDevice && !$dbOnu) {
-            $isDiagnosticOp = in_array($operation, ['summon', 'read', 'ping', 'tasks.view']);
+            $isDiagnosticOp = in_array($operation, ['summon', 'read', 'ping', 'tasks.view', 'wifi.update', 'wan.update']);
             if (!$isDiagnosticOp) {
                 return response()->json([
                     'success' => false,
@@ -254,9 +254,7 @@ class MobileAcsProxyController extends Controller
                 }
             }
 
-            // Izinkan operasi diagnostik/monitoring (summon, read, ping, tasks.view) pada perangkat GenieACS unassigned
-            // asalkan perangkat belum diklaim/terdaftar oleh reseller lain.
-            $isDiagnosticOp = in_array($operation, ['summon', 'read', 'ping', 'tasks.view']);
+            // Cek kepemilikan oleh reseller lain
             $isOwnedByOtherReseller = false;
             if ($cs) {
                 $csResellerId = $cs->reseller_id;
@@ -271,10 +269,20 @@ class MobileAcsProxyController extends Controller
                 $isOwnedByOtherReseller = true;
             }
 
-            if (!$isOwned && ($isOwnedByOtherReseller || !$isDiagnosticOp)) {
+            if ($isOwnedByOtherReseller) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Akses ditolak: Perangkat ini berada di luar cakupan kepemilikan akun Reseller Anda.',
+                    'message' => 'Akses ditolak: Perangkat ini terdaftar pada pelanggan Mitra Reseller lain.',
+                ], 403);
+            }
+
+            // Paritas dengan Web Portal Reseller (ACSDevice::scopeForReseller):
+            // Perangkat unassigned (belum terikat pelanggan manapun / baru colok di OLT) diizinkan diakses
+            // untuk keperluan pembacaan detail, diagnosa, dan pengaturan aktivasi PSB.
+            if (!$isOwned && $operation === 'delete') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak: Anda hanya dapat menghapus perangkat milik akun Reseller Anda.',
                 ], 403);
             }
         }

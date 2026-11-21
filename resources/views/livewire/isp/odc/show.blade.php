@@ -1,4 +1,4 @@
-<div class="space-y-5 pb-16" x-data="odcTopologyManager(@js($this->topologyData))">
+<div class="space-y-5 pb-16">
     {{-- ============================================================
          FLASH ALERTS
          ============================================================ --}}
@@ -57,7 +57,13 @@
                 </div>
                 <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
                     <span>{{ $odc->address ?: 'Alamat belum diisi' }}</span>
-                    @if($odc->olt)
+                    @if($odc->parentOdc)
+                        <span class="text-slate-400">·</span>
+                        <a href="{{ route('isp.odcs.show', $odc->parent_odc_id) }}" class="text-cyan-600 dark:text-cyan-400 font-medium hover:underline inline-flex items-center gap-1">
+                            <span class="material-symbols-outlined notranslate" style="font-size:14px">subdirectory_arrow_right</span>
+                            Induk ODC: {{ $odc->parentOdc->name }}
+                        </a>
+                    @elseif($odc->olt)
                         <span class="text-slate-400">·</span>
                         <span class="text-cyan-600 dark:text-cyan-400 font-medium">Uplink: {{ $odc->olt->name }}</span>
                     @endif
@@ -485,63 +491,361 @@
 
                 {{-- Interactive Canvas Controls --}}
                 <div class="flex items-center gap-1.5 flex-wrap">
-                    <button type="button" @click="zoomIn()" title="Perbesar"
-                            class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60">
+                    <button type="button" id="btnOdcZoomIn" title="Perbesar"
+                            class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 cursor-pointer">
                         <span class="material-symbols-outlined text-sm">zoom_in</span>
                     </button>
-                    <button type="button" @click="zoomOut()" title="Perkecil"
-                            class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60">
+                    <button type="button" id="btnOdcZoomOut" title="Perkecil"
+                            class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 cursor-pointer">
                         <span class="material-symbols-outlined text-sm">zoom_out</span>
                     </button>
-                    <button type="button" @click="resetScale()" title="Skala Normal 1:1"
-                            class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 font-mono text-xs font-bold">
+                    <button type="button" id="btnOdcReset" title="Skala Normal 1:1"
+                            class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 font-mono text-xs font-bold cursor-pointer">
                         1:1
                     </button>
-                    <button type="button" @click="fitViewSmart()" title="Paskan Layar (Fit to Screen)"
-                            class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 text-xs font-semibold flex items-center gap-1">
+                    <button type="button" id="btnOdcFit" title="Paskan Layar (Fit to Screen)"
+                            class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 text-xs font-semibold flex items-center gap-1 cursor-pointer">
                         <span class="material-symbols-outlined text-sm">fit_screen</span>
                         Fit
                     </button>
-                    <button type="button" @click="toggleFullscreen()" title="Layar Penuh"
-                            class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60">
-                        <span class="material-symbols-outlined text-sm" x-text="isFullscreen ? 'fullscreen_exit' : 'fullscreen'">fullscreen</span>
+                    <button type="button" id="btnOdcFullscreen" title="Layar Penuh"
+                            class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">fullscreen</span>
                     </button>
                 </div>
             </div>
 
-            {{-- Topology Canvas Container --}}
+            {{-- SVG TOPOLOGY CANVAS (INTELLIGENT FIBER TREE) --}}
+            @php
+                $parentOdc = $odc->parentOdc;
+                $isCascadeOdc = !empty($parentOdc);
+                $olt = $odc->olt ?? $parentOdc?->olt;
+                $oltName = $olt ? $olt->name : 'OLT GPON Core';
+                $oltIp = $olt ? ($olt->ip_address ?: 'PON Uplink') : 'PON Uplink';
+                $oltModel = $olt?->model ?: 'OLT Chassis';
+
+                $odpList = $this->connectedOdps;
+                $childOdcList = $this->childOdcs;
+
+                // Hitung posisi vertikal secara dinamis
+                $odpLayouts = [];
+                $currentY = 40;
+                $rowSpacing = 24;
+
+                foreach ($odpList as $odpItem) {
+                    $onuList = $odpItem->onus;
+                    $onuCount = $onuList->count();
+                    $boxHeight = max(110, $onuCount > 0 ? ($onuCount * 64 + 16) : 110);
+                    $odpCenterY = $currentY + ($boxHeight / 2);
+
+                    $odpLayouts[] = [
+                        'type' => 'odp',
+                        'model' => $odpItem,
+                        'topY' => $currentY,
+                        'height' => $boxHeight,
+                        'centerY' => $odpCenterY,
+                        'onus' => $onuList,
+                    ];
+
+                    $currentY += $boxHeight + $rowSpacing;
+                }
+
+                foreach ($childOdcList as $childOdcItem) {
+                    $boxHeight = 110;
+                    $centerY = $currentY + ($boxHeight / 2);
+                    $odpLayouts[] = [
+                        'type' => 'sub_odc',
+                        'model' => $childOdcItem,
+                        'topY' => $currentY,
+                        'height' => $boxHeight,
+                        'centerY' => $centerY,
+                        'onus' => collect(),
+                    ];
+                    $currentY += $boxHeight + $rowSpacing;
+                }
+
+                $totalCanvasHeight = max(620, $currentY + 40);
+
+                if (!empty($odpLayouts)) {
+                    $firstY = $odpLayouts[0]['centerY'];
+                    $lastY = $odpLayouts[count($odpLayouts) - 1]['centerY'];
+                    $targetOdcCenterY = ($firstY + $lastY) / 2;
+                } else {
+                    $targetOdcCenterY = 300;
+                }
+
+                // Koordinat Horizontal X
+                $xOlt = 30;
+                $xTier1 = $isCascadeOdc ? 260 : null;
+                $xTargetOdc = $isCascadeOdc ? 500 : 280;
+                $xOdp = $isCascadeOdc ? 780 : 560;
+                $xOnu = $isCascadeOdc ? 1050 : 830;
+
+                // Redaman ODC Splitter
+                $odcCap = $odc->port_count ?: 48;
+                $odcSplitterRatio = $odcCap > 16 ? '1:8' : ($odcCap > 8 ? '1:4' : '1:2');
+                $odcLoss = $odcCap > 16 ? '10.5' : ($odcCap > 8 ? '7.2' : '3.8');
+
+                $qSearch = trim(strtolower($traceQuery));
+            @endphp
+
             <div id="odc-topology-wrapper" class="relative w-full rounded-2xl overflow-hidden border border-slate-800 bg-[#070b14] shadow-xl">
-                {{-- Canvas Area (Min-Height 620px) --}}
-                <div id="odc-vis-network-container"
-                     wire:ignore
-                     x-ref="visContainer"
-                     class="w-full h-[620px] cursor-grab active:cursor-grabbing">
+                <div id="odcTopologyContainer"
+                     class="w-full h-[620px] cursor-grab active:cursor-grabbing select-none overflow-hidden relative">
+                    <svg id="odcTopologySvg" class="w-full h-full" xmlns="http://www.w3.org/2000/svg" style="min-height: 620px;">
+                        <defs>
+                            <linearGradient id="gradOdcOlt" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#1e3a8a"/>
+                                <stop offset="100%" stop-color="#3b82f6"/>
+                            </linearGradient>
+                            <linearGradient id="gradOdcParent" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#312e81"/>
+                                <stop offset="100%" stop-color="#6366f1"/>
+                            </linearGradient>
+                            <linearGradient id="gradOdcTarget" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#78350f"/>
+                                <stop offset="100%" stop-color="#f59e0b"/>
+                            </linearGradient>
+                            <linearGradient id="gradOdcOdp" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#064e3b"/>
+                                <stop offset="100%" stop-color="#10b981"/>
+                            </linearGradient>
+                            <linearGradient id="gradOdcSub" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#4c1d95"/>
+                                <stop offset="100%" stop-color="#8b5cf6"/>
+                            </linearGradient>
+                            <filter id="odcNodeShadow" x="-20%" y="-20%" width="140%" height="140%">
+                                <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.6"/>
+                            </filter>
+                            <filter id="glowFilter" x="-30%" y="-30%" width="160%" height="160%">
+                                <feGaussianBlur stdDeviation="4" result="blur"/>
+                                <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                            </filter>
+                        </defs>
+
+                        <g id="odcTopologyViewport" transform="matrix(1 0 0 1 30 30)">
+                            {{-- 1. OLT CORE NODE --}}
+                            <g id="nodeOlt" transform="translate({{ $xOlt }}, {{ $targetOdcCenterY - 48 }})"
+                               class="cursor-pointer" filter="url(#odcNodeShadow)"
+                               @if($olt) onclick="window.open('/isp/olts/{{ $olt->id }}', '_blank')" @endif>
+                                <rect width="180" height="96" rx="14" fill="url(#gradOdcOlt)" stroke="#60a5fa" stroke-width="2"/>
+                                <rect x="12" y="12" width="70" height="18" rx="5" fill="#1e40af"/>
+                                <text x="18" y="25" fill="#bfdbfe" font-size="9" font-weight="bold" font-family="sans-serif">OLT GPON</text>
+                                <text x="12" y="52" fill="#ffffff" font-size="13" font-weight="bold" font-family="sans-serif">{{ Str::limit($oltName, 16) }}</text>
+                                <text x="12" y="70" fill="#bfdbfe" font-size="10" font-family="monospace">IP: {{ $oltIp }}</text>
+                                <text x="12" y="86" fill="#93c5fd" font-size="9" font-family="sans-serif">SFP Tx: +8.0 dBm (C++)</text>
+                            </g>
+
+                            @if($isCascadeOdc)
+                                {{-- LINK OLT -> PARENT ODC --}}
+                                <path d="M {{ $xOlt + 180 }} {{ $targetOdcCenterY }} L {{ $xTier1 }} {{ $targetOdcCenterY }}"
+                                      stroke="#3b82f6" stroke-width="3" stroke-dasharray="6,4" fill="none"/>
+                                <circle cx="{{ ($xOlt + 180 + $xTier1) / 2 }}" cy="{{ $targetOdcCenterY }}" r="4" fill="#60a5fa"/>
+                                <text x="{{ ($xOlt + 180 + $xTier1) / 2 - 25 }}" y="{{ $targetOdcCenterY - 10 }}" fill="#94a3b8" font-size="9" font-family="sans-serif">Feeder FO</text>
+
+                                {{-- NODE INDUK ODC (TIER-1) --}}
+                                <g id="nodeParentOdc" transform="translate({{ $xTier1 }}, {{ $targetOdcCenterY - 48 }})"
+                                   class="cursor-pointer" filter="url(#odcNodeShadow)"
+                                   onclick="window.open('/isp/odcs/{{ $parentOdc->id }}', '_blank')">
+                                    <rect width="180" height="96" rx="14" fill="url(#gradOdcParent)" stroke="#a5b4fc" stroke-width="2"/>
+                                    <rect x="12" y="12" width="85" height="18" rx="5" fill="#3730a3"/>
+                                    <text x="18" y="25" fill="#e0e7ff" font-size="9" font-weight="bold" font-family="sans-serif">INDUK ODC (T-1)</text>
+                                    <text x="12" y="52" fill="#ffffff" font-size="13" font-weight="bold" font-family="sans-serif">{{ Str::limit($parentOdc->name, 16) }}</text>
+                                    <text x="12" y="70" fill="#c7d2fe" font-size="10" font-family="monospace">{{ $parentOdc->code }}</text>
+                                    <text x="12" y="86" fill="#e0e7ff" font-size="9" font-family="sans-serif">Splitter 1:4 (-7.2 dB)</text>
+                                </g>
+
+                                {{-- LINK INDUK ODC -> SUB-ODC --}}
+                                <path d="M {{ $xTier1 + 180 }} {{ $targetOdcCenterY }} L {{ $xTargetOdc }} {{ $targetOdcCenterY }}"
+                                      stroke="#00e5ff" stroke-width="3" fill="none"/>
+                                <circle cx="{{ ($xTier1 + 180 + $xTargetOdc) / 2 }}" cy="{{ $targetOdcCenterY }}" r="4" fill="#00e5ff"/>
+                                <text x="{{ ($xTier1 + 180 + $xTargetOdc) / 2 - 28 }}" y="{{ $targetOdcCenterY - 10 }}" fill="#67e8f9" font-size="9" font-family="sans-serif">Sub-Feeder</text>
+                            @else
+                                {{-- STANDARD: LINK OLT -> ODC --}}
+                                <path d="M {{ $xOlt + 180 }} {{ $targetOdcCenterY }} L {{ $xTargetOdc }} {{ $targetOdcCenterY }}"
+                                      stroke="#3b82f6" stroke-width="3" stroke-dasharray="6,4" fill="none"/>
+                                <circle cx="{{ ($xOlt + 180 + $xTargetOdc) / 2 }}" cy="{{ $targetOdcCenterY }}" r="4" fill="#60a5fa"/>
+                                <text x="{{ ($xOlt + 180 + $xTargetOdc) / 2 - 25 }}" y="{{ $targetOdcCenterY - 10 }}" fill="#94a3b8" font-size="9" font-family="sans-serif">Feeder FO</text>
+                            @endif
+
+                            {{-- 2. TARGET ODC CABINET NODE --}}
+                            <g id="nodeOdcTarget" transform="translate({{ $xTargetOdc }}, {{ $targetOdcCenterY - 58 }})"
+                               class="cursor-pointer" filter="url(#odcNodeShadow)" wire:click="selectNode('odc-{{ $odc->id }}')">
+                                <rect width="220" height="116" rx="16" fill="url(#gradOdcTarget)" stroke="#fbbf24" stroke-width="2.5"/>
+                                <rect x="14" y="12" width="{{ $isCascadeOdc ? '110' : '90' }}" height="18" rx="5" fill="#92400e"/>
+                                <text x="20" y="25" fill="#fef3c7" font-size="9" font-weight="bold" font-family="sans-serif">
+                                    {{ $isCascadeOdc ? 'SUB-ODC T-2 (TARGET)' : 'ODC KABINET (TARGET)' }}
+                                </text>
+                                <text x="14" y="54" fill="#ffffff" font-size="14" font-weight="black" font-family="sans-serif">{{ Str::limit($odc->name, 17) }}</text>
+                                <text x="14" y="73" fill="#fef3c7" font-size="10" font-family="monospace">{{ $odc->code }} • {{ $odcCap }} Port</text>
+                                <text x="14" y="91" fill="#fde68a" font-size="9" font-family="sans-serif">Splitter Tray {{ $odcSplitterRatio }} (-{{ $odcLoss }} dB)</text>
+                                <text x="14" y="106" fill="#fef08a" font-size="9" font-weight="bold" font-family="sans-serif">
+                                    {{ $this->summary['used_ports'] }}/{{ $this->summary['total_ports'] }} Port Distribusi Digunakan
+                                </text>
+                            </g>
+
+                            {{-- 3. DOWNSTREAM ODPS & SUB-ODCS --}}
+                            @if(!empty($odpLayouts))
+                                @foreach($odpLayouts as $layout)
+                                    @php
+                                        $isOdp = $layout['type'] === 'odp';
+                                        $item = $layout['model'];
+                                        $centerY = $layout['centerY'];
+                                        $isTraced = false;
+
+                                        if ($isOdp) {
+                                            $isTraced = ($tracedNodeId === 'odp-' . $item->id) ||
+                                                        (!empty($qSearch) && (str_contains(strtolower($item->name), $qSearch) || str_contains(strtolower($item->code), $qSearch)));
+                                        } else {
+                                            $isTraced = ($tracedNodeId === 'odc-' . $item->id) ||
+                                                        (!empty($qSearch) && (str_contains(strtolower($item->name), $qSearch) || str_contains(strtolower($item->code), $qSearch)));
+                                        }
+
+                                        $lineStroke = $isTraced ? '#00e5ff' : ($isOdp ? '#10b981' : '#a855f7');
+                                        $lineWidth = $isTraced ? 3.5 : 2;
+                                    @endphp
+
+                                    {{-- Curved Fiber Line from ODC to ODP / Sub-ODC --}}
+                                    <path d="M {{ $xTargetOdc + 220 }} {{ $targetOdcCenterY }} C {{ $xTargetOdc + 280 }} {{ $targetOdcCenterY }}, {{ $xOdp - 60 }} {{ $centerY }}, {{ $xOdp }} {{ $centerY }}"
+                                          stroke="{{ $lineStroke }}" stroke-width="{{ $lineWidth }}" fill="none" opacity="0.85"/>
+                                    <circle cx="{{ $xOdp - 6 }}" cy="{{ $centerY }}" r="3.5" fill="{{ $lineStroke }}"/>
+
+                                    @if($isOdp)
+                                        {{-- ODP NODE CARD --}}
+                                        @php
+                                            $odpRatio = $item->port_count ?: 8;
+                                            $odpLoss = match((int) $odpRatio) {
+                                                2 => '3.8',
+                                                4 => '7.2',
+                                                8 => '10.5',
+                                                16 => '13.8',
+                                                default => '10.5'
+                                            };
+                                            $odpUsed = $layout['onus']->count();
+                                            $isOdpCascade = !empty($item->parent_odp_id);
+                                        @endphp
+                                        <g id="nodeOdp_{{ $item->id }}" transform="translate({{ $xOdp }}, {{ $centerY - 48 }})"
+                                           class="cursor-pointer" filter="url(#odcNodeShadow)"
+                                           onclick="window.open('/isp/odps/{{ $item->id }}', '_blank')">
+                                            <rect width="210" height="96" rx="14" fill="url(#gradOdcOdp)"
+                                                  stroke="{{ $isTraced ? '#00e5ff' : '#34d399' }}" stroke-width="{{ $isTraced ? '3' : '2' }}"/>
+                                            <rect x="12" y="10" width="{{ $isOdpCascade ? '95' : '85' }}" height="17" rx="5" fill="#047857"/>
+                                            <text x="18" y="22" fill="#a7f3d0" font-size="9" font-weight="bold" font-family="sans-serif">
+                                                {{ $isOdpCascade ? 'ODP KASKADE' : 'ODP DISTRIBUSI' }}
+                                            </text>
+                                            <text x="12" y="47" fill="#ffffff" font-size="13" font-weight="bold" font-family="sans-serif">{{ Str::limit($item->name, 16) }}</text>
+                                            <text x="12" y="65" fill="#d1fae5" font-size="10" font-family="monospace">{{ $item->code }} • Port {{ $item->odc_port ?: 'Dist' }}</text>
+                                            <text x="12" y="81" fill="#a7f3d0" font-size="9" font-family="sans-serif">Splitter 1:{{ $odpRatio }} (-{{ $odpLoss }} dB)</text>
+                                            <text x="12" y="93" fill="#6ee7b7" font-size="8.5" font-family="sans-serif">{{ $odpUsed }}/{{ $odpRatio }} Port Digunakan</text>
+                                        </g>
+
+                                        {{-- CONNECTED ONUS / CUSTOMERS --}}
+                                        @if($layout['onus']->isNotEmpty())
+                                            @foreach($layout['onus'] as $onuIdx => $onu)
+                                                @php
+                                                    $onuY = $layout['topY'] + ($onuIdx * 64) + 12;
+                                                    $rxVal = $onu->rx_power_dbm !== null ? (float) $onu->rx_power_dbm : null;
+                                                    $custName = $onu->customerService?->customer?->name ?? 'Pelanggan FTTH';
+                                                    $custUser = $onu->customerService?->username ?? $onu->serial_number;
+
+                                                    $isThisOnuTraced = ($tracedNodeId === 'onu-' . $onu->id) ||
+                                                                       (!empty($qSearch) && (str_contains(strtolower($custName), $qSearch) || str_contains(strtolower($onu->serial_number), $qSearch) || str_contains(strtolower($custUser), $qSearch)));
+
+                                                    // Status color by Rx optical power
+                                                    $dotColor = '#10b981';
+                                                    $statusText = 'IDEAL';
+                                                    if ($rxVal !== null) {
+                                                        if ($rxVal >= -24.0) {
+                                                            $dotColor = '#10b981';
+                                                            $statusText = 'IDEAL';
+                                                        } elseif ($rxVal >= -27.0) {
+                                                            $dotColor = '#f59e0b';
+                                                            $statusText = 'MARGINAL';
+                                                        } else {
+                                                            $dotColor = '#ef4444';
+                                                            $statusText = 'REDAMAN TINGGI';
+                                                        }
+                                                    } else {
+                                                        $dotColor = ($onu->operational_status === 'online') ? '#10b981' : '#64748b';
+                                                        $statusText = strtoupper($onu->operational_status ?: 'STANDBY');
+                                                    }
+                                                @endphp
+
+                                                {{-- Curve from ODP output to ONU input --}}
+                                                <path d="M {{ $xOdp + 210 }} {{ $centerY }} C {{ $xOdp + 245 }} {{ $centerY }}, {{ $xOnu - 30 }} {{ $onuY + 26 }}, {{ $xOnu }} {{ $onuY + 26 }}"
+                                                      stroke="{{ $isThisOnuTraced ? '#00e5ff' : '#10b981' }}" stroke-width="{{ $isThisOnuTraced ? '3' : '1.5' }}" fill="none" opacity="0.8"/>
+
+                                                {{-- ONU / Customer Node Card --}}
+                                                <g id="nodeOnu_{{ $onu->id }}" transform="translate({{ $xOnu }}, {{ $onuY }})"
+                                                   class="cursor-pointer" filter="url(#odcNodeShadow)"
+                                                   wire:click="selectNode('onu-{{ $onu->id }}')">
+                                                    <rect width="240" height="52" rx="10" fill="#1e293b"
+                                                          stroke="{{ $isThisOnuTraced ? '#00e5ff' : $dotColor }}" stroke-width="{{ $isThisOnuTraced ? '2.5' : '1.5' }}"/>
+                                                    <circle cx="16" cy="26" r="5" fill="{{ $dotColor }}"/>
+                                                    <text x="28" y="21" fill="#ffffff" font-size="11" font-weight="bold" font-family="sans-serif">
+                                                        {{ Str::limit($custName, 18) }}
+                                                    </text>
+                                                    <text x="28" y="35" fill="#94a3b8" font-size="9" font-family="monospace">
+                                                        {{ Str::limit($onu->serial_number, 13) }} • {{ Str::limit($custUser, 12) }}
+                                                    </text>
+                                                    <text x="28" y="46" fill="{{ $dotColor }}" font-size="9" font-weight="bold" font-family="monospace">
+                                                        Rx: {{ $rxVal !== null ? number_format($rxVal, 2) . ' dBm' : '— dBm' }} ({{ $statusText }})
+                                                    </text>
+                                                </g>
+                                            @endforeach
+                                        @else
+                                            {{-- Empty port placeholder --}}
+                                            <path d="M {{ $xOdp + 210 }} {{ $centerY }} L {{ $xOnu }} {{ $centerY }}"
+                                                  stroke="#475569" stroke-width="1.5" stroke-dasharray="4,4" fill="none"/>
+                                            <text x="{{ $xOnu + 8 }}" y="{{ $centerY + 4 }}" fill="#64748b" font-size="10" font-family="sans-serif">
+                                                Port Kosong / Siap Pasang Pelanggan
+                                            </text>
+                                        @endif
+
+                                    @else
+                                        {{-- SUB-ODC NODE CARD --}}
+                                        <g id="nodeSubOdc_{{ $item->id }}" transform="translate({{ $xOdp }}, {{ $centerY - 48 }})"
+                                           class="cursor-pointer" filter="url(#odcNodeShadow)"
+                                           onclick="window.open('/isp/odcs/{{ $item->id }}', '_blank')">
+                                            <rect width="210" height="96" rx="14" fill="url(#gradOdcSub)"
+                                                  stroke="{{ $isTraced ? '#00e5ff' : '#c084fc' }}" stroke-width="{{ $isTraced ? '3' : '2' }}"/>
+                                            <rect x="12" y="10" width="95" height="17" rx="5" fill="#581c87"/>
+                                            <text x="18" y="22" fill="#f3e8ff" font-size="9" font-weight="bold" font-family="sans-serif">SUB-ODC KASKADE</text>
+                                            <text x="12" y="47" fill="#ffffff" font-size="13" font-weight="bold" font-family="sans-serif">{{ Str::limit($item->name, 16) }}</text>
+                                            <text x="12" y="65" fill="#f3e8ff" font-size="10" font-family="monospace">{{ $item->code }} • {{ $item->port_count ?: 24 }} Port</text>
+                                            <text x="12" y="81" fill="#e9d5ff" font-size="9" font-family="sans-serif">Splitter Kaskade (-10.5 dB)</text>
+                                            <text x="12" y="93" fill="#d8b4fe" font-size="8.5" font-family="sans-serif">{{ $item->odps->count() }} ODP Terhubung</text>
+                                        </g>
+                                    @endif
+                                @endforeach
+                            @else
+                                {{-- Empty state: No ODPs connected --}}
+                                <g transform="translate({{ $xTargetOdc + 280 }}, {{ $targetOdcCenterY - 45 }})">
+                                    <rect width="280" height="90" rx="12" fill="#0f172a" stroke="#334155" stroke-dasharray="6,4"/>
+                                    <text x="24" y="35" fill="#94a3b8" font-size="12" font-weight="bold" font-family="sans-serif">Belum Ada ODP Terhubung</text>
+                                    <text x="24" y="55" fill="#64748b" font-size="10" font-family="sans-serif">Hubungkan ODP ke port ODC ini via tab</text>
+                                    <text x="24" y="70" fill="#38bdf8" font-size="10" font-weight="bold" font-family="sans-serif">Port Management atau menu Data ODP</text>
+                                </g>
+                            @endif
+                        </g>
+                    </svg>
                 </div>
 
                 {{-- Status Legend (Bottom Left) --}}
                 <div class="absolute bottom-3 left-3 z-10 bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-xl p-2.5 text-[11px] text-slate-300 flex flex-wrap items-center gap-3 shadow-lg pointer-events-none sm:pointer-events-auto">
                     <span class="font-bold text-slate-400 uppercase text-[10px] tracking-wider">Status:</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Online / Normal</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Warning / Marginal</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Offline / Gangguan</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Ideal (&gt;= -24 dBm)</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Marginal (&gt;= -27 dBm)</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Redaman Tinggi / Drop</span>
                     <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> Jalur Tracing</span>
                 </div>
 
                 {{-- Tracing Active Banner --}}
-                @if($tracedNodeId)
+                @if($tracedNodeId || $traceQuery)
                     <div class="absolute top-3 left-3 z-10 bg-cyan-950/90 border border-cyan-800 text-cyan-200 px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 shadow-lg">
                         <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
                         <span class="font-mono">Active Tracing: {{ $traceQuery }}</span>
-                        <button type="button" wire:click="clearTrace" class="ml-1 text-cyan-400 hover:text-white font-bold">&times;</button>
-                    </div>
-                @endif
-
-                {{-- Empty state if no nodes --}}
-                @if(empty($this->topologyData['nodes']))
-                    <div class="absolute inset-0 flex flex-col items-center justify-center bg-[#070b14]/90 text-slate-400">
-                        <span class="material-symbols-outlined text-slate-600 text-5xl mb-2">account_tree</span>
-                        <p class="text-sm font-semibold text-slate-200">Belum ada topologi jalur untuk ODC ini.</p>
-                        <p class="text-xs text-slate-500 mt-0.5">Hubungkan OLT sumber dan minimal 1 ODP pada ODC ini.</p>
+                        <button type="button" wire:click="clearTrace" class="ml-1 text-cyan-400 hover:text-white font-bold cursor-pointer">&times;</button>
                     </div>
                 @endif
             </div>
@@ -1200,161 +1504,227 @@
 </div>
 
 {{-- ============================================================
-     VIS-NETWORK TOPOLOGY CONTROLLER (ALPINE.JS SCRIPT)
+     NATIVE SVG TOPOLOGY CONTROLLER (SELF-CONTAINED & ZERO-CDN)
      ============================================================ --}}
-<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 <script>
-function odcTopologyManager(initialTopology) {
-    return {
-        network: null,
-        isFullscreen: false,
-        currentTopology: initialTopology,
+(function() {
+    let scale = 1.0;
+    let panX = 30;
+    let panY = 30;
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let isInitialized = false;
 
-        init() {
-            this.$nextTick(() => {
-                this.loadTopology(this.currentTopology);
-            });
+    function getElements() {
+        return {
+            container: document.getElementById('odcTopologyContainer'),
+            viewport: document.getElementById('odcTopologyViewport'),
+            wrapper: document.getElementById('odc-topology-wrapper'),
+            svg: document.getElementById('odcTopologySvg')
+        };
+    }
 
-            // Listen for Livewire focus event
-            window.addEventListener('topology-focus-node', (event) => {
-                if (event.detail && event.detail.nodeId && this.network) {
-                    this.network.selectNodes([event.detail.nodeId]);
-                    this.network.focus(event.detail.nodeId, {
-                        scale: 1.25,
-                        animation: { duration: 400, easingFunction: 'easeInOutQuad' }
-                    });
+    function updateTransform() {
+        const { viewport } = getElements();
+        if (viewport) {
+            viewport.setAttribute('transform', `matrix(${scale} 0 0 ${scale} ${panX} ${panY})`);
+        }
+    }
+
+    function initOdcTopology() {
+        const { container, viewport, wrapper, svg } = getElements();
+        if (!container || !viewport) return;
+
+        // Reset state
+        scale = 1.0;
+        panX = 30;
+        panY = 30;
+        updateTransform();
+
+        if (container.dataset.topoBound === 'true') return;
+        container.dataset.topoBound = 'true';
+
+        // Zoom In
+        document.getElementById('btnOdcZoomIn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            scale = Math.min(2.5, scale + 0.2);
+            updateTransform();
+        });
+
+        // Zoom Out
+        document.getElementById('btnOdcZoomOut')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            scale = Math.max(0.3, scale - 0.2);
+            updateTransform();
+        });
+
+        // Reset (1:1)
+        document.getElementById('btnOdcReset')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            scale = 1.0;
+            panX = 30;
+            panY = 30;
+            updateTransform();
+        });
+
+        // Fit to Screen
+        document.getElementById('btnOdcFit')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fitToScreen();
+        });
+
+        function fitToScreen() {
+            const { container, viewport } = getElements();
+            if (!container || !viewport) return;
+            try {
+                const bbox = viewport.getBBox();
+                const cW = container.clientWidth || 900;
+                const cH = container.clientHeight || 620;
+                if (bbox.width > 0 && bbox.height > 0) {
+                    const scaleX = (cW - 60) / bbox.width;
+                    const scaleY = (cH - 60) / bbox.height;
+                    scale = Math.min(Math.max(0.35, Math.min(scaleX, scaleY)), 1.1);
+                    panX = (cW - (bbox.width * scale)) / 2 - (bbox.x * scale);
+                    panY = (cH - (bbox.height * scale)) / 2 - (bbox.y * scale);
+                    updateTransform();
                 }
-            });
+            } catch (err) {}
+        }
 
-            window.addEventListener('topology-reset-focus', () => {
-                if (this.network) {
-                    this.network.unselectAll();
-                    this.fitViewSmart();
-                }
-            });
-        },
-
-        loadTopology(topology) {
-            this.currentTopology = topology;
-            const container = this.$refs.visContainer;
-            if (!container || typeof vis === 'undefined') return;
-
-            if (!topology || !topology.nodes || topology.nodes.length === 0) {
-                if (this.network) {
-                    this.network.destroy();
-                    this.network = null;
-                }
-                return;
-            }
-
-            const nodes = new vis.DataSet(topology.nodes);
-            const edges = new vis.DataSet(topology.edges);
-
-            const options = {
-                layout: {
-                    hierarchical: {
-                        enabled: true,
-                        direction: 'LR', // Left-to-Right: OLT -> ODF -> ODC -> ODP -> ONU -> Cust
-                        sortMethod: 'directed',
-                        levelSeparation: 320,
-                        nodeSpacing: 80,
-                        treeSpacing: 100,
-                        blockShifting: true,
-                        edgeMinimization: true,
-                        parentCentralization: true
-                    }
-                },
-                physics: false,
-                nodes: {
-                    borderWidth: 2,
-                    borderWidthSelected: 4,
-                    shadow: { enabled: true, color: 'rgba(0,0,0,0.5)', size: 6, x: 2, y: 2 },
-                    margin: { top: 10, right: 16, bottom: 10, left: 16 },
-                    font: { size: 13, face: 'JetBrains Mono, monospace', color: '#f8fafc' },
-                    shapeProperties: { borderRadius: 10 }
-                },
-                edges: {
-                    width: 2.5,
-                    selectionWidth: 4,
-                    hoverWidth: 3.5,
-                    smooth: { type: 'cubicBezier', forceDirection: 'horizontal', roundness: 0.35 },
-                    font: { size: 10, align: 'top', color: '#94a3b8' }
-                },
-                interaction: {
-                    hover: true,
-                    tooltipDelay: 150,
-                    zoomView: true,
-                    dragView: true,
-                    selectable: true,
-                    multiselect: false
-                }
-            };
-
-            if (this.network) {
-                this.network.destroy();
-            }
-
-            this.network = new vis.Network(container, { nodes, edges }, options);
-
-            // Click node event -> sync to Livewire
-            this.network.on('click', (params) => {
-                if (params.nodes && params.nodes.length > 0) {
-                    const nodeId = params.nodes[0];
-                    if (window.Livewire) {
-                        const lwEl = container.closest('[wire\\:id]');
-                        if (lwEl && window.Livewire.find(lwEl.getAttribute('wire:id'))) {
-                            window.Livewire.find(lwEl.getAttribute('wire:id')).selectNode(nodeId);
-                        }
-                    }
-                }
-            });
-
-            setTimeout(() => {
-                this.fitViewSmart();
-            }, 100);
-        },
-
-        zoomIn() {
-            if (!this.network) return;
-            const current = this.network.getScale();
-            this.network.moveTo({ scale: current * 1.25, animation: { duration: 200 } });
-        },
-
-        zoomOut() {
-            if (!this.network) return;
-            const current = this.network.getScale();
-            this.network.moveTo({ scale: current * 0.8, animation: { duration: 200 } });
-        },
-
-        resetScale() {
-            if (!this.network) return;
-            this.network.moveTo({ scale: 1.0, animation: { duration: 200 } });
-        },
-
-        fitViewSmart() {
-            if (!this.network) return;
-            this.network.fit({
-                padding: 40,
-                animation: { duration: 350, easingFunction: 'easeInOutQuad' }
-            });
-        },
-
-        toggleFullscreen() {
-            const el = document.getElementById('odc-topology-wrapper');
-            if (!el) return;
-
+        // Fullscreen
+        document.getElementById('btnOdcFullscreen')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const { wrapper } = getElements();
+            if (!wrapper) return;
             if (!document.fullscreenElement) {
-                el.requestFullscreen().then(() => {
-                    this.isFullscreen = true;
-                    setTimeout(() => this.fitViewSmart(), 300);
+                wrapper.requestFullscreen?.().then(() => {
+                    setTimeout(fitToScreen, 250);
                 }).catch(() => {});
             } else {
-                document.exitFullscreen().then(() => {
-                    this.isFullscreen = false;
-                    setTimeout(() => this.fitViewSmart(), 300);
+                document.exitFullscreen?.().then(() => {
+                    setTimeout(fitToScreen, 250);
                 }).catch(() => {});
             }
+        });
+
+        // Mouse Drag Panning
+        container.addEventListener('mousedown', (e) => {
+            if (e.button === 0 && !e.target.closest('a, button')) {
+                isDragging = true;
+                startX = e.clientX - panX;
+                startY = e.clientY - panY;
+                container.style.cursor = 'grabbing';
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                panX = e.clientX - startX;
+                panY = e.clientY - startY;
+                updateTransform();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                container.style.cursor = 'grab';
+            }
+        });
+
+        // Mouse Wheel Zoom
+        container.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 0.12 : -0.12;
+            const newScale = Math.min(2.5, Math.max(0.3, scale + delta));
+            const rect = container.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            panX -= (mouseX - panX) * (newScale / scale - 1);
+            panY -= (mouseY - panY) * (newScale / scale - 1);
+            scale = newScale;
+            updateTransform();
+        }, { passive: false });
+
+        // Touch support for tablets/smartphones
+        container.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                startX = e.touches[0].clientX - panX;
+                startY = e.touches[0].clientY - panY;
+            }
+        });
+
+        container.addEventListener('touchmove', (e) => {
+            if (isDragging && e.touches.length === 1) {
+                panX = e.touches[0].clientX - startX;
+                panY = e.touches[0].clientY - startY;
+                updateTransform();
+            }
+        });
+
+        container.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        // Listen for trace/focus event from Livewire
+        window.addEventListener('topology-focus-node', (event) => {
+            const nodeId = event.detail?.nodeId;
+            if (!nodeId) return;
+
+            let targetEl = null;
+            if (nodeId.startsWith('odp-')) {
+                const id = nodeId.replace('odp-', '');
+                targetEl = document.getElementById('nodeOdp_' + id);
+            } else if (nodeId.startsWith('onu-')) {
+                const id = nodeId.replace('onu-', '');
+                targetEl = document.getElementById('nodeOnu_' + id);
+            } else if (nodeId.startsWith('odc-')) {
+                targetEl = document.getElementById('nodeOdcTarget');
+            } else if (nodeId.startsWith('olt-')) {
+                targetEl = document.getElementById('nodeOlt');
+            }
+
+            if (targetEl) {
+                try {
+                    const bbox = targetEl.getBBox();
+                    const { container } = getElements();
+                    const cW = container?.clientWidth || 900;
+                    const cH = container?.clientHeight || 620;
+                    scale = 1.3;
+                    panX = (cW / 2) - ((bbox.x + bbox.width / 2) * scale);
+                    panY = (cH / 2) - ((bbox.y + bbox.height / 2) * scale);
+                    updateTransform();
+                } catch (err) {}
+            }
+        });
+
+        window.addEventListener('topology-reset-focus', () => {
+            fitToScreen();
+        });
+
+        // Initial fit
+        setTimeout(fitToScreen, 150);
+    }
+
+    // Attach lifecycle triggers
+    document.addEventListener('DOMContentLoaded', initOdcTopology);
+    document.addEventListener('livewire:navigated', initOdcTopology);
+    document.addEventListener('livewire:init', () => {
+        if (window.Livewire) {
+            Livewire.hook('commit', ({ succeed }) => {
+                succeed(() => {
+                    setTimeout(initOdcTopology, 50);
+                });
+            });
         }
-    };
-}
+    });
+
+    // Also run immediately in case DOM is already ready
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(initOdcTopology, 100);
+    }
+})();
 </script>

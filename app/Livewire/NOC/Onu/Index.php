@@ -79,7 +79,17 @@ class Index extends AdminComponent
 
             if (\Illuminate\Support\Facades\Schema::hasColumn('onus', 'customer_id')) {
                 $onu->customer_id = null;
-                $onu->save();
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('onus', 'pppoe_username')) {
+                $onu->pppoe_username = null;
+            }
+            $onu->save();
+
+            // Lepas kaitan MAC di PPPoE user lama jika ada
+            if (!empty($onu->mac_address)) {
+                \App\Models\ISP\PPPoEUser::withoutGlobalScopes()
+                    ->where('mac_address', $onu->mac_address)
+                    ->update(['mac_address' => null]);
             }
 
             if ($this->selectedCustomerId) {
