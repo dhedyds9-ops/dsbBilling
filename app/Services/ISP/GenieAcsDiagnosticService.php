@@ -530,15 +530,23 @@ class GenieAcsDiagnosticService
             $num = (float) $rawRx;
             // Angka 0 pada pembacaan sensor optik GPON menandakan tidak terbaca / tidak ada sensor
             if ($num !== 0.0) {
-                if ($num < -500.0 || $num > 500.0) {
-                    $rxPower = round($num / 1000.0, 2);
-                } elseif ($num < -60.0 || $num > 60.0) {
-                    $rxPower = round($num / 100.0, 2);
-                } elseif ($num > 0.0 && $num < 10000.0) {
-                    // Micro-watts to dBm: 10 * log10(uW / 1000)
-                    $rxPower = round(10.0 * log10($num / 1000.0), 2);
+                $absVal = abs($num);
+                if ($absVal >= 7000.0) {
+                    // milli-dBm (e.g. 19630 / -19630 -> 19.63 dBm)
+                    $parsed = $absVal / 1000.0;
+                } elseif ($absVal >= 60.0) {
+                    // 0.01 dBm scale (e.g. 1963, -1963, 1304, 1100 -> 19.63, 13.04, 11.00 dBm)
+                    $parsed = $absVal / 100.0;
                 } else {
-                    $rxPower = round($num, 2);
+                    $parsed = $absVal;
+                }
+                // Di GPON receiver, RX Power SELALU bernilai negatif:
+                $rxPower = -round($parsed, 2);
+
+                // Jika pembacaan di luar rentang wajar GPON (-38 s/d -5 dBm) dan OLT memiliki data DDM, fallback ke OLT
+                if (($rxPower < -38.0 || $rxPower > -5.0) && $onu && !empty($onu->rx_power_dbm) && is_numeric($onu->rx_power_dbm)) {
+                    $rxPower = round((float) $onu->rx_power_dbm, 2);
+                    if ($rxPower > 0) $rxPower = -abs($rxPower);
                 }
 
                 $rxDisplay = number_format($rxPower, 2) . ' dBm';
@@ -550,9 +558,12 @@ class GenieAcsDiagnosticService
                     $rxStatus = 'critical'; // Buruk / Redaman Tinggi
                 }
             }
-        } elseif ($onu && !empty($onu->rx_power_dbm) && is_numeric($onu->rx_power_dbm)) {
-            // Fallback ke data DDM optik OLT jika TR-069 belum melaporkan RX
+        }
+
+        // Fallback ke data DDM optik OLT jika TR-069 belum melaporkan RX
+        if ($rxPower === null && $onu && !empty($onu->rx_power_dbm) && is_numeric($onu->rx_power_dbm)) {
             $rxPower = round((float) $onu->rx_power_dbm, 2);
+            if ($rxPower > 0) $rxPower = -abs($rxPower);
             $rxDisplay = number_format($rxPower, 2) . ' dBm';
             if ($rxPower >= -24.0 && $rxPower <= -15.0) {
                 $rxStatus = 'normal';

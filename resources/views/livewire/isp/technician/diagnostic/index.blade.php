@@ -657,9 +657,26 @@
                 <div id="diag-camera-reader" class="w-full"></div>
             </div>
 
+            <template x-if="cameraError">
+                <div class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-200 space-y-1">
+                    <p class="font-bold flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">warning</span>
+                        <span>Akses Live Kamera Terkendala</span>
+                    </p>
+                    <p class="text-[11px]" x-text="cameraErrorMsg"></p>
+                </div>
+            </template>
+
             <p class="text-[11px] text-slate-500 dark:text-slate-400 text-center">
-                Arahkan kamera ke barcode stiker belakang modem ONT.
+                Arahkan kamera ke barcode stiker belakang modem ONT atau ambil foto secara langsung.
             </p>
+
+            {{-- Fallback native file / capture scanner --}}
+            <label class="w-full py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all">
+                <span class="material-symbols-outlined text-sm notranslate" translate="no">photo_camera</span>
+                <span>Ambil Foto Barcode (Kamera HP)</span>
+                <input type="file" accept="image/*" capture="environment" class="hidden" @change="scanFromFile($event)">
+            </label>
 
             <button type="button" @click="closeScanner()"
                     class="w-full py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors">
@@ -675,9 +692,13 @@
             return {
                 scannerOpen: false,
                 html5Scanner: null,
+                cameraError: false,
+                cameraErrorMsg: '',
 
                 openScanner() {
                     this.scannerOpen = true;
+                    this.cameraError = false;
+                    this.cameraErrorMsg = '';
                     this.$nextTick(() => {
                         if (!this.html5Scanner) {
                             this.html5Scanner = new Html5Qrcode("diag-camera-reader");
@@ -692,19 +713,39 @@
                             },
                             (err) => {}
                         ).catch((err) => {
-                            alert("Kamera tidak dapat diakses: " + err);
-                            this.closeScanner();
+                            console.warn("Live camera stream error:", err);
+                            this.cameraError = true;
+                            this.cameraErrorMsg = "Izin live kamera ditolak atau tidak didukung di browser ini. Silakan gunakan tombol 'Ambil Foto Barcode' di atas untuk memindai langsung.";
                         });
                     });
+                },
+
+                scanFromFile(event) {
+                    const file = event.target.files && event.target.files[0];
+                    if (!file) return;
+                    if (!this.html5Scanner) {
+                        this.html5Scanner = new Html5Qrcode("diag-camera-reader");
+                    }
+                    this.html5Scanner.scanFile(file, true)
+                        .then(decodedText => {
+                            this.closeScanner();
+                            $wire.set('searchQuery', decodedText.trim());
+                            $wire.call('updatedSearchQuery');
+                        })
+                        .catch(err => {
+                            alert("Barcode atau SN tidak terdeteksi pada foto. Pastikan gambar jelas dan fokus ke barcode.");
+                        });
                 },
 
                 closeScanner() {
                     if (this.html5Scanner) {
                         this.html5Scanner.stop().catch(() => {}).finally(() => {
                             this.scannerOpen = false;
+                            this.cameraError = false;
                         });
                     } else {
                         this.scannerOpen = false;
+                        this.cameraError = false;
                     }
                 }
             };

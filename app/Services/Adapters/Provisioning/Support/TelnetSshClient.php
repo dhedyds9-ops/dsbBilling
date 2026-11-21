@@ -234,11 +234,12 @@ class SimpleTelnet
 
             $result .= $c;
             
-            // Handle pagination "More" prompt for various OLTs (C-Data, ZTE)
-            if (preg_match('/(--More--|---- More(.*?)----|Press any key to continue)/i', substr($result, -50), $m)) {
+            // Handle pagination "More" prompt for various OLTs (C-Data, ZTE, GBN/HiFocus, BDCOM)
+            if (preg_match('/(?:--More--|----\s*More\b.*?----|Press\s+any\s+key\s+to\s+continue|Press\s*\'?Q\'?\s*to\s*break)/i', substr($result, -150), $m)) {
                 $this->write(" "); // Send space to continue
                 $start = time();
                 $result = substr($result, 0, -strlen($m[0]));
+                usleep(50000); // 50ms pause to let OLT stream next chunk
             }
 
             if (preg_match($pattern, $result)) {

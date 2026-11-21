@@ -93,6 +93,9 @@ class MobileWorkforceApiController extends Controller
     {
         $user = $request->user();
 
+        // Otomatis sinkronisasi tugas aktif (Tiket Gangguan & SPK Instalasi CRM) ke tabel WorkOrder sebelum query
+        $this->syncActiveTasksToWorkOrders($user);
+
         $query = WorkOrder::with(['customer', 'technician', 'approver', 'ticket', 'checklists', 'materialUsages', 'installation.customer.reseller', 'installation.reseller', 'installation.survey.prospect'])
             ->orderByRaw("CASE 
                 WHEN priority = 'urgent' THEN 1 
@@ -172,9 +175,6 @@ class MobileWorkforceApiController extends Controller
                     });
             });
         }
-
-        // Otomatis sinkronisasi tugas aktif (Tiket Gangguan & SPK Instalasi CRM) ke tabel WorkOrder
-        $this->syncActiveTasksToWorkOrders($user);
 
         $workOrders = $query->limit(100)->get();
 
@@ -804,6 +804,12 @@ class MobileWorkforceApiController extends Controller
                 $isTicketCompleted = in_array($t->status, ['resolved', 'closed']);
                 $ticketStatus = $isTicketCompleted ? 'completed' : ($t->status === 'in_progress' ? 'in_progress' : ($t->assigned_to ? 'assigned' : 'pending'));
 
+                $ticketPayload = method_exists($t, 'getNotificationPayload') ? $t->getNotificationPayload() : [];
+                $custName = $ticketPayload['customer_name'] ?? ($t->customer?->name ?? null);
+                if (($custName === 'Pelanggan' || empty($custName)) && !empty($ticketPayload['object_name'])) {
+                    $custName = $ticketPayload['object_name'];
+                }
+
                 $ticketWoData = [
                     'company_id' => $user->company_id,
                     'branch_id' => $user->branch_id,
@@ -813,7 +819,7 @@ class MobileWorkforceApiController extends Controller
                     'customer_id' => $t->customer_id ?? $t->user_id,
                     'assigned_to' => $t->assigned_to ?? $user->id,
                     'status' => $ticketStatus,
-                    'title' => $t->title ?? ($t->ticket_number . ' - ' . ($t->subject ?? 'Tiket Perbaikan')),
+                    'title' => $t->title ?? ($custName ?: ($t->ticket_number . ' - ' . ($t->subject ?? 'Tiket Perbaikan'))),
                     'description' => $t->description ?? '',
                     'notes' => $t->resolution_notes ?? null,
                     'priority' => $t->priority ?? 'medium',
@@ -969,6 +975,76 @@ class MobileWorkforceApiController extends Controller
             }
         }
 
+        $ticket = $wo->ticket;
+        if (!$ticket && !empty($wo->ticket_id)) {
+            $ticket = Ticket::withoutGlobalScopes()->with(['customer.reseller', 'reseller'])->find($wo->ticket_id);
+        }
+        $ticketPayload = [];
+        if ($ticket && method_exists($ticket, 'getNotificationPayload')) {
+            try {
+                $ticketPayload = $ticket->getNotificationPayload();
+            } catch (\Throwable) {}
+        }
+
+        $resellerName = $ticket?->reseller?->name 
+            ?? $ticket?->customer?->reseller?->name 
+            ?? $wo->reseller?->name 
+            ?? ($customerData['reseller_name'] ?? null);
+
+        $resellerId = $ticket?->reseller_id 
+            ?? $ticket?->customer?->reseller_id 
+            ?? $wo->reseller_id 
+            ?? ($customerData['reseller_id'] ?? null);
+
+        $ticketCode = $ticket 
+            ? (!empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id)) 
+            : null;
+
+        $ticketLat = $ticketPayload['latitude'] ?? ($ticket?->customer?->latitude ?? null);
+        $ticketLng = $ticketPayload['longitude'] ?? ($ticket?->customer?->longitude ?? null);
+
+        $latitude = $latitude ?: $ticketLat;
+        $longitude = $longitude ?: $ticketLng;
+
+        if (!$customerData && $ticket) {
+            $custName = ($ticketPayload['customer_name'] ?? null) && ($ticketPayload['customer_name'] !== 'Pelanggan')
+                ? $ticketPayload['customer_name']
+                : ($ticketPayload['object_name'] ?? ($ticket->title ?: 'Pelanggan Lapangan'));
+
+            $customerData = [
+                'id' => $ticket->customer_id ?? null,
+                'name' => $custName,
+                'email' => $ticket->customer?->email ?? null,
+                'phone' => (($ticketPayload['contact_phone'] ?? null) !== '-') ? ($ticketPayload['contact_phone'] ?? null) : ($ticket->customer?->phone ?? null),
+                'whatsapp' => (($ticketPayload['contact_phone'] ?? null) !== '-') ? ($ticketPayload['contact_phone'] ?? null) : ($ticket->customer?->whatsapp ?? null),
+                'address' => (($ticketPayload['address'] ?? null) !== '-') ? ($ticketPayload['address'] ?? null) : ($ticket->customer?->address ?? null),
+                'customer_code' => $ticketCode,
+                'reseller_id' => $resellerId,
+                'reseller_name' => $resellerName,
+                'package_name' => $ticket->title ?? $packageName,
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+                'pppoe_username' => null,
+                'onu_sn' => null,
+            ];
+        } elseif ($customerData) {
+            if (empty($customerData['reseller_name']) && $resellerName) {
+                $customerData['reseller_name'] = $resellerName;
+                $customerData['reseller_id'] = $resellerId;
+            }
+            if (empty($customerData['latitude']) && $latitude) {
+                $customerData['latitude'] = $latitude;
+                $customerData['longitude'] = $longitude;
+            }
+            if (empty($customerData['customer_code']) && $ticketCode) {
+                $customerData['customer_code'] = $ticketCode;
+            }
+        }
+
+        $photos = is_array($wo->evidence_photos) && !empty($wo->evidence_photos) 
+            ? $wo->evidence_photos 
+            : ($ticket?->photos ?? []);
+
         $technician = $wo->technician;
         $isManager = $this->isManagerOrAdmin($user);
         $isAssignedTech = $wo->assigned_to && (int)$wo->assigned_to === (int)$user->id;
@@ -1006,20 +1082,34 @@ class MobileWorkforceApiController extends Controller
                 'name' => $wo->approver->name,
             ] : null,
             'ticket_id' => $wo->ticket_id,
-            'ticket' => $wo->ticket ? [
-                'id' => $wo->ticket->id,
-                'ticket_number' => $wo->ticket->ticket_number ?? ('#' . $wo->ticket->id),
-                'subject' => $wo->ticket->subject ?? $wo->ticket->title,
-                'status' => $wo->ticket->status,
-                'priority' => $wo->ticket->priority,
+            'ticket_code' => $ticketCode,
+            'reseller_id' => $resellerId,
+            'reseller_name' => $resellerName,
+            'odp_name' => $ticketPayload['object_name'] ?? $ticketPayload['network_details'] ?? null,
+            'network_object' => $ticketPayload['object_name'] ?? null,
+            'ticket' => $ticket ? [
+                'id' => $ticket->id,
+                'ticket_code' => $ticketCode,
+                'ticket_number' => $ticket->ticket_number ?? $ticketCode ?? ('#' . $ticket->id),
+                'subject' => $ticket->subject ?? $ticket->title,
+                'status' => $ticket->status,
+                'priority' => $ticket->priority,
+                'reseller_id' => $resellerId,
+                'reseller_name' => $resellerName,
+                'object_name' => $ticketPayload['object_name'] ?? null,
+                'photos' => $ticket->photos ?? [],
+                'latitude' => $latitude,
+                'longitude' => $longitude,
             ] : null,
+            'evidence_photos' => $photos,
+            'photos' => $photos,
             'checklists_count' => $wo->checklists->count(),
             'checklists_completed_count' => $wo->checklists->where('completed', true)->count(),
             'materials_count' => $wo->materialUsages->count(),
             'optical_rx_power' => $wo->optical_rx_power ? (float)$wo->optical_rx_power : null,
             'optical_tx_power' => $wo->optical_tx_power ? (float)$wo->optical_tx_power : null,
             'has_signature' => !empty($wo->customer_signature),
-            'evidence_photos_count' => is_array($wo->evidence_photos) ? count($wo->evidence_photos) : 0,
+            'evidence_photos_count' => count($photos),
             'permissions' => [
                 'can_start' => ($isAssignedTech || $isManager) && in_array($wo->status, ['pending', 'assigned']),
                 'can_request_approval' => ($isAssignedTech || $isManager) && $wo->status === 'in_progress',

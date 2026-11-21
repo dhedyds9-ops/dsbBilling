@@ -445,7 +445,7 @@ class MobileAcsProxyController extends Controller
 
             $customerName = $onu->customerService?->customer?->name ?? $onu->customer?->name ?? $onu->name;
             $pppoeUser = $onu->customerService?->pppoeUser?->username ?? $onu->pppoe_username ?? '-';
-            $rxPower = $onu->rx_power_dbm !== null ? (float) $onu->rx_power_dbm : null;
+            $rxPower = $onu->rx_power_dbm !== null ? -abs((float) $onu->rx_power_dbm) : null;
             $mfg = $onu->vendor?->name ?? (str_starts_with($sn, 'HWTC') ? 'Huawei' : (str_starts_with($sn, 'ZTEG') ? 'ZTE' : 'Modem'));
             $model = $onu->model ?: ($onu->name ?: 'ONT');
 
@@ -486,7 +486,7 @@ class MobileAcsProxyController extends Controller
 
             $customerName = $ad->customerService?->customer?->name;
             $pppoeUser = $ad->pppoe_username ?? '-';
-            $rxPower = $ad->signal !== null ? (float) $ad->signal : null;
+            $rxPower = $ad->signal !== null ? -abs((float) $ad->signal) : null;
             $mfg = $ad->manufacturer ?: (str_starts_with($sn, 'HWTC') ? 'Huawei' : (str_starts_with($sn, 'ZTEG') ? 'ZTE' : 'Modem'));
             $model = $ad->model ?: ($ad->product_class ?: 'ONT');
 

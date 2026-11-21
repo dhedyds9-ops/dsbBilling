@@ -775,14 +775,36 @@ class HisfocusOltDriver extends BaseOltDriver
                      $this->systemOids['sysTemperature'] === '.1.3.6.1.4.1.8888.1.2.1.1.2.26.0';
 
             if ($isGbn) {
-                // Untuk GP210 / GBN VRP OLT, jalankan perintah langsung yang cepat dan terarah
-                $commands = [
-                    'display rule-profile',
-                    'display ont info 2/1 all',
-                    'display ont info 2/2 all',
-                    'display ont optical-info 2/1 all',
-                    'display ont optical-info 2/2 all',
-                ];
+                // Untuk GP210 / GBN VRP OLT: display current-config adalah SSOT utama yang memuat seluruh rule-profile sn-auth ONT
+                try {
+                    $res = $this->cli->execute("display current-config\r\n", false);
+                    $lower = strtolower((string)$res);
+                    if (!empty($res) && !str_contains($lower, 'unrecognized') && !str_contains($lower, 'error')) {
+                        $infoOut .= "\n" . $res;
+                    }
+                } catch (\Throwable $e) {
+                    Log::debug("CLI display current-config error: " . $e->getMessage());
+                }
+
+                // Jika belum ditemukan sn-auth di config, coba display ont info / autofind sebagai fallback
+                if (empty($infoOut) || !str_contains($infoOut, 'sn-auth')) {
+                    $commands = [
+                        'display ont-autofind',
+                        'display ont info 2/1',
+                        'display ont info 2/2',
+                    ];
+                    foreach ($commands as $cmd) {
+                        try {
+                            $res = $this->cli->execute("{$cmd}\r\n", false);
+                            $lower = strtolower((string)$res);
+                            if (!empty($res) && !str_contains($lower, 'incomplete') && !str_contains($lower, 'invalid') && !str_contains($lower, 'unrecognized') && !str_contains($lower, 'error')) {
+                                $infoOut .= "\n" . $res;
+                            }
+                        } catch (\Throwable $e) {
+                            Log::debug("CLI cmd {$cmd} error: " . $e->getMessage());
+                        }
+                    }
+                }
             } else {
                 $commands = [
                     'show ont info all',
@@ -794,31 +816,16 @@ class HisfocusOltDriver extends BaseOltDriver
                     'display ont info all',
                     'display ont optical-info all',
                 ];
-            }
-
-            $infoOut = '';
-            foreach ($commands as $cmd) {
-                try {
-                    $res = $this->cli->execute("{$cmd}\r\n", false);
-                    $lower = strtolower((string)$res);
-                    if (!empty($res) && !str_contains($lower, 'incomplete') && !str_contains($lower, 'invalid') && !str_contains($lower, 'unrecognized') && !str_contains($lower, 'error')) {
-                        $infoOut .= "\n" . $res;
+                foreach ($commands as $cmd) {
+                    try {
+                        $res = $this->cli->execute("{$cmd}\r\n", false);
+                        $lower = strtolower((string)$res);
+                        if (!empty($res) && !str_contains($lower, 'incomplete') && !str_contains($lower, 'invalid') && !str_contains($lower, 'unrecognized') && !str_contains($lower, 'error')) {
+                            $infoOut .= "\n" . $res;
+                        }
+                    } catch (\Throwable $e) {
+                        Log::debug("CLI cmd {$cmd} error: " . $e->getMessage());
                     }
-                } catch (\Throwable $e) {
-                    Log::debug("CLI cmd {$cmd} error: " . $e->getMessage());
-                }
-            }
-
-            // Fallback: Jika display rule-profile kosong atau belum berisi rule-profile sn-auth, jalankan display current-config
-            if ($isGbn && (empty($infoOut) || !str_contains($infoOut, 'sn-auth'))) {
-                try {
-                    $res = $this->cli->execute("display current-config\r\n", false);
-                    $lower = strtolower((string)$res);
-                    if (!empty($res) && !str_contains($lower, 'unrecognized') && !str_contains($lower, 'error')) {
-                        $infoOut .= "\n" . $res;
-                    }
-                } catch (\Throwable $e) {
-                    Log::debug("CLI display current-config error: " . $e->getMessage());
                 }
             }
 

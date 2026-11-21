@@ -1,4 +1,4 @@
-<div class="space-y-6 pb-10">
+<div class="space-y-5 pb-10 min-w-0 max-w-full overflow-x-hidden">
     {{-- SESSION ALERTS --}}
     @if(session('success'))
         <div class="flex items-center gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-700 dark:text-emerald-300 text-sm font-medium">
@@ -13,95 +13,94 @@
         </div>
     @endif
 
-    {{-- HEADER BAR --}}
-    <div class="px-5 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-xl flex items-center justify-between flex-wrap gap-4">
-        <div class="flex items-center gap-4">
-            <a href="{{ route('reseller-portal.network.acs-devices.index') }}" class="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors" title="Kembali ke Daftar">
+    {{-- HEADER BAR (RESPONSIF MOBILE RAMAH LAYAR 360px+) --}}
+    <div class="px-4 sm:px-5 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-start sm:items-center gap-3 min-w-0">
+            <a href="{{ route('reseller-portal.network.acs-devices.index') }}" class="p-2 shrink-0 rounded-lg text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors" title="Kembali ke Daftar">
                 <span class="material-symbols-outlined notranslate" translate="no">arrow_back</span>
             </a>
-            <div>
-                <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    {{ $device->serial_number ?? 'Device Detail' }}
+            <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                    <h1 class="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100 truncate">
+                        {{ $device->serial_number ?? 'Device Detail' }}
+                    </h1>
                     <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider {{ $device->status === 'online' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' : 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300' }}">
                         <span class="w-1.5 h-1.5 rounded-full {{ $device->status === 'online' ? 'bg-emerald-500' : 'bg-rose-500' }}"></span>
                         {{ $device->status }}
                     </span>
-                </h1>
-                <div class="text-sm text-slate-500 dark:text-slate-400 font-mono mt-1">
-                    MAC: {{ $device->mac_address ?? '-' }} | IP: <x-ui.ip-link :ip="$device->ip_address" />
+                </div>
+                <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-mono mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span>MAC: {{ $device->mac_address ?? '-' }}</span>
+                    <span class="hidden sm:inline">|</span>
+                    <span>IP: <x-ui.ip-link :ip="$device->ip_address" /></span>
                 </div>
             </div>
         </div>
-        <div class="flex items-center gap-2">
-            <button wire:click="summonDevice" wire:loading.attr="disabled" class="inline-flex items-center justify-center px-4 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 rounded-lg text-sm font-semibold transition-colors">
-                <span wire:loading.remove wire:target="summonDevice" class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">sensors</span>
-                <span wire:loading wire:target="summonDevice" class="material-symbols-outlined notranslate mr-1.5 animate-spin" translate="no" style="font-size:18px">hourglass_empty</span>
-                Summon
+        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+            <button wire:click="summonDevice" wire:loading.attr="disabled" class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs sm:text-sm font-semibold transition-colors">
+                <span wire:loading.remove wire:target="summonDevice" class="material-symbols-outlined notranslate mr-1.5 text-base sm:text-lg" translate="no">sensors</span>
+                <span wire:loading wire:target="summonDevice" class="material-symbols-outlined notranslate mr-1.5 text-base sm:text-lg animate-spin" translate="no">hourglass_empty</span>
+                <span>Summon</span>
             </button>
-            <button wire:click="openWifiModal" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 rounded-lg text-sm font-semibold transition-colors">
-                <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">wifi</span> Ganti WiFi
+            <button wire:click="openWifiModal" class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs sm:text-sm font-semibold transition-colors">
+                <span class="material-symbols-outlined notranslate mr-1.5 text-base sm:text-lg" translate="no">wifi</span>
+                <span>Ganti WiFi</span>
             </button>
-            @livewire(\App\Livewire\ACS\Device\WanManager::class, ['device' => $device])
-            <button wire:click="rebootDevice" wire:confirm="Yakin ingin me-reboot modem {{ $device->serial_number }} ini dari jarak jauh via TR-069?" wire:loading.attr="disabled" class="inline-flex items-center justify-center px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 rounded-lg text-sm font-semibold transition-colors">
-                <span wire:loading.remove wire:target="rebootDevice" class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">restart_alt</span>
-                <span wire:loading wire:target="rebootDevice" class="material-symbols-outlined notranslate mr-1.5 animate-spin" translate="no" style="font-size:18px">hourglass_empty</span>
-                Reboot
+            <div class="w-full sm:w-auto">
+                @livewire(\App\Livewire\ACS\Device\WanManager::class, ['device' => $device])
+            </div>
+            <button wire:click="rebootDevice" wire:confirm="Yakin ingin me-reboot modem {{ $device->serial_number }} ini dari jarak jauh via TR-069?" wire:loading.attr="disabled" class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 rounded-lg text-xs sm:text-sm font-semibold transition-colors">
+                <span wire:loading.remove wire:target="rebootDevice" class="material-symbols-outlined notranslate mr-1.5 text-base sm:text-lg" translate="no">restart_alt</span>
+                <span wire:loading wire:target="rebootDevice" class="material-symbols-outlined notranslate mr-1.5 text-base sm:text-lg animate-spin" translate="no">hourglass_empty</span>
+                <span>Reboot</span>
             </button>
         </div>
     </div>
 
-    {{-- KPI DIAGNOSTICS --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    {{-- KPI DIAGNOSTICS (RESPONSIF MOBILE 2 KOLOM TANPA OVERFLOW) --}}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {{-- RX Power --}}
-        <div class="relative overflow-x-auto rounded-xl border border-indigo-200 dark:border-indigo-800/60 shadow-sm bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/40 dark:to-slate-800 group">
-            <div class="p-4 pt-5">
-                <h3 class="text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                    <span class="material-symbols-outlined notranslate text-[16px]" translate="no">cable</span> RX Power
-                </h3>
-                <div class="text-2xl font-black {{ isset($deviceStatus['rx_power']) && floatval($deviceStatus['rx_power']) < -26 ? 'text-rose-600 dark:text-rose-400' : 'text-indigo-700 dark:text-indigo-300' }} mb-1">
-                    {{ $deviceStatus['rx_power'] ?? '-' }}
-                </div>
-                <div class="text-[11px] text-slate-500 dark:text-slate-400">Redaman Fiber (Optical)</div>
+        <div class="rounded-xl border border-indigo-200 dark:border-indigo-800/60 shadow-sm bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/40 dark:to-slate-800 p-3.5 sm:p-4">
+            <h3 class="text-[11px] sm:text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <span class="material-symbols-outlined notranslate text-[16px]" translate="no">cable</span> RX Power
+            </h3>
+            <div class="text-xl sm:text-2xl font-black {{ isset($deviceStatus['rx_power']) && floatval($deviceStatus['rx_power']) < -26 ? 'text-rose-600 dark:text-rose-400' : 'text-indigo-700 dark:text-indigo-300' }} mb-0.5 truncate">
+                {{ $deviceStatus['rx_power'] ?? '-' }}
             </div>
+            <div class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">Redaman Fiber (RX)</div>
         </div>
 
         {{-- TX Power --}}
-        <div class="relative overflow-x-auto rounded-xl border border-sky-200 dark:border-sky-800/60 shadow-sm bg-gradient-to-br from-sky-50 to-white dark:from-sky-950/40 dark:to-slate-800 group">
-            <div class="p-4 pt-5">
-                <h3 class="text-xs font-bold text-sky-500 dark:text-sky-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                    <span class="material-symbols-outlined notranslate text-[16px]" translate="no">sensors</span> TX Power
-                </h3>
-                <div class="text-2xl font-black text-sky-700 dark:text-sky-300 mb-1">
-                    {{ $deviceStatus['tx_power'] ?? '-' }}
-                </div>
-                <div class="text-[11px] text-slate-500 dark:text-slate-400">Sinyal Pancar (Optical)</div>
+        <div class="rounded-xl border border-sky-200 dark:border-sky-800/60 shadow-sm bg-gradient-to-br from-sky-50 to-white dark:from-sky-950/40 dark:to-slate-800 p-3.5 sm:p-4">
+            <h3 class="text-[11px] sm:text-xs font-bold text-sky-500 dark:text-sky-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <span class="material-symbols-outlined notranslate text-[16px]" translate="no">sensors</span> TX Power
+            </h3>
+            <div class="text-xl sm:text-2xl font-black text-sky-700 dark:text-sky-300 mb-0.5 truncate">
+                {{ $deviceStatus['tx_power'] ?? '-' }}
             </div>
+            <div class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">Sinyal Pancar (TX)</div>
         </div>
 
         {{-- PPPoE User --}}
-        <div class="relative overflow-x-auto rounded-xl border border-emerald-200 dark:border-emerald-800/60 shadow-sm bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/40 dark:to-slate-800 group">
-            <div class="p-4 pt-5">
-                <h3 class="text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                    <span class="material-symbols-outlined notranslate text-[16px]" translate="no">account_circle</span> PPPoE Account
-                </h3>
-                <div class="text-xl font-bold text-emerald-700 dark:text-emerald-300 mb-1 truncate" title="{{ $deviceStatus['pppoe_username'] ?? '-' }}">
-                    {{ $deviceStatus['pppoe_username'] ?? '-' }}
-                </div>
-                <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">Pass: {{ $deviceStatus['pppoe_password'] ?? '***' }}</div>
+        <div class="rounded-xl border border-emerald-200 dark:border-emerald-800/60 shadow-sm bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/40 dark:to-slate-800 p-3.5 sm:p-4">
+            <h3 class="text-[11px] sm:text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <span class="material-symbols-outlined notranslate text-[16px]" translate="no">account_circle</span> PPPoE
+            </h3>
+            <div class="text-base sm:text-xl font-bold text-emerald-700 dark:text-emerald-300 mb-0.5 truncate" title="{{ $deviceStatus['pppoe_username'] ?? '-' }}">
+                {{ $deviceStatus['pppoe_username'] ?? '-' }}
             </div>
+            <div class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">Pass: {{ $deviceStatus['pppoe_password'] ?? '***' }}</div>
         </div>
 
         {{-- WiFi SSID --}}
-        <div class="relative overflow-x-auto rounded-xl border border-purple-200 dark:border-purple-800/60 shadow-sm bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/40 dark:to-slate-800 group">
-            <div class="p-4 pt-5">
-                <h3 class="text-xs font-bold text-purple-500 dark:text-purple-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                    <span class="material-symbols-outlined notranslate text-[16px]" translate="no">wifi</span> WiFi Network
-                </h3>
-                <div class="text-xl font-bold text-purple-700 dark:text-purple-300 mb-1 truncate" title="{{ $deviceStatus['ssid_1'] ?? '-' }}">
-                    {{ $deviceStatus['ssid_1'] ?? '-' }}
-                </div>
-                <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">SSID Utama</div>
+        <div class="rounded-xl border border-purple-200 dark:border-purple-800/60 shadow-sm bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/40 dark:to-slate-800 p-3.5 sm:p-4">
+            <h3 class="text-[11px] sm:text-xs font-bold text-purple-500 dark:text-purple-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <span class="material-symbols-outlined notranslate text-[16px]" translate="no">wifi</span> WiFi
+            </h3>
+            <div class="text-base sm:text-xl font-bold text-purple-700 dark:text-purple-300 mb-0.5 truncate" title="{{ $deviceStatus['ssid_1'] ?? '-' }}">
+                {{ $deviceStatus['ssid_1'] ?? '-' }}
             </div>
+            <div class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-mono">SSID Utama</div>
         </div>
     </div>
 
@@ -114,40 +113,41 @@
                     Informasi Sistem
                 </div>
                 <div class="divide-y divide-slate-100 dark:divide-slate-700 text-sm">
-                    <div class="p-3 flex justify-between">
-                        <span class="text-slate-500 dark:text-slate-400">Manufacturer</span>
-                        <span class="font-medium text-slate-900 dark:text-slate-100">{{ $device->manufacturer ?? '-' }}</span>
+                    <div class="p-3 flex items-center justify-between gap-2 min-w-0">
+                        <span class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm shrink-0">Manufacturer</span>
+                        <span class="font-medium text-slate-900 dark:text-slate-100 text-xs sm:text-sm truncate text-right">{{ $device->manufacturer ?? '-' }}</span>
                     </div>
-                    <div class="p-3 flex justify-between">
-                        <span class="text-slate-500 dark:text-slate-400">Product Class</span>
-                        <span class="font-medium text-slate-900 dark:text-slate-100">{{ $device->product_class ?? '-' }}</span>
+                    <div class="p-3 flex items-center justify-between gap-2 min-w-0">
+                        <span class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm shrink-0">Product Class</span>
+                        <span class="font-medium text-slate-900 dark:text-slate-100 text-xs sm:text-sm truncate text-right">{{ $device->product_class ?? '-' }}</span>
                     </div>
-                    <div class="p-3 flex justify-between">
-                        <span class="text-slate-500 dark:text-slate-400">Hardware Ver</span>
-                        <span class="font-medium text-slate-900 dark:text-slate-100">{{ $device->hardware_version ?? '-' }}</span>
+                    <div class="p-3 flex items-center justify-between gap-2 min-w-0">
+                        <span class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm shrink-0">Hardware Ver</span>
+                        <span class="font-medium text-slate-900 dark:text-slate-100 text-xs sm:text-sm truncate text-right">{{ $device->hardware_version ?? '-' }}</span>
                     </div>
-                    <div class="p-3 flex justify-between">
-                        <span class="text-slate-500 dark:text-slate-400">Software Ver</span>
-                        <span class="font-medium text-slate-900 dark:text-slate-100">{{ $device->software_version ?? '-' }}</span>
+                    <div class="p-3 flex items-center justify-between gap-2 min-w-0">
+                        <span class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm shrink-0">Software Ver</span>
+                        <span class="font-medium text-slate-900 dark:text-slate-100 text-xs sm:text-sm truncate text-right">{{ $device->software_version ?? '-' }}</span>
                     </div>
-                    <div class="p-3 flex justify-between">
-                        <span class="text-slate-500 dark:text-slate-400">Firmware Ver</span>
-                        <span class="font-medium text-slate-900 dark:text-slate-100">{{ $device->firmware_version ?? '-' }}</span>
+                    <div class="p-3 flex items-center justify-between gap-2 min-w-0">
+                        <span class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm shrink-0">Firmware Ver</span>
+                        <span class="font-medium text-slate-900 dark:text-slate-100 text-xs sm:text-sm truncate text-right">{{ $device->firmware_version ?? '-' }}</span>
                     </div>
-                    <div class="p-3 flex justify-between">
-                        <span class="text-slate-500 dark:text-slate-400">Last Inform</span>
-                        <span class="font-medium text-slate-900 dark:text-slate-100">{{ $device->last_inform?->format('d/m/Y H:i') ?? '-' }}</span>
+                    <div class="p-3 flex items-center justify-between gap-2 min-w-0">
+                        <span class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm shrink-0">Last Inform</span>
+                        <span class="font-medium text-slate-900 dark:text-slate-100 text-xs sm:text-sm truncate text-right">{{ $device->last_inform?->format('d/m/Y H:i') ?? '-' }}</span>
                     </div>
-                    <div class="p-3 flex justify-between bg-indigo-50/50 dark:bg-indigo-950/20">
-                        <span class="text-slate-500 dark:text-slate-400 font-medium">WAN IP</span>
-                        <span class="font-bold text-indigo-700 dark:text-indigo-400">{{ $deviceStatus['wan_ip'] ?? '-' }}</span>
+                    <div class="p-3 flex items-center justify-between gap-2 min-w-0 bg-indigo-50/50 dark:bg-indigo-950/20">
+                        <span class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium shrink-0">WAN IP</span>
+                        <span class="font-bold text-indigo-700 dark:text-indigo-400 text-xs sm:text-sm truncate text-right">{{ $deviceStatus['wan_ip'] ?? '-' }}</span>
                     </div>
-                    <div class="p-3 flex justify-between bg-indigo-50/50 dark:bg-indigo-950/20">
-                        <span class="text-slate-500 dark:text-slate-400 font-medium">WAN MAC</span>
-                        <span class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300 mt-0.5">{{ $deviceStatus['wan_mac'] ?? '-' }}</span>
+                    <div class="p-3 flex items-center justify-between gap-2 min-w-0 bg-indigo-50/50 dark:bg-indigo-950/20">
+                        <span class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium shrink-0">WAN MAC</span>
+                        <span class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300 truncate text-right">{{ $deviceStatus['wan_mac'] ?? '-' }}</span>
                     </div>
                 </div>
             </div>
+        </div>
         </div>
 
         {{-- Connected Devices (Hosts) --}}

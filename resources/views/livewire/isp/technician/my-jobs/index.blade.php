@@ -84,31 +84,31 @@
         <button wire:click="filterJobType('all')" type="button"
                 class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap shrink-0
                        {{ $jobType === 'all' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
-            Semua ({{ ($stats['active'] ?? 0) + ($stats['history'] ?? 0) }})
+            Semua ({{ $activeTab === 'active' ? ($stats['active'] ?? 0) : ($stats['history'] ?? 0) }})
         </button>
         <button wire:click="filterJobType('installation')" type="button"
                 class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-1
                        {{ $jobType === 'installation' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
             <span class="material-symbols-outlined text-sm">build_circle</span>
-            Instalasi ({{ $stats['total_installations'] ?? 0 }})
+            Instalasi ({{ $activeTab === 'active' ? ($stats['active_installations'] ?? 0) : ($stats['history_installations'] ?? 0) }})
         </button>
         <button wire:click="filterJobType('ticket')" type="button"
                 class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-1
                        {{ $jobType === 'ticket' ? 'bg-amber-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
             <span class="material-symbols-outlined text-sm">build</span>
-            Tiket Gangguan ({{ $stats['total_tickets'] ?? 0 }})
+            Tiket Gangguan ({{ $activeTab === 'active' ? ($stats['active_tickets'] ?? 0) : ($stats['history_tickets'] ?? 0) }})
         </button>
         <button wire:click="filterJobType('maintenance')" type="button"
                 class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-1
                        {{ $jobType === 'maintenance' ? 'bg-sky-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
             <span class="material-symbols-outlined text-sm">engineering</span>
-            Maintenance ({{ $stats['total_maintenances'] ?? 0 }})
+            Maintenance ({{ $activeTab === 'active' ? ($stats['active_maintenances'] ?? 0) : ($stats['history_maintenances'] ?? 0) }})
         </button>
         <button wire:click="filterJobType('survey')" type="button"
                 class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-1
                        {{ $jobType === 'survey' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
             <span class="material-symbols-outlined text-sm">radar</span>
-            Survey ({{ $stats['total_surveys'] ?? 0 }})
+            Survey ({{ $activeTab === 'active' ? ($stats['active_surveys'] ?? 0) : ($stats['history_surveys'] ?? 0) }})
         </button>
     </div>
 

@@ -61,8 +61,8 @@ class OltPollingService
 
     public function pollOlt(Olt $olt): array
     {
-        @set_time_limit(180);
-        @ini_set('max_execution_time', '180');
+        @set_time_limit(55);
+        @ini_set('max_execution_time', '55');
         try {
             $driver = $this->registry->forOlt($olt);
             $systemInfo = $driver->getSystemInfo();
@@ -120,8 +120,15 @@ class OltPollingService
                     if (preg_match('/\/(\d+)\/(\d+)$/', $portName, $sp)) {
                         $slotNum = (int)$sp[1];
                         $rawPortNum = (int)$sp[2];
-                        // Untuk pizza-box / compact OLT (<= 8 PON), gunakan nomor port fisik langsung ($rawPortNum)
-                        if ($portCount <= 8 || ($olt->pon_port_count > 0 && $olt->pon_port_count <= 8)) {
+                        // Untuk pizza-box / compact OLT (<= 8 PON, GP210, HisFocus, V1600, FD1604), gunakan nomor port fisik langsung ($rawPortNum)
+                        $isPizzaBox = $portCount <= 8 
+                            || ($olt->pon_port_count > 0 && $olt->pon_port_count <= 8)
+                            || str_contains(strtolower(($olt->model ?? '') . ' ' . ($olt->name ?? '')), 'gp210')
+                            || str_contains(strtolower(($olt->model ?? '') . ' ' . ($olt->name ?? '')), 'hisfocus')
+                            || str_contains(strtolower($olt->hardware_type ?? ''), 'hisfocus')
+                            || preg_match('/^(?:gpon|epon)\s*0\/[12]\/(\d+)$/i', $portName);
+
+                        if ($isPizzaBox) {
                             $portNumber = $rawPortNum;
                         } else {
                             $portNumber = ($slotNum > 0) ? (($slotNum - 1) * 16 + $rawPortNum) : $rawPortNum;
@@ -208,12 +215,18 @@ class OltPollingService
                     foreach ($stalePorts as $stale) {
                         $matchingActive = PonPort::where('olt_id', $olt->id)
                             ->whereIn('id', $syncedPortIds)
-                            ->where('port_number', $stale->port_number)
+                            ->where(function ($q) use ($stale) {
+                                $q->where('port_number', $stale->port_number)
+                                  ->orWhere('port_number', $stale->port_number > 16 ? ($stale->port_number - 16) : $stale->port_number);
+                            })
                             ->first();
 
                         if ($matchingActive) {
                             Onu::withoutGlobalScopes()->where('pon_port_id', $stale->id)
-                                ->update(['pon_port_id' => $matchingActive->id]);
+                                ->update([
+                                    'pon_port_id' => $matchingActive->id,
+                                    'pon_port' => $matchingActive->port_number,
+                                ]);
                         }
 
                         // Ubah code stale port agar tidak bentrok dengan unique constraint MySQL jika di-soft delete

@@ -1216,10 +1216,21 @@ class Index extends Component
                 ->count();
         }
 
+        $activeInstallations = $activeCs + $activeInst;
+        $historyInstallations = $historyCs + $historyInst;
+
         return [
             'active' => $activeCs + $activeInst + $activeSurveys + $activeTickets + $activeMaint,
             'history' => $historyCs + $historyInst + $historySurveys + $historyTickets + $historyMaint,
-            'total_installations' => $activeCs + $historyCs + $activeInst + $historyInst,
+            'active_installations' => $activeInstallations,
+            'history_installations' => $historyInstallations,
+            'active_tickets' => $activeTickets,
+            'history_tickets' => $historyTickets,
+            'active_surveys' => $activeSurveys,
+            'history_surveys' => $historySurveys,
+            'active_maintenances' => $activeMaint,
+            'history_maintenances' => $historyMaint,
+            'total_installations' => $activeInstallations + $historyInstallations,
             'total_surveys' => $activeSurveys + $historySurveys,
             'total_tickets' => $activeTickets + $historyTickets,
             'total_maintenances' => $activeMaint + $historyMaint,
