@@ -93,12 +93,18 @@ class MobileAppApiController extends Controller
         $partnerBackup = \App\Models\Setting::getValue('company.partner_upstream_backup');
 
         $companyName = \App\Models\Setting::getValue('company.name') ?: config('app.name', 'dsBilling');
-        $companyLogo = \App\Models\Setting::getValue('company.logo_url', null);
+        $companyLogo = \App\Models\Setting::getValue('company.logo_url') ?: \App\Models\Setting::getValue('company.logo');
+
+        if (empty($partnerLogo) && !empty($companyLogo)) {
+            $partnerLogo = $companyLogo;
+        }
 
         $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
         $logoUrl = null;
         if (!empty($partnerLogo)) {
             $logoUrl = str_starts_with($partnerLogo, 'http') ? $partnerLogo : ($baseUrl . '/' . ltrim($partnerLogo, '/'));
+        } else {
+            $logoUrl = $baseUrl . '/images/dsbilling_logo_tech_light.png';
         }
 
         return response()->json([
