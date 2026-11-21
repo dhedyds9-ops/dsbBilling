@@ -77,8 +77,14 @@ class CustomerDashboardService
             }
         }
 
-        $primaryService = $customerServices->where('status', 'active')->first()
-            ?? $customerServices->first();
+        // Prioritaskan layanan yang sedang online / aktif terlebih dahulu jika pelanggan memiliki beberapa layanan
+        $primaryService = $customerServices->first(function ($s) {
+            return $s->status === 'active' && ($s->pppoeUser?->is_online || $s->hotspotUser?->is_online);
+        }) ?? $customerServices->first(function ($s) {
+            $type = strtolower($s->serviceProfile?->service_type ?? '');
+            return $s->status === 'active' && !in_array($type, ['hotspot', 'member_hotspot', 'voucher']);
+        }) ?? $customerServices->where('status', 'active')->first()
+           ?? $customerServices->first();
 
         // Resolusi Service Profile dari primaryService
         $serviceProfile = $primaryService?->serviceProfile;

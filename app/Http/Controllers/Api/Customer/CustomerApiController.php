@@ -45,21 +45,37 @@ class CustomerApiController extends Controller
      */
     protected function getAuthenticatedCustomer(User $user): ?Customer
     {
-        $customer = Customer::withoutGlobalScopes()->where('user_id', $user->id)->first();
-        if (!$customer) {
-            // Auto-heal lookup by code, phone, or email
+        // 1. Prioritaskan pencocokan persis berdasarkan kode pelanggan akun (customer_code / username)
+        $code = trim((string) ($user->customer_code ?: $user->username));
+        if ($code !== '') {
             $customer = Customer::withoutGlobalScopes()
-                ->where('code', $user->username)
-                ->orWhere('code', $user->customer_code)
-                ->orWhere('phone', $user->whatsapp)
-                ->orWhere('email', $user->email)
+                ->whereRaw('LOWER(code) = ?', [mb_strtolower($code)])
                 ->first();
-
-            if ($customer && empty($customer->user_id)) {
-                $customer->update(['user_id' => $user->id]);
+            if ($customer) {
+                if ($customer->user_id !== $user->id) {
+                    $customer->update(['user_id' => $user->id]);
+                }
+                return $customer;
             }
         }
-        return $customer;
+
+        // 2. Lookup berdasarkan relasi user_id langsung
+        $customer = Customer::withoutGlobalScopes()->where('user_id', $user->id)->first();
+        if ($customer) {
+            return $customer;
+        }
+
+        // 3. Fallback lookup via telepon atau email
+        return Customer::withoutGlobalScopes()
+            ->where(function ($q) use ($user) {
+                if (!empty($user->whatsapp)) {
+                    $q->where('phone', $user->whatsapp);
+                }
+                if (!empty($user->email)) {
+                    $q->orWhere('email', $user->email);
+                }
+            })
+            ->first();
     }
 
     /**
@@ -219,43 +235,44 @@ class CustomerApiController extends Controller
         }
 
         if ($customer) {
-            if ($customer->user_id) {
-                $u = User::find($customer->user_id);
-                if ($u) return $u;
-            }
+            $targetCode = trim((string) ($customer->code ?: $identity));
 
-            // Auto-heal user lookup
-            $cleanPhone = preg_replace('/[^0-9]/', '', (string)$customer->phone);
-            $u = User::where(function ($q) use ($cleanPhone, $customer) {
-                if ($cleanPhone) {
-                    $q->where('whatsapp', 'LIKE', "%{$cleanPhone}%");
-                }
-                if ($customer->email) {
-                    $q->orWhereRaw('LOWER(email) = ?', [mb_strtolower($customer->email)]);
-                }
-                if ($customer->code) {
-                    $q->orWhereRaw('LOWER(username) = ?', [mb_strtolower($customer->code)]);
-                }
+            // Prioritas 1: Cari User yang memiliki username atau customer_code yang cocok persis dengan customer code ini
+            $u = User::where(function ($q) use ($targetCode) {
+                $q->whereRaw('LOWER(username) = ?', [mb_strtolower($targetCode)])
+                  ->orWhereRaw('LOWER(customer_code) = ?', [mb_strtolower($targetCode)]);
             })->first();
 
-            if (!$u) {
-                $service = CustomerService::withoutGlobalScopes()->where('customer_id', $customer->id)->first();
-                $defaultPass = !empty($service->password) ? $service->password : '123456';
-                $u = User::create([
-                    'name' => $customer->name,
-                    'email' => $customer->email,
-                    'whatsapp' => $customer->phone,
-                    'customer_code' => $customer->code ?: $identity,
-                    'username' => $customer->code ?: $identity,
-                    'pppoe_username' => $service?->username,
-                    'password' => Hash::make($defaultPass),
-                    'is_active' => true,
-                ]);
+            if ($u) {
+                if ($customer->user_id !== $u->id) {
+                    $customer->update(['user_id' => $u->id]);
+                }
+                return $u;
             }
 
-            if ($customer->user_id !== $u->id) {
-                $customer->update(['user_id' => $u->id]);
+            // Prioritas 2: Jika customer sudah memiliki user_id, pastikan user tersebut bukan milik customer code lain
+            if ($customer->user_id) {
+                $u = User::find($customer->user_id);
+                if ($u && (empty($u->customer_code) || strcasecmp($u->customer_code, $customer->code) === 0 || strcasecmp($u->username, $customer->code) === 0)) {
+                    return $u;
+                }
             }
+
+            // Prioritas 3: Buat User baru khusus untuk customer ini jika belum ada (hindari menautkan ke user lain)
+            $service = CustomerService::withoutGlobalScopes()->where('customer_id', $customer->id)->first();
+            $defaultPass = !empty($service->password) ? $service->password : '123456';
+            $u = User::create([
+                'name' => $customer->name,
+                'email' => $customer->email,
+                'whatsapp' => $customer->phone,
+                'customer_code' => $customer->code ?: $identity,
+                'username' => $customer->code ?: $identity,
+                'pppoe_username' => $service?->username,
+                'password' => Hash::make($defaultPass),
+                'is_active' => true,
+            ]);
+
+            $customer->update(['user_id' => $u->id]);
             return $u;
         }
 
