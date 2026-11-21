@@ -11,11 +11,8 @@
     $serviceBadgeLabel = $isHotspotService ? 'Hotspot' : 'PPPoE';
 @endphp
 
-<div class="max-w-md mx-auto sm:max-w-full p-4 sm:p-4 bg-slate-50 dark:bg-slate-900 min-h-[calc(100vh-4rem)] pb-24">
-    <!-- MOBILE WRAPPER (Cards & spacing optimized for mobile, scales up for desktop) -->
-    <div class="max-w-md mx-auto sm:max-w-4xl space-y-4">
-        
-        <!-- Promotional Banner -->
+<div class="w-full max-w-md mx-auto p-4 bg-slate-50 dark:bg-slate-900 min-h-[calc(100vh-4rem)] pb-24 overflow-x-hidden space-y-4">
+    <!-- Promotional Banner -->
         <div class="rounded-3xl overflow-hidden relative shadow-lg 
             bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700
             dark:from-teal-700 dark:via-slate-800 dark:to-emerald-900
@@ -310,5 +307,4 @@
                 @endforelse
             </div>
         </div>
-    </div>
 </div>

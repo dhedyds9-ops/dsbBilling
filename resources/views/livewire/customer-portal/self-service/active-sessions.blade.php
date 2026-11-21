@@ -1,6 +1,6 @@
 @section('header_title', 'Perangkat Aktif & Modem')
 
-<div class="p-4 sm:p-6 min-h-[calc(100vh-4rem)] pb-24 space-y-6 max-w-4xl mx-auto">
+<div class="p-4 min-h-[calc(100vh-4rem)] pb-24 space-y-5 w-full max-w-md mx-auto overflow-x-hidden">
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>

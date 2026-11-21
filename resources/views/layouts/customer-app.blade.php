@@ -122,7 +122,7 @@
     <x-slot:title>@yield('title', $title ?? (config('app.name', 'BillingHub')))</x-slot:title>
 
     <!-- App Shell (Max width constraint to look like app on desktop) -->
-    <div class="max-w-md mx-auto min-h-screen relative bg-slate-50 dark:bg-slate-900 shadow-[0_0_40px_rgba(0,0,0,0.05)] sm:border-x border-slate-200 dark:border-slate-800 flex flex-col print-reset-layout print-reset-height">
+    <div class="max-w-md mx-auto min-h-screen relative bg-slate-50 dark:bg-slate-900 shadow-[0_0_40px_rgba(0,0,0,0.05)] sm:border-x border-slate-200 dark:border-slate-800 flex flex-col overflow-x-hidden print-reset-layout print-reset-height">
         
         <!-- App Header (Sticky) -->
         <header class="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 px-4 h-14 flex items-center justify-between print-hide">
@@ -180,8 +180,8 @@
             </div>
         </header>
 
-        <!-- Main Content (Scrollable) -->
-        <main class="flex-1 overflow-y-auto pb-20 print-reset-height print-reset-overflow print-reset-padding">
+        <!-- Main Content (Smooth Body Scroll, Eliminates Double Scrollbar) -->
+        <main class="flex-1 w-full pb-20 print-reset-height print-reset-overflow print-reset-padding">
             {{-- First Login Password Change Alert --}}
             @auth
                 @php
@@ -211,33 +211,33 @@
             @yield('content')
         </main>
 
-        <!-- Bottom Navigation Bar (Fixed Grid 6 Columns) -->
-        <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 px-1 py-1.5 grid grid-cols-6 z-40 shadow-[0_-4px_24px_rgba(0,0,0,0.04)] print-hide">
-            <a href="{{ route('customer-portal.dashboard') }}" class="flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('customer-portal.dashboard') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
-                <span class="material-symbols-outlined notranslate {{ request()->routeIs('customer-portal.dashboard') ? 'fill' : '' }}" translate="no" style="font-size:22px">home</span>
-                <span class="text-[10px] truncate w-full text-center">Home</span>
+        <!-- Bottom Navigation Bar (Fixed Grid 6 Columns, Mobile Optimized) -->
+        <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-100 dark:border-slate-800 px-1 py-1 grid grid-cols-6 items-center justify-items-center z-40 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] print-hide">
+            <a href="{{ route('customer-portal.dashboard') }}" class="w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.dashboard') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
+                <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('customer-portal.dashboard') ? 'fill' : '' }}" translate="no" style="font-size:20px; line-height: 1;">home</span>
+                <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">Home</span>
             </a>
-            <a href="{{ route('customer-portal.billing.invoice-list') }}" class="flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('customer-portal.billing.*') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
-                <span class="material-symbols-outlined notranslate {{ request()->routeIs('customer-portal.billing.*') ? 'fill' : '' }}" translate="no" style="font-size:22px">receipt_long</span>
-                <span class="text-[10px] truncate w-full text-center">Tagihan</span>
+            <a href="{{ route('customer-portal.billing.invoice-list') }}" class="w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.billing.*') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
+                <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('customer-portal.billing.*') ? 'fill' : '' }}" translate="no" style="font-size:20px; line-height: 1;">receipt_long</span>
+                <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">Tagihan</span>
             </a>
-            <a href="{{ route('customer-portal.info') }}" class="flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('customer-portal.info') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
-                <span class="material-symbols-outlined notranslate {{ request()->routeIs('customer-portal.info') ? 'fill' : '' }}" translate="no" style="font-size:22px">notifications</span>
-                <span class="text-[10px] truncate w-full text-center">Notifikasi</span>
+            <a href="{{ route('customer-portal.info') }}" class="w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.info') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
+                <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('customer-portal.info') ? 'fill' : '' }}" translate="no" style="font-size:20px; line-height: 1;">notifications</span>
+                <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">Notif</span>
             </a>
-            <a href="{{ route('customer-portal.support.ticket-list') }}" class="flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('customer-portal.support.*') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
-                <span class="material-symbols-outlined notranslate {{ request()->routeIs('customer-portal.support.*') ? 'fill' : '' }}" translate="no" style="font-size:22px">support_agent</span>
-                <span class="text-[10px] truncate w-full text-center">Tiket</span>
+            <a href="{{ route('customer-portal.support.ticket-list') }}" class="w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.support.*') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
+                <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('customer-portal.support.*') ? 'fill' : '' }}" translate="no" style="font-size:20px; line-height: 1;">support_agent</span>
+                <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">Tiket</span>
             </a>
-            <a href="{{ route('customer-portal.profile') }}" class="flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('customer-portal.profile') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
-                <span class="material-symbols-outlined notranslate {{ request()->routeIs('customer-portal.profile') ? 'fill' : '' }}" translate="no" style="font-size:22px">person</span>
-                <span class="text-[10px] truncate w-full text-center">Profile</span>
+            <a href="{{ route('customer-portal.profile') }}" class="w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.profile') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
+                <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('customer-portal.profile') ? 'fill' : '' }}" translate="no" style="font-size:20px; line-height: 1;">person</span>
+                <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">Profil</span>
             </a>
-            <form method="POST" action="{{ route('logout') }}" class="m-0 flex flex-col items-center justify-center">
+            <form method="POST" action="{{ route('logout') }}" class="w-full m-0 flex justify-center">
                 @csrf
-                <button type="submit" class="w-full flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl text-slate-400 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 transition-colors">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:22px">logout</span>
-                    <span class="text-[10px] truncate w-full text-center">Logout</span>
+                <button type="submit" class="w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-slate-400 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 transition-colors">
+                    <span class="material-symbols-outlined notranslate shrink-0" translate="no" style="font-size:20px; line-height: 1;">logout</span>
+                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">Keluar</span>
                 </button>
             </form>
         </nav>

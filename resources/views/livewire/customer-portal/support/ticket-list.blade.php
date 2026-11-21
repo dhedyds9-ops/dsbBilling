@@ -1,6 +1,6 @@
 @section('header_title', 'Dukungan & Tiket')
 
-<div class="p-4 sm:p-4 min-h-[calc(100vh-4rem)] relative pb-24">
+<div class="p-4 min-h-[calc(100vh-4rem)] relative pb-24 overflow-x-hidden">
     <div class="mb-5">
         <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">Riwayat Pengaduan</h1>
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Pantau status tiket bantuan teknis Anda.</p>
@@ -57,8 +57,8 @@
         {{ $tickets->links('pagination::tailwind') }}
     </div>
 
-        <!-- Floating Action Button -->
-    <a href="{{ route('customer-portal.support.ticket-create') }}" class="fixed bottom-20 right-4 sm:right-auto sm:ml-[360px] w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-600/30 transition-transform active:scale-95 z-50">
-        <span class="material-symbols-outlined text-[28px]">add</span>
+    <!-- Floating Action Button -->
+    <a href="{{ route('customer-portal.support.ticket-create') }}" class="fixed bottom-20 right-4 sm:right-auto sm:left-1/2 sm:translate-x-[150px] w-12 h-12 sm:w-14 sm:h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-600/30 transition-transform active:scale-95 z-40" title="Buat Tiket Baru">
+        <span class="material-symbols-outlined text-[24px] sm:text-[28px]">add</span>
     </a>
 </div>

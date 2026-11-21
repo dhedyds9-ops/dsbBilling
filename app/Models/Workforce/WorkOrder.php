@@ -55,6 +55,11 @@ class WorkOrder extends Model
 
     public function customer(): BelongsTo
     {
+        return $this->belongsTo(\App\Models\CRM\Customer::class, 'customer_id');
+    }
+
+    public function userCustomer(): BelongsTo
+    {
         return $this->belongsTo(User::class, 'customer_id');
     }
 

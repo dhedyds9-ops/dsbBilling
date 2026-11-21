@@ -129,6 +129,11 @@ class User extends Authenticatable
         return $this->hasOne(\App\Models\CRM\Customer::class, 'user_id', 'id');
     }
 
+    public function customerServices(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\CRM\CustomerService::class, 'user_id');
+    }
+
     public function isSuperAdmin(): bool
     {
         return $this->hasRole(\App\Enums\UserRole::Administrator->value) || $this->hasRole('superadmin');

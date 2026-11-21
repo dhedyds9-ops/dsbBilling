@@ -847,7 +847,21 @@ class MobileWorkforceApiController extends Controller
         $longitude = null;
 
         if ($customer) {
-            $activeService = $customer->customerServices()->with('serviceProfile')->first();
+            $activeService = null;
+            if (method_exists($customer, 'customerServices')) {
+                try {
+                    $activeService = $customer->customerServices()->with('serviceProfile')->first();
+                } catch (\Throwable) {
+                    $activeService = null;
+                }
+            } elseif ($customer instanceof User && $customer->customer) {
+                try {
+                    $activeService = $customer->customer->customerServices()->with('serviceProfile')->first();
+                } catch (\Throwable) {
+                    $activeService = null;
+                }
+            }
+
             $packageName = $customer->package_name 
                 ?? $activeService?->serviceProfile?->name 
                 ?? $wo->installation?->package_name 
@@ -863,13 +877,13 @@ class MobileWorkforceApiController extends Controller
                 'email' => $customer->email,
                 'phone' => $customer->whatsapp ?? $customer->phone ?? null,
                 'whatsapp' => $customer->whatsapp ?? $customer->phone ?? null,
-                'address' => $customer->address ?? $customer->wilayah ?? null,
-                'customer_code' => $customer->customer_code,
+                'address' => $customer->address ?? ($customer->wilayah ?? null),
+                'customer_code' => $customer->customer_code ?? ($customer->code ?? null),
                 'package_name' => $packageName,
                 'latitude' => $latitude,
                 'longitude' => $longitude,
-                'pppoe_username' => $customer->pppoe_username,
-                'onu_sn' => $customer->onu_sn,
+                'pppoe_username' => $customer->pppoe_username ?? null,
+                'onu_sn' => $customer->onu_sn ?? null,
             ];
         } elseif ($wo->relationLoaded('installation') || $wo->installation) {
             $inst = $wo->installation;

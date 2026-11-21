@@ -309,7 +309,7 @@
             @endif
 
             <!-- MAIN CONTAINER: WIDE ON DESKTOP, FLUID ON MOBILE -->
-            <main class="flex-1 w-full max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-2 sm:py-4 pb-20 lg:pb-12">
+            <main class="flex-1 w-full max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-2 sm:py-4 pb-20 lg:pb-12 overflow-x-hidden">
                 {{ $slot ?? '' }}
                 @yield('content')
             </main>
@@ -318,37 +318,37 @@
         <!-- ==================================================================== -->
         <!-- MOBILE BOTTOM NAVIGATION (Hidden on Desktop >= 1024px)              -->
         <!-- ==================================================================== -->
-        <nav class="lg:hidden fixed bottom-0 left-0 right-0 w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 px-1 py-1 grid grid-cols-6 items-center justify-items-center z-40 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] print-hide">
+        <nav class="lg:hidden fixed bottom-0 left-0 right-0 w-full sm:max-w-xl sm:left-1/2 sm:-translate-x-1/2 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 px-1 py-1 grid grid-cols-6 items-center justify-items-center z-40 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] print-hide">
             <a href="{{ route('technician.dashboard') }}" class="w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-colors {{ request()->routeIs('technician.dashboard') ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40' : 'text-slate-400 dark:text-slate-500 hover:text-slate-700' }}">
-                <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('technician.dashboard') ? 'fill' : '' }}" translate="no" style="font-size:22px; line-height: 1;">home</span>
-                <span class="text-[9px] font-semibold truncate max-w-full leading-tight mt-0.5">Home</span>
+                <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('technician.dashboard') ? 'fill' : '' }}" translate="no" style="font-size:20px; line-height: 1;">home</span>
+                <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">Home</span>
             </a>
 
             @if(!$__hasCheckedIn)
                 <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';" class="w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-slate-300 dark:text-slate-600 relative" title="Menu Terkunci - Wajib Absen">
-                    <span class="material-symbols-outlined notranslate shrink-0" translate="no" style="font-size:22px; line-height: 1;">lock</span>
-                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight mt-0.5">PSB</span>
+                    <span class="material-symbols-outlined notranslate shrink-0" translate="no" style="font-size:20px; line-height: 1;">lock</span>
+                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">PSB</span>
                 </button>
                 <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';" class="w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-slate-300 dark:text-slate-600 relative" title="Menu Terkunci - Wajib Absen">
-                    <span class="material-symbols-outlined notranslate shrink-0" translate="no" style="font-size:22px; line-height: 1;">lock</span>
-                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight mt-0.5">Gangguan</span>
+                    <span class="material-symbols-outlined notranslate shrink-0" translate="no" style="font-size:20px; line-height: 1;">lock</span>
+                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">Gangguan</span>
                 </button>
                 <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';" class="w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-slate-300 dark:text-slate-600 relative" title="Menu Terkunci - Wajib Absen">
-                    <span class="material-symbols-outlined notranslate shrink-0" translate="no" style="font-size:22px; line-height: 1;">lock</span>
-                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight mt-0.5">Instalasi</span>
+                    <span class="material-symbols-outlined notranslate shrink-0" translate="no" style="font-size:20px; line-height: 1;">lock</span>
+                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">Instalasi</span>
                 </button>
             @else
                 <a href="{{ route('technician.my-jobs.index') }}" class="w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-colors {{ request()->routeIs('technician.my-jobs.index') ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40' : 'text-slate-400 dark:text-slate-500 hover:text-slate-700' }}">
-                    <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('technician.my-jobs.index') ? 'fill' : '' }}" translate="no" style="font-size:22px; line-height: 1;">assignment</span>
-                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight mt-0.5">PSB</span>
+                    <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('technician.my-jobs.index') ? 'fill' : '' }}" translate="no" style="font-size:20px; line-height: 1;">assignment</span>
+                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">PSB</span>
                 </a>
                 <a href="{{ route('technician.my-jobs.troubleshooting') }}" class="w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-colors {{ request()->routeIs('technician.my-jobs.troubleshooting') ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40' : 'text-slate-400 dark:text-slate-500 hover:text-slate-700' }}">
-                    <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('technician.my-jobs.troubleshooting') ? 'fill' : '' }}" translate="no" style="font-size:22px; line-height: 1;">build</span>
-                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight mt-0.5">Gangguan</span>
+                    <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('technician.my-jobs.troubleshooting') ? 'fill' : '' }}" translate="no" style="font-size:20px; line-height: 1;">build</span>
+                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">Gangguan</span>
                 </a>
                 <a href="{{ route('technician.installation.wizard') }}" class="w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-colors {{ request()->routeIs('technician.installation.*') ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40' : 'text-slate-400 dark:text-slate-500 hover:text-slate-700' }}">
-                    <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('technician.installation.*') ? 'fill' : '' }}" translate="no" style="font-size:22px; line-height: 1;">build_circle</span>
-                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight mt-0.5">Instalasi</span>
+                    <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('technician.installation.*') ? 'fill' : '' }}" translate="no" style="font-size:20px; line-height: 1;">build_circle</span>
+                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">Instalasi</span>
                 </a>
             @endif
 
@@ -359,15 +359,15 @@
                         <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                     </span>
                 @endif
-                <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('technician.attendance') ? 'fill' : '' }}" translate="no" style="font-size:22px; line-height: 1;">fingerprint</span>
-                <span class="text-[9px] font-semibold truncate max-w-full leading-tight mt-0.5">{{ $__hasCheckedIn ? 'Absensi' : 'Absen' }}</span>
+                <span class="material-symbols-outlined notranslate shrink-0 {{ request()->routeIs('technician.attendance') ? 'fill' : '' }}" translate="no" style="font-size:20px; line-height: 1;">fingerprint</span>
+                <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">{{ $__hasCheckedIn ? 'Absensi' : 'Absen' }}</span>
             </a>
 
             <form method="POST" action="{{ route('logout') }}" class="w-full m-0 flex justify-center">
                 @csrf
                 <button type="submit" class="w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-slate-400 dark:text-slate-500 hover:text-red-500 transition-colors">
-                    <span class="material-symbols-outlined notranslate shrink-0" translate="no" style="font-size:22px; line-height: 1;">logout</span>
-                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight mt-0.5">Keluar</span>
+                    <span class="material-symbols-outlined notranslate shrink-0" translate="no" style="font-size:20px; line-height: 1;">logout</span>
+                    <span class="text-[9px] font-semibold truncate max-w-full leading-tight tracking-tight mt-0.5">Keluar</span>
                 </button>
             </form>
         </nav>

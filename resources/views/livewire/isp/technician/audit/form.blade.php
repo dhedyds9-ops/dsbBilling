@@ -1,4 +1,4 @@
-<div class="space-y-3.5 pb-6">
+<div class="max-w-xl mx-auto space-y-3.5 pb-6 overflow-x-hidden">
     @section("header_title", "Sensus / Pendataan")
     <div class="bg-indigo-600 text-white p-3.5 sm:p-4 rounded-2xl shadow-md">
         <div class="flex items-center gap-2 mb-1">
@@ -79,9 +79,9 @@
             </div>
         </div>
 
-        {{-- OLT & PON Port --}}
-        <div class="grid grid-cols-2 gap-3">
-            <div>
+        {{-- OLT & PON Port (2:1 Ratio on Mobile so OLT Name has ample room) --}}
+        <div class="grid grid-cols-3 gap-2.5">
+            <div class="col-span-2">
                 <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">OLT Pusat (*)</label>
                 <x-ds-searchable-select
                     wire:model="olt_id"
@@ -92,10 +92,10 @@
                     :error="$errors->first('olt_id')"
                 />
             </div>
-            <div>
+            <div class="col-span-1">
                 <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">PON Port</label>
                 <input type="number" wire:model="pon_port" min="1" max="32" 
-                    class="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold text-center" 
+                    class="w-full px-2.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold text-center" 
                     placeholder="1">
                 @error('pon_port') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
             </div>
@@ -141,11 +141,11 @@
                 </div>
 
                 <div class="relative flex gap-2" x-show="!scannerOpen">
-                    <div class="relative flex-1">
-                        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:20px">barcode</span>
-                        <input type="text" wire:model="onu_sn" class="w-full pl-10 pr-3 py-2.5 font-mono text-base font-black tracking-widest border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 uppercase" placeholder="ZTEG... / HWTC...">
+                    <div class="relative flex-1 min-w-0">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:20px">barcode</span>
+                        <input type="text" wire:model="onu_sn" class="w-full pl-9 pr-3 py-2.5 font-mono text-xs sm:text-sm font-bold tracking-wider border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 uppercase" placeholder="ZTEG... / HWTC...">
                     </div>
-                    <button type="button" @click="startScanner" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-3.5 flex items-center justify-center">
+                    <button type="button" @click="startScanner" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-3.5 flex items-center justify-center shadow-xs" title="Scan Barcode">
                         <span class="material-symbols-outlined" style="font-size:20px">photo_camera</span>
                     </button>
                 </div>
@@ -175,8 +175,8 @@
                     }
                 }
             }" class="flex gap-2">
-                <input type="text" disabled :value="$wire.latitude ? ($wire.latitude + ', ' + $wire.longitude) : ''" class="flex-1 px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-300 font-mono" placeholder="Belum ada titik koordinat">
-                <button type="button" @click="getLocation" class="shrink-0 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 px-3.5 rounded-xl flex items-center justify-center gap-1 font-bold text-xs transition-colors">
+                <input type="text" disabled :value="$wire.latitude ? ($wire.latitude + ', ' + $wire.longitude) : ''" class="flex-1 min-w-0 px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-300 font-mono truncate" placeholder="Belum ada titik koordinat">
+                <button type="button" @click="getLocation" class="shrink-0 whitespace-nowrap bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 px-3.5 py-2.5 rounded-xl flex items-center justify-center gap-1 font-bold text-xs transition-colors">
                     <span x-show="!loading" class="material-symbols-outlined" style="font-size:18px">location_on</span>
                     <span x-show="loading" class="material-symbols-outlined animate-spin" style="font-size:18px">sync</span>
                     <span>Ambil GPS</span>

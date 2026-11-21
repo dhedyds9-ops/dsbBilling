@@ -1,4 +1,4 @@
-<div class="p-4 sm:p-6 min-h-[calc(100vh-4rem)] relative pb-24 max-w-4xl mx-auto space-y-6">
+<div class="p-4 min-h-[calc(100vh-4rem)] relative pb-24 w-full max-w-md mx-auto space-y-5 overflow-x-hidden">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -49,17 +49,17 @@
 
         <div wire:loading.class="opacity-50 pointer-events-none" wire:target="fetchLiveCredentials, onuId, switchWlan" class="space-y-6">
 
-            <!-- Tab Pilihan Frekuensi Band (Dual-Band) persis genieacs-mobile -->
-            <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700/60 overflow-x-auto">
+            <!-- Tab Pilihan Frekuensi Band (Dual-Band) -->
+            <div class="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700/60">
                 <button type="button" wire:click="switchWlan(1)" 
-                    class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 {{ $activeWlanIndex === 1 ? 'bg-white dark:bg-slate-900 text-teal-600 dark:text-teal-400 shadow-sm border border-slate-200/80 dark:border-slate-700' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200' }}">
-                    <span class="material-symbols-outlined text-lg">wifi</span>
-                    <span>Wi-Fi 2.4 GHz (Utama)</span>
+                    class="py-2.5 px-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 {{ $activeWlanIndex === 1 ? 'bg-white dark:bg-slate-900 text-teal-600 dark:text-teal-400 shadow-sm border border-slate-200/80 dark:border-slate-700' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200' }}">
+                    <span class="material-symbols-outlined text-[18px]">wifi</span>
+                    <span class="truncate">Wi-Fi 2.4 GHz</span>
                 </button>
                 <button type="button" wire:click="switchWlan(5)" 
-                    class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 {{ $activeWlanIndex === 5 ? 'bg-white dark:bg-slate-900 text-teal-600 dark:text-teal-400 shadow-sm border border-slate-200/80 dark:border-slate-700' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200' }}">
-                    <span class="material-symbols-outlined text-lg">speed</span>
-                    <span>Wi-Fi 5 GHz (High Speed)</span>
+                    class="py-2.5 px-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 {{ $activeWlanIndex === 5 ? 'bg-white dark:bg-slate-900 text-teal-600 dark:text-teal-400 shadow-sm border border-slate-200/80 dark:border-slate-700' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200' }}">
+                    <span class="material-symbols-outlined text-[18px]">speed</span>
+                    <span class="truncate">Wi-Fi 5 GHz</span>
                 </button>
             </div>
 

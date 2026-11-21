@@ -1,6 +1,6 @@
 @section('header_title', 'Detail Tagihan')
 
-<div class="min-h-[calc(100vh-4rem)] flex flex-col pb-24 print-reset-height print-reset-padding print-reset-layout bg-slate-100 dark:bg-slate-950/50">
+<div class="min-h-[calc(100vh-4rem)] flex flex-col pb-24 overflow-x-hidden print-reset-height print-reset-padding print-reset-layout bg-slate-100 dark:bg-slate-950/50">
     
     <!-- Action Buttons (Print Only) -->
     <div class="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 p-4 sticky top-0 z-10 print-hide shadow-sm flex gap-2">

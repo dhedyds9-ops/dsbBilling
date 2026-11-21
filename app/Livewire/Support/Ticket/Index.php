@@ -145,15 +145,16 @@ class Index extends BaseEnterpriseList
         }
     }
 
-    protected TicketService $ticketService;
+    protected ?TicketService $ticketService = null;
 
-    public function boot(TicketService $ticketService): void
+    public function boot(?TicketService $ticketService = null): void
     {
-        $this->ticketService = $ticketService;
+        $this->ticketService = $ticketService ?? app(TicketService::class);
     }
 
     public function mount(): void
     {
+        $this->ticketService = $this->ticketService ?? app(TicketService::class);
         $user = Auth::user();
         if ($user && strtoupper((string) $user->job_function) === 'TECHNICIAN' && !$user->hasRole(['administrator', 'superadmin'])) {
             $search = request()->query('search');
