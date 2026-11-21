@@ -235,27 +235,27 @@ $statusLabels = [
                                 @endif
                             </div>
 
-                            <div class="flex items-center gap-0.5 shrink-0">
-                                <button wire:click="rowDetail({{ $t->id }})" class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg" title="Detail">
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <button type="button" wire:click="rowDetail({{ $t->id }})" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-200/80 dark:bg-blue-900/30 dark:hover:bg-blue-600 dark:text-blue-300 dark:hover:text-white dark:border-blue-700/60 transition-all duration-150 shadow-2xs cursor-pointer" title="Detail / Timeline">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                 </button>
-                                <button wire:click="rowEdit({{ $t->id }})" class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg" title="Edit">
+                                <button type="button" wire:click="rowEdit({{ $t->id }})" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white border border-indigo-200/80 dark:bg-indigo-900/30 dark:hover:bg-indigo-600 dark:text-indigo-300 dark:hover:text-white dark:border-indigo-700/60 transition-all duration-150 shadow-2xs cursor-pointer" title="Edit Tiket">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                 </button>
-                                <button wire:click="rowAssign({{ $t->id }})" class="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-lg" title="Assign">
+                                <button type="button" wire:click="rowAssign({{ $t->id }})" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-50 hover:bg-amber-600 text-amber-600 hover:text-white border border-amber-200/80 dark:bg-amber-900/30 dark:hover:bg-amber-600 dark:text-amber-300 dark:hover:text-white dark:border-amber-700/60 transition-all duration-150 shadow-2xs cursor-pointer" title="Tugaskan Teknisi">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                                 </button>
                                 @if (!in_array($t->status, ['resolved','closed']))
-                                    <button wire:click="rowResolve({{ $t->id }})" class="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg" title="Resolve">
+                                    <button type="button" wire:click="rowResolve({{ $t->id }})" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white border border-emerald-200/80 dark:bg-emerald-900/30 dark:hover:bg-emerald-600 dark:text-emerald-300 dark:hover:text-white dark:border-emerald-700/60 transition-all duration-150 shadow-2xs cursor-pointer" title="Selesaikan (Resolve)">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                     </button>
                                 @endif
                                 @if ($t->status !== 'closed')
-                                    <button wire:click="rowClose({{ $t->id }})" class="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg" title="Close">
+                                    <button type="button" wire:click="rowClose({{ $t->id }})" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-600 text-slate-600 hover:text-white border border-slate-300/80 dark:bg-slate-800 dark:hover:bg-slate-600 dark:text-slate-300 dark:hover:text-white dark:border-slate-700 transition-all duration-150 shadow-2xs cursor-pointer" title="Tutup Tiket (Close)">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                     </button>
                                 @endif
-                                <button wire:click="rowDelete({{ $t->id }})" class="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg" title="Delete">
+                                <button type="button" wire:click="rowDelete({{ $t->id }})" wire:confirm="Hapus tiket ini?" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200/80 dark:bg-rose-900/30 dark:hover:bg-rose-600 dark:text-rose-300 dark:hover:text-white dark:border-rose-700/60 transition-all duration-150 shadow-2xs cursor-pointer" title="Hapus Tiket">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/></svg>
                                 </button>
                             </div>
@@ -284,7 +284,7 @@ $statusLabels = [
                             <th class="px-3 py-2 text-left">Assignee</th>
                             <th class="px-3 py-2 text-left cursor-pointer" wire:click="sortBy('due_date')">Due</th>
                             <th class="px-3 py-2 text-left cursor-pointer" wire:click="sortBy('updated_at')">Last Update</th>
-                            <th class="px-3 py-2 text-right">Action</th>
+                            <th class="px-3 py-2 text-center w-52">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
@@ -334,28 +334,28 @@ $statusLabels = [
                                 </td>
                                 <td class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{{ \Illuminate\Support\Carbon::parse($t->updated_at)->diffForHumans() }}</td>
                                 <td class="px-3 py-2 text-right whitespace-nowrap">
-                                    <div class="inline-flex items-center gap-0.5">
-                                        <button wire:click="rowDetail({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:bg-blue-900/30 rounded dark:hover:bg-blue-900/30" title="Detail/Timeline">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    <div class="inline-flex items-center justify-end gap-1.5">
+                                        <button type="button" wire:click="rowDetail({{ $t->id }})" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-200/80 dark:bg-blue-900/30 dark:hover:bg-blue-600 dark:text-blue-300 dark:hover:text-white dark:border-blue-700/60 transition-all duration-150 shadow-2xs cursor-pointer" title="Detail / Timeline">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                         </button>
-                                        <button wire:click="rowEdit({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:bg-blue-900/30 rounded dark:hover:bg-blue-900/30" title="Edit">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                        <button type="button" wire:click="rowEdit({{ $t->id }})" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white border border-indigo-200/80 dark:bg-indigo-900/30 dark:hover:bg-indigo-600 dark:text-indigo-300 dark:hover:text-white dark:border-indigo-700/60 transition-all duration-150 shadow-2xs cursor-pointer" title="Edit Tiket">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                         </button>
-                                        <button wire:click="rowAssign({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:bg-amber-900/30 rounded dark:hover:bg-amber-900/30" title="Assign">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                        <button type="button" wire:click="rowAssign({{ $t->id }})" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-50 hover:bg-amber-600 text-amber-600 hover:text-white border border-amber-200/80 dark:bg-amber-900/30 dark:hover:bg-amber-600 dark:text-amber-300 dark:hover:text-white dark:border-amber-700/60 transition-all duration-150 shadow-2xs cursor-pointer" title="Tugaskan Teknisi">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                                         </button>
                                         @if (!in_array($t->status, ['resolved','closed']))
-                                            <button wire:click="rowResolve({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:bg-emerald-900/30 rounded dark:hover:bg-emerald-900/30" title="Resolve">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            <button type="button" wire:click="rowResolve({{ $t->id }})" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white border border-emerald-200/80 dark:bg-emerald-900/30 dark:hover:bg-emerald-600 dark:text-emerald-300 dark:hover:text-white dark:border-emerald-700/60 transition-all duration-150 shadow-2xs cursor-pointer" title="Selesaikan (Resolve)">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                             </button>
                                         @endif
                                         @if ($t->status !== 'closed')
-                                            <button wire:click="rowClose({{ $t->id }})" class="p-1 text-slate-500 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 rounded dark:hover:bg-slate-700" title="Close">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            <button type="button" wire:click="rowClose({{ $t->id }})" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-600 text-slate-600 hover:text-white border border-slate-300/80 dark:bg-slate-800 dark:hover:bg-slate-600 dark:text-slate-300 dark:hover:text-white dark:border-slate-700 transition-all duration-150 shadow-2xs cursor-pointer" title="Tutup Tiket (Close)">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                             </button>
                                         @endif
-                                        <button wire:click="rowDelete({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:bg-red-900/30 rounded dark:hover:bg-red-900/30" title="Delete">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/></svg>
+                                        <button type="button" wire:click="rowDelete({{ $t->id }})" wire:confirm="Hapus tiket ini?" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200/80 dark:bg-rose-900/30 dark:hover:bg-rose-600 dark:text-rose-300 dark:hover:text-white dark:border-rose-700/60 transition-all duration-150 shadow-2xs cursor-pointer" title="Hapus Tiket">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/></svg>
                                         </button>
                                     </div>
                                 </td>

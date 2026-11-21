@@ -1022,20 +1022,25 @@ class CDataOltDriver extends BaseOltDriver
             
             // GPON Active State (1 = active/online, 2 = inactive/offline)
             $gponActive = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.7')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.7') ?: [])) : [];
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.10.1.1.3')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.7') ?: []))) : [];
 
             // GPON Run Status:
             // 1. gponOnuOperStatus (.18.1.1.8 - Official CDATA-GPON-MIB: 1=online, 5=operation/O5/ONLINE, 101=online)
-            // 2. FD1608/FD1616 legacy OID (.100.9.2.1.8 or .100.9.2.1.13)
-            // 3. gponOnuAutoFindTable (.18.2.1.1 fallback)
+            // 2. gponOnuBindOnlineStatus (.18.10.1.1.4: 1=online, 2=offline)
+            // 3. FD1608/FD1616 legacy OID (.100.9.2.1.8 or .100.9.2.1.13)
+            // 4. gponOnuAutoFindTable (.18.2.1.1 fallback)
             $gponRunStatus = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.8')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.10.1.1.4')
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.8')
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1') ?: [])))) : [];
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1') ?: []))))) : [];
             
             // GPON Direct Optical Table:
             // gponOnuOpticalInfoTable (.18.6.1 - Official CDATA-GPON-MIB: .3=RxPower, .2=TxPower, .4=Temperature)
-            $gponDirectRx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.3') ?: []) : [];
+            // gponOnuBindRxPower (.18.10.1.1.7)
+            $gponDirectRx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.3')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.10.1.1.7') ?: [])) : [];
             $gponDirectTx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.2') ?: []) : [];
             $gponDirectTemp = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.4') ?: []) : [];
 
@@ -1720,34 +1725,23 @@ class CDataOltDriver extends BaseOltDriver
             $this->initializeCli();
 
             // Masuk mode config
-            $this->cli->execute("configure terminal\r\n", false);
             $this->cli->execute("config\r\n", false);
 
-            // 1. Standar C-Data GPON interface mode (FD1600 / FD1200 / CD5000): interface gpon 0/0
-            $this->cli->execute("interface gpon 0/0\r\n", false);
-            $this->cli->execute("ont delete $ponPort $onuId\r\n", false);
-            $this->cli->execute("undo ont add $ponPort $onuId\r\n", false);
-            $this->cli->execute("no ont $ponPort $onuId\r\n", false);
-            $this->cli->execute("exit\r\n", false);
-
-            // 2. Port-specific GPON interface mode: interface gpon 0/0/<port>
-            $this->cli->execute("interface gpon 0/0/$ponPort\r\n", false);
-            $this->cli->execute("ont delete $onuId\r\n", false);
-            $this->cli->execute("onu delete $onuId\r\n", false);
-            $this->cli->execute("no onu $onuId\r\n", false);
-            $this->cli->execute("no ont $onuId\r\n", false);
-            $this->cli->execute("exit\r\n", false);
-
-            // 3. Fallback EPON jika OLT berjalan dalam mode EPON
-            $this->cli->execute("interface epon 0/0\r\n", false);
-            $this->cli->execute("onu delete $ponPort onu $onuId\r\n", false);
-            $this->cli->execute("no onu $ponPort onu $onuId\r\n", false);
-            $this->cli->execute("exit\r\n", false);
+            $isEpon = str_contains(strtolower($this->olt->model ?? ''), 'epon') || str_contains(strtolower($onu->pon_port ?? ''), 'epon');
+            if ($isEpon) {
+                // Mode EPON
+                $this->cli->execute("interface epon 0/0\r\n", false);
+                $this->cli->execute("onu delete $ponPort onu $onuId\r\n", false);
+                $this->cli->execute("exit\r\n", false);
+            } else {
+                // Standar C-Data GPON interface mode (FD1600 / FD1200 / CD5000): interface gpon 0/0
+                $this->cli->execute("interface gpon 0/0\r\n", false);
+                $this->cli->execute("ont delete $ponPort $onuId\r\n", false);
+                $this->cli->execute("exit\r\n", false);
+            }
 
             // Simpan perubahan ke memory/NVRAM
             $this->cli->execute("write\r\n", false);
-            $this->cli->execute("write memory\r\n", false);
-            $this->cli->execute("write all\r\n", false);
 
             Log::info("CDataOltDriver::deleteOnu successfully issued delete command for ONU #{$onu->id} (Port: {$ponPort}, Index: {$onuId})");
             return true;

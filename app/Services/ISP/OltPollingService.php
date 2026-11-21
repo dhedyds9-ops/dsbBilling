@@ -340,9 +340,27 @@ class OltPollingService
 
                         $status = $item['status'] ?? 'unknown';
 
-                        // Golden rule: jika redaman optik RX valid (-38 s.d -6 dBm), laser modem aktif -> PASTI ONLINE!
+                        // Golden rule 1: jika redaman optik RX valid (-38 s.d -6 dBm), laser modem aktif -> PASTI ONLINE!
                         if (!empty($item['rx_power_dbm']) && (float)$item['rx_power_dbm'] >= -38.0 && (float)$item['rx_power_dbm'] <= -6.0) {
                             $status = 'online';
+                        }
+
+                        // Golden rule 2: Korelasi live dengan GenieACS TR-069
+                        // Jika CPE/modem baru saja Inform dalam 15 menit terakhir, modem 100% online di jaringan optik!
+                        if ($status !== 'online') {
+                            $acsActive = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                                ->where(function($q) use ($candidates, $macAddress) {
+                                    $q->whereIn('serial_number', $candidates);
+                                    if ($macAddress) {
+                                        $q->orWhere('mac_address', $macAddress);
+                                    }
+                                })
+                                ->where('last_inform', '>=', now()->subMinutes(15))
+                                ->exists();
+
+                            if ($acsActive) {
+                                $status = 'online';
+                            }
                         }
 
                         if ($onu && $onu->trashed()) {
