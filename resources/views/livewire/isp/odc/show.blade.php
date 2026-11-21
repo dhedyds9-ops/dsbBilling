@@ -92,9 +92,10 @@
     </div>
 
     {{-- ============================================================
-         2. RINGKASAN KPI (6 METRIC CARDS)
+         2. RINGKASAN KPI (6 METRIC CARDS - Disembunyikan di tab topologi agar diagram luas)
          ============================================================ --}}
     @php $sum = $this->summary; @endphp
+    @if($activeTab !== 'topology')
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
         {{-- Total Kapasitas --}}
         <div class="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs relative overflow-hidden group">
@@ -156,6 +157,7 @@
             <div class="w-1.5 h-full bg-purple-500 absolute left-0 top-0"></div>
         </div>
     </div>
+    @endif
 
     {{-- ============================================================
          3. TAB NAVIGATION BAR (6 TABS)
@@ -465,58 +467,85 @@
 
     {{-- TAB B: TOPOLOGI JARINGAN (INTERACTIVE FIBER TOPOLOGY) --}}
     @if($activeTab === 'topology')
+        <style>
+            #odc-topology-wrapper:fullscreen {
+                background-color: #070b14 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                display: flex !important;
+                flex-direction: column !important;
+                border-radius: 0 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border: none !important;
+            }
+            #odc-topology-wrapper:fullscreen .odc-topo-toolbar {
+                border-radius: 0 !important;
+                border-left: none !important;
+                border-right: none !important;
+                border-top: none !important;
+                flex-shrink: 0 !important;
+            }
+            #odc-topology-wrapper:fullscreen #odcTopologyContainer {
+                flex: 1 1 0% !important;
+                height: calc(100vh - 65px) !important;
+                max-height: none !important;
+                width: 100vw !important;
+            }
+        </style>
         <div class="space-y-4">
-            {{-- Toolbar: Tracing & Interactive Actions --}}
-            <div class="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md">
-                {{-- Search / Path Tracing Bar --}}
-                <div class="flex items-center gap-2 flex-1 max-w-xl">
-                    <div class="relative flex-1">
-                        <span class="material-symbols-outlined absolute left-3 top-2.5 text-slate-500 text-sm">travel_explore</span>
-                        <input type="text" wire:model.live.debounce.300ms="traceQuery"
-                               placeholder="Cari ODP, ONU, Serial Number, atau Nama Pelanggan untuk tracing jalur..."
-                               class="w-full bg-slate-950 border border-slate-700 focus:border-cyan-400 rounded-xl pl-9 pr-3 py-2 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-hidden focus:ring-1 focus:ring-cyan-400">
-                    </div>
-                    <button type="button" wire:click="tracePath"
-                            class="px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm">
-                        <span class="material-symbols-outlined text-sm">search</span>
-                        Trace
-                    </button>
-                    @if($tracedNodeId || $traceQuery)
-                        <button type="button" wire:click="clearTrace"
-                                class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs transition">
-                            Reset
+            <div id="odc-topology-wrapper" class="relative w-full rounded-2xl overflow-hidden border border-slate-800 bg-[#070b14] shadow-xl">
+                {{-- Toolbar: Tracing & Interactive Actions --}}
+                <div class="odc-topo-toolbar p-4 bg-slate-900 border-b border-slate-800 text-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    {{-- Search / Path Tracing Bar --}}
+                    <div class="flex items-center gap-2 flex-1 max-w-xl">
+                        <div class="relative flex-1">
+                            <span class="material-symbols-outlined absolute left-3 top-2.5 text-slate-500 text-sm">travel_explore</span>
+                            <input type="text" wire:model.live.debounce.300ms="traceQuery"
+                                   placeholder="Cari ODP, ONU, Serial Number, atau Nama Pelanggan untuk tracing jalur..."
+                                   class="w-full bg-slate-950 border border-slate-700 focus:border-cyan-400 rounded-xl pl-9 pr-3 py-2 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-hidden focus:ring-1 focus:ring-cyan-400">
+                        </div>
+                        <button type="button" wire:click="tracePath"
+                                class="px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm">
+                            <span class="material-symbols-outlined text-sm">search</span>
+                            Trace
                         </button>
-                    @endif
+                        @if($tracedNodeId || $traceQuery)
+                            <button type="button" wire:click="clearTrace"
+                                    class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs transition">
+                                Reset
+                            </button>
+                        @endif
+                    </div>
+
+                    {{-- Interactive Canvas Controls --}}
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button type="button" id="btnOdcZoomIn" title="Perbesar"
+                                class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">zoom_in</span>
+                        </button>
+                        <button type="button" id="btnOdcZoomOut" title="Perkecil"
+                                class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">zoom_out</span>
+                        </button>
+                        <button type="button" id="btnOdcReset" title="Skala Normal 1:1"
+                                class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 font-mono text-xs font-bold cursor-pointer">
+                            1:1
+                        </button>
+                        <button type="button" id="btnOdcFit" title="Paskan Layar (Fit to Screen)"
+                                class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 text-xs font-semibold flex items-center gap-1 cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">fit_screen</span>
+                            Fit
+                        </button>
+                        <button type="button" id="btnOdcFullscreen" title="Layar Penuh"
+                                class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">fullscreen</span>
+                        </button>
+                    </div>
                 </div>
 
-                {{-- Interactive Canvas Controls --}}
-                <div class="flex items-center gap-1.5 flex-wrap">
-                    <button type="button" id="btnOdcZoomIn" title="Perbesar"
-                            class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">zoom_in</span>
-                    </button>
-                    <button type="button" id="btnOdcZoomOut" title="Perkecil"
-                            class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">zoom_out</span>
-                    </button>
-                    <button type="button" id="btnOdcReset" title="Skala Normal 1:1"
-                            class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 font-mono text-xs font-bold cursor-pointer">
-                        1:1
-                    </button>
-                    <button type="button" id="btnOdcFit" title="Paskan Layar (Fit to Screen)"
-                            class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 text-xs font-semibold flex items-center gap-1 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">fit_screen</span>
-                        Fit
-                    </button>
-                    <button type="button" id="btnOdcFullscreen" title="Layar Penuh"
-                            class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700/60 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">fullscreen</span>
-                    </button>
-                </div>
-            </div>
-
-            {{-- SVG TOPOLOGY CANVAS (INTELLIGENT FIBER TREE) --}}
-            @php
+                {{-- SVG TOPOLOGY CANVAS (INTELLIGENT FIBER TREE) --}}
+                @php
                 $parentOdc = $odc->parentOdc;
                 $isCascadeOdc = !empty($parentOdc);
                 $olt = $odc->olt ?? $parentOdc?->olt;
@@ -589,10 +618,9 @@
                 $qSearch = trim(strtolower($traceQuery));
             @endphp
 
-            <div id="odc-topology-wrapper" class="relative w-full rounded-2xl overflow-hidden border border-slate-800 bg-[#070b14] shadow-xl">
                 <div id="odcTopologyContainer"
-                     class="w-full h-[620px] cursor-grab active:cursor-grabbing select-none overflow-hidden relative">
-                    <svg id="odcTopologySvg" class="w-full h-full" xmlns="http://www.w3.org/2000/svg" style="min-height: 620px;">
+                     class="w-full h-[680px] lg:h-[720px] cursor-grab active:cursor-grabbing select-none overflow-hidden relative">
+                    <svg id="odcTopologySvg" class="w-full h-full" xmlns="http://www.w3.org/2000/svg" style="min-height: 680px;">
                         <defs>
                             <linearGradient id="gradOdcOlt" x1="0%" y1="0%" x2="100%" y2="100%">
                                 <stop offset="0%" stop-color="#1e3a8a"/>
@@ -1580,11 +1608,13 @@
             try {
                 const bbox = viewport.getBBox();
                 const cW = container.clientWidth || 900;
-                const cH = container.clientHeight || 620;
+                const cH = container.clientHeight || 700;
                 if (bbox.width > 0 && bbox.height > 0) {
-                    const scaleX = (cW - 60) / bbox.width;
-                    const scaleY = (cH - 60) / bbox.height;
-                    scale = Math.min(Math.max(0.35, Math.min(scaleX, scaleY)), 1.1);
+                    const isFullscreen = !!document.fullscreenElement;
+                    const maxScale = isFullscreen ? 1.4 : 1.15;
+                    const scaleX = (cW - 80) / bbox.width;
+                    const scaleY = (cH - 80) / bbox.height;
+                    scale = Math.min(Math.max(0.4, Math.min(scaleX, scaleY)), maxScale);
                     panX = (cW - (bbox.width * scale)) / 2 - (bbox.x * scale);
                     panY = (cH - (bbox.height * scale)) / 2 - (bbox.y * scale);
                     updateTransform();
@@ -1599,13 +1629,20 @@
             if (!wrapper) return;
             if (!document.fullscreenElement) {
                 wrapper.requestFullscreen?.().then(() => {
-                    setTimeout(fitToScreen, 250);
+                    setTimeout(fitToScreen, 150);
+                    setTimeout(fitToScreen, 350);
                 }).catch(() => {});
             } else {
                 document.exitFullscreen?.().then(() => {
-                    setTimeout(fitToScreen, 250);
+                    setTimeout(fitToScreen, 150);
+                    setTimeout(fitToScreen, 350);
                 }).catch(() => {});
             }
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            setTimeout(fitToScreen, 120);
+            setTimeout(fitToScreen, 350);
         });
 
         // Mouse Drag Panning

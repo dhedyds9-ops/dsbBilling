@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10123,
-        'latest_version_name' => '1.1.23',
+        'latest_version_code' => 10125,
+        'latest_version_name' => '1.1.25',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'https://winets.mstore.id') . '/downloads/dsbilling-mobile.apk',
-        'release_notes' => "dsBilling Staff & Reseller v1.1.21:\n- Khusus Paket Voucher: Filter katalog diperketat sehingga hanya paket bertipe Voucher yang tampil (paket PPPoE dan Hotspot member otomatis disaring keluar).\n- Dialog Form Permintaan Voucher Baru (Mobile): Tampilan popup permintaan cetak voucher dirombak menjadi BottomSheet interaktif lengkap setara web portal reseller, dilengkapi pemilihan paket, preset jumlah (50/100/200/500/custom), kartu estimasi modal & margin keuntungan realtime, jenis penyerahan fisik/digital, metode pembayaran deposit, dan catatan permohonan.\n- Sinkronisasi Status & Riwayat: Pengajuan batch voucher terhubung langsung ke dashboard review Admin ISP.",
+        'release_notes' => "dsBilling Staff & Reseller v1.1.25:\n- Perbaikan Peta Jaringan: Foto titik tiang/ODP kini terbuka jernih dengan modal preview (bebas dari error net::ERR_FILE_NOT_FOUND).\n- Perbaikan Server GenieACS TR-069: Tombol Hapus kini terhubung langsung menghapus perangkat dari TR-069 GenieACS dan basis data lokal.\n- Isolasi Stok PSB: Teknisi dan Reseller yang tidak memegang stok fisik modem dilarang mengambil stok dari gudang pusat.\n- Perbaikan SPK Lapangan: Memperbaiki resolusi akun pelanggan sehingga daftar SPK terbuka stabil tanpa server error.\n- Penyelarasan Izin Reseller: Akun Reseller kini dapat melihat dan mendiagnosa detail modem unassigned/baru colok di OLT sesuai hak aksesnya.",
     ],
     'customer' => [
         'latest_version_code' => 10112,
