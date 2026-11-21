@@ -51,8 +51,10 @@ class Form extends Component
     {
         $this->transaction_id = 'SENSUS-' . (string) \Illuminate\Support\Str::uuid();
 
-        // Default OLT jika hanya ada 1
-        $firstOlt = Olt::withoutGlobalScopes()->first();
+        // Default OLT jika hanya ada 1 (hanya OLT aktif dan belum dihapus)
+        $firstOlt = Olt::withoutGlobalScope('branch_isolation')
+            ->where('status', '!=', 'inactive')
+            ->first();
         if ($firstOlt) {
             $this->olt_id = (string) $firstOlt->id;
         }
@@ -134,13 +136,17 @@ class Form extends Component
 
     public function render()
     {
-        $oltsOptions = Olt::withoutGlobalScopes()->get()->map(function ($o) {
-            return [
-                'value' => (string) $o->id,
-                'label' => $o->name,
-                'sublabel' => $o->ip_address ?? '',
-            ];
-        })->toArray();
+        $oltsOptions = Olt::withoutGlobalScope('branch_isolation')
+            ->where('status', '!=', 'inactive')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($o) {
+                return [
+                    'value' => (string) $o->id,
+                    'label' => $o->name,
+                    'sublabel' => $o->ip_address ?? '',
+                ];
+            })->toArray();
 
         $user = auth()->user();
         $odpsQuery = Odp::withoutGlobalScopes()->where('status', 'active');

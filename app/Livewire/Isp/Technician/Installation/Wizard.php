@@ -543,7 +543,7 @@ class Wizard extends Component
             return;
         }
 
-        $olt = Olt::withoutGlobalScopes()->find($this->olt_id);
+        $olt = Olt::withoutGlobalScope('branch_isolation')->find($this->olt_id);
         if (!$olt) {
             $this->oltScanMessage = 'Data OLT tidak ditemukan di sistem.';
             return;
@@ -1437,7 +1437,7 @@ class Wizard extends Component
     public function getSelectedOltProperty()
     {
         if (!$this->olt_id) return null;
-        return Olt::withoutGlobalScopes()->find($this->olt_id);
+        return Olt::withoutGlobalScope('branch_isolation')->find($this->olt_id);
     }
 
     public function getSelectedOdpLabelProperty(): ?string
@@ -1630,7 +1630,7 @@ class Wizard extends Component
             }
         }
 
-        $olts = Olt::withoutGlobalScopes()->get();
+        $olts = Olt::withoutGlobalScope('branch_isolation')->where('status', '!=', 'inactive')->orderBy('name')->get();
         $vendors = \App\Models\ISP\Vendor::withoutGlobalScopes()->get();
         $allOdps = Odp::withoutGlobalScopes()->orderBy('name')->get();
 

@@ -62,7 +62,7 @@ class Nearest extends Component
         $user = auth()->user();
         $branchId = $user?->branch_id;
 
-        $oltsQuery = Olt::withoutGlobalScopes();
+        $oltsQuery = Olt::withoutGlobalScope('branch_isolation')->where('status', '!=', 'inactive');
         if ($branchId && !$user->isSuperAdmin()) {
             $oltsQuery->where(function ($q) use ($branchId) {
                 $q->where('branch_id', $branchId)->orWhereNull('branch_id')->orWhere('branch_id', 1);

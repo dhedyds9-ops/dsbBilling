@@ -27,7 +27,12 @@ class MobileNetworkApiController extends Controller
     public function olts(Request $request): JsonResponse
     {
         $user = $request->user();
-        $query = Olt::query()->withoutGlobalScopes();
+        $query = Olt::withoutGlobalScope(\App\Traits\HasBranchScope::class)
+            ->whereNull('deleted_at')
+            ->where(function ($q) {
+                $q->whereNull('status')
+                  ->orWhereNotIn('status', ['inactive', 'deleted', 'disabled']);
+            });
 
         $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
         if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
@@ -51,14 +56,17 @@ class MobileNetworkApiController extends Controller
         }
 
         $olts = $query->withCount([
-            'ponPorts',
+            'ponPorts' => fn($q) => $q->whereNull('deleted_at'),
             'onus' => function ($q) use ($effectiveResellerId) {
+                $q->whereNull('deleted_at');
                 if ($effectiveResellerId) {
                     \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($q, $effectiveResellerId, 'onus');
                 }
             },
         ])->get()->map(function (Olt $olt) use ($effectiveResellerId) {
-            $onusQuery = Onu::withoutGlobalScopes()->where('olt_id', $olt->id);
+            $onusQuery = Onu::withoutGlobalScope(\App\Traits\HasBranchScope::class)
+                ->whereNull('deleted_at')
+                ->where('olt_id', $olt->id);
             if ($effectiveResellerId) {
                 \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($onusQuery, $effectiveResellerId, 'onus');
             }
@@ -94,7 +102,7 @@ class MobileNetworkApiController extends Controller
     public function showOlt(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
-        $query = Olt::withoutGlobalScopes()->where('id', $id);
+        $query = Olt::withoutGlobalScope('branch_isolation')->where('id', $id);
 
         $effectiveResellerId = $user->getEffectiveResellerId();
         if ($effectiveResellerId || $user->hasRole('reseller')) {
@@ -157,7 +165,7 @@ class MobileNetworkApiController extends Controller
     public function ponPorts(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
-        $query = Olt::withoutGlobalScopes()->where('id', $id);
+        $query = Olt::withoutGlobalScope('branch_isolation')->where('id', $id);
 
         $effectiveResellerId = $user->getEffectiveResellerId();
         if ($effectiveResellerId || $user->hasRole('reseller')) {
@@ -213,7 +221,7 @@ class MobileNetworkApiController extends Controller
     public function unregisteredOnus(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
-        $query = Olt::withoutGlobalScopes()->where('id', $id);
+        $query = Olt::withoutGlobalScope('branch_isolation')->where('id', $id);
 
         $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
         if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
@@ -365,7 +373,7 @@ class MobileNetworkApiController extends Controller
      */
     public function syncOlt(Request $request, int $id): JsonResponse
     {
-        $olt = \App\Models\ISP\Olt::withoutGlobalScopes()->find($id);
+        $olt = \App\Models\ISP\Olt::withoutGlobalScope(\App\Traits\HasBranchScope::class)->whereNull('deleted_at')->find($id);
         if (!$olt) {
             return response()->json([
                 'success' => false,
@@ -2190,8 +2198,8 @@ class MobileNetworkApiController extends Controller
         $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
         $isReseller = ($effectiveResellerId !== null || ($user && $user->hasRole('reseller')));
 
-        // 1. OLTs (Tidak dibatasi role agar topologi fisik terlihat utuh)
-        $oltsQuery = Olt::withoutGlobalScopes();
+        // 1. OLTs (Hanya OLT aktif dan belum dihapus)
+        $oltsQuery = Olt::withoutGlobalScope('branch_isolation')->where('status', '!=', 'inactive');
         // Unified photo URL formatter (handles Base64 Data URI, full URL, and relative storage path)
         $baseUrl = config('app.url') ?? '';
         $formatPhotos = function ($rawPhotos) {

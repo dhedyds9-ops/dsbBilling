@@ -364,7 +364,7 @@ class Index extends AdminComponent
             }, (array) ($rawPhotos ?? []))));
         };
 
-        $olts = Olt::withoutGlobalScopes()->forReseller()->get()->map(fn($o) => [
+        $olts = Olt::withoutGlobalScope('branch_isolation')->where('status', '!=', 'inactive')->forReseller()->get()->map(fn($o) => [
             'id' => $o->id,
             'name' => $o->name,
             'code' => $o->code,
@@ -426,7 +426,7 @@ class Index extends AdminComponent
             ];
         });
 
-        $oltOptions = Olt::withoutGlobalScopes()->forReseller()->orderBy('name')->get(['id', 'name', 'code']);
+        $oltOptions = Olt::withoutGlobalScope('branch_isolation')->where('status', '!=', 'inactive')->forReseller()->orderBy('name')->get(['id', 'name', 'code']);
         $odcOptions = Odc::withoutGlobalScopes()->forReseller()->orderBy('name')->get(['id', 'name', 'code']);
 
         return view('livewire.reseller-portal.network.map.index', [

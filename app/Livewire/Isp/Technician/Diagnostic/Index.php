@@ -733,7 +733,7 @@ class Index extends Component
             return;
         }
 
-        $olt = \App\Models\ISP\Olt::withoutGlobalScopes()->find($this->selectedOltId);
+        $olt = \App\Models\ISP\Olt::withoutGlobalScope('branch_isolation')->find($this->selectedOltId);
         if (!$olt) {
             $this->errorMessage = 'Perangkat OLT tidak ditemukan.';
             return;
@@ -819,7 +819,7 @@ class Index extends Component
 
     public function render()
     {
-        $olts = \App\Models\ISP\Olt::withoutGlobalScopes()
+        $olts = \App\Models\ISP\Olt::withoutGlobalScope('branch_isolation')
             ->where('status', '!=', 'inactive')
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'ip_address']);
