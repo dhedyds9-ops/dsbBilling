@@ -148,7 +148,6 @@
                 </div>
             </div>
         </div>
-        </div>
 
         {{-- Connected Devices (Hosts) --}}
         <div class="xl:col-span-2 space-y-6">
@@ -162,8 +161,8 @@
                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">refresh</span> Refresh
                     </button>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
+                <div class="overflow-x-auto w-full">
+                    <table class="w-full text-sm text-left min-w-[480px]">
                         <thead class="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase text-slate-500 dark:text-slate-400">
                             <tr>
                                 <th class="px-4 py-3 font-semibold">Hostname</th>
@@ -203,17 +202,17 @@
     
     {{-- MODAL GANTI WIFI --}}
     @if($showWifiModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden transform transition-all border border-slate-200 dark:border-slate-700">
-            <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Ganti Nama/Pass WiFi</h3>
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden transform transition-all border border-slate-200 dark:border-slate-700">
+            <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between shrink-0">
+                <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Ganti Nama/Pass WiFi</h3>
                 <button wire:click="$set('showWifiModal', false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                     <span class="material-symbols-outlined notranslate" translate="no">close</span>
                 </button>
             </div>
             
-            <form wire:submit="saveWifi">
-                <div class="p-5 space-y-4">
+            <form wire:submit="saveWifi" class="flex flex-col flex-1 overflow-hidden">
+                <div class="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
                     <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Status WiFi (SSID)</label>

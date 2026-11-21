@@ -3,42 +3,42 @@
     <span class="text-lg">Detail OLT</span>
 @endsection
 
-<div class="space-y-6 pb-10">
+<div class="space-y-6 pb-10 min-w-0 max-w-full overflow-x-hidden">
 
     {{-- Header (Seragam dengan Portal Admin) --}}
-    <div class="flex items-center justify-between flex-wrap gap-4">
-        <div class="flex items-center gap-3">
-            <a href="{{ route('reseller-portal.network.olts.index') }}" class="flex items-center text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-100 transition-colors">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+            <a href="{{ route('reseller-portal.network.olts.index') }}" class="flex items-center text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-100 transition-colors shrink-0">
                 <span class="material-symbols-outlined notranslate" translate="no">arrow_back</span>
             </a>
-            <div class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-base">
+            <div class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-base shrink-0">
                 {{ substr($olt->name ?? 'O', 0, 1) }}
             </div>
-            <div>
-                <h1 class="text-2xl font-black text-slate-800 dark:text-slate-100">{{ $olt->name }}</h1>
-                <div class="flex flex-wrap items-center gap-2.5 mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <div class="min-w-0 flex-1">
+                <h1 class="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 truncate">{{ $olt->name }}</h1>
+                <div class="flex flex-wrap items-center gap-2 mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     <span class="font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-400">{{ $olt->code }}</span>
                     <span class="px-2.5 py-0.5 font-semibold rounded-md text-xs {{ $olt->status === 'active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400' }}">
                         {{ $olt->status === 'active' ? 'Online' : 'Offline' }}
                     </span>
                     @if($olt->uptime_text)
-                        <span class="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400">Uptime: {{ $olt->uptime_text }}</span>
+                        <span class="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400 truncate">Uptime: {{ $olt->uptime_text }}</span>
                     @endif
                 </div>
             </div>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
             <a href="{{ route('reseller-portal.network.onus.index', ['oltFilter' => $olt->id]) }}"
                 title="Daftar ONU"
-                class="inline-flex items-center justify-center px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white border border-transparent rounded-xl text-sm font-semibold shadow-sm hover:bg-purple-700 dark:hover:bg-purple-600 transition-all">
-                <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">router</span>
+                class="w-full sm:w-auto inline-flex items-center justify-center px-3 sm:px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white border border-transparent rounded-xl text-xs sm:text-sm font-semibold shadow-sm hover:bg-purple-700 dark:hover:bg-purple-600 transition-all">
+                <span class="material-symbols-outlined notranslate mr-1 sm:mr-1.5" translate="no" style="font-size:18px">router</span>
                 <span>Daftar ONU</span>
             </a>
             <a href="{{ route('reseller-portal.network.acs-devices.index') }}"
                 title="Devices GenieACS"
-                class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white border border-transparent rounded-xl text-sm font-semibold shadow-sm hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all">
-                <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">settings_remote</span>
-                <span>Devices GenieACS</span>
+                class="w-full sm:w-auto inline-flex items-center justify-center px-3 sm:px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white border border-transparent rounded-xl text-xs sm:text-sm font-semibold shadow-sm hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all">
+                <span class="material-symbols-outlined notranslate mr-1 sm:mr-1.5" translate="no" style="font-size:18px">settings_remote</span>
+                <span>GenieACS</span>
             </a>
         </div>
     </div>

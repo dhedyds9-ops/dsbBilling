@@ -3,7 +3,7 @@
     <span class="text-lg">Devices GenieACS</span>
 @endsection
 
-<div class="space-y-5 pb-10">
+<div class="space-y-5 pb-10 min-w-0 max-w-full overflow-x-hidden">
     @if (session()->has('success'))
         <div class="p-4 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-xl flex items-center gap-3">
             <span class="material-symbols-outlined notranslate text-emerald-600 dark:text-emerald-400" translate="no">check_circle</span>
@@ -94,7 +94,7 @@
     {{-- DATA TABLE (SERAGAM DENGAN PORTAL ADMIN: 9 KOLOM) --}}
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
+            <table class="w-full text-sm text-left min-w-[850px]">
                 <thead>
                     <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80 text-xs uppercase tracking-wider">
                         <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>

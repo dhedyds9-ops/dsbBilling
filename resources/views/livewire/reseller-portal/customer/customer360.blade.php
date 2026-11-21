@@ -8,7 +8,7 @@
     <span class="text-lg">Detail Pelanggan</span>
 @endsection
 
-<div class="space-y-6 pb-10">
+<div class="space-y-6 pb-10 min-w-0 max-w-full overflow-x-hidden">
     {{-- Leaflet Dependencies --}}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -16,13 +16,13 @@
         $customerId = $customer->display_id;
     @endphp
 
-    {{-- Header Content --}}
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-black text-slate-800 dark:text-slate-100">{{ $customer->name }}</h1>
-            <div class="flex items-center gap-3 mt-1 text-sm text-slate-500 dark:text-slate-400">
-                <span class="font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-400">{{ $customerId }}</span>
-                <span class="px-2.5 py-0.5 font-semibold rounded-md text-xs
+    {{-- Header Content (Responsif Mobile) --}}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
+        <div class="min-w-0 flex-1">
+            <h1 class="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 truncate">{{ $customer->name }}</h1>
+            <div class="flex flex-wrap items-center gap-2 mt-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                <span class="font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded">{{ $customerId }}</span>
+                <span class="px-2 py-0.5 font-semibold rounded-md text-xs
                     @if($customer->status === 'active') bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400
                     @elseif($customer->status === 'inactive') bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400
                     @else bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400
@@ -30,12 +30,14 @@
                 ">
                     {{ ucfirst($customer->status) }}
                 </span>
-                <span>{{ $customer->email ?? '-' }}</span>
+                @if($customer->email)
+                    <span class="truncate max-w-[180px]">{{ $customer->email }}</span>
+                @endif
                 <span class="font-mono text-xs">{{ $customer->phone ?? '-' }}</span>
             </div>
         </div>
-        <div class="flex items-center gap-2">
-            <button wire:click="openEditModal" class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold shadow-sm hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-all cursor-pointer">
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+            <button wire:click="openEditModal" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold shadow-sm hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-all cursor-pointer">
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
                 Edit Profil
             </button>
@@ -119,7 +121,7 @@
     </div>
 
     {{-- Tabs Navigation --}}
-    <div class="border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
+    <div class="-mx-4 px-4 sm:mx-0 sm:px-0 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
         <nav class="flex gap-1 whitespace-nowrap" aria-label="Tabs">
             @foreach([
                 ['tab' => 'profile',       'label' => 'Profil & Lokasi',       'icon' => 'person'],

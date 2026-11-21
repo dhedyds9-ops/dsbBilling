@@ -3,7 +3,7 @@
     <span class="text-lg">Data ONU</span>
 @endsection
 
-<div class="space-y-5 pb-10">
+<div class="space-y-5 pb-10 min-w-0 max-w-full overflow-x-hidden">
 
     {{-- SESSION FLASH --}}
     @if(session('success'))
@@ -177,8 +177,8 @@
 
     {{-- DATA TABLE (9 KOLOM SERAGAM 100% DENGAN PORTAL ADMIN) --}}
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+        <div class="overflow-x-auto w-full">
+            <table class="min-w-[850px] w-full divide-y divide-slate-200 dark:divide-slate-700">
                 <thead class="bg-slate-50/80 dark:bg-slate-800/80">
                     <tr class="border-b border-slate-200 dark:border-slate-700 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         <th scope="col" class="px-4 py-3 text-center whitespace-nowrap">Aksi</th>

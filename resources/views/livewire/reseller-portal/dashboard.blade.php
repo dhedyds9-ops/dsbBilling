@@ -1,21 +1,21 @@
-<div class="p-4 bg-slate-50 dark:bg-slate-900/30 min-h-screen">
+<div class="space-y-6 pb-10 min-w-0 max-w-full overflow-x-hidden">
 
     <!-- Page Header -->
     @section('page_title')
-    <div class="flex items-center justify-between w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
         <div>
-            <h1 class="text-xl font-bold text-slate-900 dark:text-white">Dashboard Reseller</h1>
+            <h1 class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">Dashboard Reseller</h1>
             <div class="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                 <span>Update Terakhir:</span>
                 <span class="font-semibold text-slate-700 dark:text-slate-300">{{ now()->format('d/m/Y H:i') }}</span>
             </div>
         </div>
-        <div class="flex items-center gap-2">
-            <a href="{{ route('reseller-portal.finance.expenses') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
+        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+            <a href="{{ route('reseller-portal.finance.expenses') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
                 <span class="material-symbols-outlined notranslate text-base text-rose-500" translate="no">receipt_long</span>
                 Catat Pengeluaran
             </a>
-            <a href="{{ route('reseller-portal.finance.topup') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors shadow-sm">
+            <a href="{{ route('reseller-portal.finance.topup') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors shadow-sm">
                 <span class="material-symbols-outlined notranslate text-base" translate="no">add_card</span>
                 Top Up Saldo
             </a>
@@ -24,19 +24,19 @@
     @endsection
 
     <!-- Tab Navigation -->
-    <div class="mb-6 flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 inline-flex overflow-x-auto shadow-sm">
+    <div class="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 overflow-x-auto shadow-sm w-full sm:w-auto">
         <button wire:click="setTab('ringkasan')" type="button"
-                class="px-4 py-2 rounded-md text-sm font-semibold transition-colors whitespace-nowrap
+                class="flex-1 sm:flex-initial px-4 py-2 rounded-md text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap text-center
                        {{ $activeTab === 'ringkasan' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             Ringkasan
         </button>
         <button wire:click="setTab('tagihan')" type="button"
-                class="px-4 py-2 rounded-md text-sm font-semibold transition-colors whitespace-nowrap
+                class="flex-1 sm:flex-initial px-4 py-2 rounded-md text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap text-center
                        {{ $activeTab === 'tagihan' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             Tagihan
         </button>
         <button wire:click="setTab('aktivitas')" type="button"
-                class="px-4 py-2 rounded-md text-sm font-semibold transition-colors whitespace-nowrap
+                class="flex-1 sm:flex-initial px-4 py-2 rounded-md text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap text-center
                        {{ $activeTab === 'aktivitas' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             Aktivitas
         </button>
