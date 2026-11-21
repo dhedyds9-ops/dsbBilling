@@ -840,7 +840,11 @@ class MobileWorkforceApiController extends Controller
      */
     protected function formatWorkOrder(WorkOrder $wo, User $user, bool $includeDetails = false): array
     {
-        $customer = $wo->customer;
+        $customer = $wo->customer ?: $wo->userCustomer;
+        if (!$customer && !empty($wo->customer_id)) {
+            $customer = \App\Models\CRM\Customer::withoutGlobalScopes()->find($wo->customer_id)
+                ?: \App\Models\User::withoutGlobalScopes()->find($wo->customer_id);
+        }
         $customerData = null;
         $packageName = null;
         $latitude = null;

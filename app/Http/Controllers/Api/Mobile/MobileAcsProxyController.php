@@ -894,12 +894,34 @@ class MobileAcsProxyController extends Controller
             $params['temperature'] = $temperature;
             $params['connected_devices'] = $connectedDevices;
 
+            // Extract accurate WLAN instances (SSID 1, 2, 3, 4) from GenieACS driver
+            $wlans = [];
+            for ($w = 1; $w <= 4; $w++) {
+                try {
+                    $wInfo = $this->driver->getWifiCredentials($cleanId, 'default', $w);
+                    if (!empty($wInfo['ssid']) || $w === 1) {
+                        $wlans[] = [
+                            'index' => $w,
+                            'label' => "SSID {$w} " . ($w <= 3 ? "(2.4G)" : "(5G)"),
+                            'ssid' => $wInfo['ssid'] ?? ($w === 1 ? ($onu?->wifi_ssid ?? '') : ''),
+                            'password' => $wInfo['password'] ?? '',
+                            'is_enabled' => (bool) ($wInfo['is_enabled'] ?? true),
+                            'security_mode' => $wInfo['security_mode'] ?? 'WPA_WPA2',
+                            'is_hidden' => false,
+                        ];
+                    }
+                } catch (\Throwable $we) {
+                    Log::warning("MobileAcsProxy getWifiCredentials non-fatal error for index {$w}: {$we->getMessage()}");
+                }
+            }
+            $params['wlans'] = $wlans;
+
             return response()->json([
                 'success' => true,
                 'data' => $params,
                 'connected_devices' => $connectedDevices,
             ]);
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("MobileAcsProxy deviceDetail error for {$id}: " . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -933,19 +955,20 @@ class MobileAcsProxyController extends Controller
             $message = !empty($res['connection_request_success'])
                 ? "Permintaan koneksi (Summon Live) berhasil dikirim ke perangkat."
                 : (!empty($res['task_queued'])
-                    ? "Tugas refresh parameter berhasil diantrikan ke GenieACS (modem akan merespons)."
+                    ? "Tugas refresh parameter live berhasil diantrikan ke antrean TR-069."
                     : ("Perangkat tidak merespons summon: " . ($res['error'] ?? "Modem offline atau tidak terjangkau.")));
 
             return response()->json([
                 'success' => $success,
                 'message' => $message,
                 'details' => $res,
-            ], $success ? 200 : 422);
-        } catch (Exception $e) {
+            ], $success ? 200 : 200);
+        } catch (\Throwable $e) {
+            Log::error("ACS Summon exception for {$cleanId}: " . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengirim summon: ' . $e->getMessage(),
-            ], 500);
+            ], 200);
         }
     }
 

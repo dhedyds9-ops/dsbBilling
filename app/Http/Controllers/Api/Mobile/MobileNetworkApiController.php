@@ -102,7 +102,7 @@ class MobileNetworkApiController extends Controller
     public function showOlt(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
-        $query = Olt::withoutGlobalScope('branch_isolation')->where('id', $id);
+        $query = Olt::withoutGlobalScope(\App\Traits\HasBranchScope::class)->whereNull('deleted_at')->where('id', $id);
 
         $effectiveResellerId = $user->getEffectiveResellerId();
         if ($effectiveResellerId || $user->hasRole('reseller')) {
@@ -165,7 +165,7 @@ class MobileNetworkApiController extends Controller
     public function ponPorts(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
-        $query = Olt::withoutGlobalScope('branch_isolation')->where('id', $id);
+        $query = Olt::withoutGlobalScope(\App\Traits\HasBranchScope::class)->whereNull('deleted_at')->where('id', $id);
 
         $effectiveResellerId = $user->getEffectiveResellerId();
         if ($effectiveResellerId || $user->hasRole('reseller')) {
@@ -221,7 +221,7 @@ class MobileNetworkApiController extends Controller
     public function unregisteredOnus(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
-        $query = Olt::withoutGlobalScope('branch_isolation')->where('id', $id);
+        $query = Olt::withoutGlobalScope(\App\Traits\HasBranchScope::class)->whereNull('deleted_at')->where('id', $id);
 
         $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
         if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
@@ -817,7 +817,7 @@ class MobileNetworkApiController extends Controller
     public function odps(Request $request): JsonResponse
     {
         $user = $request->user();
-        $query = Odp::query()->withoutGlobalScopes();
+        $query = Odp::withoutGlobalScope(\App\Traits\HasBranchScope::class)->whereNull('deleted_at');
 
         if (!empty($user->branch_id)) {
             $query->where(function ($q) use ($user) {
@@ -1631,6 +1631,10 @@ class MobileNetworkApiController extends Controller
                     if (!empty($onu->reseller_id) && (int) $onu->reseller_id !== (int) $effectiveResellerId) {
                         $isBoundToOtherReseller = true;
                     }
+
+                    if (!empty($onu->created_by) && (int) $onu->created_by !== (int) $user->id) {
+                        $isBoundToOtherReseller = true;
+                    }
                 }
 
                 if ($isBoundToOtherReseller) {
@@ -2199,7 +2203,9 @@ class MobileNetworkApiController extends Controller
         $isReseller = ($effectiveResellerId !== null || ($user && $user->hasRole('reseller')));
 
         // 1. OLTs (Hanya OLT aktif dan belum dihapus)
-        $oltsQuery = Olt::withoutGlobalScope('branch_isolation')->where('status', '!=', 'inactive');
+        $oltsQuery = Olt::withoutGlobalScope(\App\Traits\HasBranchScope::class)->whereNull('deleted_at')->where(function ($q) {
+            $q->whereNull('status')->orWhereNotIn('status', ['inactive', 'deleted', 'disabled']);
+        });
         // Unified photo URL formatter (handles Base64 Data URI, full URL, and relative storage path)
         $baseUrl = config('app.url') ?? '';
         $formatPhotos = function ($rawPhotos) {
@@ -2242,7 +2248,7 @@ class MobileNetworkApiController extends Controller
         });
 
         // 2. ODCs (Semua role diizinkan tampil sesuai instruksi)
-        $odcsQuery = Odc::withoutGlobalScopes()->with(['olt:id,name,code', 'odps:id,odc_id']);
+        $odcsQuery = Odc::withoutGlobalScopes()->whereNull('deleted_at')->with(['olt:id,name,code', 'odps:id,odc_id']);
         $odcs = $odcsQuery->get()->map(function (Odc $odc) use ($formatPhotos) {
             $totalPorts = (int)($odc->port_count ?? 48);
             $connectedOdps = $odc->odps ? $odc->odps->count() : 0;
@@ -2269,7 +2275,7 @@ class MobileNetworkApiController extends Controller
         });
 
         // 3. Joint Closures (Closure FO - Semua role diizinkan tampil)
-        $closuresQuery = JointClosure::withoutGlobalScopes()->with(['odc:id,name,code']);
+        $closuresQuery = JointClosure::withoutGlobalScopes()->whereNull('deleted_at')->with(['odc:id,name,code']);
         $closures = $closuresQuery->get()->map(function (JointClosure $jc) use ($formatPhotos) {
             return [
                 'id' => $jc->id,
@@ -2289,7 +2295,7 @@ class MobileNetworkApiController extends Controller
         });
 
         // 4. ODPs (Semua role diizinkan tampil - Data Akurat)
-        $odpsQuery = Odp::withoutGlobalScopes()->with(['odc:id,name,code', 'onus:id,odp_id']);
+        $odpsQuery = Odp::withoutGlobalScopes()->whereNull('deleted_at')->with(['odc:id,name,code', 'onus:id,odp_id']);
         $odps = $odpsQuery->get()->map(function (Odp $odp) use ($formatPhotos) {
             $totalPorts = (int)($odp->port_count ?? 8);
             $onuCount = $odp->onus ? $odp->onus->count() : 0;
@@ -2316,7 +2322,7 @@ class MobileNetworkApiController extends Controller
         });
 
         // 5. ONUs (ONT Pelanggan)
-        $onusQuery = Onu::withoutGlobalScopes()->with(['customerService.customer']);
+        $onusQuery = Onu::withoutGlobalScopes()->whereNull('deleted_at')->with(['customerService.customer']);
         if ($isReseller) {
             $onusQuery->where('reseller_id', $effectiveResellerId);
         } elseif ($user && !$user->isSuperAdmin() && !empty($user->branch_id)) {
