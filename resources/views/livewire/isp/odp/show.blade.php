@@ -739,9 +739,10 @@
                         @endphp
                         @foreach($ports as $idx => $p)
                             @php
-                                $curY = $portYStart + (($idx - 1) * $portYGap);
-                                $isUsed = $p['status'] === 'used';
-                                $rxVal = $p['onu']['rx_power'] ? (float) $p['onu']['rx_power'] : null;
+                                $portNum = $p['port_number'] ?? $loop->iteration;
+                                $curY = $portYStart + (($portNum - 1) * $portYGap);
+                                $isUsed = ($p['status'] ?? '') === 'used';
+                                $rxVal = !empty($p['onu']['rx_power']) ? (float) $p['onu']['rx_power'] : null;
                                 
                                 $statusDotColor = '#64748b';
                                 if ($isUsed) {
@@ -750,11 +751,11 @@
                                         elseif ($rxVal >= -27.0) $statusDotColor = '#f59e0b'; // Amber
                                         else $statusDotColor = '#ef4444'; // Red
                                     } else {
-                                        $statusDotColor = $p['is_online'] ? '#10b981' : '#ef4444';
+                                        $statusDotColor = !empty($p['is_online']) ? '#10b981' : '#ef4444';
                                     }
                                 }
 
-                                $portColor = match($p['status']) {
+                                $portColor = match($p['status'] ?? 'available') {
                                     'used' => '#10b981',
                                     'reserved' => '#f59e0b',
                                     'fault' => '#ef4444',
@@ -766,9 +767,9 @@
                             <path d="M {{ $xTargetOdp + 210 }} 287 C {{ $xTargetOdp + 260 }} 287, {{ $xPorts - 50 }} {{ $curY + 15 }}, {{ $xPorts }} {{ $curY + 15 }}" stroke="{{ $portColor }}" stroke-width="2" fill="none" opacity="0.8"/>
 
                             {{-- Port Node --}}
-                            <g transform="translate({{ $xPorts }}, {{ $curY }})" class="cursor-pointer" wire:click="openPortModal({{ $p['port_number'] }})">
+                            <g transform="translate({{ $xPorts }}, {{ $curY }})" class="cursor-pointer" wire:click="openPortModal({{ $portNum }})">
                                 <rect width="75" height="32" rx="8" fill="#0f172a" stroke="{{ $portColor }}" stroke-width="1.5"/>
-                                <text x="10" y="21" fill="#f8fafc" font-size="11" font-weight="bold" font-family="monospace">P{{ str_pad($p['port_number'], 2, '0', STR_PAD_LEFT) }}</text>
+                                <text x="10" y="21" fill="#f8fafc" font-size="11" font-weight="bold" font-family="monospace">P{{ str_pad($portNum, 2, '0', STR_PAD_LEFT) }}</text>
                                 <circle cx="62" cy="16" r="4.5" fill="{{ $portColor }}"/>
                             </g>
 
@@ -781,7 +782,7 @@
                                    @if(!empty($p['onu']['id'])) wire:click="openGenieAcsModal({{ $p['onu']['id'] }})" @endif>
                                     <rect width="150" height="42" rx="10" fill="#1e293b" stroke="{{ $statusDotColor }}" stroke-width="1.5"/>
                                     <text x="10" y="17" fill="#38bdf8" font-size="9" font-weight="bold" font-family="sans-serif">ONT: {{ Str::limit($p['onu']['serial_number'] ?? 'SN-ONT', 13) }}</text>
-                                    <text x="10" y="32" fill="#cbd5e1" font-size="9" font-family="monospace">Rx: {{ $p['onu']['rx_power'] ? $p['onu']['rx_power'] . ' dBm' : '— dBm' }}</text>
+                                    <text x="10" y="32" fill="#cbd5e1" font-size="9" font-family="monospace">Rx: {{ !empty($p['onu']['rx_power']) ? $p['onu']['rx_power'] . ' dBm' : '— dBm' }}</text>
                                     <circle cx="136" cy="21" r="5" fill="{{ $statusDotColor }}"/>
                                 </g>
 
@@ -790,8 +791,8 @@
                                 {{-- Customer Node --}}
                                 <g transform="translate({{ $xCust }}, {{ $curY - 4 }})" class="cursor-pointer" onclick="window.open('/crm/customers/{{ $p['customer']['id'] }}', '_blank')">
                                     <rect width="190" height="42" rx="10" fill="#312e81" stroke="#818cf8" stroke-width="1.5"/>
-                                    <text x="12" y="17" fill="#ffffff" font-size="10" font-weight="bold" font-family="sans-serif">{{ Str::limit($p['customer']['name'], 16) }}</text>
-                                    <text x="12" y="32" fill="#c7d2fe" font-size="9" font-family="monospace">{{ $p['service_type'] }}: {{ Str::limit($p['username'], 13) }}</text>
+                                    <text x="12" y="17" fill="#ffffff" font-size="10" font-weight="bold" font-family="sans-serif">{{ Str::limit($p['customer']['name'] ?? 'Pelanggan', 16) }}</text>
+                                    <text x="12" y="32" fill="#c7d2fe" font-size="9" font-family="monospace">{{ $p['service_type'] ?? 'Service' }}: {{ Str::limit($p['username'] ?? '-', 13) }}</text>
                                 </g>
                             @else
                                 <text x="{{ $xPorts + 90 }}" y="{{ $curY + 21 }}" fill="#64748b" font-size="10" font-family="sans-serif">Port Kosong / Siap</text>

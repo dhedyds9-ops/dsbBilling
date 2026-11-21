@@ -90,10 +90,8 @@ class Show extends AdminComponent
 
     public function loadOdp()
     {
-        $this->odp = OdpModel::with([
+        $relations = [
             'odc.olt',
-            'odc.parentOdc.olt',
-            'odc.parentOdc.splitters',
             'odc.splitters',
             'olt',
             'splitters.ports.target',
@@ -102,7 +100,14 @@ class Show extends AdminComponent
             'reseller',
             'parent.odc.olt',
             'children',
-        ])->findOrFail($this->odpId);
+        ];
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('odcs', 'parent_odc_id')) {
+            $relations[] = 'odc.parentOdc.olt';
+            $relations[] = 'odc.parentOdc.splitters';
+        }
+
+        $this->odp = OdpModel::with($relations)->findOrFail($this->odpId);
     }
 
     public function setTab($tab)

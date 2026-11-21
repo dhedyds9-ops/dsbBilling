@@ -71,19 +71,24 @@ class Show extends AdminComponent
         $this->activePage = 'odcs';
         $this->odcId = $id;
 
+        $relations = [
+            'olt.pop',
+            'pop',
+            'odps.onus.customerService.customer',
+            'odps.splitters.ports',
+            'splitters.ports.target',
+            'branch',
+            'createdBy',
+        ];
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('odcs', 'parent_odc_id')) {
+            $relations[] = 'parentOdc.olt';
+            $relations[] = 'parentOdc.splitters';
+            $relations[] = 'childOdcs.odps.onus.customerService.customer';
+        }
+
         $this->odc = OdcModel::withoutGlobalScopes()
-            ->with([
-                'olt.pop',
-                'parentOdc.olt',
-                'parentOdc.splitters',
-                'childOdcs.odps.onus.customerService.customer',
-                'pop',
-                'odps.onus.customerService.customer',
-                'odps.splitters.ports',
-                'splitters.ports.target',
-                'branch',
-                'createdBy',
-            ])
+            ->with($relations)
             ->findOrFail($id);
 
         $this->breadcrumbs = [
@@ -505,6 +510,9 @@ class Show extends AdminComponent
     #[Computed]
     public function childOdcs()
     {
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('odcs', 'parent_odc_id')) {
+            return collect();
+        }
         return OdcModel::withoutGlobalScopes()
             ->where('parent_odc_id', $this->odcId)
             ->with(['odps.onus.customerService.customer'])
