@@ -38,6 +38,7 @@ class Index extends Component
     public ?float $selling_price = null;
     public bool $is_active = true;
     public ?int $branch_id = null;
+    public array $skuRecommendations = [];
 
     // Modal Detail Serial & Tambah Unit
     public bool $showSerialsModal = false;
@@ -91,7 +92,7 @@ class Index extends Component
     public function openCreateModal()
     {
         $this->resetForm();
-        $this->sku = $this->generateSuggestedSku($this->category);
+        $this->refreshSuggestedSku();
         $this->showFormModal = true;
     }
 
@@ -114,13 +115,14 @@ class Index extends Component
         $this->is_active = (bool) $item->is_active;
         $this->branch_id = $item->branch_id;
 
+        $this->updateSkuRecommendations();
         $this->showFormModal = true;
     }
 
     public function updatedCategory($val)
     {
         if (empty($this->itemId)) {
-            $this->sku = $this->generateSuggestedSku($val);
+            $this->refreshSuggestedSku();
             if (in_array($val, ['ONU/ONT', 'Router', 'OLT SFP'], true)) {
                 $this->is_serialized = true;
                 $this->unit = 'unit';
@@ -131,26 +133,138 @@ class Index extends Component
                 $this->is_serialized = false;
                 $this->unit = 'pcs';
             }
+        } else {
+            $this->updateSkuRecommendations();
         }
     }
 
-    private function generateSuggestedSku(string $category): string
+    public function updatedBrand()
     {
-        $prefix = match ($category) {
-            'ONU/ONT' => 'DEV-ONT-',
-            'Router' => 'DEV-RTR-',
-            'Kabel Dropcore' => 'MAT-DC-',
-            'Fast Connector' => 'MAT-FC-',
-            'Roset' => 'MAT-ROSET-',
-            'Patchcord' => 'MAT-PC-',
-            'Splitter' => 'MAT-SPLT-',
-            'Clamp' => 'MAT-CLMP-',
-            'Alat Kerja' => 'TOOL-',
-            default => 'ITEM-',
+        $this->updateSkuRecommendations();
+    }
+
+    public function updatedModel()
+    {
+        $this->updateSkuRecommendations();
+    }
+
+    public function updatedName()
+    {
+        $this->updateSkuRecommendations();
+    }
+
+    public function refreshSuggestedSku()
+    {
+        $this->updateSkuRecommendations();
+        if (!empty($this->skuRecommendations)) {
+            $this->sku = $this->skuRecommendations[0]['code'];
+        }
+    }
+
+    public function applySuggestedSku(string $suggestedSku)
+    {
+        $this->sku = $suggestedSku;
+    }
+
+    public function updateSkuRecommendations(): void
+    {
+        $recommendations = [];
+
+        // 1. Rekomendasi Sequential (Nomor Urut Teratur Standar ERP)
+        $seqSku = $this->generateNextSequentialSku($this->category);
+        $recommendations[] = [
+            'label' => 'Nomor Urut',
+            'code'  => $seqSku,
+            'badge' => 'Standar Otomatis',
+        ];
+
+        // 2. Rekomendasi Semantik Teknis (Kategori - Merek - Model / Nama)
+        $semSku = $this->generateSemanticSku($this->category, $this->brand, $this->model, $this->name);
+        if ($semSku && $semSku !== $seqSku) {
+            $recommendations[] = [
+                'label' => 'Spesifikasi',
+                'code'  => $semSku,
+                'badge' => 'Format Teknis',
+            ];
+        }
+
+        $this->skuRecommendations = $recommendations;
+    }
+
+    public static function getCategoryPrefix(string $category): string
+    {
+        return match (trim($category)) {
+            'ONU/ONT', 'ONU / ONT'   => 'ONT',
+            'Router'                 => 'RTR',
+            'Kabel Dropcore', 'Kabel'=> 'CBL',
+            'Fast Connector'         => 'FST',
+            'Roset', 'Roset Optik'   => 'RST',
+            'Patchcord'              => 'PCD',
+            'Splitter'               => 'SPL',
+            'Clamp'                  => 'CLM',
+            'Tiang'                  => 'TNG',
+            'Alat Kerja'             => 'TOL',
+            default                  => 'MAT',
+        };
+    }
+
+    public function generateNextSequentialSku(string $category): string
+    {
+        $prefix = self::getCategoryPrefix($category) . '-';
+        $latestItems = Item::where('sku', 'like', $prefix . '%')->pluck('sku');
+        $maxNum = 0;
+
+        foreach ($latestItems as $sku) {
+            $part = substr($sku, strlen($prefix));
+            if (is_numeric($part)) {
+                $num = (int) $part;
+                if ($num > $maxNum) {
+                    $maxNum = $num;
+                }
+            }
+        }
+
+        $nextNum = $maxNum + 1;
+        $suggested = sprintf('%s%04d', $prefix, $nextNum);
+
+        while (Item::where('sku', $suggested)->when($this->itemId, fn($q) => $q->where('id', '!=', $this->itemId))->exists()) {
+            $nextNum++;
+            $suggested = sprintf('%s%04d', $prefix, $nextNum);
+        }
+
+        return $suggested;
+    }
+
+    public function generateSemanticSku(string $category, ?string $brand, ?string $model, ?string $name): ?string
+    {
+        $prefix = match (trim($category)) {
+            'ONU/ONT', 'ONU / ONT' => 'DEV-ONT',
+            'Router'               => 'DEV-RTR',
+            'Alat Kerja'           => 'TOOL',
+            default                => 'MAT-' . self::getCategoryPrefix($category),
         };
 
-        $rand = strtoupper(substr(uniqid(), -4));
-        return $prefix . $rand;
+        $b = trim((string)$brand);
+        $m = trim((string)$model);
+
+        if (!empty($b) && !empty($m)) {
+            $cleanBrand = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $b));
+            $cleanModel = strtoupper(preg_replace('/[^A-Za-z0-9]/', '-', $m));
+            $cleanModel = trim(preg_replace('/-+/', '-', $cleanModel), '-');
+            return "{$prefix}-{$cleanBrand}-{$cleanModel}";
+        }
+
+        if (!empty($name)) {
+            $cleanName = strtoupper(preg_replace('/[^A-Za-z0-9]/', '-', trim($name)));
+            $cleanName = trim(preg_replace('/-+/', '-', $cleanName), '-');
+            $parts = explode('-', $cleanName);
+            $short = implode('-', array_slice($parts, 0, 3));
+            if (!empty($short)) {
+                return "{$prefix}-{$short}";
+            }
+        }
+
+        return null;
     }
 
     public function saveItem()
@@ -564,6 +678,7 @@ class Index extends Component
         $this->selling_price = null;
         $this->is_active = true;
         $this->branch_id = null;
+        $this->skuRecommendations = [];
     }
 
     public function exportExcel()

@@ -214,16 +214,45 @@
                 </div>
 
                 <div class="space-y-3">
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">SKU / Kode Barang *</label>
-                            <input type="text" wire:model="sku" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono uppercase bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">SKU / Kode Barang *</label>
+                                <button type="button" wire:click="refreshSuggestedSku" title="Generate Otomatis Kode Barang"
+                                        class="text-[11px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold flex items-center gap-0.5 transition-colors">
+                                    <span class="material-symbols-outlined notranslate text-[14px]" translate="no">autorenew</span>
+                                    <span>Auto Generate</span>
+                                </button>
+                            </div>
+                            <div class="relative">
+                                <input type="text" wire:model="sku" placeholder="Contoh: ONT-0001"
+                                       class="w-full pr-8 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono uppercase bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <button type="button" wire:click="refreshSuggestedSku" title="Generate Ulang Kode Baru"
+                                        class="absolute right-2 top-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-0.5">
+                                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">autorenew</span>
+                                </button>
+                            </div>
                             @error('sku') <span class="text-rose-500 text-[10px]">{{ $message }}</span> @enderror
+
+                            {{-- Rekomendasi Chips --}}
+                            @if(!empty($skuRecommendations))
+                                <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                    <span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Pilihan Rekomendasi:</span>
+                                    @foreach($skuRecommendations as $rec)
+                                        <button type="button" wire:click="applySuggestedSku('{{ $rec['code'] }}')"
+                                                title="Gunakan {{ $rec['code'] }} ({{ $rec['label'] }})"
+                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold transition-all {{ $sku === $rec['code'] ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700' }}">
+                                            <span>{{ $rec['code'] }}</span>
+                                            <span class="text-[9px] font-sans font-normal opacity-75">({{ $rec['label'] }})</span>
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @endif
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Kategori *</label>
-                            <select wire:model.live="category" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                            <select wire:model.live="category" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 @foreach($categories as $cat)
                                     <option value="{{ $cat }}">{{ $cat }}</option>
                                 @endforeach
@@ -233,15 +262,15 @@
 
                     <div>
                         <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Nama Barang *</label>
-                        <input type="text" wire:model="name" placeholder="Contoh: ONT GPON ZTE F609 V3 / Dropcore 1 Core 1000m"
-                               class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                        <input type="text" wire:model.live.debounce.300ms="name" placeholder="Contoh: ONT GPON ZTE F609 V3 / Dropcore 1 Core 1000m"
+                               class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         @error('name') <span class="text-rose-500 text-[10px]">{{ $message }}</span> @enderror
                     </div>
 
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Satuan *</label>
-                            <select wire:model="unit" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                            <select wire:model="unit" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <option value="unit">unit</option>
                                 <option value="pcs">pcs</option>
                                 <option value="meter">meter</option>
@@ -253,7 +282,7 @@
 
                         <div>
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Merek (Vendor)</label>
-                            <select wire:model="brand" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                            <select wire:model.live="brand" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <option value="">-- Pilih Vendor / Merek --</option>
                                 @foreach($brandList as $b)
                                     <option value="{{ $b }}">{{ $b }}</option>
@@ -263,7 +292,7 @@
 
                         <div>
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Model / Tipe</label>
-                            <input type="text" wire:model="model" placeholder="F609, HG8245H..." class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                            <input type="text" wire:model.live.debounce.300ms="model" placeholder="F609, HG8245H..." class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         </div>
                     </div>
 
