@@ -530,7 +530,7 @@
     {{-- TAB 2: VISUAL TOPOLOGY --}}
     {{-- ========================================================================= --}}
     @if($activeTab === 'topology')
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div id="odp-topology-wrapper" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900/60">
                 <div>
                     <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -542,17 +542,21 @@
                     </p>
                 </div>
                 <div class="flex items-center gap-2 text-xs">
-                    <button type="button" id="btnTopoZoomIn" class="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-100 transition shadow-2xs">
+                    <button type="button" id="btnTopoZoomIn" title="Perbesar" class="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-100 transition shadow-2xs cursor-pointer">
                         🔍+ Zoom In
                     </button>
-                    <button type="button" id="btnTopoZoomOut" class="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-100 transition shadow-2xs">
+                    <button type="button" id="btnTopoZoomOut" title="Perkecil" class="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-100 transition shadow-2xs cursor-pointer">
                         🔍- Zoom Out
                     </button>
-                    <button type="button" id="btnTopoFit" class="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-100 transition shadow-2xs">
+                    <button type="button" id="btnTopoReset" title="Skala Normal 1:1" class="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-100 transition shadow-2xs cursor-pointer">
+                        🔁 1:1
+                    </button>
+                    <button type="button" id="btnTopoFit" title="Paskan Layar" class="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-100 transition shadow-2xs cursor-pointer">
                         ⛶ Fit Screen
                     </button>
-                    <button type="button" id="btnTopoReset" class="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-100 transition shadow-2xs">
-                        🔁 Reset
+                    <button type="button" id="btnTopoFullscreen" title="Layar Penuh" class="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-100 transition shadow-2xs cursor-pointer flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">fullscreen</span>
+                        <span>Fullscreen</span>
                     </button>
                 </div>
             </div>
@@ -802,80 +806,6 @@
                 </svg>
             </div>
         </div>
-
-        <script>
-            (function() {
-                let scale = 1;
-                let panX = 40;
-                let panY = 40;
-                let isDragging = false;
-                let startX = 0;
-                let startY = 0;
-
-                const viewport = document.getElementById('topologyViewport');
-                const container = document.getElementById('topologyContainer');
-
-                function updateTransform() {
-                    if (viewport) {
-                        viewport.setAttribute('transform', `matrix(${scale} 0 0 ${scale} ${panX} ${panY})`);
-                    }
-                }
-
-                document.getElementById('btnTopoZoomIn')?.addEventListener('click', function() {
-                    scale = Math.min(2.5, scale + 0.2);
-                    updateTransform();
-                });
-
-                document.getElementById('btnTopoZoomOut')?.addEventListener('click', function() {
-                    scale = Math.max(0.4, scale - 0.2);
-                    updateTransform();
-                });
-
-                document.getElementById('btnTopoReset')?.addEventListener('click', function() {
-                    scale = 1;
-                    panX = 40;
-                    panY = 40;
-                    updateTransform();
-                });
-
-                document.getElementById('btnTopoFit')?.addEventListener('click', function() {
-                    scale = 0.75;
-                    panX = 20;
-                    panY = 10;
-                    updateTransform();
-                });
-
-                if (container) {
-                    container.addEventListener('mousedown', function(e) {
-                        if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-                        isDragging = true;
-                        startX = e.clientX - panX;
-                        startY = e.clientY - panY;
-                    });
-
-                    window.addEventListener('mousemove', function(e) {
-                        if (!isDragging) return;
-                        panX = e.clientX - startX;
-                        panY = e.clientY - startY;
-                        updateTransform();
-                    });
-
-                    window.addEventListener('mouseup', function() {
-                        isDragging = false;
-                    });
-
-                    container.addEventListener('wheel', function(e) {
-                        e.preventDefault();
-                        if (e.deltaY < 0) {
-                            scale = Math.min(2.5, scale + 0.1);
-                        } else {
-                            scale = Math.max(0.4, scale - 0.1);
-                        }
-                        updateTransform();
-                    }, { passive: false });
-                }
-            })();
-        </script>
     @endif
 
     {{-- ========================================================================= --}}
@@ -1687,3 +1617,185 @@
         </div>
     @endif
 </div>
+
+{{-- ============================================================
+     NATIVE SVG TOPOLOGY CONTROLLER (SELF-CONTAINED & ZERO-CDN)
+     ============================================================ --}}
+<script>
+(function() {
+    let scale = 1.0;
+    let panX = 40;
+    let panY = 40;
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+
+    function getElements() {
+        return {
+            container: document.getElementById('topologyContainer'),
+            viewport: document.getElementById('topologyViewport'),
+            wrapper: document.getElementById('odp-topology-wrapper'),
+            svg: document.getElementById('topologySvg')
+        };
+    }
+
+    function updateTransform() {
+        const { viewport } = getElements();
+        if (viewport) {
+            viewport.setAttribute('transform', `matrix(${scale} 0 0 ${scale} ${panX} ${panY})`);
+        }
+    }
+
+    function fitToScreen() {
+        const { container, viewport } = getElements();
+        if (!container || !viewport) return;
+        try {
+            const bbox = viewport.getBBox();
+            const cW = container.clientWidth || 950;
+            const cH = container.clientHeight || 600;
+            if (bbox.width > 0 && bbox.height > 0) {
+                const scaleX = (cW - 60) / bbox.width;
+                const scaleY = (cH - 60) / bbox.height;
+                scale = Math.min(Math.max(0.35, Math.min(scaleX, scaleY)), 1.1);
+                panX = (cW - (bbox.width * scale)) / 2 - (bbox.x * scale);
+                panY = (cH - (bbox.height * scale)) / 2 - (bbox.y * scale);
+                updateTransform();
+            }
+        } catch (err) {}
+    }
+
+    function initOdpTopology() {
+        const { container, viewport, wrapper } = getElements();
+        if (!container || !viewport) return;
+
+        // Auto fit immediately
+        setTimeout(fitToScreen, 80);
+
+        if (container.dataset.topoBound === 'true') return;
+        container.dataset.topoBound = 'true';
+
+        // Zoom In
+        document.getElementById('btnTopoZoomIn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            scale = Math.min(2.5, scale + 0.15);
+            updateTransform();
+        });
+
+        // Zoom Out
+        document.getElementById('btnTopoZoomOut')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            scale = Math.max(0.3, scale - 0.15);
+            updateTransform();
+        });
+
+        // Reset (1:1)
+        document.getElementById('btnTopoReset')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            scale = 1.0;
+            panX = 40;
+            panY = 40;
+            updateTransform();
+        });
+
+        // Fit to Screen
+        document.getElementById('btnTopoFit')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fitToScreen();
+        });
+
+        // Fullscreen
+        document.getElementById('btnTopoFullscreen')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const { wrapper } = getElements();
+            if (!wrapper) return;
+            if (!document.fullscreenElement) {
+                wrapper.requestFullscreen?.().then(() => {
+                    setTimeout(fitToScreen, 250);
+                }).catch(() => {});
+            } else {
+                document.exitFullscreen?.().then(() => {
+                    setTimeout(fitToScreen, 250);
+                }).catch(() => {});
+            }
+        });
+
+        // Mouse Drag Panning
+        container.addEventListener('mousedown', (e) => {
+            if (e.button === 0 && !e.target.closest('a, button')) {
+                isDragging = true;
+                startX = e.clientX - panX;
+                startY = e.clientY - panY;
+                container.style.cursor = 'grabbing';
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                panX = e.clientX - startX;
+                panY = e.clientY - startY;
+                updateTransform();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                container.style.cursor = 'grab';
+            }
+        });
+
+        // Mouse Wheel Zoom
+        container.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 0.12 : -0.12;
+            const newScale = Math.min(2.5, Math.max(0.3, scale + delta));
+            const rect = container.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            panX -= (mouseX - panX) * (newScale / scale - 1);
+            panY -= (mouseY - panY) * (newScale / scale - 1);
+            scale = newScale;
+            updateTransform();
+        }, { passive: false });
+
+        // Touch support for tablets/smartphones
+        container.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                startX = e.touches[0].clientX - panX;
+                startY = e.touches[0].clientY - panY;
+            }
+        });
+
+        container.addEventListener('touchmove', (e) => {
+            if (isDragging && e.touches.length === 1) {
+                panX = e.touches[0].clientX - startX;
+                panY = e.touches[0].clientY - startY;
+                updateTransform();
+            }
+        });
+
+        container.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+    }
+
+    // Attach lifecycle triggers
+    document.addEventListener('DOMContentLoaded', initOdpTopology);
+    document.addEventListener('livewire:navigated', initOdpTopology);
+    document.addEventListener('livewire:init', () => {
+        if (window.Livewire) {
+            Livewire.hook('commit', ({ succeed }) => {
+                succeed(() => {
+                    setTimeout(initOdpTopology, 50);
+                });
+            });
+        }
+    });
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(initOdpTopology, 100);
+    }
+})();
+</script>
