@@ -1,48 +1,27 @@
-<div class="max-w-7xl mx-auto p-4 space-y-6">
+<div class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
     <!-- Success/Error Flash Message -->
-    <div>
-        @if(session()->has('success'))
-            <x-feedback.alert variant="success" class="mb-4">
-                {{ session('success') }}
-            </x-feedback.alert>
-        @endif
-        @if(session()->has('error'))
-            <x-feedback.alert variant="danger" class="mb-4">
-                {{ session('error') }}
-            </x-feedback.alert>
-        @endif
-    </div>
-
-    <!-- Modern Navigation Breadcrumbs -->
-    <nav class="flex items-center text-sm font-medium text-slate-500 dark:text-slate-400 gap-2 mb-1">
-        <a href="{{ route('dashboard') }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-            <span class="material-symbols-outlined notranslate text-base align-middle">home</span> Dashboard
-        </a>
-        <span>/</span>
-        <a href="{{ route('isp.onus.index') }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-            Network
-        </a>
-        <span>/</span>
-        <a href="{{ route('isp.onus.index') }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-            ONU
-        </a>
-        <span>/</span>
-        <span class="text-slate-900 dark:text-slate-100 font-semibold font-mono">{{ $onu->serial_number ?: $onu->code }}</span>
-    </nav>
+    @if(session()->has('success'))
+        <x-feedback.alert variant="success" class="mb-4">
+            {{ session('success') }}
+        </x-feedback.alert>
+    @endif
+    @if(session()->has('error'))
+        <x-feedback.alert variant="danger" class="mb-4">
+            {{ session('error') }}
+        </x-feedback.alert>
+    @endif
 
     <!-- Top Action Bar & Identity Header -->
-    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-xs border border-slate-200/80 dark:border-slate-700/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200/80 dark:border-slate-700/80 flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div class="flex items-center gap-4">
-            <a href="{{ route('isp.onus.index') }}" class="p-2.5 text-slate-500 hover:text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors" title="Kembali ke Daftar ONU">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
+            <a href="{{ route('isp.onus.index') }}" class="p-2.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700 transition-colors" title="Kembali ke Daftar ONU">
+                <span class="material-symbols-outlined notranslate text-xl block">arrow_back</span>
             </a>
-            <div class="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-2xl font-black shadow-xs">
+            <div class="w-13 h-13 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-2xl font-black shadow-xs">
                 {{ substr($this->realVendorName, 0, 1) }}
             </div>
             <div>
-                <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-2.5 flex-wrap">
                     <h1 class="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono tracking-tight">{{ $onu->serial_number ?: $onu->name }}</h1>
                     @if($onu->status === 'active')
                         <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
@@ -56,29 +35,32 @@
                     <span class="px-2.5 py-0.5 text-xs font-semibold rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono">
                         {{ $onu->code }}
                     </span>
-                    <span class="px-2.5 py-0.5 text-xs font-bold rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                    <span class="px-2.5 py-0.5 text-xs font-bold rounded-md bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                         {{ $this->realVendorName }}
                     </span>
                 </div>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
-                    <span>Terhubung ke OLT: <b>{{ $onu->olt?->name ?? 'OLT Tidak Terdata' }}</b></span>
-                    <span>•</span>
-                    <span>Port PON: <b>{{ $onu->pon_port ?: '1' }}</b> (ID: #{{ $onu->onu_id_on_olt ?: '1' }})</span>
-                </p>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mt-1.5 flex items-center gap-2 flex-wrap">
+                    <span class="inline-flex items-center gap-1">
+                        <span class="material-symbols-outlined notranslate text-xs text-indigo-500">router</span>
+                        OLT: <strong class="text-slate-700 dark:text-slate-200">{{ $onu->olt?->name ?? 'OLT Tidak Terdata' }}</strong>
+                    </span>
+                    <span class="text-slate-300 dark:text-slate-600">•</span>
+                    <span>Port PON: <strong class="text-slate-700 dark:text-slate-200">{{ $onu->pon_port ?: '1' }}</strong> (ONU ID: #{{ $onu->onu_id_on_olt ?: '1' }})</span>
+                </div>
             </div>
         </div>
 
-        <div class="flex items-center gap-2 flex-wrap">
-            <button wire:click="refreshLiveOpticalPower" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50">
+        <div class="flex items-center gap-2.5 flex-wrap">
+            <button wire:click="refreshLiveOpticalPower" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50">
                 <span wire:loading.remove wire:target="refreshLiveOpticalPower" class="material-symbols-outlined notranslate text-base">sync</span>
-                <span wire:loading wire:target="refreshLiveOpticalPower" class="animate-spin text-base">⏳</span>
+                <span wire:loading wire:target="refreshLiveOpticalPower" class="animate-spin text-base">progress_activity</span>
                 <span>Tarik Redaman Live</span>
             </button>
-            <a href="{{ route('isp.onus.edit', $onu->id) }}" class="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-semibold transition-colors">
+            <a href="{{ route('isp.onus.edit', $onu->id) }}" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-semibold transition-colors">
                 <span class="material-symbols-outlined notranslate text-base">edit</span>
                 <span>Edit</span>
             </a>
-            <button wire:click="openWifiModal" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-xl text-sm font-semibold transition-colors">
+            <button wire:click="openWifiModal" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-xl text-sm font-semibold transition-colors">
                 <span class="material-symbols-outlined notranslate text-base">wifi</span>
                 <span>Wi-Fi</span>
             </button>
