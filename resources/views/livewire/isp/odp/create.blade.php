@@ -176,6 +176,84 @@
                 </div>
             </div>
 
+            {{-- INTEGRASI LOGISTIK & STOK GUDANG --}}
+            <div class="pt-6 border-t border-slate-200 dark:border-slate-700">
+                <div class="flex items-center justify-between pb-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <span class="material-symbols-outlined notranslate text-emerald-600 dark:text-emerald-400" translate="no" style="font-size:20px">inventory_2</span>
+                            Integrasi Gudang & Keseimbangan Stok Logistik
+                        </h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Otomatis mutasikan Box ODP & Splitter internal terpasang agar neraca stok gudang dan aset fisik selalu seimbang (balance).</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Sumber Pengambilan Material</label>
+                            <select wire:model.live="source_type" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-slate-100 cursor-pointer">
+                                <option value="none">Tanpa Potong Stok (Pencatatan GIS / Topologi Saja)</option>
+                                <option value="warehouse">Potong Langsung dari Gudang (Warehouse)</option>
+                                <option value="custody">Potong dari Bawaan Teknisi Lapangan (Custody)</option>
+                            </select>
+                        </div>
+
+                        @if($source_type === 'warehouse')
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pilih Gudang Asal <span class="text-red-500">*</span></label>
+                                <select wire:model="warehouse_id" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-slate-100 cursor-pointer">
+                                    <option value="">-- Pilih Gudang --</option>
+                                    @foreach($warehouses as $wh)
+                                        <option value="{{ $wh->id }}">{{ $wh->name }} ({{ $wh->branch?->name ?? 'Pusat' }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @elseif($source_type === 'custody')
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Teknisi Pemasang (Pemegang Custody) <span class="text-red-500">*</span></label>
+                                <select wire:model="technician_id" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-slate-100 cursor-pointer">
+                                    <option value="">-- Pilih Teknisi --</option>
+                                    @foreach($technicians as $tech)
+                                        <option value="{{ $tech->id }}">{{ $tech->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+                    </div>
+
+                    @if($source_type !== 'none')
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-200 dark:border-slate-700">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Master Barang Box ODP <span class="text-red-500">*</span></label>
+                                <select wire:model="item_id" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-slate-100 cursor-pointer">
+                                    <option value="">-- Pilih Item Box ODP --</option>
+                                    @foreach($odpItems as $item)
+                                        <option value="{{ $item->id }}">{{ $item->sku }} - {{ $item->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="col-span-2">
+                                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Splitter Internal <span class="text-xs text-slate-400">(Opsional)</span></label>
+                                    <select wire:model="splitter_item_id" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-slate-100 cursor-pointer">
+                                        <option value="">-- Tanpa Splitter --</option>
+                                        @foreach($splitterItems as $spl)
+                                            <option value="{{ $spl->id }}">{{ $spl->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jumlah</label>
+                                    <input type="number" wire:model="splitter_qty" min="1" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-slate-100">
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             <div class="flex items-center justify-end gap-3 pt-6 border-t border-slate-200 dark:border-slate-700">
                 <a href="{{ route('isp.odps.index') }}" class="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                     Batal

@@ -25,6 +25,10 @@ class InventoryUsage extends Model
         'customer_id',
         'installation_id',
         'ticket_id',
+        'odc_id',
+        'odp_id',
+        'joint_closure_id',
+        'splitter_id',
         'work_order_type',
         'usage_date',
         'optical_power',
@@ -89,6 +93,26 @@ class InventoryUsage extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class, 'branch_id');
+    }
+
+    public function odc(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\ISP\Odc::class, 'odc_id');
+    }
+
+    public function odp(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\ISP\Odp::class, 'odp_id');
+    }
+
+    public function jointClosure(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\ISP\JointClosure::class, 'joint_closure_id');
+    }
+
+    public function splitter(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\ISP\Splitter::class, 'splitter_id');
     }
 
     public function items(): HasMany

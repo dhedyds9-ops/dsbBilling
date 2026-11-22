@@ -32,6 +32,7 @@ class JointClosure extends Model
         'vendor_id',
         'odc_id',
         'olt_id',
+        'item_id',
         'parent_closure_id',
         'pon_port',
         'code',
@@ -127,5 +128,10 @@ class JointClosure extends Model
     public function updatedBy()
     {
         return $this->belongsTo(\App\Models\User::class, 'updated_by');
+    }
+
+    public function item(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Inventory\Item::class, 'item_id');
     }
 }

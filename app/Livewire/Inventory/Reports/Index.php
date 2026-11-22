@@ -236,6 +236,112 @@ class Index extends Component
             $resellerUsageData = $resellerQuery->paginate($perPageInt);
         }
 
+        // 5. Laporan Rekonsiliasi Aset Jaringan vs Gudang (Neraca Stok Balance)
+        $reconciliationData = [];
+        $reconciliationSummary = [
+            'total_inbound' => 0,
+            'total_warehouse' => 0,
+            'total_custody' => 0,
+            'total_deployed' => 0,
+            'total_delta' => 0,
+            'network_totals' => [
+                'odc' => 0,
+                'odp' => 0,
+                'closure' => 0,
+                'splitter' => 0,
+                'onu' => 0,
+            ],
+        ];
+
+        if ($this->activeTab === 'network_reconciliation') {
+            $items = Item::withoutGlobalScopes()
+                ->where(function ($q) {
+                    $q->whereIn('category', ['ODC', 'ODP', 'Joint Closure', 'Splitter'])
+                      ->orWhere('name', 'like', '%ODC%')
+                      ->orWhere('name', 'like', '%ODP%')
+                      ->orWhere('name', 'like', '%Closure%')
+                      ->orWhere('name', 'like', '%Splitter%')
+                      ->orWhere('name', 'like', '%ONU%')
+                      ->orWhere('name', 'like', '%ONT%');
+                })
+                ->orderBy('category')
+                ->orderBy('name')
+                ->get();
+
+            $odcCount = \App\Models\ISP\Odc::withoutGlobalScopes()->where('status', 'active')->count();
+            $odpCount = \App\Models\ISP\Odp::withoutGlobalScopes()->where('status', 'active')->count();
+            $closureCount = \App\Models\ISP\JointClosure::withoutGlobalScopes()->where('status', 'active')->count();
+            $splitterCount = \App\Models\ISP\Splitter::withoutGlobalScopes()->where('status', 'active')->count();
+            $onuCount = \App\Models\ISP\Onu::withoutGlobalScopes()->count();
+
+            $reconciliationSummary['network_totals'] = [
+                'odc' => $odcCount,
+                'odp' => $odpCount,
+                'closure' => $closureCount,
+                'splitter' => $splitterCount,
+                'onu' => $onuCount,
+            ];
+
+            foreach ($items as $item) {
+                // 1. Inbound (pengadaan)
+                $inbound = (float) \App\Models\Inventory\InventoryStockMutation::withoutGlobalScopes()
+                    ->where('item_id', $item->id)
+                    ->whereIn('type', ['inbound_supplier', 'inbound_initial', 'inbound_transfer', 'inbound_return'])
+                    ->sum('qty_in');
+
+                // 2. Stok di gudang
+                $warehouseStock = (float) InventoryStock::withoutGlobalScopes()
+                    ->where('item_id', $item->id)
+                    ->sum('quantity');
+
+                // 3. Custody di tangan teknisi / tim
+                $custodyStock = (float) (InventoryCustody::withoutGlobalScopes()
+                    ->where('item_id', $item->id)
+                    ->whereIn('status', ['in_custody', 'accepted', 'in_transit'])
+                    ->selectRaw('SUM(quantity - used_quantity - returned_quantity) as remaining')
+                    ->value('remaining') ?? 0.0);
+
+                // 4. Terpasang di jaringan/pelanggan via usage
+                $usageQty = (float) \App\Models\Inventory\InventoryUsageItem::withoutGlobalScopes()
+                    ->where('item_id', $item->id)
+                    ->sum('quantity');
+
+                $activeNodes = 0;
+                $cat = strtoupper($item->category ?? '');
+                if (str_contains($cat, 'ODC') || str_contains(strtoupper($item->name), 'ODC')) {
+                    $activeNodes = \App\Models\ISP\Odc::withoutGlobalScopes()->where('item_id', $item->id)->count();
+                } elseif (str_contains($cat, 'ODP') || str_contains(strtoupper($item->name), 'ODP')) {
+                    $activeNodes = \App\Models\ISP\Odp::withoutGlobalScopes()->where('item_id', $item->id)->count();
+                } elseif (str_contains($cat, 'CLOSURE') || str_contains(strtoupper($item->name), 'CLOSURE')) {
+                    $activeNodes = \App\Models\ISP\JointClosure::withoutGlobalScopes()->where('item_id', $item->id)->count();
+                } elseif (str_contains($cat, 'SPLITTER') || str_contains(strtoupper($item->name), 'SPLITTER')) {
+                    $activeNodes = \App\Models\ISP\Splitter::withoutGlobalScopes()->where('item_id', $item->id)->count();
+                }
+
+                $deployedQty = max($usageQty, $activeNodes);
+                $totalTracked = $warehouseStock + $custodyStock + $deployedQty;
+                $delta = $inbound > 0 ? ($inbound - $totalTracked) : 0;
+
+                $reconciliationData[] = [
+                    'item' => $item,
+                    'inbound' => $inbound,
+                    'warehouse' => $warehouseStock,
+                    'custody' => $custodyStock,
+                    'deployed' => $deployedQty,
+                    'active_nodes' => $activeNodes,
+                    'total_tracked' => $totalTracked,
+                    'delta' => $delta,
+                    'is_balanced' => abs($delta) < 0.001,
+                ];
+
+                $reconciliationSummary['total_inbound'] += $inbound;
+                $reconciliationSummary['total_warehouse'] += $warehouseStock;
+                $reconciliationSummary['total_custody'] += $custodyStock;
+                $reconciliationSummary['total_deployed'] += $deployedQty;
+                $reconciliationSummary['total_delta'] += $delta;
+            }
+        }
+
         return view('livewire.inventory.reports.index', [
             'warehouses' => $warehouses,
             'categories' => $categories,
@@ -245,6 +351,8 @@ class Index extends Component
             'custodyData' => $custodyData,
             'resellerUsageData' => $resellerUsageData,
             'resellerSummary' => $resellerSummary,
+            'reconciliationData' => $reconciliationData,
+            'reconciliationSummary' => $reconciliationSummary,
             'activeTab' => $this->activeTab,
         ])->layout('layouts.app', ['title' => 'Laporan Inventaris - dsBilling']);
     }

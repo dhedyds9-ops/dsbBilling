@@ -74,13 +74,11 @@ class AssetList extends AdminComponent
         if ($user && method_exists($user, 'isTechnician') && $user->isTechnician() && !$user->isSuperAdmin() && !$user->isWarehouseAdmin()) {
             $this->filters['assigned_to'] = (string)$user->id;
         }
-
-        $this->syncInstalledOnus(false);
-        $this->syncNetworkDevices(false);
     }
 
     public function syncNetworkDevices(bool $flash = true): void
     {
+        @ini_set('max_execution_time', '180');
         try {
             $networkCat = AssetCategory::where('code', 'CAT-NETWORK')->first();
             $categoryId = $networkCat?->id;
@@ -199,57 +197,60 @@ class AssetList extends AdminComponent
 
     public function syncInstalledOnus(bool $flash = true): void
     {
+        @ini_set('max_execution_time', '180');
         try {
-            if (!$flash && \Illuminate\Support\Facades\Cache::has('assets_onu_autosync_recent')) {
-                return;
-            }
-
-            $onus = \App\Models\ISP\Onu::select(['id', 'code', 'name', 'model', 'serial_number', 'mac_address', 'vendor_id', 'status', 'provision_status', 'provisioned_at', 'created_at'])->get();
             $existingAssets = Asset::select(['id', 'code', 'serial_number', 'mac_address', 'vendor_id', 'status', 'installed_at'])->get();
             $bySn = $existingAssets->whereNotNull('serial_number')->keyBy('serial_number');
             $byCode = $existingAssets->whereNotNull('code')->keyBy('code');
 
             $synced = 0;
-            foreach ($onus as $onu) {
-                $sn = $onu->serial_number ?: ($onu->code ?: 'ONU-' . $onu->id);
-                $code = $onu->code ?: ('ONU-' . substr(preg_replace('/[^A-Za-z0-9]/', '', $sn), -6));
-                $name = $onu->name ?: ('ONU Modem ' . ($onu->model ?: $sn));
-                $status = ($onu->status === 'active' || $onu->provision_status === 'success' || !empty($onu->provisioned_at)) ? 'in_use' : 'available';
+            \App\Models\ISP\Onu::select(['id', 'code', 'name', 'model', 'serial_number', 'mac_address', 'vendor_id', 'status', 'provision_status', 'provisioned_at', 'created_at'])
+                ->chunkById(100, function ($onus) use (&$synced, $bySn, $byCode) {
+                    foreach ($onus as $onu) {
+                        $sn = trim((string)($onu->serial_number ?: ($onu->code ?: 'ONU-' . $onu->id)));
+                        $code = trim((string)($onu->code ?: ('ONU-' . ($onu->serial_number ?: $onu->id))));
+                        $name = $onu->name ?: ('ONU Modem ' . ($onu->model ?: $sn));
+                        $status = ($onu->status === 'active' || $onu->provision_status === 'success' || !empty($onu->provisioned_at)) ? 'in_use' : 'available';
 
-                $asset = $bySn->get($sn) ?? $byCode->get($code);
+                        $asset = $bySn->get($sn) ?? $byCode->get($code);
 
-                if (!$asset) {
-                    $created = Asset::create([
-                        'code' => $code,
-                        'name' => $name,
-                        'type' => 'onu',
-                        'status' => $status,
-                        'condition' => 'good',
-                        'serial_number' => $sn,
-                        'mac_address' => $onu->mac_address,
-                        'vendor_id' => $onu->vendor_id,
-                        'installed_at' => $onu->provisioned_at ?: $onu->created_at,
-                    ]);
-                    $bySn->put($sn, $created);
-                    $byCode->put($code, $created);
-                    $synced++;
-                } else {
-                    $newMac = $onu->mac_address ?: $asset->mac_address;
-                    $newVendor = $onu->vendor_id ?: $asset->vendor_id;
-                    $newInstalled = $onu->provisioned_at ?: ($asset->installed_at ?: $onu->created_at);
+                        if (!$asset) {
+                            try {
+                                $created = Asset::create([
+                                    'code' => $code,
+                                    'name' => $name,
+                                    'type' => 'onu',
+                                    'status' => $status,
+                                    'condition' => 'good',
+                                    'serial_number' => $sn,
+                                    'mac_address' => $onu->mac_address,
+                                    'vendor_id' => $onu->vendor_id,
+                                    'installed_at' => $onu->provisioned_at ?: $onu->created_at,
+                                ]);
+                                $bySn->put($sn, $created);
+                                $byCode->put($code, $created);
+                                $synced++;
+                            } catch (\Throwable $createEx) {
+                                // Ignore duplicate key collision gracefully
+                            }
+                        } else {
+                            $newMac = $onu->mac_address ?: $asset->mac_address;
+                            $newVendor = $onu->vendor_id ?: $asset->vendor_id;
+                            $newInstalled = $onu->provisioned_at ?: ($asset->installed_at ?: $onu->created_at);
 
-                    if ($asset->status !== $status || $asset->mac_address !== $newMac || $asset->vendor_id != $newVendor) {
-                        $asset->update([
-                            'status' => $status,
-                            'mac_address' => $newMac,
-                            'vendor_id' => $newVendor,
-                            'installed_at' => $newInstalled,
-                        ]);
+                            if ($asset->status !== $status || $asset->mac_address !== $newMac || $asset->vendor_id != $newVendor) {
+                                $asset->update([
+                                    'status' => $status,
+                                    'mac_address' => $newMac,
+                                    'vendor_id' => $newVendor,
+                                    'installed_at' => $newInstalled,
+                                ]);
+                            }
+                        }
                     }
-                }
-            }
+                });
 
-            \Illuminate\Support\Facades\Cache::put('assets_onu_autosync_recent', true, now()->addMinutes(5));
+            \Illuminate\Support\Facades\Cache::put('assets_onu_autosync_recent', true, now()->addMinutes(15));
 
             if ($flash) {
                 session()->flash('success', $synced > 0
@@ -258,6 +259,9 @@ class AssetList extends AdminComponent
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('Sync ONUs to assets error: ' . $e->getMessage());
+            if ($flash) {
+                session()->flash('error', 'Gagal mensinkronkan data ONU: ' . $e->getMessage());
+            }
         }
     }
 
@@ -445,8 +449,9 @@ class AssetList extends AdminComponent
         session()->flash('success', 'Data Aset & Alat Kerja berhasil disimpan!');
     }
 
-    public function openAssignModal(int $id)
+    public function openAssignModal($id)
     {
+        $id = (int)$id;
         $asset = Asset::findOrFail($id);
         $this->assignAssetId = $asset->id;
         $this->assignTechnicianId = $asset->assigned_to_id;
@@ -486,8 +491,9 @@ class AssetList extends AdminComponent
         session()->flash('success', "Alat kerja {$asset->name} (#{$asset->code}) berhasil diserahkan ke {$tech->name}.");
     }
 
-    public function returnAsset(int $id)
+    public function returnAsset($id)
     {
+        $id = (int)$id;
         $asset = Asset::findOrFail($id);
         $techName = $asset->assignedTo?->name ?? 'Teknisi';
 
@@ -512,6 +518,7 @@ class AssetList extends AdminComponent
 
     public function delete($id)
     {
+        $id = (int)$id;
         Asset::findOrFail($id)->delete();
         session()->flash('success', 'Aset berhasil dihapus.');
     }

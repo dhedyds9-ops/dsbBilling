@@ -55,6 +55,7 @@ class Odc extends Model
         'parent_odc_id',
         'joint_closure_id',
         'pop_id',
+        'item_id',
         'code',
         'name',
         'description',
@@ -216,5 +217,10 @@ class Odc extends Model
     public function branch()
     {
         return $this->belongsTo(\App\Models\Master\Branch::class);
+    }
+
+    public function item(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Inventory\Item::class, 'item_id');
     }
 }

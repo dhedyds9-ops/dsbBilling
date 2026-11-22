@@ -30,6 +30,14 @@ class Create extends AdminComponent
     public $port_count;
     public $status = 'active';
 
+    // Integrasi Gudang & Logistik
+    public $item_id;
+    public $source_type = 'none'; // 'none', 'warehouse', 'custody'
+    public $warehouse_id;
+    public $technician_id;
+    public $splitter_item_id;
+    public $splitter_qty = 1;
+
     public function updatedUplinkType($val)
     {
         if ($val === 'odc') {
@@ -94,12 +102,13 @@ class Create extends AdminComponent
         ]);
 
         $service = app(OdpService::class);
-        $service->create([
+        $odp = $service->create([
             'branch_id' => $this->branch_id === '' ? null : $this->branch_id,
             'odc_id' => $this->uplink_type === 'odc' ? $this->odc_id : null,
             'joint_closure_id' => $this->joint_closure_id ? (int) $this->joint_closure_id : null,
             'parent_odp_id' => $this->uplink_type === 'odp' ? $this->parent_odp_id : null,
             'odc_port' => $this->uplink_type === 'odc' && $this->odc_port ? (int) $this->odc_port : null,
+            'item_id' => $this->item_id ? (int) $this->item_id : null,
             'code' => $this->code,
             'name' => $this->name,
             'description' => $this->description,
@@ -115,7 +124,35 @@ class Create extends AdminComponent
             'status' => $this->status,
         ], Auth::user());
 
-        session()->flash('success', 'ODP berhasil dibuat!');
+        if ($this->source_type !== 'none' && $this->item_id) {
+            $itemsToDeploy = [
+                ['item_id' => (int) $this->item_id, 'quantity' => 1, 'notes' => 'Box ODP ' . $this->name]
+            ];
+            if ($this->splitter_item_id) {
+                $itemsToDeploy[] = [
+                    'item_id' => (int) $this->splitter_item_id,
+                    'quantity' => (float) ($this->splitter_qty ?: 1),
+                    'notes' => 'Splitter internal ODP ' . $this->name
+                ];
+            }
+            try {
+                app(\App\Services\Inventory\StockMutationService::class)->recordInfrastructureDeployment(
+                    'odp',
+                    $odp->id,
+                    $itemsToDeploy,
+                    $this->source_type,
+                    $this->warehouse_id ? (int) $this->warehouse_id : null,
+                    $this->technician_id ? (int) $this->technician_id : null,
+                    Auth::id(),
+                    "Pemasangan ODP {$this->name} ({$this->code})",
+                    $odp->branch_id
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning("Gagal auto potong stok ODP: " . $e->getMessage());
+            }
+        }
+
+        session()->flash('success', 'ODP berhasil dibuat dan sinkronisasi logistik tersimpan!');
         return redirect()->route('isp.odps.index');
     }
 
@@ -125,6 +162,24 @@ class Create extends AdminComponent
         $odcs = Odc::active()->with('parentOdc')->orderBy('name')->get();
         $parentOdps = \App\Models\ISP\Odp::active()->orderBy('name')->get();
         $jointClosures = \App\Models\ISP\JointClosure::active()->orderBy('name')->get();
-        return view('livewire.isp.odp.create', compact('branches', 'odcs', 'parentOdps', 'jointClosures'));
+        $odpItems = \App\Models\Inventory\Item::where(function ($q) {
+            $q->where('category', 'ODP')->orWhere('name', 'like', '%ODP%');
+        })->orderBy('name')->get();
+        $splitterItems = \App\Models\Inventory\Item::where(function ($q) {
+            $q->where('category', 'Splitter')->orWhere('name', 'like', '%Splitter%');
+        })->orderBy('name')->get();
+        $warehouses = \App\Models\Inventory\Warehouse::where('is_active', true)->orderBy('name')->get();
+        $technicians = \App\Models\User::getEligibleTechnicians();
+
+        return view('livewire.isp.odp.create', compact(
+            'branches',
+            'odcs',
+            'parentOdps',
+            'jointClosures',
+            'odpItems',
+            'splitterItems',
+            'warehouses',
+            'technicians'
+        ));
     }
 }

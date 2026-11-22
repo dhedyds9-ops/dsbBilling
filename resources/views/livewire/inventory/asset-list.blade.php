@@ -241,25 +241,25 @@
                                     @if($canManageAssets)
                                         {{-- Quick Handover / Return Button --}}
                                         @if($asset->status === 'available')
-                                            <button type="button" wire:click="openAssignModal('{{ $asset->id }}')" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 transition-colors cursor-pointer" title="Serahkan ke Teknisi (Handover)">
+                                            <button type="button" wire:click="openAssignModal({{ $asset->id }})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 transition-colors cursor-pointer" title="Serahkan ke Teknisi (Handover)">
                                                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">person_add</span>
                                             </button>
                                         @elseif($asset->status === 'in_use')
-                                            <button type="button" wire:click="returnAsset('{{ $asset->id }}')" wire:confirm="Kembalikan alat ini ke gudang?" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 transition-colors cursor-pointer" title="Kembalikan ke Gudang (Return)">
+                                            <button type="button" wire:click="returnAsset({{ $asset->id }})" wire:confirm="Kembalikan alat ini ke gudang?" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 transition-colors cursor-pointer" title="Kembalikan ke Gudang (Return)">
                                                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">assignment_return</span>
                                             </button>
                                         @endif
 
-                                        <button type="button" wire:click="edit('{{ $asset->id }}')" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors cursor-pointer" title="Edit Data">
+                                        <button type="button" wire:click="edit({{ $asset->id }})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors cursor-pointer" title="Edit Data">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">edit</span>
                                         </button>
-                                        <button type="button" wire:click="delete('{{ $asset->id }}')" wire:confirm="Yakin ingin menghapus asset ini?" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer" title="Hapus">
+                                        <button type="button" wire:click="delete({{ $asset->id }})" wire:confirm="Yakin ingin menghapus asset ini?" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer" title="Hapus">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">delete</span>
                                         </button>
                                     @else
                                         {{-- Mode Teknisi --}}
                                         @if($asset->status === 'in_use' && $asset->assigned_to_id === auth()->id())
-                                            <button type="button" wire:click="returnAsset('{{ $asset->id }}')" wire:confirm="Kembalikan alat ini ke gudang?" class="inline-flex items-center justify-center px-2 py-1 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 transition-colors cursor-pointer text-xs font-semibold gap-1" title="Kembalikan alat ini ke gudang">
+                                            <button type="button" wire:click="returnAsset({{ $asset->id }})" wire:confirm="Kembalikan alat ini ke gudang?" class="inline-flex items-center justify-center px-2 py-1 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 transition-colors cursor-pointer text-xs font-semibold gap-1" title="Kembalikan alat ini ke gudang">
                                                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">assignment_return</span>
                                                 <span>Retur</span>
                                             </button>
@@ -294,7 +294,7 @@
                                     <span class="px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider {{ $typeBadge }}">
                                         {{ $asset->type ?: 'ASET' }}
                                     </span>
-                                    <div class="font-bold text-slate-800 dark:text-slate-100 hover:text-indigo-600 cursor-pointer" wire:click="edit('{{ $asset->id }}')">
+                                    <div class="font-bold text-slate-800 dark:text-slate-100 hover:text-indigo-600 cursor-pointer" wire:click="edit({{ $asset->id }})">
                                         {{ $asset->name }}
                                     </div>
                                 </div>
@@ -343,7 +343,7 @@
                                         </div>
                                         <div>
                                             <div class="text-xs font-bold text-slate-800 dark:text-slate-200">{{ $asset->assignedTo->name }}</div>
-                                            <div class="text-[10px] text-slate-400">{{ $asset->assigned_at ? 'Sejak ' . \Carbon\Carbon::parse($asset->assigned_at)->format('d M Y') : 'Teknisi' }}</div>
+                                            <div class="text-[10px] text-slate-400">{{ $asset->assigned_at ? 'Sejak ' . rescue(fn() => \Carbon\Carbon::parse($asset->assigned_at)->format('d M Y'), '-') : 'Teknisi' }}</div>
                                         </div>
                                     </div>
                                 @else
@@ -356,7 +356,7 @@
 
                             {{-- PEMBELIAN --}}
                             <td class="px-4 py-3 whitespace-nowrap text-xs text-slate-600 dark:text-slate-400">
-                                <div>{{ $asset->purchase_date ? \Carbon\Carbon::parse($asset->purchase_date)->format('d/m/Y') : '-' }}</div>
+                                <div>{{ $asset->purchase_date ? rescue(fn() => \Carbon\Carbon::parse($asset->purchase_date)->format('d/m/Y'), '-') : '-' }}</div>
                                 @if($asset->purchase_price)
                                     <div class="font-mono text-slate-500 mt-0.5">Rp {{ number_format($asset->purchase_price, 0, ',', '.') }}</div>
                                 @endif

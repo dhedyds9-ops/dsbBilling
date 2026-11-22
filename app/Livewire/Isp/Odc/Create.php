@@ -26,6 +26,14 @@ class Create extends AdminComponent
     public $port_count;
     public $status = 'active';
 
+    // Integrasi Gudang & Logistik
+    public $item_id;
+    public $source_type = 'none'; // 'none', 'warehouse', 'custody'
+    public $warehouse_id;
+    public $technician_id;
+    public $splitter_item_id;
+    public $splitter_qty = 1;
+
     public function updatedUplinkType($val)
     {
         if ($val === 'olt') {
@@ -90,11 +98,12 @@ class Create extends AdminComponent
         ]);
 
         $service = app(OdcService::class);
-        $service->create([
+        $odc = $service->create([
             'branch_id' => $this->branch_id === '' ? null : $this->branch_id,
             'olt_id' => $this->uplink_type === 'olt' ? $this->olt_id : null,
             'parent_odc_id' => $this->uplink_type === 'odc' ? $this->parent_odc_id : null,
             'joint_closure_id' => $this->joint_closure_id ? (int) $this->joint_closure_id : null,
+            'item_id' => $this->item_id ? (int) $this->item_id : null,
             'pop_id' => $this->pop_id,
             'code' => $this->code,
             'name' => $this->name,
@@ -106,7 +115,35 @@ class Create extends AdminComponent
             'status' => $this->status,
         ], Auth::user());
 
-        session()->flash('success', 'ODC berhasil dibuat!');
+        if ($this->source_type !== 'none' && $this->item_id) {
+            $itemsToDeploy = [
+                ['item_id' => (int) $this->item_id, 'quantity' => 1, 'notes' => 'Box ODC ' . $this->name]
+            ];
+            if ($this->splitter_item_id) {
+                $itemsToDeploy[] = [
+                    'item_id' => (int) $this->splitter_item_id,
+                    'quantity' => (float) ($this->splitter_qty ?: 1),
+                    'notes' => 'Splitter internal ODC ' . $this->name
+                ];
+            }
+            try {
+                app(\App\Services\Inventory\StockMutationService::class)->recordInfrastructureDeployment(
+                    'odc',
+                    $odc->id,
+                    $itemsToDeploy,
+                    $this->source_type,
+                    $this->warehouse_id ? (int) $this->warehouse_id : null,
+                    $this->technician_id ? (int) $this->technician_id : null,
+                    Auth::id(),
+                    "Pemasangan ODC {$this->name} ({$this->code})",
+                    $odc->branch_id
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning("Gagal auto potong stok ODC: " . $e->getMessage());
+            }
+        }
+
+        session()->flash('success', 'ODC berhasil dibuat dan sinkronisasi logistik tersimpan!');
         return redirect()->route('isp.odcs.index');
     }
 
@@ -117,6 +154,25 @@ class Create extends AdminComponent
         $pops = Pop::active()->get();
         $parentOdcs = \App\Models\ISP\Odc::active()->orderBy('name')->get();
         $jointClosures = \App\Models\ISP\JointClosure::active()->orderBy('name')->get();
-        return view('livewire.isp.odc.create', compact('branches', 'olts', 'pops', 'parentOdcs', 'jointClosures'));
+        $odcItems = \App\Models\Inventory\Item::where(function ($q) {
+            $q->where('category', 'ODC')->orWhere('name', 'like', '%ODC%');
+        })->orderBy('name')->get();
+        $splitterItems = \App\Models\Inventory\Item::where(function ($q) {
+            $q->where('category', 'Splitter')->orWhere('name', 'like', '%Splitter%');
+        })->orderBy('name')->get();
+        $warehouses = \App\Models\Inventory\Warehouse::where('is_active', true)->orderBy('name')->get();
+        $technicians = \App\Models\User::getEligibleTechnicians();
+
+        return view('livewire.isp.odc.create', compact(
+            'branches',
+            'olts',
+            'pops',
+            'parentOdcs',
+            'jointClosures',
+            'odcItems',
+            'splitterItems',
+            'warehouses',
+            'technicians'
+        ));
     }
 }

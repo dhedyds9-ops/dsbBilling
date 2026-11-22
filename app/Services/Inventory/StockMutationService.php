@@ -1756,4 +1756,155 @@ class StockMutationService
             ];
         });
     }
+
+    /**
+     * Catat pengeluaran/pemakaian material infrastruktur fiber di lapangan
+     * (Box ODC, ODP, Joint Closure, Splitter) baik dari Gudang langsung maupun Custody Teknisi.
+     */
+    public function recordInfrastructureDeployment(
+        string $infrastructureType,
+        int $infrastructureId,
+        array $items,
+        string $sourceType = 'warehouse',
+        ?int $warehouseId = null,
+        ?int $technicianId = null,
+        ?int $actorId = null,
+        ?string $notes = null,
+        ?int $branchId = null
+    ): ?InventoryUsage {
+        if (empty($items)) {
+            return null;
+        }
+
+        return DB::transaction(function () use (
+            $infrastructureType,
+            $infrastructureId,
+            $items,
+            $sourceType,
+            $warehouseId,
+            $technicianId,
+            $actorId,
+            $notes,
+            $branchId
+        ) {
+            $effectiveActorId = $actorId ?: auth()->id() ?: 1;
+            $effectiveTechId = $technicianId ?: ($sourceType === 'custody' ? $effectiveActorId : null) ?: $effectiveActorId;
+
+            if (empty($branchId)) {
+                if ($warehouseId) {
+                    $branchId = Warehouse::withoutGlobalScopes()->where('id', $warehouseId)->value('branch_id');
+                }
+                if (!$branchId && $effectiveTechId) {
+                    $branchId = \App\Models\User::withoutGlobalScopes()->where('id', $effectiveTechId)->value('branch_id');
+                }
+                if (!$branchId) {
+                    $branchId = \App\Models\Master\Branch::withoutGlobalScopes()->first()?->id;
+                }
+            }
+
+            $infraTypeLabel = match ($infrastructureType) {
+                'odc' => 'ODC',
+                'odp' => 'ODP',
+                'joint_closure' => 'Joint Closure',
+                'splitter' => 'Splitter',
+                default => strtoupper($infrastructureType),
+            };
+
+            $usage = InventoryUsage::create([
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'usage_number' => 'USG-INFRA-' . strtoupper(\Illuminate\Support\Str::random(8)),
+                'technician_id' => $effectiveTechId,
+                'work_order_type' => 'infrastructure',
+                'usage_date' => now()->toDateString(),
+                'odc_id' => ($infrastructureType === 'odc') ? $infrastructureId : null,
+                'odp_id' => ($infrastructureType === 'odp') ? $infrastructureId : null,
+                'joint_closure_id' => ($infrastructureType === 'joint_closure') ? $infrastructureId : null,
+                'splitter_id' => ($infrastructureType === 'splitter') ? $infrastructureId : null,
+                'notes' => $notes ?: "Pemasangan {$infraTypeLabel} #{$infrastructureId} (Sumber: " . ($sourceType === 'custody' ? 'Bawaan Teknisi' : 'Gudang') . ")",
+                'branch_id' => $branchId,
+            ]);
+
+            foreach ($items as $row) {
+                $itemId = !empty($row['item_id']) ? (int) $row['item_id'] : null;
+                $quantity = !empty($row['quantity']) ? (float) $row['quantity'] : 1.0;
+                $itemNotes = $row['notes'] ?? null;
+                $custodyId = $row['custody_id'] ?? null;
+
+                if (!$itemId || $quantity <= 0) {
+                    continue;
+                }
+
+                $item = Item::withoutGlobalScopes()->find($itemId);
+                if (!$item) {
+                    continue;
+                }
+
+                if ($sourceType === 'warehouse' && $warehouseId) {
+                    // Potong stok gudang via recordOutbound
+                    $this->recordOutbound(
+                        $warehouseId,
+                        $itemId,
+                        $quantity,
+                        'infrastructure_deployment',
+                        $infrastructureId,
+                        "Deployment {$infraTypeLabel} #{$infrastructureId} - {$item->name}",
+                        [],
+                        $effectiveActorId
+                    );
+
+                    InventoryUsageItem::create([
+                        'usage_id' => $usage->id,
+                        'item_id' => $itemId,
+                        'quantity' => $quantity,
+                        'notes' => $itemNotes ?: "Alokasi dari Gudang #{$warehouseId}",
+                    ]);
+                } elseif ($sourceType === 'custody') {
+                    // Potong custody milik teknisi
+                    if (!$custodyId && $effectiveTechId) {
+                        $activeCustody = InventoryCustody::withoutGlobalScopes()
+                            ->where('holder_id', $effectiveTechId)
+                            ->where('item_id', $itemId)
+                            ->whereIn('status', ['in_custody', 'accepted', 'in_transit'])
+                            ->get()
+                            ->first(function ($c) use ($quantity) {
+                                $rem = (float) $c->quantity - (float) $c->used_quantity - (float) $c->returned_quantity;
+                                return $rem >= $quantity;
+                            });
+
+                        if ($activeCustody) {
+                            $custodyId = $activeCustody->id;
+                        }
+                    }
+
+                    if ($custodyId) {
+                        $custody = InventoryCustody::withoutGlobalScopes()->find($custodyId);
+                        if ($custody) {
+                            $newUsed = (float) $custody->used_quantity + $quantity;
+                            $custody->update([
+                                'used_quantity' => $newUsed,
+                                'status' => ($newUsed + (float) $custody->returned_quantity >= (float) $custody->quantity) ? 'used' : 'in_custody',
+                            ]);
+                        }
+                    }
+
+                    InventoryUsageItem::create([
+                        'usage_id' => $usage->id,
+                        'custody_id' => $custodyId,
+                        'item_id' => $itemId,
+                        'quantity' => $quantity,
+                        'notes' => $itemNotes ?: "Material bawaan teknisi #" . ($effectiveTechId ?? '-'),
+                    ]);
+                } else {
+                    InventoryUsageItem::create([
+                        'usage_id' => $usage->id,
+                        'item_id' => $itemId,
+                        'quantity' => $quantity,
+                        'notes' => $itemNotes ?: "Pemasangan {$infraTypeLabel}",
+                    ]);
+                }
+            }
+
+            return $usage;
+        });
+    }
 }

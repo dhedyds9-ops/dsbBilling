@@ -47,6 +47,7 @@ class Splitter extends Model
     protected $fillable = [
         'odp_id',
         'odc_id',
+        'item_id',
         'vendor_id',
         'code',
         'name',
@@ -117,6 +118,11 @@ class Splitter extends Model
     public function odc(): BelongsTo
     {
         return $this->belongsTo(Odc::class);
+    }
+
+    public function item(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Inventory\Item::class, 'item_id');
     }
 
     public function odp(): BelongsTo

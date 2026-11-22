@@ -61,6 +61,7 @@ class Odp extends Model
         'pon_port_id',
         'splitter_id',
         'parent_odp_id',
+        'item_id',
         'code',
         'name',
         'description',
@@ -321,5 +322,10 @@ class Odp extends Model
     public function branch()
     {
         return $this->belongsTo(\App\Models\Master\Branch::class);
+    }
+
+    public function item(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Inventory\Item::class, 'item_id');
     }
 }

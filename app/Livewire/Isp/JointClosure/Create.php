@@ -35,6 +35,12 @@ class Create extends AdminComponent
     public $status = 'active';
     public $photo;
 
+    // Integrasi Gudang & Logistik
+    public $item_id;
+    public $source_type = 'none'; // 'none', 'warehouse', 'custody'
+    public $warehouse_id;
+    public $technician_id;
+
     public function mount()
     {
         parent::mount();
@@ -110,6 +116,7 @@ class Create extends AdminComponent
             'pon_port' => $this->uplink_type === 'olt' ? ($this->pon_port ?: null) : null,
             'parent_closure_id' => $this->uplink_type === 'closure' ? ($this->parent_closure_id ?: null) : null,
             'odc_id' => $this->uplink_type === 'odc' ? ($this->odc_id ?: null) : null,
+            'item_id' => $this->item_id ? (int) $this->item_id : null,
             'code' => strtoupper(trim($this->code)),
             'name' => trim($this->name),
             'type' => $this->type,
@@ -122,18 +129,50 @@ class Create extends AdminComponent
             'photos' => $photos,
         ], auth()->user());
 
-        session()->flash('success', 'Joint Closure ' . $closure->name . ' berhasil ditambahkan!');
+        if ($this->source_type !== 'none' && $this->item_id) {
+            $itemsToDeploy = [
+                ['item_id' => (int) $this->item_id, 'quantity' => 1, 'notes' => 'Joint Closure ' . $closure->name]
+            ];
+            try {
+                app(\App\Services\Inventory\StockMutationService::class)->recordInfrastructureDeployment(
+                    'joint_closure',
+                    $closure->id,
+                    $itemsToDeploy,
+                    $this->source_type,
+                    $this->warehouse_id ? (int) $this->warehouse_id : null,
+                    $this->technician_id ? (int) $this->technician_id : null,
+                    auth()->id(),
+                    "Pemasangan Joint Closure {$closure->name} ({$closure->code})",
+                    $closure->branch_id
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning("Gagal auto potong stok Joint Closure: " . $e->getMessage());
+            }
+        }
+
+        session()->flash('success', 'Joint Closure ' . $closure->name . ' berhasil ditambahkan dan logistik tersinkronisasi!');
         return redirect()->route('isp.joint-closures.index');
     }
 
     public function render()
     {
+        $closureItems = \App\Models\Inventory\Item::where(function ($q) {
+            $q->where('category', 'Joint Closure')
+              ->orWhere('name', 'like', '%Closure%')
+              ->orWhere('name', 'like', '%Joint%');
+        })->orderBy('name')->get();
+        $warehouses = \App\Models\Inventory\Warehouse::where('is_active', true)->orderBy('name')->get();
+        $technicians = \App\Models\User::getEligibleTechnicians();
+
         return view('livewire.isp.joint-closure.create', [
             'branches' => Branch::orderBy('name')->get(),
             'vendors' => Vendor::orderBy('name')->get(),
             'olts' => Olt::orderBy('name')->get(),
             'parentClosures' => JointClosure::orderBy('name')->get(),
             'odcs' => Odc::orderBy('name')->get(),
+            'closureItems' => $closureItems,
+            'warehouses' => $warehouses,
+            'technicians' => $technicians,
         ])->layout('layouts.admin');
     }
 }

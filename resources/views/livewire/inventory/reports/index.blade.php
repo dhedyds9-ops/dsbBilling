@@ -44,6 +44,10 @@
             <span class="material-symbols-outlined text-base">handshake</span>
             <span>Pemakaian & Finansial Reseller</span>
         </button>
+        <button wire:click="setTab('network_reconciliation')" class="pb-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition shrink-0 {{ $activeTab === 'network_reconciliation' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
+            <span class="material-symbols-outlined text-base">balance</span>
+            <span>Rekonsiliasi Aset Jaringan vs Gudang</span>
+        </button>
     </div>
 
     <!-- Tab 1: Posisi Stok Persediaan -->
@@ -633,6 +637,211 @@
                 </div>
             </div>
             @endif
+        </div>
+    </div>
+    @endif
+
+    <!-- Tab 5: Rekonsiliasi Aset Jaringan vs Gudang (Neraca Keseimbangan Logistik) -->
+    @if($activeTab === 'network_reconciliation')
+    <div class="space-y-6">
+        <!-- Banner Penjelasan Keseimbangan Stok -->
+        <div class="bg-linear-to-r from-emerald-600 to-teal-700 text-white rounded-2xl p-5 shadow-sm">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-emerald-200 text-2xl">account_balance</span>
+                        <h2 class="text-base sm:text-lg font-bold">Neraca Keseimbangan Logistik & Infrastruktur Fiber</h2>
+                    </div>
+                    <p class="text-xs sm:text-sm text-emerald-100 max-w-2xl leading-relaxed">
+                        Prinsip Neraca Seimbang: <span class="font-mono bg-white/10 px-2 py-0.5 rounded font-bold">Total Pengadaan = Stok Gudang + Custody Teknisi + Terpasang di Lapangan</span>. Seluruh perangkat yang dipasang otomatis memotong stok gudang atau bawaan teknisi sehingga selisih (delta) selalu 0.
+                    </p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="bg-white/10 backdrop-blur-xs rounded-xl px-4 py-2.5 border border-white/20 text-center">
+                        <div class="text-[10px] uppercase font-bold text-emerald-200">Status Neraca</div>
+                        <div class="text-sm font-black flex items-center justify-center gap-1 mt-0.5">
+                            @if(abs($reconciliationSummary['total_delta'] ?? 0) < 0.001)
+                                <span class="material-symbols-outlined text-xs text-emerald-300">verified</span>
+                                <span class="text-emerald-100">100% BALANCE</span>
+                            @else
+                                <span class="material-symbols-outlined text-xs text-amber-300">warning</span>
+                                <span class="text-amber-200">SELISIH {{ number_format($reconciliationSummary['total_delta'] ?? 0) }}</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric Cards Keseimbangan -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-xs">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Pengadaan (Inbound)</span>
+                    <span class="material-symbols-outlined text-blue-500 text-xl">login</span>
+                </div>
+                <div class="text-xl sm:text-2xl font-black text-slate-800 dark:text-white mt-2 font-mono">
+                    {{ number_format($reconciliationSummary['total_inbound'] ?? 0, 0, ',', '.') }}
+                </div>
+                <div class="text-[11px] text-slate-400 mt-1">Total material masuk dari supplier/saldo awal</div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-xs">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">Tersedia di Gudang</span>
+                    <span class="material-symbols-outlined text-indigo-500 text-xl">warehouse</span>
+                </div>
+                <div class="text-xl sm:text-2xl font-black text-slate-800 dark:text-white mt-2 font-mono">
+                    {{ number_format($reconciliationSummary['total_warehouse'] ?? 0, 0, ',', '.') }}
+                </div>
+                <div class="text-[11px] text-slate-400 mt-1">Stok fisik siap alokasi di rak gudang</div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-xs">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">Bawaan Teknisi (Custody)</span>
+                    <span class="material-symbols-outlined text-amber-500 text-xl">badge</span>
+                </div>
+                <div class="text-xl sm:text-2xl font-black text-slate-800 dark:text-white mt-2 font-mono">
+                    {{ number_format($reconciliationSummary['total_custody'] ?? 0, 0, ',', '.') }}
+                </div>
+                <div class="text-[11px] text-slate-400 mt-1">Material di mobil / tas teknisi lapangan</div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-xs">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">Terpasang di Jaringan</span>
+                    <span class="material-symbols-outlined text-emerald-500 text-xl">hub</span>
+                </div>
+                <div class="text-xl sm:text-2xl font-black text-slate-800 dark:text-white mt-2 font-mono">
+                    {{ number_format($reconciliationSummary['total_deployed'] ?? 0, 0, ',', '.') }}
+                </div>
+                <div class="text-[11px] text-slate-400 mt-1">Node aktif di tiang / jalur fiber optik</div>
+            </div>
+        </div>
+
+        <!-- GIS Network Hardware Deployed Real-Time Counters -->
+        <div class="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-700">
+            <div class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-blue-500 text-sm">network_node</span>
+                <span>Populasi Node Fisik Aktif di Topologi dsBilling:</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+                <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-xs">
+                    <div class="text-xs text-slate-400">ODC Box</div>
+                    <div class="text-lg font-black text-blue-600 dark:text-blue-400 font-mono mt-0.5">
+                        {{ number_format($reconciliationSummary['network_totals']['odc'] ?? 0) }}
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-xs">
+                    <div class="text-xs text-slate-400">ODP Box</div>
+                    <div class="text-lg font-black text-teal-600 dark:text-teal-400 font-mono mt-0.5">
+                        {{ number_format($reconciliationSummary['network_totals']['odp'] ?? 0) }}
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-xs">
+                    <div class="text-xs text-slate-400">Joint Closure</div>
+                    <div class="text-lg font-black text-purple-600 dark:text-purple-400 font-mono mt-0.5">
+                        {{ number_format($reconciliationSummary['network_totals']['closure'] ?? 0) }}
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-xs">
+                    <div class="text-xs text-slate-400">Splitter Box</div>
+                    <div class="text-lg font-black text-indigo-600 dark:text-indigo-400 font-mono mt-0.5">
+                        {{ number_format($reconciliationSummary['network_totals']['splitter'] ?? 0) }}
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-xs col-span-2 sm:col-span-1">
+                    <div class="text-xs text-slate-400">Modem ONT/ONU</div>
+                    <div class="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+                        {{ number_format($reconciliationSummary['network_totals']['onu'] ?? 0) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabel Detail Rekonsiliasi Per Item -->
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
+            <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-emerald-600 text-lg">fact_check</span>
+                    <span>Tabel Rekonsiliasi & Audit Keseimbangan Tiap Item</span>
+                </h3>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 text-slate-500 uppercase tracking-wider text-[11px] font-bold">
+                            <th class="py-3 px-4">SKU / Nama Perangkat</th>
+                            <th class="py-3 px-3">Kategori</th>
+                            <th class="py-3 px-3 text-right">Pengadaan (A)</th>
+                            <th class="py-3 px-3 text-right">Gudang (B)</th>
+                            <th class="py-3 px-3 text-right">Custody (C)</th>
+                            <th class="py-3 px-3 text-right">Terpasang (D)</th>
+                            <th class="py-3 px-3 text-right">Total Terlacak (B+C+D)</th>
+                            <th class="py-3 px-3 text-right">Selisih</th>
+                            <th class="py-3 px-4 text-center">Status Neraca</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60 font-medium">
+                        @forelse($reconciliationData as $row)
+                        <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition">
+                            <td class="py-3 px-4">
+                                <div class="font-bold text-slate-800 dark:text-slate-100">{{ $row['item']->name }}</div>
+                                <div class="font-mono text-[10px] text-slate-400">{{ $row['item']->sku }}</div>
+                            </td>
+                            <td class="py-3 px-3">
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                    {{ $row['item']->category ?: 'Hardware' }}
+                                </span>
+                            </td>
+                            <td class="py-3 px-3 text-right font-mono font-bold text-slate-700 dark:text-slate-200">
+                                {{ number_format($row['inbound'], 0, ',', '.') }}
+                            </td>
+                            <td class="py-3 px-3 text-right font-mono text-indigo-600 dark:text-indigo-400 font-bold">
+                                {{ number_format($row['warehouse'], 0, ',', '.') }}
+                            </td>
+                            <td class="py-3 px-3 text-right font-mono text-amber-600 dark:text-amber-400 font-bold">
+                                {{ number_format($row['custody'], 0, ',', '.') }}
+                            </td>
+                            <td class="py-3 px-3 text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                                {{ number_format($row['deployed'], 0, ',', '.') }}
+                                @if($row['active_nodes'] > 0)
+                                    <span class="text-[10px] text-slate-400 block font-normal">({{ $row['active_nodes'] }} node)</span>
+                                @endif
+                            </td>
+                            <td class="py-3 px-3 text-right font-mono font-bold text-slate-800 dark:text-slate-100 bg-slate-50/50 dark:bg-slate-800/50">
+                                {{ number_format($row['total_tracked'], 0, ',', '.') }}
+                            </td>
+                            <td class="py-3 px-3 text-right font-mono font-bold {{ $row['is_balanced'] ? 'text-slate-400' : 'text-amber-500 font-black' }}">
+                                {{ number_format($row['delta'], 0, ',', '.') }}
+                            </td>
+                            <td class="py-3 px-4 text-center">
+                                @if($row['is_balanced'])
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                                        <span class="material-symbols-outlined text-[12px]">check</span>
+                                        <span>SEIMBANG</span>
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
+                                        <span class="material-symbols-outlined text-[12px]">warning</span>
+                                        <span>SELISIH</span>
+                                    </span>
+                                @endif
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="9" class="py-12 text-center text-slate-400">
+                                <span class="material-symbols-outlined text-4xl block mb-2 opacity-50">inventory</span>
+                                <span>Belum ada data barang infrastruktur fiber di master barang.</span>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     @endif
