@@ -685,9 +685,13 @@ class MobileAcsProxyController extends Controller
         }
 
         try {
+            $realDeviceId = $this->driver->resolveDeviceId($cleanId);
             $params = [];
             try {
-                $params = $this->driver->getDeviceParameters($cleanId);
+                $params = $this->driver->getDeviceParameters($realDeviceId);
+                if (empty($params) && $realDeviceId !== $cleanId) {
+                    $params = $this->driver->getDeviceParameters($cleanId);
+                }
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning("MobileAcsProxy getDeviceParameters error for {$cleanId}: " . $e->getMessage());
             }
@@ -777,12 +781,6 @@ class MobileAcsProxyController extends Controller
             $params['olt_name'] = $onu?->olt?->name ?: ($ad?->olt?->name);
             $params['pon_port_name'] = $ponPortName;
             $params['odp_name'] = $onu?->odp?->name ?: ($onu?->odp?->code);
-
-            // Extract connected devices if possible
-            $connectedDevices = [];
-            try {
-                $connectedDevices = $this->driver->getConnectedDevices($cleanId);
-            } catch (\Throwable) {}
 
             // Heuristic extraction for CPU, RAM, and Temperature metrics
             $flat = [];
@@ -897,37 +895,113 @@ class MobileAcsProxyController extends Controller
                 $temperature = str_contains(trim($rawTemp), '°C') ? trim($rawTemp) : trim($rawTemp) . ' °C';
             }
 
+            // Redaman Optik (RX & TX) Normalization
+            $rxPower = null;
+            $rawRx = $flat['VirtualParameters.RXPower']
+                ?? $flat['VirtualParameters.rxPower']
+                ?? $flat['VirtualParameters.redaman']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower']
+                ?? $flat['Device.Optical.1.Transceiver.RxPower']
+                ?? null;
+
+            if ($rawRx !== null && trim((string)$rawRx) !== '' && is_numeric($rawRx)) {
+                $numRx = (float) $rawRx;
+                if ($numRx !== 0.0) {
+                    $absRx = abs($numRx);
+                    if ($absRx >= 7000.0) {
+                        $rxPower = -round($absRx / 1000.0, 2);
+                    } elseif ($absRx >= 60.0) {
+                        $rxPower = -round($absRx / 100.0, 2);
+                    } elseif ($numRx < -5.0 && $numRx > -38.0) {
+                        $rxPower = round($numRx, 2);
+                    } elseif ($numRx > 0.0 && $numRx <= 5.0 && $onu?->rx_power_dbm !== null && (float)$onu->rx_power_dbm <= -8.0) {
+                        // TR-069 bogus/miscalibrated positive value (e.g. 1.09 dBm), fallback ke kalibrasi DDM OLT
+                        $rxPower = round((float)$onu->rx_power_dbm, 2);
+                    } else {
+                        $rxPower = -round($absRx, 2);
+                    }
+                }
+            } elseif ($onu?->rx_power_dbm !== null) {
+                $rxPower = round((float)$onu->rx_power_dbm, 2);
+            }
+
+            if ($rxPower !== null && $rxPower > 0) {
+                $rxPower = -abs($rxPower);
+            }
+            if (($rxPower === null || $rxPower > -8.0 || $rxPower < -38.0) && $onu?->rx_power_dbm !== null && (float)$onu->rx_power_dbm <= -8.0 && (float)$onu->rx_power_dbm >= -35.0) {
+                $rxPower = round((float)$onu->rx_power_dbm, 2);
+            }
+
+            // TX Power Normalization
+            $txPower = null;
+            $rawTx = $flat['VirtualParameters.TXPower']
+                ?? $flat['VirtualParameters.txPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TxPower']
+                ?? $flat['Device.Optical.1.Transceiver.TxPower']
+                ?? null;
+
+            if ($rawTx !== null && trim((string)$rawTx) !== '' && is_numeric($rawTx)) {
+                $numTx = (float) $rawTx;
+                if ($numTx !== 0.0) {
+                    if ($numTx < -500.0 || $numTx > 500.0) {
+                        $txPower = round($numTx / 1000.0, 2);
+                    } elseif ($numTx > 10.0 && $numTx < 50.0) {
+                        // Skala tanpa koma desimal, e.g. 17.21 atau 16.82 -> 1.72 dBm atau 1.68 dBm
+                        $txPower = round($numTx / 10.0, 2);
+                    } elseif ($numTx >= 50.0) {
+                        $txPower = round($numTx / 100.0, 2);
+                    } else {
+                        $txPower = round($numTx, 2);
+                    }
+                }
+            } elseif ($onu?->tx_power_dbm !== null) {
+                $txPower = round((float)$onu->tx_power_dbm, 2);
+            }
+
+            // Extract connected devices directly in-memory from $params
+            $connectedDevices = $this->driver->extractConnectedDevicesFromParams($params);
+            if (empty($connectedDevices)) {
+                try {
+                    $connectedDevices = $this->driver->getConnectedDevices($realDeviceId);
+                } catch (\Throwable) {}
+            }
+
+            // Extract accurate WLAN instances directly in-memory from $params (Supports Dual-Band 2.4G & 5G)
+            $wlans = $this->driver->extractAllWlansFromParams($params, $onu);
+
+            // Populate normalized values into params payload
             $params['cpu_usage'] = $cpuUsage;
             $params['ram_usage'] = $ramUsage;
             $params['temperature'] = $temperature;
-            $params['connected_devices'] = $connectedDevices;
-
-            // Extract accurate WLAN instances (SSID 1, 2, 3, 4) from GenieACS driver
-            $wlans = [];
-            for ($w = 1; $w <= 4; $w++) {
-                try {
-                    $wInfo = $this->driver->getWifiCredentials($cleanId, 'default', $w, null, true);
-                    if (!empty($wInfo['ssid']) || $w === 1) {
-                        $wlans[] = [
-                            'index' => $w,
-                            'label' => "SSID {$w} " . ($w <= 3 ? "(2.4G)" : "(5G)"),
-                            'ssid' => $wInfo['ssid'] ?? ($w === 1 ? ($onu?->wifi_ssid ?? '') : ''),
-                            'password' => $wInfo['password'] ?? '',
-                            'is_enabled' => (bool) ($wInfo['is_enabled'] ?? true),
-                            'security_mode' => $wInfo['security_mode'] ?? 'WPA_WPA2',
-                            'is_hidden' => false,
-                        ];
-                    }
-                } catch (\Throwable $we) {
-                    Log::warning("MobileAcsProxy getWifiCredentials non-fatal error for index {$w}: {$we->getMessage()}");
-                }
+            $params['rx_power'] = $rxPower;
+            $params['tx_power'] = $txPower;
+            if (!isset($params['VirtualParameters']) || !is_array($params['VirtualParameters'])) {
+                $params['VirtualParameters'] = [];
             }
+            if ($rxPower !== null) {
+                $params['VirtualParameters']['RXPower'] = (string)$rxPower;
+                $params['VirtualParameters']['rxPower'] = (string)$rxPower;
+            }
+            if ($txPower !== null) {
+                $params['VirtualParameters']['TXPower'] = (string)$txPower;
+                $params['VirtualParameters']['txPower'] = (string)$txPower;
+            }
+            $params['connected_devices'] = $connectedDevices;
+            $params['connected_clients'] = $connectedDevices;
+            $params['connected_devices_count'] = count($connectedDevices);
             $params['wlans'] = $wlans;
 
             return response()->json([
                 'success' => true,
                 'data' => $params,
                 'connected_devices' => $connectedDevices,
+                'connected_clients' => $connectedDevices,
             ]);
         } catch (\Throwable $e) {
             Log::error("MobileAcsProxy deviceDetail error for {$id}: " . $e->getMessage());

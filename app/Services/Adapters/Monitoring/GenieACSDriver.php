@@ -938,35 +938,48 @@ JS;
 
         try {
             $realDeviceId = $this->resolveDeviceId($deviceId);
+            if (empty($realDeviceId)) {
+                $result['error'] = 'Device ID tidak valid';
+                return $result;
+            }
             $encodedId = urlencode($realDeviceId);
 
-            // 1. Pemicu utama: Kirim Connection Request dengan single root refreshObject (persis seperti dsbilling-mobile / genieacs-mobile)
-            // objectName "" (root) memicu seluruh parameter tree modem diperbarui tanpa membebani antrian task
+            // 1. Pemicu utama: Kirim Connection Request dengan refreshObject parameter tree
+            // Menggunakan 'InternetGatewayDevice' untuk TR-098 atau fallback ke root
+            $rootObject = 'InternetGatewayDevice';
             try {
                 $crUrl = "{$this->baseUrl}/devices/{$encodedId}/tasks?connection_request";
                 $crResp = Http::timeout(10)
                     ->withBasicAuth($this->username, $this->password)
                     ->asJson()
-                    ->post($crUrl, ['name' => 'refreshObject', 'objectName' => '']);
+                    ->post($crUrl, ['name' => 'refreshObject', 'objectName' => $rootObject]);
 
                 if ($crResp->successful() || in_array($crResp->status(), [200, 201, 202])) {
                     $result['connection_request_success'] = true;
                     $result['task_queued'] = true;
-                    return $result;
                 }
             } catch (\Throwable $ce) {
                 // Connection request timeout jika modem berada di balik IP Privat/NAT
             }
 
-            // 2. Fallback jika modem berada di balik NAT: antrikan task refreshObject tanpa connection_request
-            $url = "{$this->baseUrl}/devices/{$encodedId}/tasks";
-            $resp = Http::timeout(8)
-                ->withBasicAuth($this->username, $this->password)
-                ->asJson()
-                ->post($url, ['name' => 'refreshObject', 'objectName' => '']);
+            // 2. Refresh objek terpenting (Hosts klien tersambung & konfigurasi WLAN Wi-Fi)
+            $subObjects = [
+                $rootObject,
+                'InternetGatewayDevice.LANDevice.1.Hosts',
+                'InternetGatewayDevice.LANDevice.1.WLANConfiguration',
+            ];
+            foreach ($subObjects as $sObj) {
+                try {
+                    $url = "{$this->baseUrl}/devices/{$encodedId}/tasks";
+                    $resp = Http::timeout(5)
+                        ->withBasicAuth($this->username, $this->password)
+                        ->asJson()
+                        ->post($url, ['name' => 'refreshObject', 'objectName' => $sObj]);
 
-            if ($resp->successful() || in_array($resp->status(), [200, 201, 202])) {
-                $result['task_queued'] = true;
+                    if ($resp->successful() || in_array($resp->status(), [200, 201, 202])) {
+                        $result['task_queued'] = true;
+                    }
+                } catch (\Throwable) {}
             }
 
             return $result;
@@ -1287,8 +1300,16 @@ JS;
 
     public function getConnectedDevices(string $deviceId): array
     {
-        $params = $this->getDeviceParameters($deviceId);
+        $realId = $this->resolveDeviceId($deviceId);
+        $params = $this->getDeviceParameters($realId);
+        if (empty($params) && $realId !== $deviceId) {
+            $params = $this->getDeviceParameters($deviceId);
+        }
+        return $this->extractConnectedDevicesFromParams($params);
+    }
 
+    public function extractConnectedDevicesFromParams(array $params): array
+    {
         $scalarVal = function ($node, $default = null) {
             if ($node === null) return $default;
             if (is_scalar($node)) return trim((string) $node);
@@ -1483,6 +1504,133 @@ JS;
         }
         
         return $hosts;
+    }
+
+    /**
+     * Ekstraksi langsung seluruh WLAN instance (SSID 1 s/d 5+) dari in-memory params tanpa HTTP call.
+     */
+    public function extractAllWlansFromParams(array $params, ?\App\Models\ISP\Onu $onu = null): array
+    {
+        $scalarVal = function ($node, $default = null) {
+            if ($node === null) return $default;
+            if (is_scalar($node)) return trim((string) $node);
+            if (is_array($node)) {
+                if (isset($node['_value']) && is_scalar($node['_value'])) {
+                    return trim((string) $node['_value']);
+                }
+                if (isset($node[0]) && is_scalar($node[0])) {
+                    return trim((string) $node[0]);
+                }
+            }
+            return $default;
+        };
+
+        $flat = [];
+        $flatten = function ($data, $prefix = '') use (&$flatten, &$flat, $scalarVal) {
+            if (!is_array($data)) return;
+            foreach ($data as $k => $v) {
+                if ($k === '_timestamp' || $k === '_object' || $k === '_writable') continue;
+                $key = $prefix ? "$prefix.$k" : (string) $k;
+                if (is_array($v)) {
+                    $s = $scalarVal($v);
+                    if ($s !== null) {
+                        $flat[$key] = $s;
+                    }
+                    $flatten($v, $key);
+                } elseif (is_scalar($v)) {
+                    $flat[$key] = (string) $v;
+                }
+            }
+        };
+        $flatten($params);
+
+        $wlanNodes = $params['InternetGatewayDevice']['LANDevice']['1']['WLANConfiguration'] 
+            ?? $params['Device']['WiFi']['SSID'] 
+            ?? [];
+
+        // Deteksi seluruh indeks WLAN numerik (TR-098 & TR-181)
+        $foundIndices = [];
+        if (is_array($wlanNodes)) {
+            foreach ($wlanNodes as $k => $v) {
+                if (is_numeric($k) && is_array($v)) {
+                    $foundIndices[] = (int) $k;
+                }
+            }
+        }
+        foreach ($flat as $k => $v) {
+            if (preg_match('/WLANConfiguration\.(\d+)\.SSID/i', $k, $m)) {
+                $foundIndices[] = (int) $m[1];
+            } elseif (preg_match('/WiFi\.SSID\.(\d+)\.SSID/i', $k, $m)) {
+                $foundIndices[] = (int) $m[1];
+            }
+        }
+        $foundIndices = array_unique($foundIndices);
+        sort($foundIndices);
+
+        if (!in_array(1, $foundIndices, true)) {
+            array_unshift($foundIndices, 1);
+        }
+
+        $wlans = [];
+        foreach ($foundIndices as $w) {
+            $prefix = "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$w}.";
+            $tr181Prefix = "Device.WiFi.SSID.{$w}.";
+
+            $wSsid = $flat[$prefix . 'SSID'] 
+                ?? $flat[$tr181Prefix . 'SSID']
+                ?? ($wlanNodes[$w]['SSID']['_value'] ?? $wlanNodes[$w]['SSID'] ?? null)
+                ?? ($w === 1 ? ($flat['VirtualParameters.wifiSsid'] ?? $flat['VirtualParameters.WlanSSID'] ?? $onu?->wifi_ssid) : null);
+
+            $wPass = $flat[$prefix . 'PreSharedKey.1.KeyPassphrase']
+                ?? $flat[$prefix . 'KeyPassphrase']
+                ?? $flat[$prefix . 'X_ZTE-COM_WPAKey']
+                ?? ($wlanNodes[$w]['PreSharedKey']['1']['KeyPassphrase']['_value'] ?? null)
+                ?? ($w === 1 ? ($flat['VirtualParameters.wifiPassword'] ?? $flat['VirtualParameters.WlanPassword']) : null);
+
+            $wEnabledVal = $flat[$prefix . 'Enable'] 
+                ?? $flat[$tr181Prefix . 'Enable'] 
+                ?? ($wlanNodes[$w]['Enable']['_value'] ?? $wlanNodes[$w]['Enable'] ?? true);
+            $wEnabled = ($wEnabledVal === '1' || $wEnabledVal === true || $wEnabledVal === 'true');
+
+            $wBeacon = $flat[$prefix . 'BeaconType'] 
+                ?? ($wlanNodes[$w]['BeaconType']['_value'] ?? 'WPA/WPA2');
+
+            $ssidLower = strtolower((string)($wSsid ?? ''));
+            $is5G = ($w === 5 || ($w >= 2 && str_contains($ssidLower, '5g')));
+            $bandLabel = $is5G ? "5G" : "2.4G";
+            $label = "SSID {$w} ({$bandLabel})";
+
+            if (!empty($wSsid) || $wEnabled || $w <= 2) {
+                $wlans[] = [
+                    'index' => $w,
+                    'label' => $label,
+                    'ssid' => (string)($wSsid ?? ''),
+                    'password' => (string)($wPass ?? ''),
+                    'is_enabled' => $wEnabled,
+                    'security_mode' => (string)$wBeacon,
+                    'is_hidden' => false,
+                ];
+            }
+        }
+
+        // Backfill slots 1..4 agar UI chip selector tab selalu lengkap
+        $existingIndices = array_column($wlans, 'index');
+        for ($i = 1; $i <= 4; $i++) {
+            if (!in_array($i, $existingIndices, true)) {
+                $wlans[] = [
+                    'index' => $i,
+                    'label' => "SSID {$i} " . ($i <= 3 ? "(2.4G)" : "(5G)"),
+                    'ssid' => '',
+                    'password' => '',
+                    'is_enabled' => false,
+                    'security_mode' => 'WPA/WPA2',
+                    'is_hidden' => false,
+                ];
+            }
+        }
+
+        usort($wlans, fn($a, $b) => $a['index'] <=> $b['index']);
+        return $wlans;
     }
 
     public function getWlanStats(string $deviceId, int $wlanIndex = 1): array
