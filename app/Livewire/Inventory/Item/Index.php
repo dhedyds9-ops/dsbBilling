@@ -704,7 +704,7 @@ class Index extends Component
                 });
             })
             ->when(!empty($this->categoryFilter), function ($b) {
-                $b->where('category', $this->categoryFilter);
+                $b->filterCategory($this->categoryFilter);
             })
             ->when(!empty($this->statusFilter), function ($b) {
                 if ($this->statusFilter === 'active') {
@@ -798,7 +798,7 @@ class Index extends Component
             ->values()
             ->all();
 
-        $categories = [
+        $defaultCategories = [
             'ONU/ONT',
             'Router',
             'Kabel Dropcore',
@@ -811,6 +811,23 @@ class Index extends Component
             'Alat Kerja',
             'Material Lain',
         ];
+
+        // Ambil kategori dari database dan normalkan variasi spasi
+        $dbCategories = Item::select('category')->distinct()->pluck('category')
+            ->filter()
+            ->map(function ($c) {
+                $trimmed = trim((string) $c);
+                $compact = strtoupper(str_replace([' ', '-', '_'], '', $trimmed));
+                if (in_array($compact, ['ONU/ONT', 'ONU', 'ONT'], true)) {
+                    return 'ONU/ONT';
+                }
+                return $trimmed;
+            })
+            ->unique()
+            ->values()
+            ->all();
+
+        $categories = array_values(array_unique(array_merge($defaultCategories, $dbCategories)));
 
         return view('livewire.inventory.item.index', [
             'items' => $items,

@@ -37,7 +37,7 @@ class ItemExport implements FromCollection, WithHeadings, ShouldAutoSize, WithMa
                 });
             })
             ->when(!empty($this->category), function ($b) {
-                $b->where('category', $this->category);
+                $b->filterCategory($this->category);
             })
             ->when(!empty($this->status), function ($b) {
                 if ($this->status === 'active') {

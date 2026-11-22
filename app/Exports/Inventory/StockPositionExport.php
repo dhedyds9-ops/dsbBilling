@@ -25,7 +25,7 @@ class StockPositionExport implements FromCollection, WithHeadings, ShouldAutoSiz
     {
         return InventoryStock::with(['item', 'warehouse'])
             ->when($this->warehouseId, fn($q) => $q->where('warehouse_id', $this->warehouseId))
-            ->when($this->category, fn($q) => $q->whereHas('item', fn($i) => $i->where('category', $this->category)))
+            ->when($this->category, fn($q) => $q->whereHas('item', fn($i) => $i->filterCategory($this->category)))
             ->get();
     }
 

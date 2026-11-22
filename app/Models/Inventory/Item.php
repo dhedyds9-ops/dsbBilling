@@ -99,6 +99,45 @@ class Item extends Model
         return $this->total_stock <= $this->min_stock;
     }
 
+    public function setCategoryAttribute($value): void
+    {
+        $val = trim((string) $value);
+        $compact = strtoupper(str_replace([' ', '-', '_'], '', $val));
+        if (in_array($compact, ['ONU/ONT', 'ONU', 'ONT'], true)) {
+            $this->attributes['category'] = 'ONU/ONT';
+        } else {
+            $this->attributes['category'] = $val;
+        }
+    }
+
+    public function scopeFilterCategory($query, ?string $category)
+    {
+        if (empty($category)) {
+            return $query;
+        }
+
+        $cat = trim($category);
+        $compact = strtoupper(str_replace([' ', '-', '_'], '', $cat));
+
+        if (in_array($compact, ['ONU/ONT', 'ONU', 'ONT'], true)) {
+            return $query->where(function ($sub) {
+                $sub->where('category', 'ONU/ONT')
+                    ->orWhere('category', 'ONU / ONT')
+                    ->orWhere('category', 'ONU')
+                    ->orWhere('category', 'ONT')
+                    ->orWhereRaw("REPLACE(category, ' ', '') = 'ONU/ONT'")
+                    ->orWhereRaw("category LIKE '%ONU%ONT%'");
+            });
+        }
+
+        return $query->where(function ($sub) use ($cat) {
+            $noSpace = str_replace(' ', '', $cat);
+            $sub->where('category', $cat)
+                ->orWhereRaw("TRIM(category) = ?", [$cat])
+                ->orWhereRaw("REPLACE(category, ' ', '') = ?", [$noSpace]);
+        });
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

@@ -100,7 +100,7 @@ class Index extends Component
         if ($this->activeTab === 'stock_position') {
             $stockQuery = InventoryStock::with(['item', 'warehouse'])
                 ->when($this->warehouseId, fn($q) => $q->where('warehouse_id', $this->warehouseId))
-                ->when($this->categoryFilter, fn($q) => $q->whereHas('item', fn($i) => $i->where('category', $this->categoryFilter)));
+                ->when($this->categoryFilter, fn($q) => $q->whereHas('item', fn($i) => $i->filterCategory($this->categoryFilter)));
 
             $perPageInt = match ((string) $this->perPage) {
                 '50' => 50,

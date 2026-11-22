@@ -69,4 +69,35 @@ class InventoryItemSkuTest extends TestCase
             ->call('openCreateModal')
             ->assertSet('sku', 'ONT-0002');
     }
+
+    public function test_category_filter_matches_both_spaceless_and_spaced_onu_categories()
+    {
+        // 1 item dengan kategori ONU/ONT (tanpa spasi)
+        $item1 = Item::create([
+            'sku' => 'ONT-0001',
+            'name' => 'ONT GPON HG6045F1',
+            'category' => 'ONU/ONT',
+            'unit' => 'unit',
+            'min_stock' => 5,
+            'is_active' => true,
+        ]);
+
+        // 1 item langsung di DB dengan variasi spasi 'ONU / ONT'
+        $item2Id = \Illuminate\Support\Facades\DB::table('items')->insertGetId([
+            'sku' => 'ONT-0002',
+            'name' => 'ONT GPON FIBERHOME HG6045F3',
+            'category' => 'ONU / ONT',
+            'unit' => 'unit',
+            'min_stock' => 5,
+            'is_active' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Filter kategori 'ONU/ONT' harus menangkap KEDUA item tanpa tertinggal
+        Livewire::test(Index::class)
+            ->set('categoryFilter', 'ONU/ONT')
+            ->assertSee('ONT GPON HG6045F1')
+            ->assertSee('ONT GPON FIBERHOME HG6045F3');
+    }
 }
