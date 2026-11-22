@@ -181,6 +181,11 @@ class CustomerService extends Model
         return $this->belongsTo(Service::class);
     }
 
+    public function internetPlan(): BelongsTo
+    {
+        return $this->belongsTo(Service::class, 'service_id');
+    }
+
     public function serviceProfile(): BelongsTo
     {
         return $this->belongsTo(ServiceProfile::class);

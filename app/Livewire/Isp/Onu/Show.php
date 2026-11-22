@@ -38,8 +38,8 @@ class Show extends AdminComponent
         $this->activeModule = 'isp';
         $this->activePage = 'onus';
         $this->onuId = $id;
-        $this->onu = OnuModel::with(['olt', 'vendor', 'onuPorts', 'acsDevice', 'customerService.customer', 'customerService.internetPlan', 'odp', 'branch'])->findOrFail($id);
-        $this->customerServices = CustomerService::with('networkProfile')->where('onu_id', $id)->get();
+        $this->onu = OnuModel::with(['olt', 'vendor', 'onuPorts', 'acsDevice', 'customerService.customer', 'customerService.service', 'customerService.serviceProfile', 'odp', 'branch'])->findOrFail($id);
+        $this->customerServices = CustomerService::with(['customer', 'service', 'serviceProfile', 'networkProfile'])->where('onu_id', $id)->get();
         if ($this->customerServices->count() > 0) {
             $cs = $this->customerServices->first();
             $this->customerServiceId = $cs->id;

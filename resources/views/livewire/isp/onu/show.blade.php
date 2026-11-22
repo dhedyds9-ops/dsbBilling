@@ -279,7 +279,7 @@
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-0.5">Paket Internet</label>
-                        <p class="font-semibold text-slate-900 dark:text-slate-100">{{ $cs->internetPlan?->name ?: '-' }}</p>
+                        <p class="font-semibold text-slate-900 dark:text-slate-100">{{ $cs->service?->name ?: ($cs->serviceProfile?->name ?: ($cs->internetPlan?->name ?: '-')) }}</p>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-0.5">Wilayah / Cabang</label>
