@@ -296,7 +296,7 @@ class OltPollingService
                     \Illuminate\Support\Facades\Log::info("OLT Polling {$olt->name} Port {$port['port_name']} (idx {$idx}): found " . count($onus) . " ONUs");
                 } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("ONU RxPower Failed for Port $idx", ["error" => $e->getMessage()]); $portErrors[] = $e->getMessage(); continue; }
 
-                DB::transaction(function () use ($olt, $idx, $dbPort, $onus, &$onuOnline, &$onuOffline, &$updatedOnu, $thresholds, &$alerts) {
+                DB::transaction(function () use ($olt, $idx, $port, $dbPort, $onus, &$onuOnline, &$onuOffline, &$updatedOnu, $thresholds, &$alerts) {
                     $rxWarn = $thresholds['onu_rx_power_warning_low'] ?? -25.0;
                     $rxCrit = $thresholds['onu_rx_power_critical_low'] ?? -28.0;
                     $polledSns = [];

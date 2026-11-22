@@ -269,6 +269,21 @@ class Ticket extends Model
         // Clean up description trailing dots / whitespace
         $cleanDesc = trim(preg_replace('/\n{3,}/', "\n\n", $cleanDesc));
 
+        $techCollection = $this->assignedTechnicians();
+        if ($techCollection->isNotEmpty()) {
+            $technicianName = $techCollection->pluck('name')->join(' & ');
+        } else {
+            $technicianName = $assignedTo?->name ?? 'Belum Ditugaskan';
+        }
+
+        $techniciansList = $techCollection->map(function ($t) {
+            return [
+                'id' => $t->id,
+                'name' => $t->name,
+                'phone' => $t->phone ?? $t->whatsapp ?? null,
+            ];
+        })->values()->toArray();
+
         $payload = [
             'ticket_code'       => $code,
             'ticket_id'         => $this->id,
@@ -289,7 +304,8 @@ class Ticket extends Model
             'network_details'   => $networkDetails,
             'device_details'    => $deviceDetails,
             'description'       => $cleanDesc,
-            'technician_name'   => $assignedTo?->name ?? 'Belum Ditugaskan',
+            'technician_name'   => $technicianName,
+            'technicians'       => $techniciansList,
         ];
 
         return array_merge($payload, $overrides);

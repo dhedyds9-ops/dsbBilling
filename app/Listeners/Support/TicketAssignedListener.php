@@ -28,48 +28,63 @@ class TicketAssignedListener
                 return;
             }
 
-            $technician = User::find((int) $event->assigneeId);
-            if (!$technician) return;
+            $assignedTechs = $ticket->assignedTechnicians();
+            if ($assignedTechs->isEmpty()) {
+                $singleTech = User::find((int) $event->assigneeId);
+                if ($singleTech) {
+                    $assignedTechs = collect([$singleTech]);
+                }
+            }
+            if ($assignedTechs->isEmpty()) return;
+
+            $allTechNames = $assignedTechs->pluck('name')->join(' & ');
 
             $payload = $ticket->getNotificationPayload([
-                'technician_name' => $technician->name,
+                'technician_name' => $allTechNames,
             ]);
 
             $targetDisplayName = $payload['is_network_object']
                 ? ($payload['object_name'] ?: 'Infrastruktur Jaringan')
                 : ($payload['customer_name'] ?: 'Pelanggan');
 
-            // ── 1. In-App Database Notification ke Teknisi (Portal Teknisi & Android) ──
-            try {
-                \App\Models\Notification\Notification::create([
-                    'uuid' => (string) \Illuminate\Support\Str::uuid(),
-                    'recipient_id' => $technician->id,
-                    'title' => 'Tugas Baru Tiket #' . $ticket->id,
-                    'message' => "Anda ditugaskan menangani tiket: {$ticket->title} ({$targetDisplayName})",
-                    'type' => 'in_app',
-                    'status' => 'pending',
-                    'sent_at' => now(),
-                    'data' => [
-                        'type' => 'ticket_assigned',
-                        'ticket_id' => $ticket->id,
-                        'url' => route('technician.my-jobs.index'),
-                        'icon' => 'build',
-                        'color' => 'yellow'
-                    ]
-                ]);
-            } catch (\Throwable $ne) {
-                Log::warning('[TicketAssignedListener] Gagal membuat in-app notif teknisi: ' . $ne->getMessage());
-            }
-
-            // ── 2. WhatsApp Notification Pribadi ke Teknisi ──────────────────
-            try {
-                $techPhone = $this->normalizePhone($technician->phone ?? $technician->whatsapp ?? null);
-                if ($techPhone) {
-                    $text = $this->template->ticketAssigned($payload);
-                    \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($techPhone, $text);
+            // ── 1. In-App Database Notification & 2. WhatsApp Notification Pribadi ke SETIAP Teknisi ──
+            foreach ($assignedTechs as $technician) {
+                try {
+                    \App\Models\Notification\Notification::create([
+                        'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                        'recipient_id' => $technician->id,
+                        'title' => 'Tugas Baru Tiket #' . $ticket->id,
+                        'message' => "Anda ditugaskan menangani tiket: {$ticket->title} ({$targetDisplayName})" . ($assignedTechs->count() > 1 ? " (Tim: {$allTechNames})" : ""),
+                        'type' => 'in_app',
+                        'status' => 'pending',
+                        'sent_at' => now(),
+                        'data' => [
+                            'type' => 'ticket_assigned',
+                            'ticket_id' => $ticket->id,
+                            'url' => route('technician.my-jobs.index'),
+                            'icon' => 'build',
+                            'color' => 'yellow'
+                        ]
+                    ]);
+                } catch (\Throwable $ne) {
+                    Log::warning('[TicketAssignedListener] Gagal membuat in-app notif teknisi: ' . $ne->getMessage());
                 }
-            } catch (\Throwable $te) {
-                Log::warning('[TicketAssignedListener] Gagal kirim WA teknisi: ' . $te->getMessage());
+
+                try {
+                    $techPhone = $this->normalizePhone($technician->phone ?? $technician->whatsapp ?? null);
+                    if ($techPhone) {
+                        $personalPayload = array_merge($payload, [
+                            'technician_name' => $technician->name,
+                        ]);
+                        $text = $this->template->ticketAssigned($personalPayload);
+                        if ($assignedTechs->count() > 1) {
+                            $text .= "\n\n👥 *Rekan Tim Teknisi:* " . $allTechNames;
+                        }
+                        \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($techPhone, $text);
+                    }
+                } catch (\Throwable $te) {
+                    Log::warning('[TicketAssignedListener] Gagal kirim WA teknisi: ' . $te->getMessage());
+                }
             }
 
             // ── 2. WhatsApp Notification ke Grup WA Tiket / NOC ───────
@@ -88,6 +103,7 @@ class TicketAssignedListener
                         Log::info('[TicketAssignedListener] Notifikasi tiket assigned dikirim ke Grup WA', [
                             'ticket_id' => $ticket->id,
                             'group_id'  => $ticketGroupId,
+                            'technicians' => $allTechNames,
                         ]);
                     }
                 }
@@ -104,7 +120,7 @@ class TicketAssignedListener
                     if ($telegram->isEnabled()) {
                         $telegram->sendTicketNotification(array_merge($payload, [
                             'updated_by' => 'Sistem Penugasan',
-                            'note'       => "Tiket ditugaskan ke {$technician->name}",
+                            'note'       => "Tiket ditugaskan ke {$allTechNames}",
                         ]), 'updated');
                     }
                 }

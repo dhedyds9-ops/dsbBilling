@@ -828,11 +828,17 @@ class Index extends BaseEnterpriseList
                 // Hanya kirim notifikasi edit umum jika BUKAN resolve dan BUKAN ganti assignee
                 // (Mencegah pesan terkirim ganda 2x ke grup WhatsApp & Telegram)
                 try {
-                    $ticket->loadMissing(['customer', 'assignedTo', 'installation.survey']);
-                    $payload = $ticket->getNotificationPayload([
-                        'technician_name'  => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
-                        'status'           => $ticket->status,
-                        'priority'         => $ticket->priority,
+                    $freshTicket = $ticket->fresh();
+                    $freshTicket->loadMissing(['customer', 'assignedTo', 'installation.survey']);
+                    $assignedTechs = $freshTicket->assignedTechnicians();
+                    $techDisplayName = $assignedTechs->isNotEmpty()
+                        ? $assignedTechs->pluck('name')->join(' & ')
+                        : ($freshTicket->assignedTo?->name ?? 'Belum Ditugaskan');
+
+                    $payload = $freshTicket->getNotificationPayload([
+                        'technician_name'  => $techDisplayName,
+                        'status'           => $freshTicket->status,
+                        'priority'         => $freshTicket->priority,
                         'updated_by'       => Auth::user()?->name ?? 'Staff',
                         'note'             => $this->editingTicket['note'] ?? '',
                     ]);
