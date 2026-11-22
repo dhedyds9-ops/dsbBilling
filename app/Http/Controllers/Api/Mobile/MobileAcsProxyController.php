@@ -906,7 +906,7 @@ class MobileAcsProxyController extends Controller
             $wlans = [];
             for ($w = 1; $w <= 4; $w++) {
                 try {
-                    $wInfo = $this->driver->getWifiCredentials($cleanId, 'default', $w);
+                    $wInfo = $this->driver->getWifiCredentials($cleanId, 'default', $w, null, true);
                     if (!empty($wInfo['ssid']) || $w === 1) {
                         $wlans[] = [
                             'index' => $w,

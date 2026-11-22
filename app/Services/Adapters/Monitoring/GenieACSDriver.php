@@ -124,6 +124,21 @@ class GenieACSDriver
             return $cleanId;
         }
 
+        // 1. Cek langsung ke database ACSDevice (paling cepat dan akurat untuk menyelesaikan SN -> UUID GenieACS)
+        try {
+            $cleanUpper = strtoupper($cleanId);
+            $dbUuid = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->where(function ($q) use ($cleanUpper) {
+                    $q->where('serial_number', $cleanUpper)
+                      ->orWhere('mac_address', $cleanUpper)
+                      ->orWhere('uuid', $cleanUpper);
+                })->value('uuid');
+            if (!empty($dbUuid) && substr_count($dbUuid, '-') >= 2) {
+                return $dbUuid;
+            }
+        } catch (\Throwable) {}
+
+        // 2. Fallback query langsung ke GenieACS NBI
         try {
             $params = $this->getDeviceParameters($cleanId);
             if (!empty($params['_id'])) {
@@ -203,7 +218,7 @@ class GenieACSDriver
         ];
     }
 
-    public function getWifiCredentials(string $deviceId, string $vendor = 'default', int $wlanIndex = 1, ?string $pppoeUsername = null): array
+    public function getWifiCredentials(string $deviceId, string $vendor = 'default', int $wlanIndex = 1, ?string $pppoeUsername = null, bool $bypassCustomerBinding = false): array
     {
         $params = $this->getDeviceParameters($deviceId);
         if (empty($params)) {
@@ -226,8 +241,10 @@ class GenieACSDriver
         $bridgeWlanIndices = $bindingInfo['bridge_wlan_indices'] ?? [];
 
         // If requested $wlanIndex is explicitly bound to a Bridge WAN or not in PPPoE allowed list,
-        // automatically redirect to the primary allowed PPPoE slot (e.g. slot 2 instead of slot 1)
-        if (!empty($allowedWlanIndices) && (!in_array($wlanIndex, $allowedWlanIndices, true) || in_array($wlanIndex, $bridgeWlanIndices, true))) {
+        // automatically redirect to the primary allowed PPPoE slot (e.g. slot 2 instead of slot 1).
+        // HANYA berlaku untuk portal pelanggan mandiri (jika $bypassCustomerBinding = false).
+        // Untuk Teknisi Lapangan / Mobile NOC, jangan redirect agar teknisi bebas melihat slot 1, 2, 3, 4!
+        if (!$bypassCustomerBinding && !empty($allowedWlanIndices) && (!in_array($wlanIndex, $allowedWlanIndices, true) || in_array($wlanIndex, $bridgeWlanIndices, true))) {
             $wlanIndex = reset($allowedWlanIndices);
         }
         
@@ -334,7 +351,7 @@ class GenieACSDriver
 
             if (is_array($wlanNode)) {
                 if (empty($ssid)) {
-                    $s = $node['SSID']['_value'] ?? $wlanNode['SSID']['_value'] ?? $wlanNode['SSID'] ?? null;
+                    $s = $wlanNode['SSID']['_value'] ?? $wlanNode['SSID'] ?? null;
                     if (!empty($s) && is_scalar($s)) {
                         $ssid = (string)$s;
                     }
@@ -394,16 +411,18 @@ class GenieACSDriver
             }
         }
 
-        // Extract All SSIDs (1-4) for Chip Tabs, strictly omitting any Bridge / Hotspot SSIDs
+        // Extract All SSIDs (1-4) for Chip Tabs
         $allSsids = [];
         for ($i = 1; $i <= 4; $i++) {
-            // Exclude if bound to Bridge WAN (e.g. ISP voucher hotspot SSID)
-            if (in_array($i, $bridgeWlanIndices, true)) {
-                continue;
-            }
-            // If explicit PPPoE WAN binding exists, only show SSIDs assigned to customer PPPoE
-            if (!empty($allowedWlanIndices) && !in_array($i, $allowedWlanIndices, true)) {
-                continue;
+            if (!$bypassCustomerBinding) {
+                // Exclude if bound to Bridge WAN (e.g. ISP voucher hotspot SSID) for customer self-service
+                if (in_array($i, $bridgeWlanIndices, true)) {
+                    continue;
+                }
+                // If explicit PPPoE WAN binding exists, only show SSIDs assigned to customer PPPoE
+                if (!empty($allowedWlanIndices) && !in_array($i, $allowedWlanIndices, true)) {
+                    continue;
+                }
             }
 
             $sVal = $extract("InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$i}.SSID") 

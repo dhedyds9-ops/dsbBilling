@@ -280,6 +280,11 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/odcs/{id}/edit', \App\Livewire\Isp\Odc\Edit::class)->name('odcs.edit');
             Route::get('/odcs/{id}', \App\Livewire\Isp\Odc\Show::class)->name('odcs.show');
 
+            Route::get('/joint-closures', \App\Livewire\Isp\JointClosure\Index::class)->name('joint-closures.index');
+            Route::get('/joint-closures/create', \App\Livewire\Isp\JointClosure\Create::class)->name('joint-closures.create');
+            Route::get('/joint-closures/{id}/edit', \App\Livewire\Isp\JointClosure\Edit::class)->name('joint-closures.edit');
+            Route::get('/joint-closures/{id}', \App\Livewire\Isp\JointClosure\Show::class)->name('joint-closures.show');
+
             Route::get('/pops', \App\Livewire\Isp\Pop\Index::class)->name('pops.index');
             Route::get('/pops/create', \App\Livewire\Isp\Pop\Create::class)->name('pops.create');
             Route::get('/pops/{id}/edit', \App\Livewire\Isp\Pop\Edit::class)->name('pops.edit');
@@ -325,6 +330,19 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         Route::get('/odcs/{id}/edit', fn($id) => redirect()->route('isp.odcs.edit', $id));
         Route::get('/odc/{id}', fn($id) => redirect()->route('isp.odcs.show', $id));
         Route::get('/odcs/{id}', fn($id) => redirect()->route('isp.odcs.show', $id));
+
+        Route::get('/joint-closure', fn() => redirect()->route('isp.joint-closures.index'));
+        Route::get('/joint-closures', fn() => redirect()->route('isp.joint-closures.index'));
+        Route::get('/joint-closure/create', fn() => redirect()->route('isp.joint-closures.create'));
+        Route::get('/joint-closures/create', fn() => redirect()->route('isp.joint-closures.create'));
+        Route::get('/joint-closure/{id}/edit', fn($id) => redirect()->route('isp.joint-closures.edit', $id));
+        Route::get('/joint-closures/{id}/edit', fn($id) => redirect()->route('isp.joint-closures.edit', $id));
+        Route::get('/joint-closure/{id}', fn($id) => redirect()->route('isp.joint-closures.show', $id));
+        Route::get('/joint-closures/{id}', fn($id) => redirect()->route('isp.joint-closures.show', $id));
+        Route::get('/closure', fn() => redirect()->route('isp.joint-closures.index'));
+        Route::get('/closures', fn() => redirect()->route('isp.joint-closures.index'));
+        Route::get('/closure/{id}', fn($id) => redirect()->route('isp.joint-closures.show', $id));
+        Route::get('/closures/{id}', fn($id) => redirect()->route('isp.joint-closures.show', $id));
 
         Route::get('/onu', fn() => redirect()->route('isp.onus.index'));
         Route::get('/onus', fn() => redirect()->route('isp.onus.index'));

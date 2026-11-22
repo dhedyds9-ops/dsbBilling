@@ -29,10 +29,7 @@ class MobileNetworkApiController extends Controller
         $user = $request->user();
         $query = Olt::withoutGlobalScope(\App\Traits\HasBranchScope::class)
             ->whereNull('deleted_at')
-            ->where(function ($q) {
-                $q->whereNull('status')
-                  ->orWhereNotIn('status', ['inactive', 'deleted', 'disabled']);
-            });
+            ->where('status', 'active');
 
         $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
         if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
@@ -817,14 +814,23 @@ class MobileNetworkApiController extends Controller
         $sn = $onu->serial_number ?: ('#' . $onu->id);
         $oltDeleted = false;
 
-        if ($onu->olt) {
+        if ($onu->olt && !empty($onu->olt->ip_address)) {
             try {
+                // Eksekusi penghapusan di OLT dengan safeguard agar tidak blocking proses mobile
                 $driver = app(\App\Services\Adapters\Provisioning\OltRegistry::class)->forOlt($onu->olt);
                 $oltDeleted = $driver->deleteOnu($onu);
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning("Mobile delete ONU {$sn} OLT error: " . $e->getMessage());
             }
         }
+
+        // Hapus juga record di ACSDevice jika ada
+        try {
+            \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->where(function ($q) use ($sn) {
+                    $q->where('serial_number', $sn)->orWhere('mac_address', $sn);
+                })->delete();
+        } catch (\Throwable) {}
 
         $onu->delete();
 
@@ -1812,6 +1818,23 @@ class MobileNetworkApiController extends Controller
             $tx = (float) $onu->tx_power_dbm;
         }
 
+        // Normalisasi Redaman Optik (GPON RX selalu negatif, TX normal +1.0 s/d +5.0 dBm)
+        if ($rx !== null) {
+            // Jika nilai TR-069 bogus/tidak valid (> -8.0 dBm, misal 1.09 dBm atau 0), fallback ke data DDM OLT yang valid
+            if (($rx > -8.0 || $rx > 0.0) && $onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm <= -8.0 && (float)$onu->rx_power_dbm >= -35.0) {
+                $rx = (float) $onu->rx_power_dbm;
+            } elseif ($rx > 0.0) {
+                // Di receiver GPON, RX Power SELALU bernilai negatif
+                $rx = -abs($rx);
+            }
+        }
+        if ($tx !== null) {
+            // Jika nilai TX dilaporkan dalam skala tanpa desimal yang benar (misal 17.21 dBm padahal 1.72 dBm)
+            if ($tx > 10.0) {
+                $tx = round($tx / 10.0, 2);
+            }
+        }
+
         $quality = 'Belum Diukur';
         if ($rx !== null) {
             if ($rx >= -23.0 && $rx <= -14.0) {
@@ -1858,7 +1881,7 @@ class MobileNetworkApiController extends Controller
         $ponPortNumber = $onu->pon_port ?: ($onu->ponPort?->port_number ?? null);
         $ponPortName = !empty($onu->pon_port) ? ("PON " . $onu->pon_port) : ($onu->ponPort?->name ?? ($ponPortNumber ? "GPON " . $ponPortNumber : null));
 
-        $connectedClients = $liveDiag['wifi']['connected_clients'] ?? [];
+        $connectedClients = $liveDiag['wifi']['connected_clients'] ?? $liveDiag['wifi']['clients'] ?? [];
         $connectedDevicesCount = count($connectedClients);
 
         try {
@@ -1883,6 +1906,9 @@ class MobileNetworkApiController extends Controller
                 'rx_power_dbm' => $rx,
                 'tx_power_dbm' => $tx,
                 'optical_quality' => $quality,
+                'cpu_usage' => $liveDiag['hardware']['cpu_usage'] ?? null,
+                'ram_usage' => $liveDiag['hardware']['ram_usage'] ?? null,
+                'temperature' => $liveDiag['hardware']['temperature'] ?? ($liveDiag['optical']['optical_temperature'] ?? null),
                 'last_seen_at' => $lastSeenDisplay,
                 'uptime' => $uptime,
                 'wifi_ssid' => $wifiSsid,
@@ -2704,15 +2730,15 @@ class MobileNetworkApiController extends Controller
     {
         $validated = $request->validate([
             'device_id' => 'required|string',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
             'odp_id' => 'nullable|integer',
             'odp_name' => 'nullable|string',
         ]);
 
         $deviceId = $validated['device_id'];
-        $lat = (string)$validated['latitude'];
-        $lng = (string)$validated['longitude'];
+        $lat = isset($validated['latitude']) ? (string)$validated['latitude'] : null;
+        $lng = isset($validated['longitude']) ? (string)$validated['longitude'] : null;
         $odpId = $validated['odp_id'] ?? null;
         $odpName = $validated['odp_name'] ?? null;
 
@@ -2766,9 +2792,11 @@ class MobileNetworkApiController extends Controller
         }
 
         if ($customer) {
-            $customer->latitude = $lat;
-            $customer->longitude = $lng;
-            $customer->save();
+            if ($lat !== null && $lng !== null) {
+                $customer->latitude = $lat;
+                $customer->longitude = $lng;
+                $customer->save();
+            }
 
             $cs = $customer->customerServices()->first();
             if ($cs && $cs->onu) {
@@ -2777,14 +2805,16 @@ class MobileNetworkApiController extends Controller
         }
 
         if ($onu) {
-            $onu->latitude = $lat;
-            $onu->longitude = $lng;
+            if ($lat !== null && $lng !== null) {
+                $onu->latitude = $lat;
+                $onu->longitude = $lng;
+            }
             if ($odpId) {
                 $onu->odp_id = $odpId;
             }
             $onu->save();
 
-            if (!$customer) {
+            if (!$customer && $lat !== null && $lng !== null) {
                 $linkedCs = CustomerService::where('onu_id', $onu->id)->first();
                 if ($linkedCs && $linkedCs->customer) {
                     $linkedCs->customer->latitude = $lat;

@@ -133,8 +133,16 @@
                             <p class="text-slate-900 dark:text-slate-100 text-sm font-mono"><x-ui.ip-link :ip="$olt->ip_address" /></p>
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Jumlah Port</label>
-                            <p class="text-slate-900 dark:text-slate-100 text-sm">{{ $olt->port_count ?? '-' }}</p>
+                            <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Tipe Teknologi</label>
+                            <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">
+                                <span class="px-2 py-0.5 rounded text-xs {{ ($olt->pon_type === 'gpon' || str_contains(strtolower($olt->model ?? ''), 'gpon')) ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' }}">
+                                    {{ strtoupper($olt->pon_type ?: 'GPON') }} OLT
+                                </span>
+                            </p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Jumlah Port PON</label>
+                            <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ $olt->pon_port_count ?: ($olt->port_count ?: ($olt->ponPorts()->count() ?: '-')) }} Port</p>
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Uptime</label>

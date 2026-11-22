@@ -663,7 +663,40 @@ class GenieAcsDiagnosticService
             'InternetGatewayDevice.DeviceInfo.AdditionalSoftwareVersion',
         ]) ?? ($onu->firmware_version ?: 'Tidak Didukung');
 
+        // CPU Usage
+        $rawCpu = $this->extractValue($params, [
+            'InternetGatewayDevice.DeviceInfo.X_ZTE-COM_CpuUsed',
+            'VirtualParameters.CpuUsed',
+            'VirtualParameters.CPUUsed',
+            'VirtualParameters.cpu_used',
+            'VirtualParameters.CPU',
+            'InternetGatewayDevice.DeviceInfo.ProcessStatus.CPUUsage',
+            'Device.DeviceInfo.ProcessStatus.CPUUsage',
+        ]);
+        $cpuDisplay = 'Tidak Didukung';
+        if ($rawCpu !== null && trim((string) $rawCpu) !== '' && is_numeric($rawCpu)) {
+            $cpuDisplay = round((float) $rawCpu, 0) . ' %';
+        }
+
+        // Memory / RAM Usage
+        $rawMem = $this->extractValue($params, [
+            'InternetGatewayDevice.DeviceInfo.X_ZTE-COM_MemUsed',
+            'VirtualParameters.MemUsed',
+            'VirtualParameters.MEMUsed',
+            'VirtualParameters.mem_used',
+            'VirtualParameters.Memory',
+        ]);
+        $memDisplay = 'Tidak Didukung';
+        if ($rawMem !== null && trim((string) $rawMem) !== '' && is_numeric($rawMem)) {
+            $memDisplay = round((float) $rawMem, 0) . ' %';
+        }
+
+        // Suhu / Temperature
         $rawTemp = $this->extractValue($params, [
+            'VirtualParameters.gettemp',
+            'VirtualParameters.temperature',
+            'VirtualParameters.Temp',
+            'VirtualParameters.suhu',
             'InternetGatewayDevice.DeviceInfo.X_ZTE-COM_Temperature',
             'InternetGatewayDevice.DeviceInfo.X_HW_Temperature',
             'InternetGatewayDevice.DeviceInfo.X_FH_Temperature',
@@ -685,6 +718,8 @@ class GenieAcsDiagnosticService
             'serial_number' => $serialNumber,
             'hardware_version' => $hwVersion,
             'software_version' => $swVersion,
+            'cpu_usage' => $cpuDisplay,
+            'ram_usage' => $memDisplay,
             'temperature' => $tempDisplay,
         ];
     }
@@ -774,6 +809,8 @@ class GenieAcsDiagnosticService
             'password_masked' => '********', // Password tidak pernah dibocorkan ke teknisi
             'clients' => $clients,
             'client_count' => count($clients),
+            'connected_clients' => $clients,
+            'connected_devices_count' => count($clients),
         ];
     }
 

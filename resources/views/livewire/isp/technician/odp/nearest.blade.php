@@ -256,8 +256,31 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Kapasitas Port / Core</label>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                                {{ $newNodeType === 'closure' ? 'Kapasitas Core FO' : 'Kapasitas Port' }}
+                            </label>
+                        </div>
                         <input type="number" wire:model="newNodePortCount" class="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-bold" min="1" max="512">
+                        @if($newNodeType === 'closure')
+                        <div class="flex flex-wrap gap-1 mt-1.5">
+                            @foreach([4, 6, 8, 12, 24, 48, 96, 144] as $core)
+                                <button type="button" wire:click="$set('newNodePortCount', {{ $core }})"
+                                        class="px-1.5 py-0.5 text-[10px] rounded border font-semibold transition-colors {{ (int)$newNodePortCount === $core ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200' }}">
+                                    {{ $core }}C
+                                </button>
+                            @endforeach
+                        </div>
+                        @else
+                        <div class="flex flex-wrap gap-1 mt-1.5">
+                            @foreach([4, 8, 16] as $p)
+                                <button type="button" wire:click="$set('newNodePortCount', {{ $p }})"
+                                        class="px-1.5 py-0.5 text-[10px] rounded border font-semibold transition-colors {{ (int)$newNodePortCount === $p ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200' }}">
+                                    {{ $p }}P
+                                </button>
+                            @endforeach
+                        </div>
+                        @endif
                     </div>
                     @if($newNodeType === 'closure')
                     <div>

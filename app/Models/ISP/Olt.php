@@ -80,6 +80,7 @@ class Olt extends Model
         'name',
         'description',
         'model',
+        'pon_type',
         'serial_number',
         'ip_address',
         'username',

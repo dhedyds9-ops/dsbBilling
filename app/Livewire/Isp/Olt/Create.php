@@ -19,6 +19,7 @@ class Create extends AdminComponent
     public $name;
     public $description;
     public $model;
+    public $pon_type = 'auto';
     public $serial_number;
     public $firmware_version;
     public $ip_address;
@@ -192,6 +193,7 @@ class Create extends AdminComponent
             'name'                 => $this->name,
             'description'          => $this->description,
             'model'                => $this->model,
+            'pon_type'             => $this->pon_type ?: 'auto',
             'serial_number'        => $this->serial_number,
             'firmware_version'     => $this->firmware_version,
             'ip_address'           => $this->ip_address,

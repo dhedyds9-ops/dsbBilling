@@ -208,6 +208,7 @@ class MenuRegistry
                             ['label' => 'Peta Jaringan', 'route' => 'gis.map', 'active' => ['gis.*', 'network.map'], 'permission' => 'gis.view'],
                             ['label' => 'Data ODC', 'route' => 'isp.odcs.index', 'active' => 'isp.odcs.*', 'permission' => 'odc.view'],
                             ['label' => 'Data ODP', 'route' => 'isp.odps.index', 'active' => 'isp.odps.*', 'permission' => 'odp.view'],
+                            ['label' => 'Data Joint Closure', 'route' => 'isp.joint-closures.index', 'active' => 'isp.joint-closures.*', 'permission' => 'odc.view'],
                             ['label' => 'Data POP', 'route' => 'isp.pops.index', 'active' => 'isp.pops.*', 'permission' => 'pop.view'],
                             ['label' => 'Data Vendor', 'route' => 'isp.vendors.index', 'active' => 'isp.vendors.*', 'permission' => 'vendor.view'],
                         ]

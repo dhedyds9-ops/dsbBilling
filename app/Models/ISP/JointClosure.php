@@ -111,7 +111,7 @@ class JointClosure extends Model
 
     public function branch()
     {
-        return $this->belongsTo(\App\Models\Branch::class);
+        return $this->belongsTo(\App\Models\Master\Branch::class);
     }
 
     public function reseller()

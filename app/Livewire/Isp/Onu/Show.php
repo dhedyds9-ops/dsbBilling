@@ -38,13 +38,7 @@ class Show extends AdminComponent
         $this->activeModule = 'isp';
         $this->activePage = 'onus';
         $this->onuId = $id;
-        $this->onu = OnuModel::with(['olt', 'vendor', 'onuPorts', 'acsDevice'])->findOrFail($id);
-        $this->breadcrumbs = [
-            ['label' => 'Dashboard', 'url' => route('dashboard')],
-            ['label' => 'Network', 'url' => route('isp.onus.index')],
-            ['label' => 'ONU', 'url' => route('isp.onus.index')],
-            ['label' => $this->onu->name],
-        ];
+        $this->onu = OnuModel::with(['olt', 'vendor', 'onuPorts', 'acsDevice', 'customerService.customer', 'customerService.internetPlan', 'odp', 'branch'])->findOrFail($id);
         $this->customerServices = CustomerService::with('networkProfile')->where('onu_id', $id)->get();
         if ($this->customerServices->count() > 0) {
             $cs = $this->customerServices->first();
@@ -153,6 +147,65 @@ class Show extends AdminComponent
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         }
+    }
+
+    public function refreshLiveOpticalPower()
+    {
+        try {
+            $olt = $this->onu->olt;
+            if (!$olt) {
+                throw new \Exception("OLT untuk ONU ini tidak terdaftar.");
+            }
+
+            // 1. Coba baca redaman dari GenieACS jika ada
+            if ($this->onu->acsDevice && !empty($this->onu->acsDevice->signal)) {
+                $this->onu->rx_power_dbm = (float)$this->onu->acsDevice->signal;
+                $this->onu->last_seen_at = now();
+                $this->onu->save();
+            }
+
+            // 2. Coba jalankan sinkronisasi port dari OLT driver
+            try {
+                $driver = app(\App\Services\Adapters\Provisioning\OltRegistry::class)->forOlt($olt);
+                $ponPortIdx = (int)($this->onu->pon_port ?: 1);
+                $onusOnPort = $driver->getOnuRxPower($ponPortIdx);
+                foreach ($onusOnPort as $item) {
+                    if (strtoupper($item['serial_number'] ?? '') === strtoupper($this->onu->serial_number)) {
+                        if (isset($item['rx_power_dbm']) && $item['rx_power_dbm'] !== null) {
+                            $this->onu->rx_power_dbm = (float)$item['rx_power_dbm'];
+                        }
+                        if (isset($item['tx_power_dbm']) && $item['tx_power_dbm'] !== null) {
+                            $this->onu->tx_power_dbm = (float)$item['tx_power_dbm'];
+                        }
+                        if (isset($item['temperature']) && $item['temperature'] !== null) {
+                            $this->onu->temperature = (float)$item['temperature'];
+                        }
+                        $this->onu->status = ($item['status'] ?? 'offline') === 'online' ? 'active' : $this->onu->status;
+                        $this->onu->last_seen_at = now();
+                        $this->onu->save();
+                        break;
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Live OLT poll error for ONU {$this->onu->serial_number}: " . $e->getMessage());
+            }
+
+            $this->onu->refresh();
+            $this->dispatch('toast', type: 'success', message: 'Data redaman & status optik berhasil diperbarui!');
+        } catch (\Throwable $th) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal memperbarui: ' . $th->getMessage());
+        }
+    }
+
+    public function getRealVendorNameProperty(): string
+    {
+        $sn = strtoupper(trim((string)$this->onu->serial_number));
+        if (str_starts_with($sn, 'ZTEG') || str_starts_with($sn, '5A544547')) return 'ZTE';
+        if (str_starts_with($sn, 'HWTC') || str_starts_with($sn, '48575443')) return 'Huawei';
+        if (str_starts_with($sn, 'FHTT') || str_starts_with($sn, '46485454')) return 'Fiberhome';
+        if (str_starts_with($sn, 'CDTE')) return 'C-Data';
+        if (str_starts_with($sn, 'VSOL')) return 'V-SOL';
+        return $this->onu->vendor?->name ?? 'ZTE / Universal';
     }
 
     public function render()

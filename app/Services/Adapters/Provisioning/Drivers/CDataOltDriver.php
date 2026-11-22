@@ -121,13 +121,38 @@ class CDataOltDriver extends BaseOltDriver
         }
 
         try {
-            $cdataModel = $this->snmp->get('.1.3.6.1.4.1.34592.1.3.100.1.8.1.0')
-                ?: ($this->snmp->get('.1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.1.1')
-                ?: ($this->snmp->get('.1.3.6.1.4.1.51810.1.1.1.1.0') ?: null));
-
-            $cdataFw = $this->snmp->get('.1.3.6.1.4.1.34592.1.3.100.1.8.3.0')
-                ?: ($this->snmp->get('.1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.3.1')
-                ?: ($this->snmp->get('.1.3.6.1.4.1.51810.1.1.1.3.0') ?: null));
+            $cliInfo = [];
+            // 1. LAYER 1: Coba ambil informasi perangkat komprehensif via Telnet CLI 'show version'
+            if (!empty($this->olt->username) && !empty($this->olt->password)) {
+                try {
+                    $this->initializeCli();
+                    $verOut = (string)$this->cli->execute("show version\r\n", false);
+                    if (!empty($verOut) && !str_contains(strtolower($verOut), 'invalid') && !str_contains(strtolower($verOut), 'incomplete')) {
+                        // Device Model (FD1604E-C1 / FD1608S-B1-NDA0)
+                        if (preg_match('/(?:Device\s*Model|Device\s*Name|Model\s*Name)\s*[:=]\s*([^\r\n]+)/i', $verOut, $m)) {
+                            $cliInfo['model'] = trim($m[1]);
+                        }
+                        // Device Serial Number (DA60-2605000163)
+                        if (preg_match('/(?:Device\s*Serial(?:Number)?|SN|Serial\s*Number)\s*[:=]\s*([^\r\n]+)/i', $verOut, $m)) {
+                            $cliInfo['serial_number'] = strtoupper(trim($m[1]));
+                        }
+                        // Firmware Version (V3.4.28_251209)
+                        if (preg_match('/(?:Firmware\s*Version|Software\s*Version|System\s*Version|FW\s*Version)\s*[:=]\s*([^\r\n]+)/i', $verOut, $m)) {
+                            $cliInfo['firmware'] = trim($m[1]);
+                        }
+                        // Inband MAC Address (D0:5F:AF:E0:6B:EB)
+                        if (preg_match('/(?:Inband\s*MAC|MAC\s*Address|Base\s*MAC)\s*[:=]\s*([0-9A-Fa-f:]{17}|[0-9A-Fa-f\-]{17})/i', $verOut, $m)) {
+                            $cliInfo['mac'] = strtoupper(str_replace('-', ':', trim($m[1])));
+                        }
+                        // Device Type (GPON OLT / EPON OLT)
+                        if (preg_match('/(?:Device\s*Type|System\s*Type|PON\s*Type)\s*[:=]\s*([^\r\n]+)/i', $verOut, $m)) {
+                            $cliInfo['pon_type'] = str_contains(strtolower($m[1]), 'epon') ? 'epon' : 'gpon';
+                        }
+                    }
+                } catch (\Throwable $cliErr) {
+                    \Illuminate\Support\Facades\Log::debug("CData CLI show version error: " . $cliErr->getMessage());
+                }
+            }
 
             $cleanStr = function($v) {
                 if (!$v) return null;
@@ -136,23 +161,52 @@ class CDataOltDriver extends BaseOltDriver
                 return (!empty($v) && !str_contains(strtolower($v), 'no such')) ? $v : null;
             };
 
-            $cdataModel = $cleanStr($cdataModel);
-            $cdataFw = $cleanStr($cdataFw);
+            // 2. LAYER 2: SNMP Enterprise OID C-Data (GPON & EPON MIB)
+            $cdataModel = $cliInfo['model'] ?? ($cleanStr(
+                $this->snmp->get('.1.3.6.1.4.1.34592.1.3.100.1.8.1.0')
+                ?: ($this->snmp->get('.1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.1.1')
+                ?: ($this->snmp->get('.1.3.6.1.4.1.34592.1.3.1.1.1.0')
+                ?: ($this->snmp->get('.1.3.6.1.4.1.51810.1.1.1.1.0') ?: null)))
+            ));
+
+            $cdataSn = $cliInfo['serial_number'] ?? ($cleanStr(
+                $this->snmp->get('.1.3.6.1.4.1.34592.1.3.100.1.8.4.0')
+                ?: ($this->snmp->get('.1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.4.1')
+                ?: ($this->snmp->get('.1.3.6.1.4.1.34592.1.3.1.1.4.0')
+                ?: ($this->snmp->get('.1.3.6.1.2.1.47.1.1.1.1.11.1')
+                ?: ($this->snmp->get('.1.3.6.1.4.1.51810.1.1.1.4.0') ?: null))))
+            ));
+
+            $cdataFw = $cliInfo['firmware'] ?? ($cleanStr(
+                $this->snmp->get('.1.3.6.1.4.1.34592.1.3.100.1.8.3.0')
+                ?: ($this->snmp->get('.1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.3.1')
+                ?: ($this->snmp->get('.1.3.6.1.4.1.34592.1.3.1.1.3.0')
+                ?: ($this->snmp->get('.1.3.6.1.4.1.51810.1.1.1.3.0') ?: null)))
+            ));
 
             $descr = (string)($info['description'] ?? '');
             if (!$cdataModel && preg_match('/(FD\d{4}[A-Z0-9\-_]*|CD\d{4}[A-Z0-9\-_]*)/i', $descr, $m)) {
                 $cdataModel = strtoupper($m[1]);
             }
 
-            if (!$cdataFw && preg_match('/(?:Version|Ver|V|FW|Firmware)\s*[:=]?\s*([vV\d\._-]+)/i', $descr, $m)) {
-                $cdataFw = $m[1];
+            // Jika firmware terbaca angka murni pendek (misal '680'), ambil dari sysDescr yang memuat versi lengkap
+            if (empty($cdataFw) || preg_match('/^\d{2,4}$/', $cdataFw)) {
+                if (preg_match('/(?:Version|Ver|V|FW|Firmware)\s*[:=]?\s*([vV\d\._-]+)/i', $descr, $m)) {
+                    $cdataFw = $m[1];
+                }
             }
 
-            if ($cdataModel && ($info['model'] === 'olt' || empty($info['model']))) {
+            if ($cdataModel && ($info['model'] === 'olt' || empty($info['model']) || strtolower($info['model']) === 'c-data')) {
                 $info['model'] = $cdataModel;
             }
-            if ($cdataFw && ($info['firmware'] === 'N/A' || empty($info['firmware']))) {
+            if (!empty($cdataSn)) {
+                $info['serial_number'] = strtoupper($cdataSn);
+            }
+            if ($cdataFw && ($info['firmware'] === 'N/A' || empty($info['firmware']) || preg_match('/^\d{2,4}$/', (string)$info['firmware']))) {
                 $info['firmware'] = $cdataFw;
+            }
+            if (!empty($cliInfo['pon_type'])) {
+                $info['pon_type'] = $cliInfo['pon_type'];
             }
         } catch (\Throwable) {}
 
@@ -849,73 +903,68 @@ class CDataOltDriver extends BaseOltDriver
                 }
             }
 
-            // 2. Query per port optical info if any online ONU still has missing optical signal
-            $missingOptical = false;
+            // 2. Query per port optical info ONLY for ports where online ONUs actually miss optical signal
+            $configuredPonType = strtolower(trim((string)($this->olt->pon_type ?? 'auto')));
+            $modelStr = strtolower((string)($this->olt->model ?? '') . ' ' . (string)($this->olt->name ?? ''));
+            $isExplicitEpon = ($configuredPonType === 'epon') || ($configuredPonType === 'auto' && (str_contains($modelStr, 'epon') || str_contains($modelStr, 'fd11') || str_contains($modelStr, 'fd12')));
+            $isExplicitGpon = ($configuredPonType === 'gpon') || ($configuredPonType === 'auto' && (str_contains($modelStr, 'gpon') || str_contains($modelStr, 'fd16') || str_contains($modelStr, 'cd16')));
+
+            $missingPorts = [];
             foreach ($this->cachedCliParsedOnus as $p => $onus) {
                 foreach ($onus as $o) {
                     if (($o['status'] ?? 'offline') === 'online' && $o['rx_power_dbm'] === null) {
-                        $missingOptical = true;
-                        break 2;
+                        $missingPorts[] = (int)$p;
+                        break;
                     }
                 }
             }
 
-            if ($missingOptical) {
+            if (!empty($missingPorts)) {
                 $this->cli->execute("config\r\n", false);
-                $inGpon = $this->cli->execute("interface gpon 0/{$slot}\r\n", false);
-                if ($isBad($inGpon)) {
-                    $inGpon = $this->cli->execute("interface gpon 0/0\r\n", false);
-                }
-                if ($isBad($inGpon)) {
-                    $inGpon = $this->cli->execute("interface gpon 0/1\r\n", false);
-                }
-                if ($isBad($inGpon)) {
-                    $inGpon = $this->cli->execute("interface gpon 0\r\n", false);
-                }
-                if ($isBad($inGpon)) {
-                    $inGpon = $this->cli->execute("interface epon 0/{$slot}\r\n", false);
-                }
-                if ($isBad($inGpon)) {
-                    $inGpon = $this->cli->execute("interface epon 0/0\r\n", false);
-                }
-                if ($isBad($inGpon)) {
-                    $inGpon = $this->cli->execute("interface epon 0/1\r\n", false);
+                $inInterface = false;
+
+                if (!$isExplicitEpon) {
+                    $inGpon = $this->cli->execute("interface gpon 0/{$slot}\r\n", false);
+                    if ($isBad($inGpon)) {
+                        $inGpon = $this->cli->execute("interface gpon 0/1\r\n", false);
+                    }
+                    if ($isBad($inGpon)) {
+                        $inGpon = $this->cli->execute("interface gpon 0/0\r\n", false);
+                    }
+                    $inInterface = !$isBad($inGpon);
                 }
 
-                $inInterface = !$isBad($inGpon);
+                if (!$inInterface && !$isExplicitGpon) {
+                    $inEpon = $this->cli->execute("interface epon 0/{$slot}\r\n", false);
+                    if ($isBad($inEpon)) {
+                        $inEpon = $this->cli->execute("interface epon 0/0\r\n", false);
+                    }
+                    if ($isBad($inEpon)) {
+                        $inEpon = $this->cli->execute("interface epon 0/1\r\n", false);
+                    }
+                    $inInterface = !$isBad($inEpon);
+                }
 
-                $isSinglePort = (($this->olt->pon_port_count ?? 0) === 1);
-                $portsWithOnus = !empty($this->cachedCliParsedOnus) 
-                    ? array_keys($this->cachedCliParsedOnus) 
-                    : ($isSinglePort ? [1] : range(1, 8));
+                foreach ($missingPorts as $pNum) {
+                    $pOpt = null;
+                    if (!$isExplicitEpon) {
+                        $pOpt = $this->cli->execute("show ont optical-info {$pNum} all\r\n", false);
+                        if ($isBad($pOpt)) {
+                            $pOpt = $this->cli->execute("show ont optical-info 0/1 {$pNum} all\r\n", false);
+                        }
+                        if ($isBad($pOpt)) {
+                            $pOpt = $this->cli->execute("show ont optical-info 0/0 {$pNum} all\r\n", false);
+                        }
+                    }
 
-                foreach ($portsWithOnus as $pNum) {
-                    $pOpt = $this->cli->execute("show ont optical-info {$pNum} all\r\n", false);
-                    if ($isBad($pOpt)) {
-                        $pOpt = $this->cli->execute("show ont optical-info 0/0 {$pNum} all\r\n", false);
-                    }
-                    if ($isBad($pOpt)) {
-                        $pOpt = $this->cli->execute("show ont optical-info 0/1 {$pNum} all\r\n", false);
-                    }
-                    if ($isBad($pOpt)) {
-                        $pOpt = $this->cli->execute("show ont optical-info 0/0/{$pNum} all\r\n", false);
-                    }
-                    if ($isBad($pOpt)) {
-                        $pOpt = $this->cli->execute("show ont optical-info 0/1/{$pNum} all\r\n", false);
-                    }
-                    if ($isBad($pOpt)) {
-                        $pOpt = $this->cli->execute("show ont optical-info {$pNum}\r\n", false);
-                    }
-                    if ($isBad($pOpt)) {
+                    if (($pOpt === null || $isBad($pOpt)) && !$isExplicitGpon) {
                         $pOpt = $this->cli->execute("show onu optical-info {$pNum} all\r\n", false);
+                        if ($isBad($pOpt)) {
+                            $pOpt = $this->cli->execute("show onu optical-info 0/0 {$pNum} all\r\n", false);
+                        }
                     }
-                    if ($isBad($pOpt)) {
-                        $pOpt = $this->cli->execute("show onu optical-info 0/0 {$pNum} all\r\n", false);
-                    }
-                    if ($isBad($pOpt)) {
-                        $pOpt = $this->cli->execute("show onu optical-info 0/1 {$pNum} all\r\n", false);
-                    }
-                    if (!$isBad($pOpt)) {
+
+                    if (!empty($pOpt) && !$isBad($pOpt)) {
                         $parseOptLines($pOpt, (int)$pNum);
                     }
                 }
@@ -985,39 +1034,53 @@ class CDataOltDriver extends BaseOltDriver
     {
         // Cache all SNMP walk tables once per polling cycle
         if ($this->cachedOnuSerials === null) {
-            // Check C-Data GPON (FD1601S / FD1608S / FD1616 series 34592.1.5.1 / 34592.1.3.100)
-            // 1. gponOnuSn (.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.3 - Official CDATA-GPON-MIB)
-            $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.3') ?: [];
+            $configuredPonType = strtolower(trim((string)($this->olt->pon_type ?? 'auto')));
+            $modelStr = strtolower((string)($this->olt->model ?? '') . ' ' . (string)($this->olt->name ?? ''));
+            $isExplicitEpon = ($configuredPonType === 'epon') || ($configuredPonType === 'auto' && (str_contains($modelStr, 'epon') || str_contains($modelStr, 'fd11') || str_contains($modelStr, 'fd12')));
+            $isExplicitGpon = ($configuredPonType === 'gpon') || ($configuredPonType === 'auto' && (str_contains($modelStr, 'gpon') || str_contains($modelStr, 'fd16') || str_contains($modelStr, 'cd16')));
 
-            // 2. gponOnuBindSn (.18.10.1.1.2)
-            if (empty($gponSerials)) {
-                $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.10.1.1.2') ?: [];
-            }
+            $gponSerials = [];
+            $gponActive = [];
+            $gponRunStatus = [];
+            $gponRx = [];
+            $gponTx = [];
+            $gponTemps = [];
 
-            // 3. FD1608/FD1616 legacy OID (.100.9.2.1.3 or .100.9.2.1.2)
-            if (empty($gponSerials)) {
-                $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.3')
-                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.2') ?: []);
-            }
+            // A. GPON SNMP TABLES (hanya dipindai jika bukan EPON murni)
+            if (!$isExplicitEpon) {
+                // 1. gponOnuSn (.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.3 - Official CDATA-GPON-MIB)
+                $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.3') ?: [];
 
-            // 4. Autofind OID (.18.2.1.1.2) - also merge any unconfigured ONUs on the line
-            $autofindSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1.2')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1.1') ?: []);
+                // 2. gponOnuBindSn (.18.10.1.1.2)
+                if (empty($gponSerials)) {
+                    $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.10.1.1.2') ?: [];
+                }
 
-            if (!empty($autofindSerials)) {
-                foreach ($autofindSerials as $afKey => $afVal) {
-                    if (!isset($gponSerials[$afKey])) {
-                        $gponSerials[$afKey] = $afVal;
+                // 3. FD1608/FD1616 legacy OID (.100.9.2.1.3 or .100.9.2.1.2)
+                if (empty($gponSerials)) {
+                    $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.3')
+                        ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.2') ?: []);
+                }
+
+                // 4. Autofind OID (.18.2.1.1.2) - also merge any unconfigured ONUs on the line
+                $autofindSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1.2')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1.1') ?: []);
+
+                if (!empty($autofindSerials)) {
+                    foreach ($autofindSerials as $afKey => $afVal) {
+                        if (!isset($gponSerials[$afKey])) {
+                            $gponSerials[$afKey] = $afVal;
+                        }
                     }
                 }
-            }
 
-            // 5. Fallbacks
-            if (empty($gponSerials)) {
-                $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.4')
-                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.1')
-                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.2')
-                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.1.1.2') ?: [])));
+                // 5. Fallbacks
+                if (empty($gponSerials)) {
+                    $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.4')
+                        ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.1')
+                        ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.2')
+                        ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.1.1.2') ?: [])));
+                }
             }
             
             // GPON Active State (1 = active/online, 2 = inactive/offline)
@@ -1115,7 +1178,7 @@ class CDataOltDriver extends BaseOltDriver
             $eponTemps = [];
             $eponMacs = [];
 
-            if (empty($gponSerials)) {
+            if (!$isExplicitGpon && empty($gponSerials)) {
                 // 1. C-Data 34592 EPON ONU Table
                 $eponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.3.1.1.2') ?: [];
                 if (!empty($eponSerials)) {
@@ -1457,28 +1520,8 @@ class CDataOltDriver extends BaseOltDriver
             }
         }
 
-        // If SNMP returned 0 ONUs but Database has existing records for this port, keep them as offline
-        if (empty($results)) {
-            $dbOnus = Onu::withoutGlobalScopes()->where('olt_id', $this->olt->id)
-                ->where('pon_port', $ponPort)
-                ->get();
-            foreach ($dbOnus as $dbOnu) {
-                $results[] = [
-                    'pon_port'         => $ponPort,
-                    'onu_index'        => $dbOnu->onu_id_on_olt ?? 1,
-                    'serial_number'    => $dbOnu->serial_number,
-                    'mac_address'      => $dbOnu->mac_address,
-                    'rx_power_dbm'     => null,
-                    'tx_power_dbm'     => null,
-                    'snr_db'           => null,
-                    'temperature'      => null,
-                    'firmware_version' => $dbOnu->firmware_version,
-                    'model'            => $dbOnu->model,
-                    'status'           => 'offline',
-                ];
-            }
-        }
-
+        // If SNMP returned 0 ONUs for this port, return empty array so OltPollingService
+        // can invoke safety protection (skipping destructive mass offline sweep).
         return $results;
     }
 

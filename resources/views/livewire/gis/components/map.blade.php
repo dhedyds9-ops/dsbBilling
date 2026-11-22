@@ -523,8 +523,30 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="closure_capacity" class="form-label">{{ __('Kapasitas') }}</label>
-                        <input type="number" class="form-control dark:bg-slate-900 dark:text-slate-100" id="closure_capacity" name="port_count" value="24" required>
+                        <label for="closure_capacity" class="form-label">{{ __('Kapasitas Core Optik') }}</label>
+                        <div class="input-group mb-1">
+                            <input type="number" class="form-control dark:bg-slate-900 dark:text-slate-100" id="closure_capacity" name="port_count" value="24" min="1" max="1000" required>
+                            <span class="input-group-text dark:bg-slate-800 dark:text-slate-300">Core</span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-1 mt-1">
+                            <span class="small text-muted me-1 align-self-center">Preset:</span>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="document.getElementById('closure_capacity').value=4">4C</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="document.getElementById('closure_capacity').value=6">6C</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="document.getElementById('closure_capacity').value=8">8C</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="document.getElementById('closure_capacity').value=12">12C</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" onclick="document.getElementById('closure_capacity').value=24">24C</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="document.getElementById('closure_capacity').value=48">48C</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="document.getElementById('closure_capacity').value=96">96C</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="document.getElementById('closure_capacity').value=144">144C</button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="closure_type" class="form-label">{{ __('Model Enclosure') }}</label>
+                        <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="closure_type" name="type">
+                            <option value="Dome">Dome (Kubah Tiang)</option>
+                            <option value="Inline">Inline (Horizontal Jalur)</option>
+                            <option value="Wall Mount">Wall Mount (Dinding / Handhole)</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="closure_region" class="form-label">{{ __('Wilayah') }}</label>
@@ -4065,6 +4087,7 @@
                 safeSetVal('closure_lat', closure.latitude);
                 safeSetVal('closure_lng', closure.longitude);
                 safeSetVal('closure_capacity', closure.capacity || 24);
+                safeSetVal('closure_type', closure.type || 'Dome');
                 safeSetVal('closure_region', closure.region_id || '');
                 safeSetVal('closure_odc', closure.odc_id || '');
                 safeSetVal('closure_description', closure.description || '');

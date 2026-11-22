@@ -92,6 +92,7 @@ class OltPollingService
                     'firmware_version' => $systemInfo['firmware'] ?? $olt->firmware_version,
                     'active_port_count' => collect($ponPorts)->where('status', 'up')->count(),
                     'pon_port_count' => $configuredCount > 0 ? $configuredCount : count($ponPorts),
+                    'port_count' => $configuredCount > 0 ? $configuredCount : count($ponPorts),
                     'status' => ($systemInfo['status'] ?? 'offline') === 'online' ? 'active' : 'inactive',
                     'last_polled_at' => now(),
                 ];
@@ -586,7 +587,9 @@ class OltPollingService
                     }
                     
                     // Mark ONUs as offline if they exist in DB for this port but were missing from OLT output
-                    if ($dbPort || $idx) {
+                    // SAFETY PROTOCOL: Jika OLT polling mengembalikan 0 ONU (misal CLI/SNMP timeout atau adapter parse mismatch),
+                    // DILARANG KERAS menyapu offline massal (mencegah false mass outage seperti 326 ONU offline di CDATA-KANTOR)!
+                    if (!empty($polledSns) && ($dbPort || $idx)) {
                         $missingOnus = \App\Models\ISP\Onu::withoutGlobalScopes()->where('olt_id', $olt->id)
                             ->where(function ($q) use ($dbPort, $idx) {
                                 if ($dbPort) {
@@ -600,6 +603,16 @@ class OltPollingService
                             ->get();
                             
                         foreach ($missingOnus as $mOnu) {
+                            // Cek guard TR-069: Jika modem baru Inform dalam 15 menit terakhir, jangan matikan
+                            $isRecentlyInforming = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                                ->where('serial_number', $mOnu->serial_number)
+                                ->where('last_inform', '>=', now()->subMinutes(15))
+                                ->exists();
+
+                            if ($isRecentlyInforming) {
+                                continue;
+                            }
+
                             $onuOffline++;
                             if ($mOnu->status !== 'inactive') { // 'inactive' is Eloquent enum for offline
                                 $oldSt = 'online';
@@ -607,6 +620,8 @@ class OltPollingService
                                 event(new \App\Events\ISP\OnuStatusChanged($mOnu->id, $oldSt, 'offline', null));
                             }
                         }
+                    } elseif (empty($polledSns)) {
+                        \Illuminate\Support\Facades\Log::warning("OLT Polling {$olt->name} Port {$port['port_name']} (idx {$idx}): 0 ONU parsed. Skipping offline sweep to protect legitimate active ONUs.");
                     }
                     
                 });
