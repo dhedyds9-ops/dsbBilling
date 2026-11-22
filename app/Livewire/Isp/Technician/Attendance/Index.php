@@ -37,23 +37,31 @@ class Index extends Component
     }
 
     #[On('gps-located')]
-    public function updateLocation($lat, $lng)
+    public function updateLocation($lat = null, $lng = null)
     {
+        if (is_array($lat)) {
+            $this->latitude = $lat['lat'] ?? $lat['latitude'] ?? null;
+            $this->longitude = $lat['lng'] ?? $lat['longitude'] ?? null;
+            return;
+        }
         $this->latitude = $lat;
         $this->longitude = $lng;
     }
 
     public function checkIn()
     {
-        if (!$this->latitude || !$this->longitude) {
-            $this->errorMessage = "Lokasi GPS tidak ditemukan. Pastikan Anda mengizinkan akses lokasi (GPS) pada browser HP Anda.";
-            return;
-        }
-
         $attendance = $this->todayAttendance;
 
         if ($attendance) {
             $this->errorMessage = "Anda sudah melakukan absen masuk hari ini.";
+            return;
+        }
+
+        $ip = request()->ip();
+
+        // Validasi GPS: jika tidak ada GPS dan bukan penugasan lapangan, minta aktifkan GPS atau centang tugas luar
+        if ((empty($this->latitude) || empty($this->longitude)) && !$this->isFieldAssignment) {
+            $this->errorMessage = "Sinyal lokasi GPS belum terdeteksi. Pastikan GPS HP Anda aktif dan izin lokasi browser telah diizinkan. Jika sedang di area tanpa sinyal GPS, aktifkan opsi 'Tugas Luar / Lapangan'.";
             return;
         }
 
@@ -79,17 +87,19 @@ class Index extends Component
         $minDistance = null;
         $maxAllowedRadius = 150; // Toleransi radius 150 meter dari titik kantor
 
-        foreach ($branches as $br) {
-            $dist = $this->calculateDistanceInMeters(
-                (float) $this->latitude,
-                (float) $this->longitude,
-                (float) $br->latitude,
-                (float) $br->longitude
-            );
+        if (!empty($this->latitude) && !empty($this->longitude)) {
+            foreach ($branches as $br) {
+                $dist = $this->calculateDistanceInMeters(
+                    (float) $this->latitude,
+                    (float) $this->longitude,
+                    (float) $br->latitude,
+                    (float) $br->longitude
+                );
 
-            if ($minDistance === null || $dist < $minDistance) {
-                $minDistance = $dist;
-                $nearestBranch = $br;
+                if ($minDistance === null || $dist < $minDistance) {
+                    $minDistance = $dist;
+                    $nearestBranch = $br;
+                }
             }
         }
 
@@ -98,19 +108,19 @@ class Index extends Component
             $matchedBranch = $nearestBranch;
         }
 
-        // Jika berada di luar radius seluruh kantor cabang:
-        if (!$isAdmin && !$matchedBranch) {
+        // Jika ada cabang terdaftar dengan koordinat GPS, validasi radius:
+        if (!$isAdmin && !$matchedBranch && $branches->isNotEmpty()) {
             if ($this->isFieldAssignment) {
                 if (empty(trim($this->notes ?? ''))) {
-                    $this->errorMessage = "Presensi Tugas Luar / Lapangan memerlukan catatan (contoh: No. Tiket, nama pelanggan, atau keperluan penugasan).";
+                    $this->errorMessage = "Presensi Tugas Luar / Lapangan memerlukan catatan (contoh: No. SPK, nama pelanggan, atau keperluan penugasan).";
                     return;
                 }
             } else {
                 $nearestText = $nearestBranch 
                     ? " Cabang terdekat adalah {$nearestBranch->name} (jarak terdeteksi: {$minDistance} meter, batas toleransi: {$maxAllowedRadius} meter)."
-                    : " Belum ada titik koordinat cabang yang terdaftar.";
+                    : "";
 
-                $this->errorMessage = "Gagal Check-In: Anda berada di luar radius kantor perusahaan.{$nearestText} Jika Anda ditugaskan langsung ke lapangan/pelanggan, centang opsi 'Tugas Luar / Lapangan' dan cantumkan keterangannya.";
+                $this->errorMessage = "Gagal Check-In: Anda berada di luar radius kantor perusahaan.{$nearestText} Jika Anda ditugaskan langsung ke lapangan/pelanggan, aktifkan opsi 'Tugas Luar / Lapangan' dan cantumkan keterangannya.";
                 return;
             }
         }
@@ -128,6 +138,7 @@ class Index extends Component
         } elseif ($this->isFieldAssignment) {
             $notes = ($notes ? $notes . ' | ' : '') . "Mode: Penugasan Lapangan / Tugas Luar";
         }
+        $notes = ($notes ? $notes . ' | ' : '') . "IP: {$ip}";
 
         Attendance::create([
             'id' => Str::uuid()->toString(),
@@ -182,12 +193,6 @@ class Index extends Component
 
     public function checkOut()
     {
-        if (!$this->latitude || !$this->longitude) {
-            $this->errorMessage = "Lokasi GPS tidak ditemukan. Pastikan akses lokasi (GPS) aktif.";
-            $this->confirmingCheckOut = false;
-            return;
-        }
-
         $attendance = $this->todayAttendance;
 
         if (!$attendance) {
@@ -202,7 +207,7 @@ class Index extends Component
             return;
         }
 
-        // Time lock check
+        // Time lock check (minimal 15 menit berdinas, kecuali admin)
         $minutesWorked = $attendance->checked_in_at ? Carbon::parse($attendance->checked_in_at)->diffInMinutes(Carbon::now()) : 0;
         $user = Auth::user();
         $isAdmin = $user && ($user->isSuperAdmin() || $user->hasRole(['administrator', 'superadmin', 'admin']));
@@ -215,12 +220,15 @@ class Index extends Component
         }
 
         $now = Carbon::now();
+        $ip = request()->ip();
+        $checkoutNote = 'Checkout IP: ' . $ip . ($this->notes ? ' | ' . trim($this->notes) : '');
+
         $attendance->update([
             'status' => AttendanceStatus::CHECKED_OUT,
             'check_out_latitude' => $this->latitude,
             'check_out_longitude' => $this->longitude,
             'checked_out_at' => $now,
-            'notes' => $attendance->notes ? $attendance->notes . ' | Checkout: ' . $this->notes : $this->notes,
+            'notes' => $attendance->notes ? $attendance->notes . ' | ' . $checkoutNote : $checkoutNote,
         ]);
 
         $this->notes = '';

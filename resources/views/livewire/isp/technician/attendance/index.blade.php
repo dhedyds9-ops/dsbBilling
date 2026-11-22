@@ -7,6 +7,10 @@
          homeBranch: @js($homeBranch ?? null)
      })">
 
+    <!-- Hidden bindings to guarantee Livewire receives coordinates -->
+    <input type="hidden" wire:model="latitude">
+    <input type="hidden" wire:model="longitude">
+
     <!-- Error / Success Alert -->
     @if($errorMessage)
         <div class="bg-rose-50 dark:bg-rose-950/40 p-3.5 rounded-2xl border border-rose-200 dark:border-rose-800/60 flex items-center gap-3 text-rose-800 dark:text-rose-300 text-xs shadow-sm">
@@ -93,8 +97,7 @@
                     wire:click="checkIn"
                     wire:loading.attr="disabled"
                     wire:target="checkIn"
-                    :disabled="gpsLoading || gpsError"
-                    class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 active:scale-[0.98] transition-all">
+                    class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all cursor-pointer">
                 <span wire:loading.remove wire:target="checkIn">ABSEN MASUK</span>
                 <span wire:loading wire:target="checkIn" class="flex items-center gap-2">
                     <svg class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
@@ -115,8 +118,7 @@
                     wire:click="checkOut"
                     wire:loading.attr="disabled"
                     wire:target="checkOut"
-                    :disabled="gpsLoading || gpsError"
-                    class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 active:scale-[0.98] transition-all">
+                    class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all cursor-pointer">
                 <span wire:loading.remove wire:target="checkOut">ABSEN PULANG</span>
                 <span wire:loading wire:target="checkOut" class="flex items-center gap-2">
                     <svg class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
@@ -135,6 +137,17 @@
                 ABSEN PULANG
             </button>
         @endif
+
+        <!-- GPS ERROR / RETRY PROMPT -->
+        <div x-show="gpsError" x-cloak class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center justify-between gap-2 text-xs text-amber-800 dark:text-amber-300">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-amber-500 text-lg">location_disabled</span>
+                <span>GPS belum terdeteksi. Izinkan akses lokasi browser Anda.</span>
+            </div>
+            <button type="button" @click="trackLocation()" class="px-2.5 py-1 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 transition cursor-pointer shrink-0">
+                Coba Lagi
+            </button>
+        </div>
     </div>
 
     <!-- 4. TUGAS LUAR / LAPANGAN CARD (Matching Image 1) -->
@@ -329,20 +342,30 @@
                     this.gpsLoading = true;
                     this.gpsError = false;
 
+                    const onSuccess = (pos) => this.handlePosition(pos, true);
+                    const onFallbackError = (err) => {
+                        this.gpsLoading = false;
+                        this.gpsError = true;
+                    };
+
                     navigator.geolocation.getCurrentPosition(
-                        (pos) => this.handlePosition(pos, true),
+                        onSuccess,
                         (err) => {
-                            this.gpsLoading = false;
-                            this.gpsError = true;
+                            // Fallback jika mode high-accuracy timeout (misal dalam ruangan)
+                            navigator.geolocation.getCurrentPosition(
+                                onSuccess,
+                                onFallbackError,
+                                { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+                            );
                         },
-                        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
                     );
 
                     try {
                         navigator.geolocation.watchPosition(
                             (pos) => this.handlePosition(pos, false),
                             null,
-                            { enableHighAccuracy: true, maximumAge: 5000 }
+                            { enableHighAccuracy: false, maximumAge: 10000 }
                         );
                     } catch(e) {}
                 },
@@ -356,6 +379,10 @@
                     this.gpsLoading = false;
                     this.gpsError = false;
 
+                    // Set coordinates directly to Livewire
+                    @this.set('latitude', lat);
+                    @this.set('longitude', lng);
+                    @this.updateLocation(lat, lng);
                     this.$dispatch('gps-located', { lat: lat, lng: lng });
 
                     if (this.map && typeof L !== 'undefined') {
