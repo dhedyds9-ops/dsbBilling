@@ -491,7 +491,8 @@ class OdcTopologyService
                     $onuColor = '#f59e0b'; // degraded/warning
                 }
 
-                $onuDropPort = $onu->attributes['port_number'] ?? ($onuIdx + 1);
+                $onuRawAttrs = is_array($onu->getAttribute('attributes')) ? $onu->getAttribute('attributes') : [];
+                $onuDropPort = $onuRawAttrs['port_number'] ?? $onu->odp_port ?? ($onuIdx + 1);
 
                 $nodes[] = [
                     'id' => $onuNodeId,
@@ -740,7 +741,7 @@ class OdcTopologyService
                 'odp_id' => $onu->odp?->id,
                 'odp_code' => $onu->odp?->code,
                 'odp_name' => $onu->odp?->name,
-                'odp_port' => $onu->attributes['port_number'] ?? $onu->odp_port ?? 1,
+                'odp_port' => (is_array($onu->getAttribute('attributes')) ? ($onu->getAttribute('attributes')['port_number'] ?? null) : null) ?? $onu->odp_port ?? 1,
                 'onu_id' => $onu->id,
                 'onu_code' => $onu->code,
                 'onu_sn' => $onu->serial_number,

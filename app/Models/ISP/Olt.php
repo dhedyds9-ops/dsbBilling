@@ -243,6 +243,11 @@ class Olt extends Model
         return $this->hasMany(OltMetric::class);
     }
 
+    public function jointClosures()
+    {
+        return $this->hasMany(JointClosure::class);
+    }
+
     public function onuSignals()
     {
         return $this->hasManyThrough(OnuSignal::class, Onu::class);

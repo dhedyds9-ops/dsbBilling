@@ -19,6 +19,7 @@ class Edit extends AdminComponent
     public $odp;
     public $branch_id;
     public $odc_id;
+    public $joint_closure_id;
     public $odc_port;
     public $parent_odp_id;
     public $uplink_type = 'odc'; // 'odc' or 'odp'
@@ -74,6 +75,7 @@ class Edit extends AdminComponent
 
         $this->branch_id = $this->odp->branch_id;
         $this->odc_id = $this->odp->odc_id;
+        $this->joint_closure_id = $this->odp->joint_closure_id;
         $this->odc_port = $this->odp->odc_port;
         $this->parent_odp_id = $this->odp->parent_odp_id;
         $this->uplink_type = $this->odp->parent_odp_id ? 'odp' : 'odc';
@@ -129,6 +131,7 @@ class Edit extends AdminComponent
         $service->update($this->odp, [
             'branch_id' => $this->branch_id === '' ? null : $this->branch_id,
             'odc_id' => $this->uplink_type === 'odc' ? $this->odc_id : null,
+            'joint_closure_id' => $this->joint_closure_id ? (int) $this->joint_closure_id : null,
             'parent_odp_id' => $this->uplink_type === 'odp' ? $this->parent_odp_id : null,
             'odc_port' => $this->uplink_type === 'odc' && $this->odc_port ? (int) $this->odc_port : null,
             'code' => $this->code,
@@ -167,7 +170,8 @@ class Edit extends AdminComponent
     {
         $branches = Branch::where('is_active', true)->orderBy('name')->get();
         $odcs = Odc::active()->with('parentOdc')->orderBy('name')->get();
+        $jointClosures = \App\Models\ISP\JointClosure::active()->orderBy('name')->get();
         $parentOdps = OdpModel::active()->where('id', '!=', $this->odpId)->orderBy('name')->get();
-        return view('livewire.isp.odp.edit', compact('branches', 'odcs', 'parentOdps'));
+        return view('livewire.isp.odp.edit', compact('branches', 'odcs', 'jointClosures', 'parentOdps'));
     }
 }

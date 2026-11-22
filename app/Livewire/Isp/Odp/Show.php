@@ -107,6 +107,13 @@ class Show extends AdminComponent
             $relations[] = 'odc.parentOdc.splitters';
         }
 
+        if (\Illuminate\Support\Facades\Schema::hasColumn('odps', 'joint_closure_id')) {
+            $relations[] = 'jointClosure';
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('odcs', 'joint_closure_id')) {
+            $relations[] = 'odc.jointClosure';
+        }
+
         $this->odp = OdpModel::with($relations)->findOrFail($this->odpId);
     }
 
@@ -192,7 +199,8 @@ class Show extends AdminComponent
             // 3. Check ONUs assigned directly to this port
             if (!$matchingOnu) {
                 foreach ($onus as $onu) {
-                    $assignedPort = (int) ($onu->pon_port ?: ($onu->attributes['port_number'] ?? ($onu->attributes['odp_port'] ?? 0)));
+                    $onuRawAttrs = is_array($onu->getAttribute('attributes')) ? $onu->getAttribute('attributes') : [];
+                    $assignedPort = (int) ($onu->pon_port ?: ($onuRawAttrs['port_number'] ?? ($onuRawAttrs['odp_port'] ?? 0)));
                     if ($assignedPort === $p) {
                         $matchingOnu = $onu;
                         if (!$matchingCustomer && $onu->customerService?->customer) {
@@ -541,10 +549,10 @@ class Show extends AdminComponent
             $onu = Onu::withoutGlobalScopes()->find($this->selectedPort['onu']['id']);
             if ($onu) {
                 $onu->pon_port = $toPort;
-                $onuAttrs = is_array($onu->attributes) ? $onu->attributes : [];
+                $onuAttrs = is_array($onu->getAttribute('attributes')) ? $onu->getAttribute('attributes') : [];
                 $onuAttrs['port_number'] = $toPort;
                 $onuAttrs['odp_port'] = $toPort;
-                $onu->attributes = $onuAttrs;
+                $onu->setAttribute('attributes', $onuAttrs);
                 $onu->save();
             }
         }
@@ -614,9 +622,9 @@ class Show extends AdminComponent
             $onu = Onu::withoutGlobalScopes()->find($p['onu']['id']);
             if ($onu) {
                 $onu->pon_port = null;
-                $onuAttrs = is_array($onu->attributes) ? $onu->attributes : [];
+                $onuAttrs = is_array($onu->getAttribute('attributes')) ? $onu->getAttribute('attributes') : [];
                 unset($onuAttrs['port_number'], $onuAttrs['odp_port']);
-                $onu->attributes = $onuAttrs;
+                $onu->setAttribute('attributes', $onuAttrs);
                 $onu->save();
             }
         }

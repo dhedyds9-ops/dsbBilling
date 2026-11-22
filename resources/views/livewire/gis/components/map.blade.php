@@ -2239,7 +2239,10 @@
                 if (odc.latitude && odc.longitude) {
                     var uplinkNode = null;
                     var uplinkType = 'olt';
-                    if (odc.parent_odc_id) {
+                    if (odc.joint_closure_id) {
+                        uplinkNode = closures.find(c => c.id == odc.joint_closure_id);
+                        uplinkType = 'closure';
+                    } else if (odc.parent_odc_id) {
                         uplinkNode = odcs.find(o => o.id == odc.parent_odc_id);
                         uplinkType = 'odc';
                     } else if (odc.olt_id) {
@@ -2249,7 +2252,7 @@
 
                     if (uplinkNode && uplinkNode.latitude && uplinkNode.longitude) {
                         var colorKey = (odc.color || '').toUpperCase();
-                        var lineColor = colorMap[colorKey] || odc.color || (uplinkType === 'odc' ? '#00e5ff' : '#6f42c1');
+                        var lineColor = colorMap[colorKey] || odc.color || (uplinkType === 'closure' ? '#0d9488' : (uplinkType === 'odc' ? '#00e5ff' : '#6f42c1'));
                         
                         var key = getConnectionKey(uplinkType, uplinkNode.id, 'odc', odc.id);
                         var pathPoints = [[uplinkNode.latitude, uplinkNode.longitude]];
@@ -2287,16 +2290,90 @@
                 }
             });
 
-            // ODC -> ODP
+            // Joint Closures Connections (OLT -> Closure, Parent Closure -> Closure, or ODC -> Closure)
+            closures.forEach(function(closure) {
+                if (isVisible(closure, 'closure') && closure.latitude && closure.longitude) {
+                    var uplinkNode = null;
+                    var uplinkType = null;
+                    var lineColor = '#0d9488'; // Teal
+
+                    if (closure.parent_closure_id) {
+                        uplinkNode = closures.find(c => c.id == closure.parent_closure_id);
+                        uplinkType = 'closure';
+                        lineColor = '#14b8a6';
+                    } else if (closure.odc_id) {
+                        uplinkNode = odcs.find(o => o.id == closure.odc_id);
+                        uplinkType = 'odc';
+                        lineColor = '#0d9488';
+                    } else if (closure.olt_id) {
+                        uplinkNode = olts.find(o => o.id == closure.olt_id);
+                        uplinkType = 'olt';
+                        lineColor = '#0284c7';
+                    }
+
+                    if (uplinkNode && uplinkNode.latitude && uplinkNode.longitude) {
+                        var key = getConnectionKey(uplinkType, uplinkNode.id, 'closure', closure.id);
+                        var pathPoints = [[uplinkNode.latitude, uplinkNode.longitude]];
+                        (waypoints[key] || []).forEach(function(p){ pathPoints.push([p.lat, p.lng]); });
+                        pathPoints.push([closure.latitude, closure.longitude]);
+
+                        var distanceRaw = calculatePolylineDistanceMeters(pathPoints);
+                        var distanceStr = (distanceRaw !== null && distanceRaw > 0) ? formatDistance(distanceRaw) : null;
+
+                        var poly;
+                        if (L.polyline && L.polyline.antPath) {
+                            poly = L.polyline.antPath(pathPoints, {
+                                color: lineColor,
+                                weight: 4,
+                                opacity: 0.85,
+                                dashArray: [4, 8],
+                                pulseColor: '#ffffff',
+                                delay: 400
+                            }).addTo(lines);
+                        } else {
+                            poly = L.polyline(pathPoints, {
+                                color: lineColor,
+                                weight: 4,
+                                opacity: 0.85
+                            }).addTo(lines);
+                        }
+
+                        if (distanceStr) poly.bindTooltip(distanceStr, {permanent: true, direction: 'center', className: 'distance-tooltip text-[10px] font-bold bg-white/70 px-1 py-0 border-none shadow-none rounded text-gray-800'});
+
+                        if (editMode) {
+                            poly.on('click', function(e) {
+                                addWaypointMarker(key, e.latlng);
+                                drawLines();
+                            });
+                        }
+                    }
+                }
+            });
+
+            // ODC / Closure -> ODP
             odps.forEach(function(odp) {
                 if (isVisible(odp, 'odp') && odp.latitude && odp.longitude) {
-                    var uplinkOdc = odcs.find(o => o.id == odp.odc_id);
-                    if (uplinkOdc && uplinkOdc.latitude && uplinkOdc.longitude) {
+                    var uplinkNode = null;
+                    var uplinkType = 'odc';
+                    var defaultColor = '#fd7e14';
+
+                    if (odp.joint_closure_id) {
+                        uplinkNode = closures.find(c => c.id == odp.joint_closure_id);
+                        uplinkType = 'closure';
+                        defaultColor = '#10b981'; // Emerald branch from Joint Closure
+                    }
+                    if (!uplinkNode && odp.odc_id) {
+                        uplinkNode = odcs.find(o => o.id == odp.odc_id);
+                        uplinkType = 'odc';
+                        defaultColor = '#fd7e14';
+                    }
+
+                    if (uplinkNode && uplinkNode.latitude && uplinkNode.longitude) {
                         var colorKey = (odp.color || '').toUpperCase();
-                        var lineColor = colorMap[colorKey] || odp.color || '#fd7e14';
+                        var lineColor = colorMap[colorKey] || odp.color || defaultColor;
                         
-                        var key = getConnectionKey('odc', uplinkOdc.id, 'odp', odp.id);
-                        var pathPoints = [[uplinkOdc.latitude, uplinkOdc.longitude]];
+                        var key = getConnectionKey(uplinkType, uplinkNode.id, 'odp', odp.id);
+                        var pathPoints = [[uplinkNode.latitude, uplinkNode.longitude]];
                         (waypoints[key] || []).forEach(function(p){ pathPoints.push([p.lat, p.lng]); });
                         pathPoints.push([odp.latitude, odp.longitude]);
 

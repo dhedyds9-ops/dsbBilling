@@ -2288,6 +2288,8 @@ class MobileNetworkApiController extends Controller
                 'id' => $odc->id,
                 'type' => 'odc',
                 'olt_id' => $odc->olt_id,
+                'parent_odc_id' => $odc->parent_odc_id,
+                'joint_closure_id' => $odc->joint_closure_id,
                 'olt_name' => $odc->olt?->name ?? 'OLT Core',
                 'code' => $odc->code,
                 'name' => $odc->name,
@@ -2304,13 +2306,17 @@ class MobileNetworkApiController extends Controller
         });
 
         // 3. Joint Closures (Closure FO - Semua role diizinkan tampil)
-        $closuresQuery = JointClosure::withoutGlobalScopes()->whereNull('deleted_at')->with(['odc:id,name,code']);
+        $closuresQuery = JointClosure::withoutGlobalScopes()->whereNull('deleted_at')->with(['odc:id,name,code', 'olt:id,name,code']);
         $closures = $closuresQuery->get()->map(function (JointClosure $jc) use ($formatPhotos) {
             return [
                 'id' => $jc->id,
                 'type' => 'closure',
                 'odc_id' => $jc->odc_id,
                 'odc_name' => $jc->odc?->name ?? '-',
+                'olt_id' => $jc->olt_id,
+                'olt_name' => $jc->olt?->name ?? '-',
+                'parent_closure_id' => $jc->parent_closure_id,
+                'pon_port' => $jc->pon_port,
                 'code' => $jc->code,
                 'name' => $jc->name,
                 'closure_type' => $jc->type ?? 'Dome',
@@ -2324,7 +2330,7 @@ class MobileNetworkApiController extends Controller
         });
 
         // 4. ODPs (Semua role diizinkan tampil - Data Akurat)
-        $odpsQuery = Odp::withoutGlobalScopes()->whereNull('deleted_at')->with(['odc:id,name,code', 'onus:id,odp_id']);
+        $odpsQuery = Odp::withoutGlobalScopes()->whereNull('deleted_at')->with(['odc:id,name,code', 'onus:id,odp_id', 'jointClosure:id,name,code']);
         $odps = $odpsQuery->get()->map(function (Odp $odp) use ($formatPhotos) {
             $totalPorts = (int)($odp->port_count ?? 8);
             $onuCount = $odp->onus ? $odp->onus->count() : 0;
@@ -2335,6 +2341,8 @@ class MobileNetworkApiController extends Controller
                 'id' => $odp->id,
                 'type' => 'odp',
                 'odc_id' => $odp->odc_id,
+                'joint_closure_id' => $odp->joint_closure_id,
+                'closure_name' => $odp->jointClosure?->name,
                 'odc_name' => $odp->odc?->name ?? 'ODC Utama',
                 'odc_code' => $odp->odc?->code ?? '-',
                 'code' => $odp->code,

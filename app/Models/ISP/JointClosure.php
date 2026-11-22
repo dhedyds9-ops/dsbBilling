@@ -31,6 +31,9 @@ class JointClosure extends Model
         'reseller_id',
         'vendor_id',
         'odc_id',
+        'olt_id',
+        'parent_closure_id',
+        'pon_port',
         'code',
         'name',
         'description',
@@ -79,6 +82,31 @@ class JointClosure extends Model
     public function odc()
     {
         return $this->belongsTo(Odc::class);
+    }
+
+    public function olt()
+    {
+        return $this->belongsTo(Olt::class);
+    }
+
+    public function parentClosure()
+    {
+        return $this->belongsTo(JointClosure::class, 'parent_closure_id');
+    }
+
+    public function childClosures()
+    {
+        return $this->hasMany(JointClosure::class, 'parent_closure_id');
+    }
+
+    public function odps()
+    {
+        return $this->hasMany(Odp::class);
+    }
+
+    public function odcs()
+    {
+        return $this->hasMany(Odc::class);
     }
 
     public function branch()

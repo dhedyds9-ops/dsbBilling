@@ -14,6 +14,7 @@ class Create extends AdminComponent
     public $branch_id;
     public $olt_id;
     public $parent_odc_id;
+    public $joint_closure_id;
     public $uplink_type = 'olt'; // 'olt' or 'odc'
     public $pop_id;
     public $code;
@@ -93,6 +94,7 @@ class Create extends AdminComponent
             'branch_id' => $this->branch_id === '' ? null : $this->branch_id,
             'olt_id' => $this->uplink_type === 'olt' ? $this->olt_id : null,
             'parent_odc_id' => $this->uplink_type === 'odc' ? $this->parent_odc_id : null,
+            'joint_closure_id' => $this->joint_closure_id ? (int) $this->joint_closure_id : null,
             'pop_id' => $this->pop_id,
             'code' => $this->code,
             'name' => $this->name,
@@ -114,6 +116,7 @@ class Create extends AdminComponent
         $olts = Olt::active()->get();
         $pops = Pop::active()->get();
         $parentOdcs = \App\Models\ISP\Odc::active()->orderBy('name')->get();
-        return view('livewire.isp.odc.create', compact('branches', 'olts', 'pops', 'parentOdcs'));
+        $jointClosures = \App\Models\ISP\JointClosure::active()->orderBy('name')->get();
+        return view('livewire.isp.odc.create', compact('branches', 'olts', 'pops', 'parentOdcs', 'jointClosures'));
     }
 }

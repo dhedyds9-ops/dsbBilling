@@ -87,6 +87,10 @@ class Show extends AdminComponent
             $relations[] = 'childOdcs.odps.onus.customerService.customer';
         }
 
+        if (\Illuminate\Support\Facades\Schema::hasColumn('odcs', 'joint_closure_id')) {
+            $relations[] = 'jointClosure';
+        }
+
         $this->odc = OdcModel::withoutGlobalScopes()
             ->with($relations)
             ->findOrFail($id);

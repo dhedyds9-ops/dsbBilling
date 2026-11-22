@@ -55,6 +55,7 @@ class Odp extends Model
 
     protected $fillable = [
         'odc_id',
+        'joint_closure_id',
         'odc_port',
         'olt_id',
         'pon_port_id',
@@ -214,6 +215,11 @@ class Odp extends Model
     public function odc()
     {
         return $this->belongsTo(Odc::class);
+    }
+
+    public function jointClosure()
+    {
+        return $this->belongsTo(JointClosure::class);
     }
 
     public function olt()

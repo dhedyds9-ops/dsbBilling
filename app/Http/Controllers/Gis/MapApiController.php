@@ -137,6 +137,7 @@ class MapApiController extends Controller
                     $model->port_count = $request->input('port_count') ?: 144;
                     if ($request->has('olt_id')) $model->olt_id = $request->input('olt_id') ?: null;
                     if ($request->has('parent_odc_id')) $model->parent_odc_id = $request->input('parent_odc_id') ?: null;
+                    if ($request->has('joint_closure_id')) $model->joint_closure_id = $request->input('joint_closure_id') ?: null;
                 }
                 break;
             case 'odp':
@@ -155,6 +156,7 @@ class MapApiController extends Controller
                     $model->port_count = $request->input('port_count') ?: 8;
                     $model->split_ratio = $request->input('split_ratio') ?: 8;
                     if ($request->has('odc_id')) $model->odc_id = $request->input('odc_id');
+                    if ($request->has('joint_closure_id')) $model->joint_closure_id = $request->input('joint_closure_id') ?: null;
                     if ($request->has('color')) $model->color = $request->input('color');
                 }
                 break;
@@ -191,7 +193,12 @@ class MapApiController extends Controller
                         $model->code = $code;
                         $model->address = $request->input('address');
                         $model->description = $request->input('description');
-                        if ($request->has('odc_id')) $model->odc_id = $request->input('odc_id');
+                        if ($request->has('odc_id')) $model->odc_id = $request->input('odc_id') ?: null;
+                        if ($request->has('olt_id')) $model->olt_id = $request->input('olt_id') ?: null;
+                        if ($request->has('parent_closure_id')) $model->parent_closure_id = $request->input('parent_closure_id') ?: null;
+                        if ($request->has('pon_port')) $model->pon_port = $request->input('pon_port') ?: null;
+                        if ($request->has('port_count')) $model->port_count = $request->input('port_count') ?: 24;
+                        if ($request->has('type')) $model->type = $request->input('type') ?: 'Dome';
                     }
                 }
                 break;

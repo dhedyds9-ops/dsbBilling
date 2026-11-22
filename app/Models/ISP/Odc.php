@@ -53,6 +53,7 @@ class Odc extends Model
     protected $fillable = [
         'olt_id',
         'parent_odc_id',
+        'joint_closure_id',
         'pop_id',
         'code',
         'name',
@@ -160,6 +161,16 @@ class Odc extends Model
     public function pop()
     {
         return $this->belongsTo(Pop::class);
+    }
+
+    public function jointClosure()
+    {
+        return $this->belongsTo(JointClosure::class);
+    }
+
+    public function jointClosures()
+    {
+        return $this->hasMany(JointClosure::class);
     }
 
     public function odps()

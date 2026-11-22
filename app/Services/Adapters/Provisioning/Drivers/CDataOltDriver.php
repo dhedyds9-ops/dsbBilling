@@ -1045,35 +1045,38 @@ class CDataOltDriver extends BaseOltDriver
             $gponDirectTemp = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.4') ?: []) : [];
 
             // GPON Optical Collect Table (.18.19.1.2 - CDATA OctetString holding Rx, Tx, Temp)
-            $opticalCollect = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.2')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.1.2') ?: [])) : [];
-
+            // Hanya walk tabel optical collect berat ini jika direct OID belum mengembalikan data
             $gponRx = $gponDirectRx;
             $gponTx = $gponDirectTx;
             $gponTemps = $gponDirectTemp;
 
-            if (!empty($opticalCollect)) {
-                foreach ($opticalCollect as $oKey => $oStr) {
-                    $cleanStr = trim((string)$oStr);
-                    $cleanStr = preg_replace('/^(STRING|Hex-STRING|OctetString|Hex)\s*:?\s*/i', '', $cleanStr);
-                    $hexOnly = preg_replace('/[^0-9A-Fa-f]/', '', $cleanStr);
-                    if (strlen($hexOnly) > 16 && strlen($hexOnly) % 2 === 0) {
-                        $decoded = @hex2bin($hexOnly);
-                        if ($decoded && preg_match('/[a-zA-Z]/', $decoded)) {
-                            $cleanStr = $decoded;
-                        }
-                    }
+            if (empty($gponRx)) {
+                $opticalCollect = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.2')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.1.2') ?: [])) : [];
 
-                    if (preg_match('/rx.*?power.*?:?\s*([-+]?\d+(?:\.\d+)?)/i', $cleanStr, $rm)) {
-                        $gponRx[$oKey] = (float)$rm[1];
-                    } elseif (preg_match('/[-+]?\d+(?:\.\d+)?/', $cleanStr, $nm) && (float)$nm[0] < -5.0 && (float)$nm[0] > -45.0) {
-                        $gponRx[$oKey] = (float)$nm[0];
-                    }
-                    if (preg_match('/tx.*?power.*?:?\s*([-+]?\d+(?:\.\d+)?)/i', $cleanStr, $tm)) {
-                        $gponTx[$oKey] = (float)$tm[1];
-                    }
-                    if (preg_match('/temp.*?:?\s*([-+]?\d+(?:\.\d+)?)/i', $cleanStr, $tpm)) {
-                        $gponTemps[$oKey] = (float)$tpm[1];
+                if (!empty($opticalCollect)) {
+                    foreach ($opticalCollect as $oKey => $oStr) {
+                        $cleanStr = trim((string)$oStr);
+                        $cleanStr = preg_replace('/^(STRING|Hex-STRING|OctetString|Hex)\s*:?\s*/i', '', $cleanStr);
+                        $hexOnly = preg_replace('/[^0-9A-Fa-f]/', '', $cleanStr);
+                        if (strlen($hexOnly) > 16 && strlen($hexOnly) % 2 === 0) {
+                            $decoded = @hex2bin($hexOnly);
+                            if ($decoded && preg_match('/[a-zA-Z]/', $decoded)) {
+                                $cleanStr = $decoded;
+                            }
+                        }
+
+                        if (preg_match('/rx.*?power.*?:?\s*([-+]?\d+(?:\.\d+)?)/i', $cleanStr, $rm)) {
+                            $gponRx[$oKey] = (float)$rm[1];
+                        } elseif (preg_match('/[-+]?\d+(?:\.\d+)?/', $cleanStr, $nm) && (float)$nm[0] < -5.0 && (float)$nm[0] > -45.0) {
+                            $gponRx[$oKey] = (float)$nm[0];
+                        }
+                        if (preg_match('/tx.*?power.*?:?\s*([-+]?\d+(?:\.\d+)?)/i', $cleanStr, $tm)) {
+                            $gponTx[$oKey] = (float)$tm[1];
+                        }
+                        if (preg_match('/temp.*?:?\s*([-+]?\d+(?:\.\d+)?)/i', $cleanStr, $tpm)) {
+                            $gponTemps[$oKey] = (float)$tpm[1];
+                        }
                     }
                 }
             }
@@ -1166,39 +1169,44 @@ class CDataOltDriver extends BaseOltDriver
         // Helper to normalize and lookup OID suffixes across SNMP result arrays
         $lookupVal = function(?array $arr, string $key) {
             if (empty($arr)) return null;
+
+            // 1. Direct match (as-is, trimmed, or with leading dot)
             if (array_key_exists($key, $arr)) return $arr[$key];
-            $trimmed = ltrim($key, '.');
-            if (array_key_exists($trimmed, $arr)) return $arr[$trimmed];
-            if (array_key_exists('.' . $trimmed, $arr)) return $arr['.' . $trimmed];
-            
-            // Extract suffix (e.g. 1.0.1.1 or 1310721.1 or 1.1)
-            $parts = explode('.', $trimmed);
+            $trimmedKey = ltrim($key, '.');
+            if (array_key_exists($trimmedKey, $arr)) return $arr[$trimmedKey];
+            if (array_key_exists('.' . $trimmedKey, $arr)) return $arr['.' . $trimmedKey];
+
+            // 2. Direct normalized dot-prefix loop match
+            $dotKey = '.' . $trimmedKey;
+            foreach ($arr as $k => $v) {
+                $dotK = '.' . ltrim((string)$k, '.');
+                if ($dotK === $dotKey) return $v;
+            }
+
+            // 3. Suffix matching (e.g. comparing "0.1.5" with "1.5" or "1310721.5" with "1.5")
+            $parts = explode('.', $trimmedKey);
             $cnt = count($parts);
-            if ($cnt >= 4) {
-                $lastFour = '.' . $parts[$cnt - 4] . '.' . $parts[$cnt - 3] . '.' . $parts[$cnt - 2] . '.' . $parts[$cnt - 1];
+
+            // Suffix 2-parts (port.onu_id) or 3-parts (slot.port.onu_id)
+            for ($i = min(3, $cnt); $i >= 2; $i--) {
+                $subKey = '.' . implode('.', array_slice($parts, -$i));
                 foreach ($arr as $k => $v) {
-                    if (str_ends_with((string)$k, $lastFour)) return $v;
+                    $dotK = '.' . ltrim((string)$k, '.');
+                    if (str_ends_with($dotK, $subKey) || str_ends_with($subKey, $dotK)) {
+                        return $v;
+                    }
                 }
             }
-            if ($cnt >= 3) {
-                $lastThree = '.' . $parts[$cnt - 3] . '.' . $parts[$cnt - 2] . '.' . $parts[$cnt - 1];
-                foreach ($arr as $k => $v) {
-                    if (str_ends_with((string)$k, $lastThree)) return $v;
-                }
-            }
-            if ($cnt >= 2) {
-                $lastTwo = '.' . $parts[$cnt - 2] . '.' . $parts[$cnt - 1];
-                if (array_key_exists($lastTwo, $arr)) return $arr[$lastTwo];
-                foreach ($arr as $k => $v) {
-                    if (str_ends_with((string)$k, $lastTwo)) return $v;
-                }
-            }
-            if ($cnt >= 1) {
+
+            // Fallback for single-part ONU id if port count is 1
+            if ($cnt >= 1 && ($this->olt->pon_port_count ?? 0) === 1) {
                 $lastOne = '.' . end($parts);
                 foreach ($arr as $k => $v) {
-                    if (str_ends_with((string)$k, $lastOne)) return $v;
+                    $dotK = '.' . ltrim((string)$k, '.');
+                    if (str_ends_with($dotK, $lastOne)) return $v;
                 }
             }
+
             return null;
         };
 

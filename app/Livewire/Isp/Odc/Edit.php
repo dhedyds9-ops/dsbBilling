@@ -21,6 +21,7 @@ class Edit extends AdminComponent
     public $branch_id;
     public $olt_id;
     public $parent_odc_id;
+    public $joint_closure_id;
     public $uplink_type = 'olt'; // 'olt' or 'odc'
     public $pop_id;
     public $code;
@@ -74,6 +75,7 @@ class Edit extends AdminComponent
         $this->branch_id = $this->odc->branch_id;
         $this->olt_id = $this->odc->olt_id;
         $this->parent_odc_id = $this->odc->parent_odc_id;
+        $this->joint_closure_id = $this->odc->joint_closure_id;
         $this->uplink_type = $this->odc->parent_odc_id ? 'odc' : 'olt';
         $this->pop_id = $this->odc->pop_id;
         $this->code = $this->odc->code;
@@ -117,6 +119,7 @@ class Edit extends AdminComponent
             'branch_id' => $this->branch_id === '' ? null : $this->branch_id,
             'olt_id' => $this->uplink_type === 'olt' ? $this->olt_id : null,
             'parent_odc_id' => $this->uplink_type === 'odc' ? $this->parent_odc_id : null,
+            'joint_closure_id' => $this->joint_closure_id ? (int) $this->joint_closure_id : null,
             'pop_id' => $this->pop_id,
             'code' => $this->code,
             'name' => $this->name,
@@ -151,6 +154,7 @@ class Edit extends AdminComponent
         $olts = Olt::active()->get();
         $pops = Pop::active()->get();
         $parentOdcs = OdcModel::active()->where('id', '!=', $this->odcId)->orderBy('name')->get();
-        return view('livewire.isp.odc.edit', compact('branches', 'olts', 'pops', 'parentOdcs'));
+        $jointClosures = \App\Models\ISP\JointClosure::active()->orderBy('name')->get();
+        return view('livewire.isp.odc.edit', compact('branches', 'olts', 'pops', 'parentOdcs', 'jointClosures'));
     }
 }

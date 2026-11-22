@@ -101,6 +101,21 @@
                     @endif
 
                     <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                            Joint Closure Jalur Distribusi <span class="text-xs text-slate-400 font-normal">(Opsional)</span>
+                        </label>
+                        <select wire:model="joint_closure_id" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
+                            <option value="">-- Tanpa Joint Closure (Langsung ke ODC/Induk) --</option>
+                            @foreach($jointClosures ?? [] as $jc)
+                                <option value="{{ $jc->id }}">
+                                    {{ $jc->code }} - {{ $jc->name }} ({{ ucfirst($jc->type ?? 'dome') }} · {{ $jc->port_count ?? 24 }} core)
+                                </option>
+                            @endforeach
+                        </select>
+                        <span class="text-xs text-slate-400 mt-1 block">Digunakan jika kabel drop/distribusi melewati sambungan box Joint Closure (ODC ➔ Closure ➔ ODP).</span>
+                    </div>
+
+                    <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cabang / Wilayah Kantor <span class="text-xs text-slate-400 font-normal">(Opsional)</span></label>
                         <select wire:model="branch_id" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
                             <option value="">-- Tanpa Cabang Khusus / Global --</option>

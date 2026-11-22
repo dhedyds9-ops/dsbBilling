@@ -851,23 +851,36 @@
                 }
             });
 
-            // Draw ODC -> JointClosure AntPath Lines
+            // Draw Closure Uplink AntPath Lines (OLT -> Closure, Parent Closure -> Closure, or ODC -> Closure)
             closures.forEach(jc => {
-                if (!jc.latitude || !jc.longitude || !jc.odc_id) return;
-                const odc = odcs.find(c => c.id == jc.odc_id);
-                if (odc && odc.latitude && odc.longitude) {
-                    const path = [[odc.latitude, odc.longitude], [jc.latitude, jc.longitude]];
+                if (!jc.latitude || !jc.longitude) return;
+                let uplinkNode = null;
+                let lineColor = '#0d9488';
+
+                if (jc.parent_closure_id) {
+                    uplinkNode = closures.find(c => c.id == jc.parent_closure_id);
+                    lineColor = '#14b8a6';
+                } else if (jc.odc_id) {
+                    uplinkNode = odcs.find(c => c.id == jc.odc_id);
+                    lineColor = '#0d9488';
+                } else if (jc.olt_id) {
+                    uplinkNode = olts.find(o => o.id == jc.olt_id);
+                    lineColor = '#0284c7';
+                }
+
+                if (uplinkNode && uplinkNode.latitude && uplinkNode.longitude) {
+                    const path = [[uplinkNode.latitude, uplinkNode.longitude], [jc.latitude, jc.longitude]];
                     if (L.polyline && L.polyline.antPath) {
                         L.polyline.antPath(path, {
-                            color: '#0d9488',
-                            weight: 3,
-                            opacity: 0.8,
+                            color: lineColor,
+                            weight: 3.5,
+                            opacity: 0.85,
                             dashArray: [4, 8],
                             pulseColor: '#ffffff',
                             delay: 400
                         }).addTo(backboneLayerGroup);
                     } else {
-                        L.polyline(path, { color: '#0d9488', weight: 3, opacity: 0.8 }).addTo(backboneLayerGroup);
+                        L.polyline(path, { color: lineColor, weight: 3.5, opacity: 0.85 }).addTo(backboneLayerGroup);
                     }
                 }
             });
@@ -944,23 +957,32 @@
                 odpMarkers[odp.id] = marker;
                 boundsGroup.push(marker);
 
-                // Connect ODC -> ODP line
-                if (odp.odc_id) {
-                    const allNodesData = (typeof allNodes !== 'undefined') ? allNodes : (@json($allNodes) || {});
-                    const uplinkOdc = ((allNodesData.odcs || [])).find(c => c.id == odp.odc_id);
-                    if (uplinkOdc && uplinkOdc.latitude && uplinkOdc.longitude) {
-                        const path = [[uplinkOdc.latitude, uplinkOdc.longitude], [odp.latitude, odp.longitude]];
-                        if (L.polyline && L.polyline.antPath) {
-                            L.polyline.antPath(path, {
-                                color: '#fd7e14',
-                                weight: 4,
-                                opacity: 0.8,
-                                pulseColor: '#ffffff',
-                                delay: 400
-                            }).addTo(odpLayerGroup);
-                        } else {
-                            L.polyline(path, { color: '#fd7e14', weight: 4, opacity: 0.8 }).addTo(odpLayerGroup);
-                        }
+                // Connect Closure -> ODP or ODC -> ODP line
+                const allNodesData = (typeof allNodes !== 'undefined') ? allNodes : (@json($allNodes) || {});
+                let uplinkNode = null;
+                let lineColor = '#fd7e14';
+
+                if (odp.joint_closure_id) {
+                    uplinkNode = ((allNodesData.closures || [])).find(c => c.id == odp.joint_closure_id);
+                    lineColor = '#10b981';
+                }
+                if (!uplinkNode && odp.odc_id) {
+                    uplinkNode = ((allNodesData.odcs || [])).find(c => c.id == odp.odc_id);
+                    lineColor = '#fd7e14';
+                }
+
+                if (uplinkNode && uplinkNode.latitude && uplinkNode.longitude) {
+                    const path = [[uplinkNode.latitude, uplinkNode.longitude], [odp.latitude, odp.longitude]];
+                    if (L.polyline && L.polyline.antPath) {
+                        L.polyline.antPath(path, {
+                            color: lineColor,
+                            weight: 4,
+                            opacity: 0.8,
+                            pulseColor: '#ffffff',
+                            delay: 400
+                        }).addTo(odpLayerGroup);
+                    } else {
+                        L.polyline(path, { color: lineColor, weight: 4, opacity: 0.8 }).addTo(odpLayerGroup);
                     }
                 }
 

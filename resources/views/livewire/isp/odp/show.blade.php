@@ -533,63 +533,54 @@
     {{-- ========================================================================= --}}
     @if($activeTab === 'topology')
         <style>
-            #odp-topology-wrapper:fullscreen {
+            #topologyContainer {
+                width: 100% !important;
+                height: 640px !important;
+                min-height: 560px !important;
                 background-color: #020617 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                display: flex !important;
-                flex-direction: column !important;
-                border-radius: 0 !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                border: none !important;
-                overflow: hidden !important;
             }
+            #odp-topology-wrapper.is-topology-fullscreen,
+            #odp-topology-wrapper:fullscreen,
             #odp-topology-wrapper:-webkit-full-screen {
-                background-color: #020617 !important;
+                position: fixed !important;
+                inset: 0 !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
                 width: 100vw !important;
                 height: 100vh !important;
+                max-width: 100vw !important;
+                max-height: 100vh !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                z-index: 999999 !important;
                 display: flex !important;
                 flex-direction: column !important;
-                border-radius: 0 !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                border: none !important;
-                overflow: hidden !important;
-            }
-            #odp-topology-wrapper.is-fullscreen {
                 background-color: #020617 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                display: flex !important;
-                flex-direction: column !important;
                 border-radius: 0 !important;
-                padding: 0 !important;
-                margin: 0 !important;
                 border: none !important;
-                overflow: hidden !important;
             }
+            #odp-topology-wrapper.is-topology-fullscreen .topo-header-bar,
             #odp-topology-wrapper:fullscreen .topo-header-bar,
-            #odp-topology-wrapper:-webkit-full-screen .topo-header-bar,
-            #odp-topology-wrapper.is-fullscreen .topo-header-bar {
+            #odp-topology-wrapper:-webkit-full-screen .topo-header-bar {
                 background-color: #0b1120 !important;
                 border-color: #1e293b !important;
-                color: #f8fafc !important;
                 flex-shrink: 0 !important;
             }
+            #odp-topology-wrapper.is-topology-fullscreen #topologyContainer,
             #odp-topology-wrapper:fullscreen #topologyContainer,
-            #odp-topology-wrapper:-webkit-full-screen #topologyContainer,
-            #odp-topology-wrapper.is-fullscreen #topologyContainer {
-                flex: 1 1 0% !important;
+            #odp-topology-wrapper:-webkit-full-screen #topologyContainer {
+                flex: 1 1 auto !important;
                 height: calc(100vh - 65px) !important;
                 min-height: calc(100vh - 65px) !important;
-                max-height: none !important;
+                max-height: calc(100vh - 65px) !important;
                 width: 100vw !important;
+                border-radius: 0 !important;
                 background-color: #020617 !important;
-                border-top: none !important;
             }
         </style>
-        <div id="odp-topology-wrapper" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div id="odp-topology-wrapper" x-data x-init="$nextTick(() => { window.initOdpTopology && window.initOdpTopology(); })" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div class="topo-header-bar p-3.5 sm:p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900/60">
                 <div>
                     <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -597,7 +588,7 @@
                         Diagram Topologi Visual Distribusi Fiber Optik
                     </h3>
                     <p class="text-xs text-slate-400 mt-0.5">
-                        Jalur fisik terintegrasi: OLT ➔ Feeder ➔ ODC ➔ ODP ➔ Splitter ➔ Port ➔ ONT ➔ Pelanggan
+                        Jalur fisik terintegrasi: OLT ➔ Feeder ➔ ODC ➔ Joint Closure ➔ ODP ➔ Splitter ➔ Port ➔ ONT ➔ Pelanggan
                     </p>
                 </div>
                 <div class="flex items-center gap-2 text-xs">
@@ -632,6 +623,10 @@
                 $oltIp = $olt ? ($olt->ip_address ?: '10.10.10.1') : '10.10.10.1';
                 $oltModel = $olt?->model ?: 'GPON OLT Chassis';
 
+                // Joint Closure Detections
+                $feederClosure = $odp->odc?->jointClosure ?? $parentOdc?->jointClosure;
+                $distClosure = $odp->jointClosure;
+
                 // Deteksi ODC nyata
                 $hasRealOdc = !empty($odp->odc) || !empty($parentOdp?->odc);
                 $odcModel = $odp->odc ?? $parentOdp?->odc;
@@ -650,78 +645,93 @@
                 };
 
                 // Link Budget Estimation
-                $sfpTx = 7.5;
+                $sfpTx = 8.0;
                 $feederLoss = 0.4;
-                $odcLoss = 7.2;
+                $feederSpliceLoss = $feederClosure ? 0.1 : 0.0;
+                $odcLoss = $hasRealOdc ? 7.2 : 0.0;
                 $distLoss = 0.3;
+                $distSpliceLoss = $distClosure ? 0.1 : 0.0;
                 $odpLossVal = (float) $odpSplitterLoss;
                 $dropLoss = 0.2;
-                $estOntPower = round($sfpTx - $feederLoss - $odcLoss - $distLoss - $odpLossVal - $dropLoss, 1);
+                $estOntPower = round($sfpTx - $feederLoss - $feederSpliceLoss - $odcLoss - $distLoss - $distSpliceLoss - $odpLossVal - $dropLoss, 1);
 
                 // Port & Vertical Grid
                 $portCount = count($ports) > 0 ? count($ports) : $odpRatio;
-                $portCardH = $portCount > 8 ? 44 : 50;
-                $portGap = $portCount > 8 ? 12 : 16;
-                $portYStart = 95;
+                $portCardH = $portCount > 8 ? 38 : 46;
+                $portGap = $portCount > 8 ? 8 : 12;
+                $portYStart = 90;
                 $totalPortsHeight = ($portCount * ($portCardH + $portGap)) - $portGap;
                 $diagramCenterY = $portYStart + ($totalPortsHeight / 2);
 
-                $canvasBaseHeight = max(700, $portYStart + $totalPortsHeight + 85);
+                $canvasBaseHeight = max(580, $portYStart + $totalPortsHeight + 80);
 
-                // Horizontal Column Geometry (Wide & Proportional)
-                $colX = 40;
-                $wOlt = 270;
+                // Horizontal Column Geometry (Compact, High-Contrast & Wide)
+                $colX = 35;
+                $span = 65;
+
+                // Stage 1: OLT
+                $wOlt = 220;
                 $xOlt = $colX;
-                $colX += $wOlt;
+                $colX += $wOlt + $span;
 
-                $spanFeeder = 130;
-                $colX += $spanFeeder;
+                // Stage 2: Feeder Closure (if present)
+                $xFeederClosure = null;
+                $wClosure = 175;
+                if ($feederClosure) {
+                    $xFeederClosure = $colX;
+                    $colX += $wClosure + $span;
+                }
 
+                // Stage 3: ODC / Induk ODP
                 $xTier1 = null;
                 $xTier2 = null;
-                $wTier = 280;
+                $wTier = 220;
 
                 if ($isCascadeOdc) {
                     $xTier1 = $colX;
-                    $colX += $wTier + 120;
+                    $colX += $wTier + $span;
                     $xTier2 = $colX;
-                    $colX += $wTier + 120;
+                    $colX += $wTier + $span;
                 } elseif ($isCascadeOdp) {
                     if ($hasRealOdc) {
                         $xTier1 = $colX;
-                        $colX += $wTier + 120;
+                        $colX += $wTier + $span;
                         $xTier2 = $colX;
-                        $colX += $wTier + 120;
+                        $colX += $wTier + $span;
                     } else {
                         $xTier2 = $colX;
-                        $colX += $wTier + 120;
+                        $colX += $wTier + $span;
                     }
                 } else {
                     if ($hasRealOdc) {
                         $xTier1 = $colX;
-                        $colX += $wTier + 120;
+                        $colX += $wTier + $span;
                     }
                 }
 
-                $wTargetOdp = 310;
+                // Stage 4: Distribution Closure (if present)
+                $xDistClosure = null;
+                if ($distClosure) {
+                    $xDistClosure = $colX;
+                    $colX += $wClosure + $span;
+                }
+
+                // Stage 5: Target ODP
+                $wTargetOdp = 245;
                 $xTargetOdp = $colX;
-                $colX += $wTargetOdp;
+                $colX += $wTargetOdp + 75;
 
-                $spanSplitter = 110;
-                $colX += $spanSplitter;
-
-                $wPort = 90;
+                // Stage 6: Ports
+                $wPort = 80;
                 $xPorts = $colX;
-                $colX += $wPort;
+                $colX += $wPort + 45;
 
-                $spanDrop = 85;
-                $colX += $spanDrop;
-
-                $wCust = 360;
+                // Stage 7: Subscribers / ONT
+                $wCust = 315;
                 $xCust = $colX;
-                $totalDiagramWidth = $xCust + $wCust + 60;
+                $totalDiagramWidth = $xCust + $wCust + 40;
             @endphp
-            <div id="topologyContainer" class="w-full h-[720px] lg:h-[780px] bg-slate-950 overflow-hidden relative cursor-grab active:cursor-grabbing select-none border-t border-slate-800">
+            <div id="topologyContainer" style="width: 100%; height: 640px; min-height: 560px; background-color: #020617;" class="w-full min-h-[580px] h-[640px] xl:h-[680px] bg-[#020617] overflow-hidden relative cursor-grab active:cursor-grabbing select-none border-t border-slate-800">
                 <svg id="topologySvg" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         {{-- Gradients --}}
@@ -729,6 +739,11 @@
                             <stop offset="0%" stop-color="#0c2340"/>
                             <stop offset="50%" stop-color="#1e3a8a"/>
                             <stop offset="100%" stop-color="#0284c7"/>
+                        </linearGradient>
+                        <linearGradient id="gradClosure" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#1e1b4b"/>
+                            <stop offset="50%" stop-color="#312e81"/>
+                            <stop offset="100%" stop-color="#6366f1"/>
                         </linearGradient>
                         <linearGradient id="gradParentOdc" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" stop-color="#1e1b4b"/>
@@ -758,292 +773,310 @@
                         <filter id="glowTargetOdp" x="-20%" y="-20%" width="140%" height="140%">
                             <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#10b981" flood-opacity="0.4"/>
                         </filter>
+                        <filter id="glowClosure" x="-20%" y="-20%" width="140%" height="140%">
+                            <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#818cf8" flood-opacity="0.35"/>
+                        </filter>
                     </defs>
 
-                    <g id="topologyViewport" transform="matrix(1 0 0 1 40 40)">
+                    <g id="topologyViewport" transform="matrix(1 0 0 1 35 30)">
                         {{-- ============================================================== --}}
                         {{-- 0. ARCHITECTURAL STAGE COLUMN HEADERS                          --}}
                         {{-- ============================================================== --}}
-                        {{-- Stage 1 Header --}}
-                        <g transform="translate({{ $xOlt }}, 40)">
-                            <rect width="210" height="26" rx="6" fill="#0f172a" stroke="#0284c7" stroke-width="1.2"/>
-                            <circle cx="16" cy="13" r="4" fill="#38bdf8"/>
-                            <text x="28" y="17" fill="#38bdf8" font-size="10" font-weight="900" font-family="sans-serif" letter-spacing="0.5">1. CORE OLT (CENTRAL OFFICE)</text>
+                        {{-- Stage 1: OLT Core --}}
+                        <g transform="translate({{ $xOlt }}, 35)">
+                            <rect width="190" height="24" rx="6" fill="#0f172a" stroke="#0284c7" stroke-width="1.2"/>
+                            <circle cx="14" cy="12" r="3.5" fill="#38bdf8"/>
+                            <text x="25" y="16" fill="#38bdf8" font-size="9.5" font-weight="900" font-family="sans-serif" letter-spacing="0.5">1. CORE OLT</text>
                         </g>
 
-                        {{-- Stage 2 Header --}}
-                        @if($xTier1 || $xTier2)
-                            <g transform="translate({{ $xTier1 ?? $xTier2 }}, 40)">
-                                <rect width="230" height="26" rx="6" fill="#0f172a" stroke="#d97706" stroke-width="1.2"/>
-                                <circle cx="16" cy="13" r="4" fill="#fbbf24"/>
-                                <text x="28" y="17" fill="#fbbf24" font-size="10" font-weight="900" font-family="sans-serif" letter-spacing="0.5">2. SPLITTER PRIMER (FEEDER)</text>
+                        {{-- Feeder Closure Header (if present) --}}
+                        @if($xFeederClosure)
+                            <g transform="translate({{ $xFeederClosure }}, 35)">
+                                <rect width="160" height="24" rx="6" fill="#0f172a" stroke="#818cf8" stroke-width="1.2"/>
+                                <circle cx="14" cy="12" r="3.5" fill="#a5b4fc"/>
+                                <text x="25" y="16" fill="#a5b4fc" font-size="9.5" font-weight="900" font-family="sans-serif" letter-spacing="0.5">FEEDER CLOSURE</text>
                             </g>
                         @endif
 
-                        {{-- Stage 3 Header --}}
-                        <g transform="translate({{ $xTargetOdp }}, 40)">
-                            <rect width="225" height="26" rx="6" fill="#0f172a" stroke="#10b981" stroke-width="1.5"/>
-                            <circle cx="16" cy="13" r="4" fill="#34d399"/>
-                            <text x="28" y="17" fill="#34d399" font-size="10" font-weight="900" font-family="sans-serif" letter-spacing="0.5">3. TITIK DISTRIBUSI (ODP)</text>
+                        {{-- Stage 2: ODC / Splitter Primer --}}
+                        @if($xTier1 || $xTier2)
+                            <g transform="translate({{ $xTier1 ?? $xTier2 }}, 35)">
+                                <rect width="195" height="24" rx="6" fill="#0f172a" stroke="#d97706" stroke-width="1.2"/>
+                                <circle cx="14" cy="12" r="3.5" fill="#fbbf24"/>
+                                <text x="25" y="16" fill="#fbbf24" font-size="9.5" font-weight="900" font-family="sans-serif" letter-spacing="0.5">2. KABINET ODC</text>
+                            </g>
+                        @endif
+
+                        {{-- Dist Closure Header (if present) --}}
+                        @if($xDistClosure)
+                            <g transform="translate({{ $xDistClosure }}, 35)">
+                                <rect width="160" height="24" rx="6" fill="#0f172a" stroke="#818cf8" stroke-width="1.2"/>
+                                <circle cx="14" cy="12" r="3.5" fill="#a5b4fc"/>
+                                <text x="25" y="16" fill="#a5b4fc" font-size="9.5" font-weight="900" font-family="sans-serif" letter-spacing="0.5">DIST. CLOSURE</text>
+                            </g>
+                        @endif
+
+                        {{-- Stage 3: Target ODP --}}
+                        <g transform="translate({{ $xTargetOdp }}, 35)">
+                            <rect width="210" height="24" rx="6" fill="#0f172a" stroke="#10b981" stroke-width="1.5"/>
+                            <circle cx="14" cy="12" r="3.5" fill="#34d399"/>
+                            <text x="25" y="16" fill="#34d399" font-size="9.5" font-weight="900" font-family="sans-serif" letter-spacing="0.5">3. TITIK DISTRIBUSI (ODP)</text>
                         </g>
 
-                        {{-- Stage 4 Header --}}
-                        <g transform="translate({{ $xPorts }}, 40)">
-                            <rect width="85" height="26" rx="6" fill="#0f172a" stroke="#6366f1" stroke-width="1.2"/>
-                            <text x="42" y="17" fill="#a5b4fc" font-size="10" font-weight="900" font-family="sans-serif" text-anchor="middle">4. PORT</text>
+                        {{-- Stage 4: Ports --}}
+                        <g transform="translate({{ $xPorts }}, 35)">
+                            <rect width="78" height="24" rx="6" fill="#0f172a" stroke="#6366f1" stroke-width="1.2"/>
+                            <text x="39" y="16" fill="#a5b4fc" font-size="9.5" font-weight="900" font-family="sans-serif" text-anchor="middle">4. PORT</text>
                         </g>
 
-                        {{-- Stage 5 Header --}}
-                        <g transform="translate({{ $xCust }}, 40)">
-                            <rect width="260" height="26" rx="6" fill="#0f172a" stroke="#8b5cf6" stroke-width="1.2"/>
-                            <circle cx="16" cy="13" r="4" fill="#c084fc"/>
-                            <text x="28" y="17" fill="#c084fc" font-size="10" font-weight="900" font-family="sans-serif" letter-spacing="0.5">5. TERMINASI PELANGGAN (ONT/CPE)</text>
+                        {{-- Stage 5: Pelanggan / ONT --}}
+                        <g transform="translate({{ $xCust }}, 35)">
+                            <rect width="250" height="24" rx="6" fill="#0f172a" stroke="#8b5cf6" stroke-width="1.2"/>
+                            <circle cx="14" cy="12" r="3.5" fill="#c084fc"/>
+                            <text x="25" y="16" fill="#c084fc" font-size="9.5" font-weight="900" font-family="sans-serif" letter-spacing="0.5">5. ONT &amp; PELANGGAN</text>
                         </g>
 
                         {{-- ============================================================== --}}
                         {{-- 1. STAGE 1: OLT CORE NODE                                      --}}
                         {{-- ============================================================== --}}
-                        <g id="nodeOlt" transform="translate({{ $xOlt }}, {{ $diagramCenterY - 70 }})"
+                        <g id="nodeOlt" transform="translate({{ $xOlt }}, {{ $diagramCenterY - 60 }})"
                            class="cursor-pointer" filter="url(#nodeShadow)"
                            @if($olt) onclick="window.open('/isp/olts/{{ $olt->id }}', '_blank')" @endif>
-                            <rect width="{{ $wOlt }}" height="140" rx="16" fill="url(#gradOlt)" stroke="#38bdf8" stroke-width="2.5"/>
+                            <rect width="{{ $wOlt }}" height="120" rx="14" fill="url(#gradOlt)" stroke="#38bdf8" stroke-width="2.2"/>
                             
                             {{-- Top Badges --}}
-                            <rect x="14" y="14" width="105" height="20" rx="5" fill="#0369a1"/>
-                            <text x="22" y="28" fill="#e0f2fe" font-size="10" font-weight="bold" font-family="sans-serif">CORE OLT GPON</text>
+                            <rect x="12" y="12" width="95" height="18" rx="4" fill="#0369a1"/>
+                            <text x="18" y="24" fill="#e0f2fe" font-size="9" font-weight="bold" font-family="sans-serif">CORE OLT GPON</text>
 
-                            <circle cx="{{ $wOlt - 22 }}" cy="24" r="5" fill="#34d399"/>
-                            <text x="{{ $wOlt - 32 }}" y="28" fill="#34d399" font-size="10" font-weight="bold" font-family="monospace" text-anchor="end">ONLINE</text>
+                            <circle cx="{{ $wOlt - 18 }}" cy="21" r="4.5" fill="#34d399"/>
+                            <text x="{{ $wOlt - 27 }}" y="25" fill="#34d399" font-size="9.5" font-weight="bold" font-family="monospace" text-anchor="end">ONLINE</text>
 
                             {{-- Device Title & Info --}}
-                            <text x="14" y="58" fill="#ffffff" font-size="16" font-weight="900" font-family="sans-serif">{{ Str::limit($oltName, 17) }}</text>
-                            <text x="14" y="78" fill="#94a3b8" font-size="11" font-family="monospace">IP: {{ $oltIp }} • {{ Str::limit($oltModel, 14) }}</text>
+                            <text x="12" y="52" fill="#ffffff" font-size="14.5" font-weight="900" font-family="sans-serif">{{ Str::limit($oltName, 17) }}</text>
+                            <text x="12" y="69" fill="#94a3b8" font-size="10" font-family="monospace">IP: {{ $oltIp }}</text>
 
                             {{-- Optical Specs Box --}}
-                            <rect x="12" y="90" width="{{ $wOlt - 24 }}" height="38" rx="8" fill="#081b33" stroke="#1e3a8a" stroke-width="1.2"/>
-                            <text x="20" y="106" fill="#38bdf8" font-size="11" font-weight="bold" font-family="monospace">SFP Tx: +{{ $sfpTx }} dBm (Class C++)</text>
-                            <text x="20" y="120" fill="#94a3b8" font-size="9.5" font-family="sans-serif">1490nm Tx / 1310nm Rx • PON Port 1</text>
+                            <rect x="10" y="78" width="{{ $wOlt - 20 }}" height="32" rx="7" fill="#081b33" stroke="#1e3a8a" stroke-width="1.1"/>
+                            <text x="16" y="92" fill="#38bdf8" font-size="10" font-weight="bold" font-family="monospace">SFP Tx: +{{ $sfpTx }} dBm (C++)</text>
+                            <text x="16" y="104" fill="#94a3b8" font-size="8.5" font-family="sans-serif">1490nm Tx • PON Port 1</text>
 
                             {{-- Optical Socket Connector (Right Side) --}}
-                            <rect x="{{ $wOlt - 6 }}" y="58" width="10" height="24" rx="3" fill="#0284c7" stroke="#38bdf8" stroke-width="1.5"/>
+                            <rect x="{{ $wOlt - 5 }}" y="48" width="8" height="20" rx="3" fill="#0284c7" stroke="#38bdf8" stroke-width="1.3"/>
                         </g>
+
+                        {{-- CABLE: OLT ➔ FEEDER CLOSURE (if present) OR OLT ➔ ODC --}}
+                        @php $nextFeederTargetX = $xFeederClosure ?? ($xTier1 ?? ($xTier2 ?? $xTargetOdp)); @endphp
+                        <path d="M {{ $xOlt + $wOlt }} {{ $diagramCenterY }} L {{ $nextFeederTargetX }} {{ $diagramCenterY }}" stroke="#0284c7" stroke-width="6" opacity="0.35"/>
+                        <path d="M {{ $xOlt + $wOlt }} {{ $diagramCenterY }} L {{ $nextFeederTargetX }} {{ $diagramCenterY }}" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="8,5"/>
+                        @php $midFeeder = ($xOlt + $wOlt + $nextFeederTargetX) / 2; @endphp
+                        <g transform="translate({{ $midFeeder - 45 }}, {{ $diagramCenterY - 12 }})">
+                            <rect width="90" height="24" rx="6" fill="#090d16" stroke="#0284c7" stroke-width="1.2"/>
+                            <text x="45" y="15" fill="#bae6fd" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">Feeder FO</text>
+                        </g>
+
+                        {{-- FEEDER JOINT CLOSURE NODE (if present) --}}
+                        @if($feederClosure && $xFeederClosure)
+                            <g id="nodeFeederClosure" transform="translate({{ $xFeederClosure }}, {{ $diagramCenterY - 55 }})" class="cursor-pointer" filter="url(#glowClosure)">
+                                <rect width="{{ $wClosure }}" height="110" rx="14" fill="url(#gradClosure)" stroke="#818cf8" stroke-width="2"/>
+                                <rect x="10" y="10" width="100" height="18" rx="4" fill="#312e81"/>
+                                <text x="16" y="22" fill="#c7d2fe" font-size="8.5" font-weight="bold" font-family="sans-serif">JOINT CLOSURE</text>
+
+                                <text x="10" y="48" fill="#ffffff" font-size="13" font-weight="900" font-family="sans-serif">{{ Str::limit($feederClosure->name, 15) }}</text>
+                                <text x="10" y="64" fill="#c7d2fe" font-size="9.5" font-family="monospace">{{ $feederClosure->code }}</text>
+
+                                <rect x="8" y="72" width="{{ $wClosure - 16 }}" height="28" rx="6" fill="#090d16" stroke="#4338ca" stroke-width="1"/>
+                                <text x="14" y="85" fill="#a5b4fc" font-size="9" font-weight="bold" font-family="sans-serif">Splice: -0.1 dB</text>
+                                <text x="14" y="95" fill="#64748b" font-size="8" font-family="sans-serif">{{ ucfirst($feederClosure->type ?? 'Dome') }} Box</text>
+                            </g>
+
+                            {{-- Cable: Feeder Closure ➔ ODC --}}
+                            @php $odcTargetX = $xTier1 ?? ($xTier2 ?? $xTargetOdp); @endphp
+                            <path d="M {{ $xFeederClosure + $wClosure }} {{ $diagramCenterY }} L {{ $odcTargetX }} {{ $diagramCenterY }}" stroke="#4f46e5" stroke-width="6" opacity="0.35"/>
+                            <path d="M {{ $xFeederClosure + $wClosure }} {{ $diagramCenterY }} L {{ $odcTargetX }} {{ $diagramCenterY }}" stroke="#818cf8" stroke-width="2.5"/>
+                            @php $midSplice = ($xFeederClosure + $wClosure + $odcTargetX) / 2; @endphp
+                            <g transform="translate({{ $midSplice - 45 }}, {{ $diagramCenterY - 12 }})">
+                                <rect width="90" height="24" rx="6" fill="#090d16" stroke="#6366f1" stroke-width="1.2"/>
+                                <text x="45" y="15" fill="#c7d2fe" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">Splice Trunk</text>
+                            </g>
+                        @endif
 
                         {{-- ============================================================== --}}
                         {{-- 2. STAGE 2: ODC KABINET / PARENT ODP (PRIMARY SPLITTER)        --}}
                         {{-- ============================================================== --}}
                         @if($isCascadeOdc)
-                            {{-- Feeder Line: OLT -> Parent ODC --}}
-                            <path d="M {{ $xOlt + $wOlt }} {{ $diagramCenterY }} L {{ $xTier1 }} {{ $diagramCenterY }}" stroke="#0284c7" stroke-width="7" opacity="0.35"/>
-                            <path d="M {{ $xOlt + $wOlt }} {{ $diagramCenterY }} L {{ $xTier1 }} {{ $diagramCenterY }}" stroke="#38bdf8" stroke-width="3" stroke-dasharray="8,5"/>
-                            
-                            @php $midFeeder = ($xOlt + $wOlt + $xTier1) / 2; @endphp
-                            <g transform="translate({{ $midFeeder - 55 }}, {{ $diagramCenterY - 14 }})">
-                                <rect width="110" height="28" rx="7" fill="#090d16" stroke="#0284c7" stroke-width="1.5"/>
-                                <text x="55" y="18" fill="#bae6fd" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">Feeder FO</text>
-                            </g>
-
                             {{-- Node Induk ODC (Tier-1) --}}
-                            <g id="nodeParentOdc" transform="translate({{ $xTier1 }}, {{ $diagramCenterY - 75 }})" class="cursor-pointer" filter="url(#nodeShadow)" onclick="window.open('/isp/odcs/{{ $parentOdc->id }}', '_blank')">
-                                <rect width="{{ $wTier }}" height="150" rx="16" fill="url(#gradParentOdc)" stroke="#a5b4fc" stroke-width="2.5"/>
-                                <rect x="14" y="14" width="120" height="20" rx="5" fill="#3730a3"/>
-                                <text x="22" y="28" fill="#e0e7ff" font-size="10" font-weight="bold" font-family="sans-serif">INDUK ODC (T-1)</text>
+                            <g id="nodeParentOdc" transform="translate({{ $xTier1 }}, {{ $diagramCenterY - 60 }})" class="cursor-pointer" filter="url(#nodeShadow)" onclick="window.open('/isp/odcs/{{ $parentOdc->id }}', '_blank')">
+                                <rect width="{{ $wTier }}" height="120" rx="14" fill="url(#gradParentOdc)" stroke="#a5b4fc" stroke-width="2.2"/>
+                                <rect x="12" y="12" width="100" height="18" rx="4" fill="#3730a3"/>
+                                <text x="18" y="24" fill="#e0e7ff" font-size="9" font-weight="bold" font-family="sans-serif">INDUK ODC (T-1)</text>
                                 
-                                <text x="14" y="58" fill="#ffffff" font-size="16" font-weight="900" font-family="sans-serif">{{ Str::limit($parentOdc->name, 17) }}</text>
-                                <text x="14" y="78" fill="#c7d2fe" font-size="11" font-family="monospace">{{ $parentOdc->code }}</text>
+                                <text x="12" y="52" fill="#ffffff" font-size="14.5" font-weight="900" font-family="sans-serif">{{ Str::limit($parentOdc->name, 17) }}</text>
+                                <text x="12" y="69" fill="#c7d2fe" font-size="10" font-family="monospace">{{ $parentOdc->code }}</text>
                                 
-                                <rect x="12" y="90" width="{{ $wTier - 24 }}" height="46" rx="8" fill="#1e1b4b" stroke="#4338ca" stroke-width="1.2"/>
-                                <text x="20" y="108" fill="#a5b4fc" font-size="11" font-weight="bold" font-family="sans-serif">PLC Splitter 1:4 (-7.2 dB)</text>
-                                <text x="20" y="125" fill="#c7d2fe" font-size="10" font-family="monospace">Est. Out: ~ +0.3 dBm</text>
+                                <rect x="10" y="78" width="{{ $wTier - 20 }}" height="32" rx="7" fill="#1e1b4b" stroke="#4338ca" stroke-width="1.1"/>
+                                <text x="16" y="92" fill="#a5b4fc" font-size="10" font-weight="bold" font-family="sans-serif">PLC Splitter 1:4 (-7.2 dB)</text>
+                                <text x="16" y="104" fill="#c7d2fe" font-size="9" font-family="monospace">Est. Out: ~ +0.3 dBm</text>
                             </g>
 
                             {{-- Sub-Feeder Line: Parent ODC -> Sub ODC --}}
-                            <path d="M {{ $xTier1 + $wTier }} {{ $diagramCenterY }} L {{ $xTier2 }} {{ $diagramCenterY }}" stroke="#4f46e5" stroke-width="7" opacity="0.35"/>
-                            <path d="M {{ $xTier1 + $wTier }} {{ $diagramCenterY }} L {{ $xTier2 }} {{ $diagramCenterY }}" stroke="#818cf8" stroke-width="3"/>
+                            <path d="M {{ $xTier1 + $wTier }} {{ $diagramCenterY }} L {{ $xTier2 }} {{ $diagramCenterY }}" stroke="#4f46e5" stroke-width="6" opacity="0.35"/>
+                            <path d="M {{ $xTier1 + $wTier }} {{ $diagramCenterY }} L {{ $xTier2 }} {{ $diagramCenterY }}" stroke="#818cf8" stroke-width="2.5"/>
 
                             @php $midSubFeeder = ($xTier1 + $wTier + $xTier2) / 2; @endphp
-                            <g transform="translate({{ $midSubFeeder - 55 }}, {{ $diagramCenterY - 14 }})">
-                                <rect width="110" height="28" rx="7" fill="#090d16" stroke="#6366f1" stroke-width="1.5"/>
-                                <text x="55" y="18" fill="#c7d2fe" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">Sub-Feeder</text>
+                            <g transform="translate({{ $midSubFeeder - 45 }}, {{ $diagramCenterY - 12 }})">
+                                <rect width="90" height="24" rx="6" fill="#090d16" stroke="#6366f1" stroke-width="1.2"/>
+                                <text x="45" y="15" fill="#c7d2fe" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">Sub-Feeder</text>
                             </g>
 
                             {{-- Node Sub-ODC (Tier-2) --}}
-                            <g id="nodeSubOdc" transform="translate({{ $xTier2 }}, {{ $diagramCenterY - 75 }})" class="cursor-pointer" filter="url(#nodeShadow)">
-                                <rect width="{{ $wTier }}" height="150" rx="16" fill="url(#gradOdc)" stroke="#fbbf24" stroke-width="2.5"/>
-                                <rect x="14" y="14" width="110" height="20" rx="5" fill="#92400e"/>
-                                <text x="22" y="28" fill="#fef3c7" font-size="10" font-weight="bold" font-family="sans-serif">SUB-ODC (T-2)</text>
+                            <g id="nodeSubOdc" transform="translate({{ $xTier2 }}, {{ $diagramCenterY - 60 }})" class="cursor-pointer" filter="url(#nodeShadow)">
+                                <rect width="{{ $wTier }}" height="120" rx="14" fill="url(#gradOdc)" stroke="#fbbf24" stroke-width="2.2"/>
+                                <rect x="12" y="12" width="95" height="18" rx="4" fill="#92400e"/>
+                                <text x="18" y="24" fill="#fef3c7" font-size="9" font-weight="bold" font-family="sans-serif">SUB-ODC (T-2)</text>
                                 
-                                <text x="14" y="58" fill="#ffffff" font-size="16" font-weight="900" font-family="sans-serif">{{ Str::limit($odcName, 17) }}</text>
-                                <text x="14" y="78" fill="#fef3c7" font-size="11" font-family="monospace">{{ $odcCode }} • {{ $odcPortStr }}</text>
+                                <text x="12" y="52" fill="#ffffff" font-size="14.5" font-weight="900" font-family="sans-serif">{{ Str::limit($odcName, 17) }}</text>
+                                <text x="12" y="69" fill="#fef3c7" font-size="10" font-family="monospace">{{ $odcCode }} • {{ $odcPortStr }}</text>
                                 
-                                <rect x="12" y="90" width="{{ $wTier - 24 }}" height="46" rx="8" fill="#1c1917" stroke="#78350f" stroke-width="1.2"/>
-                                <text x="20" y="108" fill="#fbbf24" font-size="11" font-weight="bold" font-family="sans-serif">Splitter Tier-2 (-7.2 dB)</text>
-                                <text x="20" y="125" fill="#fef3c7" font-size="10" font-family="monospace">Est. Out: ~ -7.3 dBm</text>
+                                <rect x="10" y="78" width="{{ $wTier - 20 }}" height="32" rx="7" fill="#1c1917" stroke="#78350f" stroke-width="1.1"/>
+                                <text x="16" y="92" fill="#fbbf24" font-size="10" font-weight="bold" font-family="sans-serif">Splitter Tier-2 (-7.2 dB)</text>
+                                <text x="16" y="104" fill="#fef3c7" font-size="9" font-family="monospace">Est. Out: ~ -7.3 dBm</text>
                             </g>
 
-                            {{-- Distribution Line: Sub-ODC -> Target ODP --}}
-                            <path d="M {{ $xTier2 + $wTier }} {{ $diagramCenterY }} L {{ $xTargetODP ?? $xTargetOdp }} {{ $diagramCenterY }}" stroke="#b45309" stroke-width="7" opacity="0.35"/>
-                            <path d="M {{ $xTier2 + $wTier }} {{ $diagramCenterY }} L {{ $xTargetOdp }} {{ $diagramCenterY }}" stroke="#f59e0b" stroke-width="3"/>
-
-                            @php $midDist = ($xTier2 + $wTier + $xTargetOdp) / 2; @endphp
-                            <g transform="translate({{ $midDist - 55 }}, {{ $diagramCenterY - 14 }})">
-                                <rect width="110" height="28" rx="7" fill="#090d16" stroke="#d97706" stroke-width="1.5"/>
-                                <text x="55" y="18" fill="#fef08a" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">Distribusi FO</text>
-                            </g>
-
+                            @php $sourceDistNodeX = $xTier2 + $wTier; @endphp
                         @elseif($isCascadeOdp)
                             @if($hasRealOdc)
-                                {{-- Link OLT -> ODC --}}
-                                <path d="M {{ $xOlt + $wOlt }} {{ $diagramCenterY }} L {{ $xTier1 }} {{ $diagramCenterY }}" stroke="#0284c7" stroke-width="7" opacity="0.35"/>
-                                <path d="M {{ $xOlt + $wOlt }} {{ $diagramCenterY }} L {{ $xTier1 }} {{ $diagramCenterY }}" stroke="#38bdf8" stroke-width="3" stroke-dasharray="8,5"/>
-
-                                @php $midFeeder = ($xOlt + $wOlt + $xTier1) / 2; @endphp
-                                <g transform="translate({{ $midFeeder - 55 }}, {{ $diagramCenterY - 14 }})">
-                                    <rect width="110" height="28" rx="7" fill="#090d16" stroke="#0284c7" stroke-width="1.5"/>
-                                    <text x="55" y="18" fill="#bae6fd" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">Feeder FO</text>
-                                </g>
-
                                 {{-- Node ODC --}}
-                                <g id="nodeOdc" transform="translate({{ $xTier1 }}, {{ $diagramCenterY - 75 }})" class="cursor-pointer" filter="url(#nodeShadow)">
-                                    <rect width="{{ $wTier }}" height="150" rx="16" fill="url(#gradOdc)" stroke="#fbbf24" stroke-width="2.5"/>
-                                    <rect x="14" y="14" width="120" height="20" rx="5" fill="#92400e"/>
-                                    <text x="22" y="28" fill="#fef3c7" font-size="10" font-weight="bold" font-family="sans-serif">ODC KABINET</text>
+                                <g id="nodeOdc" transform="translate({{ $xTier1 }}, {{ $diagramCenterY - 60 }})" class="cursor-pointer" filter="url(#nodeShadow)">
+                                    <rect width="{{ $wTier }}" height="120" rx="14" fill="url(#gradOdc)" stroke="#fbbf24" stroke-width="2.2"/>
+                                    <rect x="12" y="12" width="95" height="18" rx="4" fill="#92400e"/>
+                                    <text x="18" y="24" fill="#fef3c7" font-size="9" font-weight="bold" font-family="sans-serif">ODC KABINET</text>
                                     
-                                    <text x="14" y="58" fill="#ffffff" font-size="16" font-weight="900" font-family="sans-serif">{{ Str::limit($odcName, 17) }}</text>
-                                    <text x="14" y="78" fill="#fef3c7" font-size="11" font-family="monospace">{{ $odcCode }} • {{ $odcPortStr }}</text>
+                                    <text x="12" y="52" fill="#ffffff" font-size="14.5" font-weight="900" font-family="sans-serif">{{ Str::limit($odcName, 17) }}</text>
+                                    <text x="12" y="69" fill="#fef3c7" font-size="10" font-family="monospace">{{ $odcCode }} • {{ $odcPortStr }}</text>
                                     
-                                    <rect x="12" y="90" width="{{ $wTier - 24 }}" height="46" rx="8" fill="#1c1917" stroke="#78350f" stroke-width="1.2"/>
-                                    <text x="20" y="108" fill="#fbbf24" font-size="11" font-weight="bold" font-family="sans-serif">PLC Splitter 1:4 (-7.2 dB)</text>
-                                    <text x="20" y="125" fill="#fde68a" font-size="10" font-family="monospace">Est. Out: ~ +0.3 dBm</text>
+                                    <rect x="10" y="78" width="{{ $wTier - 20 }}" height="32" rx="7" fill="#1c1917" stroke="#78350f" stroke-width="1.1"/>
+                                    <text x="16" y="92" fill="#fbbf24" font-size="10" font-weight="bold" font-family="sans-serif">PLC Splitter 1:4 (-7.2 dB)</text>
+                                    <text x="16" y="104" fill="#fde68a" font-size="9" font-family="monospace">Est. Out: ~ +0.3 dBm</text>
                                 </g>
 
                                 {{-- Link ODC -> Induk ODP --}}
-                                <path d="M {{ $xTier1 + $wTier }} {{ $diagramCenterY }} L {{ $xTier2 }} {{ $diagramCenterY }}" stroke="#b45309" stroke-width="7" opacity="0.35"/>
-                                <path d="M {{ $xTier1 + $wTier }} {{ $diagramCenterY }} L {{ $xTier2 }} {{ $diagramCenterY }}" stroke="#f59e0b" stroke-width="3"/>
-                            @else
-                                {{-- Direct OLT -> Induk ODP --}}
-                                <path d="M {{ $xOlt + $wOlt }} {{ $diagramCenterY }} L {{ $xTier2 }} {{ $diagramCenterY }}" stroke="#0284c7" stroke-width="7" opacity="0.35"/>
-                                <path d="M {{ $xOlt + $wOlt }} {{ $diagramCenterY }} L {{ $xTier2 }} {{ $diagramCenterY }}" stroke="#38bdf8" stroke-width="3" stroke-dasharray="8,5"/>
-
-                                @php $midFeeder = ($xOlt + $wOlt + $xTier2) / 2; @endphp
-                                <g transform="translate({{ $midFeeder - 55 }}, {{ $diagramCenterY - 14 }})">
-                                    <rect width="110" height="28" rx="7" fill="#090d16" stroke="#0284c7" stroke-width="1.5"/>
-                                    <text x="55" y="18" fill="#bae6fd" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">Feeder FO</text>
-                                </g>
+                                <path d="M {{ $xTier1 + $wTier }} {{ $diagramCenterY }} L {{ $xTier2 }} {{ $diagramCenterY }}" stroke="#b45309" stroke-width="6" opacity="0.35"/>
+                                <path d="M {{ $xTier1 + $wTier }} {{ $diagramCenterY }} L {{ $xTier2 }} {{ $diagramCenterY }}" stroke="#f59e0b" stroke-width="2.5"/>
                             @endif
 
                             {{-- Node Induk ODP (Tier-1 Cascade) --}}
-                            <g id="nodeParentOdp" transform="translate({{ $xTier2 }}, {{ $diagramCenterY - 75 }})" class="cursor-pointer" filter="url(#nodeShadow)" onclick="window.open('/isp/odps/{{ $parentOdp->id }}', '_blank')">
-                                <rect width="{{ $wTier }}" height="150" rx="16" fill="url(#gradParentOdp)" stroke="#34d399" stroke-width="2.5"/>
-                                <rect x="14" y="14" width="135" height="20" rx="5" fill="#047857"/>
-                                <text x="22" y="28" fill="#a7f3d0" font-size="10" font-weight="bold" font-family="sans-serif">INDUK ODP (CASCADE T-1)</text>
+                            <g id="nodeParentOdp" transform="translate({{ $xTier2 }}, {{ $diagramCenterY - 60 }})" class="cursor-pointer" filter="url(#nodeShadow)" onclick="window.open('/isp/odps/{{ $parentOdp->id }}', '_blank')">
+                                <rect width="{{ $wTier }}" height="120" rx="14" fill="url(#gradParentOdp)" stroke="#34d399" stroke-width="2.2"/>
+                                <rect x="12" y="12" width="115" height="18" rx="4" fill="#047857"/>
+                                <text x="18" y="24" fill="#a7f3d0" font-size="9" font-weight="bold" font-family="sans-serif">INDUK ODP (T-1)</text>
                                 
-                                <text x="14" y="58" fill="#ffffff" font-size="16" font-weight="900" font-family="sans-serif">{{ Str::limit($parentOdp->name, 17) }}</text>
-                                <text x="14" y="78" fill="#d1fae5" font-size="11" font-family="monospace">{{ $parentOdp->code }}</text>
+                                <text x="12" y="52" fill="#ffffff" font-size="14.5" font-weight="900" font-family="sans-serif">{{ Str::limit($parentOdp->name, 17) }}</text>
+                                <text x="12" y="69" fill="#d1fae5" font-size="10" font-family="monospace">{{ $parentOdp->code }}</text>
                                 
-                                <rect x="12" y="90" width="{{ $wTier - 24 }}" height="46" rx="8" fill="#022c22" stroke="#065f46" stroke-width="1.2"/>
-                                <text x="20" y="108" fill="#34d399" font-size="11" font-weight="bold" font-family="sans-serif">Splitter Induk 1:{{ $parentOdp->port_count ?: 8 }}</text>
-                                <text x="20" y="125" fill="#6ee7b7" font-size="10" font-family="monospace">Est. Port Out: ~ -3.5 dBm</text>
+                                <rect x="10" y="78" width="{{ $wTier - 20 }}" height="32" rx="7" fill="#022c22" stroke="#065f46" stroke-width="1.1"/>
+                                <text x="16" y="92" fill="#34d399" font-size="10" font-weight="bold" font-family="sans-serif">Splitter Induk 1:{{ $parentOdp->port_count ?: 8 }}</text>
+                                <text x="16" y="104" fill="#6ee7b7" font-size="9" font-family="monospace">Est. Port Out: ~ -3.5 dBm</text>
                             </g>
 
-                            {{-- Cascade Cable: Induk ODP -> Target ODP --}}
-                            <path d="M {{ $xTier2 + $wTier }} {{ $diagramCenterY }} L {{ $xTargetOdp }} {{ $diagramCenterY }}" stroke="#059669" stroke-width="7" opacity="0.35"/>
-                            <path d="M {{ $xTier2 + $wTier }} {{ $diagramCenterY }} L {{ $xTargetOdp }} {{ $diagramCenterY }}" stroke="#10b981" stroke-width="3"/>
-
-                            @php $midCascade = ($xTier2 + $wTier + $xTargetOdp) / 2; @endphp
-                            <g transform="translate({{ $midCascade - 55 }}, {{ $diagramCenterY - 14 }})">
-                                <rect width="110" height="28" rx="7" fill="#090d16" stroke="#10b981" stroke-width="1.5"/>
-                                <text x="55" y="18" fill="#a7f3d0" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">Cascade FO</text>
-                            </g>
-
+                            @php $sourceDistNodeX = $xTier2 + $wTier; @endphp
                         @else
                             {{-- STANDARD SINGLE STAGE --}}
                             @if($hasRealOdc)
-                                {{-- Link OLT -> ODC --}}
-                                <path d="M {{ $xOlt + $wOlt }} {{ $diagramCenterY }} L {{ $xTier1 }} {{ $diagramCenterY }}" stroke="#0284c7" stroke-width="7" opacity="0.35"/>
-                                <path d="M {{ $xOlt + $wOlt }} {{ $diagramCenterY }} L {{ $xTier1 }} {{ $diagramCenterY }}" stroke="#38bdf8" stroke-width="3" stroke-dasharray="8,5"/>
-
-                                @php $midFeeder = ($xOlt + $wOlt + $xTier1) / 2; @endphp
-                                <g transform="translate({{ $midFeeder - 55 }}, {{ $diagramCenterY - 14 }})">
-                                    <rect width="110" height="28" rx="7" fill="#090d16" stroke="#0284c7" stroke-width="1.5"/>
-                                    <text x="55" y="18" fill="#bae6fd" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">Feeder FO</text>
-                                </g>
-
                                 {{-- Node ODC --}}
-                                <g id="nodeOdc" transform="translate({{ $xTier1 }}, {{ $diagramCenterY - 75 }})" class="cursor-pointer" filter="url(#nodeShadow)" onclick="window.open('{{ $odp->odc ? route('isp.odcs.show', $odp->odc->id) : '#' }}', '_blank')">
-                                    <rect width="{{ $wTier }}" height="150" rx="16" fill="url(#gradOdc)" stroke="#fbbf24" stroke-width="2.5"/>
-                                    <rect x="14" y="14" width="120" height="20" rx="5" fill="#92400e"/>
-                                    <text x="22" y="28" fill="#fef3c7" font-size="10" font-weight="bold" font-family="sans-serif">ODC KABINET</text>
+                                <g id="nodeOdc" transform="translate({{ $xTier1 }}, {{ $diagramCenterY - 60 }})" class="cursor-pointer" filter="url(#nodeShadow)" onclick="window.open('{{ $odp->odc ? route('isp.odcs.show', $odp->odc->id) : '#' }}', '_blank')">
+                                    <rect width="{{ $wTier }}" height="120" rx="14" fill="url(#gradOdc)" stroke="#fbbf24" stroke-width="2.2"/>
+                                    <rect x="12" y="12" width="95" height="18" rx="4" fill="#92400e"/>
+                                    <text x="18" y="24" fill="#fef3c7" font-size="9" font-weight="bold" font-family="sans-serif">ODC KABINET</text>
                                     
-                                    <text x="14" y="58" fill="#ffffff" font-size="16" font-weight="900" font-family="sans-serif">{{ Str::limit($odcName, 17) }}</text>
-                                    <text x="14" y="78" fill="#fef3c7" font-size="11" font-family="monospace">{{ $odcCode }} • {{ $odcPortStr }}</text>
+                                    <text x="12" y="52" fill="#ffffff" font-size="14.5" font-weight="900" font-family="sans-serif">{{ Str::limit($odcName, 17) }}</text>
+                                    <text x="12" y="69" fill="#fef3c7" font-size="10" font-family="monospace">{{ $odcCode }} • {{ $odcPortStr }}</text>
                                     
-                                    <rect x="12" y="90" width="{{ $wTier - 24 }}" height="46" rx="8" fill="#1c1917" stroke="#78350f" stroke-width="1.2"/>
-                                    <text x="20" y="108" fill="#fbbf24" font-size="11" font-weight="bold" font-family="sans-serif">PLC Splitter 1:4 (-7.2 dB)</text>
-                                    <text x="20" y="125" fill="#fde68a" font-size="10" font-family="monospace">Est. Sinyal: ~ +0.3 dBm</text>
+                                    <rect x="10" y="78" width="{{ $wTier - 20 }}" height="32" rx="7" fill="#1c1917" stroke="#78350f" stroke-width="1.1"/>
+                                    <text x="16" y="92" fill="#fbbf24" font-size="10" font-weight="bold" font-family="sans-serif">PLC Splitter 1:4 (-7.2 dB)</text>
+                                    <text x="16" y="104" fill="#fde68a" font-size="9" font-family="monospace">Est. Sinyal: ~ +0.3 dBm</text>
 
                                     {{-- Right Socket --}}
-                                    <rect x="{{ $wTier - 6 }}" y="62" width="10" height="24" rx="3" fill="#15803d" stroke="#4ade80" stroke-width="1.5"/>
+                                    <rect x="{{ $wTier - 5 }}" y="50" width="8" height="20" rx="3" fill="#15803d" stroke="#4ade80" stroke-width="1.3"/>
                                 </g>
 
-                                {{-- Distribution Line: ODC -> Target ODP --}}
-                                <path d="M {{ $xTier1 + $wTier }} {{ $diagramCenterY }} L {{ $xTargetOdp }} {{ $diagramCenterY }}" stroke="#b45309" stroke-width="7" opacity="0.35"/>
-                                <path d="M {{ $xTier1 + $wTier }} {{ $diagramCenterY }} L {{ $xTargetOdp }} {{ $diagramCenterY }}" stroke="#f59e0b" stroke-width="3"/>
-
-                                @php $midDist = ($xTier1 + $wTier + $xTargetOdp) / 2; @endphp
-                                <g transform="translate({{ $midDist - 55 }}, {{ $diagramCenterY - 14 }})">
-                                    <rect width="110" height="28" rx="7" fill="#090d16" stroke="#d97706" stroke-width="1.5"/>
-                                    <text x="55" y="18" fill="#fef08a" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">Distribusi FO</text>
-                                </g>
+                                @php $sourceDistNodeX = $xTier1 + $wTier; @endphp
                             @else
-                                {{-- Direct OLT -> Target ODP --}}
-                                <path d="M {{ $xOlt + $wOlt }} {{ $diagramCenterY }} L {{ $xTargetOdp }} {{ $diagramCenterY }}" stroke="#0284c7" stroke-width="7" opacity="0.35"/>
-                                <path d="M {{ $xOlt + $wOlt }} {{ $diagramCenterY }} L {{ $xTargetOdp }} {{ $diagramCenterY }}" stroke="#38bdf8" stroke-width="3" stroke-dasharray="8,5"/>
-
-                                @php $midFeeder = ($xOlt + $wOlt + $xTargetOdp) / 2; @endphp
-                                <g transform="translate({{ $midFeeder - 55 }}, {{ $diagramCenterY - 14 }})">
-                                    <rect width="110" height="28" rx="7" fill="#090d16" stroke="#0284c7" stroke-width="1.5"/>
-                                    <text x="55" y="18" fill="#bae6fd" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">Feeder FO</text>
-                                </g>
+                                @php $sourceDistNodeX = $xOlt + $wOlt; @endphp
                             @endif
+                        @endif
+
+                        {{-- CABLE: ODC ➔ DIST CLOSURE (if present) OR ODC ➔ TARGET ODP --}}
+                        @php $nextDistTargetX = $xDistClosure ?? $xTargetOdp; @endphp
+                        <path d="M {{ $sourceDistNodeX }} {{ $diagramCenterY }} L {{ $nextDistTargetX }} {{ $diagramCenterY }}" stroke="#b45309" stroke-width="6" opacity="0.35"/>
+                        <path d="M {{ $sourceDistNodeX }} {{ $diagramCenterY }} L {{ $nextDistTargetX }} {{ $diagramCenterY }}" stroke="#f59e0b" stroke-width="2.5"/>
+                        @php $midDist = ($sourceDistNodeX + $nextDistTargetX) / 2; @endphp
+                        <g transform="translate({{ $midDist - 45 }}, {{ $diagramCenterY - 12 }})">
+                            <rect width="90" height="24" rx="6" fill="#090d16" stroke="#d97706" stroke-width="1.2"/>
+                            <text x="45" y="15" fill="#fef08a" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">Distribusi FO</text>
+                        </g>
+
+                        {{-- DISTRIBUTION JOINT CLOSURE NODE (if present) --}}
+                        @if($distClosure && $xDistClosure)
+                            <g id="nodeDistClosure" transform="translate({{ $xDistClosure }}, {{ $diagramCenterY - 55 }})" class="cursor-pointer" filter="url(#glowClosure)">
+                                <rect width="{{ $wClosure }}" height="110" rx="14" fill="url(#gradClosure)" stroke="#818cf8" stroke-width="2"/>
+                                <rect x="10" y="10" width="105" height="18" rx="4" fill="#312e81"/>
+                                <text x="16" y="22" fill="#c7d2fe" font-size="8.5" font-weight="bold" font-family="sans-serif">DIST. CLOSURE</text>
+
+                                <text x="10" y="48" fill="#ffffff" font-size="13" font-weight="900" font-family="sans-serif">{{ Str::limit($distClosure->name, 15) }}</text>
+                                <text x="10" y="64" fill="#c7d2fe" font-size="9.5" font-family="monospace">{{ $distClosure->code }}</text>
+
+                                <rect x="8" y="72" width="{{ $wClosure - 16 }}" height="28" rx="6" fill="#090d16" stroke="#4338ca" stroke-width="1"/>
+                                <text x="14" y="85" fill="#a5b4fc" font-size="9" font-weight="bold" font-family="sans-serif">Splice: -0.1 dB</text>
+                                <text x="14" y="95" fill="#64748b" font-size="8" font-family="sans-serif">{{ ucfirst($distClosure->type ?? 'Dome') }} Box</text>
+                            </g>
+
+                            {{-- Cable: Dist Closure ➔ Target ODP --}}
+                            <path d="M {{ $xDistClosure + $wClosure }} {{ $diagramCenterY }} L {{ $xTargetOdp }} {{ $diagramCenterY }}" stroke="#059669" stroke-width="6" opacity="0.35"/>
+                            <path d="M {{ $xDistClosure + $wClosure }} {{ $diagramCenterY }} L {{ $xTargetOdp }} {{ $diagramCenterY }}" stroke="#10b981" stroke-width="2.5"/>
+                            @php $midDistClosureLine = ($xDistClosure + $wClosure + $xTargetOdp) / 2; @endphp
+                            <g transform="translate({{ $midDistClosureLine - 45 }}, {{ $diagramCenterY - 12 }})">
+                                <rect width="90" height="24" rx="6" fill="#090d16" stroke="#10b981" stroke-width="1.2"/>
+                                <text x="45" y="15" fill="#a7f3d0" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">Branch FO</text>
+                            </g>
                         @endif
 
                         {{-- ============================================================== --}}
                         {{-- 3. STAGE 3: TARGET ODP HERO NODE                               --}}
                         {{-- ============================================================== --}}
-                        <g id="nodeTargetOdp" transform="translate({{ $xTargetOdp }}, {{ $diagramCenterY - 85 }})" class="cursor-pointer" filter="url(#glowTargetOdp)">
-                            <rect width="{{ $wTargetOdp }}" height="170" rx="18" fill="url(#gradOdp)" stroke="#10b981" stroke-width="3.5"/>
+                        <g id="nodeTargetOdp" transform="translate({{ $xTargetOdp }}, {{ $diagramCenterY - 65 }})" class="cursor-pointer" filter="url(#glowTargetOdp)">
+                            <rect width="{{ $wTargetOdp }}" height="135" rx="16" fill="url(#gradOdp)" stroke="#10b981" stroke-width="2.8"/>
                             
                             {{-- Header Badge & Beacon --}}
-                            <rect x="16" y="14" width="155" height="22" rx="6" fill="#065f46"/>
-                            <text x="24" y="29" fill="#a7f3d0" font-size="10.5" font-weight="900" font-family="sans-serif">ODP TARGET (DISTRIBUSI)</text>
+                            <rect x="14" y="12" width="135" height="20" rx="5" fill="#065f46"/>
+                            <text x="20" y="25" fill="#a7f3d0" font-size="9.5" font-weight="900" font-family="sans-serif">ODP TARGET (DISTRIBUSI)</text>
 
-                            <circle cx="{{ $wTargetOdp - 24 }}" cy="25" r="5" fill="#34d399"/>
+                            <circle cx="{{ $wTargetOdp - 20 }}" cy="22" r="4.5" fill="#34d399"/>
 
                             {{-- Device Title & Code --}}
-                            <text x="16" y="62" fill="#ffffff" font-size="18" font-weight="900" font-family="sans-serif" letter-spacing="0.5">{{ Str::limit($odp->name, 18) }}</text>
-                            <text x="16" y="82" fill="#6ee7b7" font-size="12" font-family="monospace">{{ $odp->code }} • Box Distribusi</text>
+                            <text x="14" y="52" fill="#ffffff" font-size="15.5" font-weight="900" font-family="sans-serif" letter-spacing="0.5">{{ Str::limit($odp->name, 17) }}</text>
+                            <text x="14" y="69" fill="#6ee7b7" font-size="10.5" font-family="monospace">{{ $odp->code }} • Box Distribusi</text>
 
                             {{-- Splitter Specs Box --}}
-                            <rect x="14" y="92" width="{{ $wTargetOdp - 28 }}" height="42" rx="8" fill="#021a14" stroke="#047857" stroke-width="1.3"/>
-                            <text x="22" y="108" fill="#34d399" font-size="11.5" font-weight="bold" font-family="sans-serif">PLC Splitter 1:{{ $odpRatio }} (-{{ $odpSplitterLoss }} dB)</text>
-                            <text x="22" y="123" fill="#a7f3d0" font-size="10.5" font-family="monospace">Est. Port Out: ~ -11.6 dBm</text>
+                            <rect x="12" y="78" width="{{ $wTargetOdp - 24 }}" height="32" rx="7" fill="#021a14" stroke="#047857" stroke-width="1.1"/>
+                            <text x="18" y="92" fill="#34d399" font-size="10" font-weight="bold" font-family="sans-serif">PLC Splitter 1:{{ $odpRatio }} (-{{ $odpSplitterLoss }} dB)</text>
+                            <text x="18" y="104" fill="#a7f3d0" font-size="9" font-family="monospace">Est. Port Out: ~ -11.6 dBm</text>
 
                             {{-- Occupancy Meter --}}
-                            <text x="16" y="148" fill="#ecfdf5" font-size="10.5" font-weight="bold" font-family="sans-serif">
+                            <text x="14" y="122" fill="#ecfdf5" font-size="9.5" font-weight="bold" font-family="sans-serif">
                                 {{ $stats['used_ports'] }}/{{ $stats['total_ports'] }} Port Digunakan ({{ $stats['occupancy_pct'] }}%)
                             </text>
                             
-                            <rect x="14" y="154" width="{{ $wTargetOdp - 28 }}" height="7" rx="3.5" fill="#042f24"/>
-                            <rect x="14" y="154" width="{{ max(8, ($wTargetOdp - 28) * ($stats['occupancy_pct'] / 100)) }}" height="7" rx="3.5" fill="#10b981"/>
+                            <rect x="14" y="126" width="{{ $wTargetOdp - 28 }}" height="5" rx="2.5" fill="#042f24"/>
+                            <rect x="14" y="126" width="{{ max(6, ($wTargetOdp - 28) * ($stats['occupancy_pct'] / 100)) }}" height="5" rx="2.5" fill="#10b981"/>
 
                             {{-- Output Egress Socket --}}
-                            <rect x="{{ $wTargetOdp - 6 }}" y="73" width="10" height="24" rx="3" fill="#047857" stroke="#34d399" stroke-width="1.5"/>
+                            <rect x="{{ $wTargetOdp - 5 }}" y="58" width="8" height="20" rx="3" fill="#047857" stroke="#34d399" stroke-width="1.3"/>
                         </g>
 
                         {{-- Splitter Distribution Hub Node --}}
-                        @php $xSplitHub = $xTargetOdp + $wTargetOdp + 22; @endphp
-                        <circle cx="{{ $xSplitHub }}" cy="{{ $diagramCenterY }}" r="9" fill="#065f46" stroke="#34d399" stroke-width="2"/>
-                        <text x="{{ $xSplitHub }}" y="{{ $diagramCenterY + 3 }}" fill="#ffffff" font-size="8" font-weight="bold" text-anchor="middle">PLC</text>
+                        @php $xSplitHub = $xTargetOdp + $wTargetOdp + 18; @endphp
+                        <circle cx="{{ $xSplitHub }}" cy="{{ $diagramCenterY }}" r="8" fill="#065f46" stroke="#34d399" stroke-width="1.8"/>
+                        <text x="{{ $xSplitHub }}" y="{{ $diagramCenterY + 2.5 }}" fill="#ffffff" font-size="7.5" font-weight="bold" text-anchor="middle">PLC</text>
 
                         {{-- ============================================================== --}}
                         {{-- 4 & 5. STAGES 4 & 5: PORTS, DROPCORE, ONT & SUBSCRIBERS        --}}
@@ -1068,7 +1101,7 @@
                                             $statusText = 'MARGINAL';
                                         } else {
                                             $statusDotColor = '#ef4444';
-                                            $statusText = 'DROP/LOSS';
+                                            $statusText = 'LOSS';
                                         }
                                     } else {
                                         $statusDotColor = !empty($p['is_online']) ? '#10b981' : '#ef4444';
@@ -1085,15 +1118,15 @@
                             @endphp
 
                             {{-- Splitting Fiber Line from PLC Hub to Port Card --}}
-                            <path d="M {{ $xSplitHub + 9 }} {{ $diagramCenterY }} C {{ $xPorts - 40 }} {{ $diagramCenterY }}, {{ $xPorts - 35 }} {{ $portMidY }}, {{ $xPorts }} {{ $portMidY }}"
-                                  stroke="{{ $portColor }}" stroke-width="{{ $isUsed ? '2.5' : '1.5' }}" fill="none" opacity="0.9"/>
+                            <path d="M {{ $xSplitHub + 8 }} {{ $diagramCenterY }} C {{ $xPorts - 30 }} {{ $diagramCenterY }}, {{ $xPorts - 25 }} {{ $portMidY }}, {{ $xPorts }} {{ $portMidY }}"
+                                  stroke="{{ $portColor }}" stroke-width="{{ $isUsed ? '2.2' : '1.3' }}" fill="none" opacity="0.9"/>
 
                             {{-- Port Node Card --}}
                             <g transform="translate({{ $xPorts }}, {{ $curY }})" class="cursor-pointer" wire:click="openPortModal({{ $portNum }})" filter="url(#nodeShadow)">
-                                <rect width="{{ $wPort }}" height="{{ $portCardH }}" rx="10" fill="#0f172a" stroke="{{ $portColor }}" stroke-width="2"/>
-                                <text x="12" y="24" fill="#f8fafc" font-size="14" font-weight="900" font-family="monospace">P{{ str_pad($portNum, 2, '0', STR_PAD_LEFT) }}</text>
-                                <circle cx="{{ $wPort - 16 }}" cy="19" r="4.5" fill="{{ $portColor }}"/>
-                                <text x="12" y="{{ $portCardH - 10 }}" fill="{{ $portColor }}" font-size="8.5" font-weight="bold" font-family="sans-serif">
+                                <rect width="{{ $wPort }}" height="{{ $portCardH }}" rx="9" fill="#0f172a" stroke="{{ $portColor }}" stroke-width="1.8"/>
+                                <text x="10" y="21" fill="#f8fafc" font-size="12.5" font-weight="900" font-family="monospace">P{{ str_pad($portNum, 2, '0', STR_PAD_LEFT) }}</text>
+                                <circle cx="{{ $wPort - 14 }}" cy="16" r="3.5" fill="{{ $portColor }}"/>
+                                <text x="10" y="{{ $portCardH - 8 }}" fill="{{ $portColor }}" font-size="7.5" font-weight="bold" font-family="sans-serif">
                                     {{ $isUsed ? 'AKTIF' : (($p['status'] ?? '') === 'reserved' ? 'RESERVED' : (($p['status'] ?? '') === 'fault' ? 'RUSAK' : 'KOSONG')) }}
                                 </text>
                             </g>
@@ -1101,55 +1134,55 @@
                             {{-- Dropcore & Subscriber Card --}}
                             @if($isUsed && !empty($p['customer']))
                                 {{-- Neon Green Dropcore Cable --}}
-                                <path d="M {{ $xPorts + $wPort }} {{ $portMidY }} L {{ $xCust }} {{ $portMidY }}" stroke="#10b981" stroke-width="2.5" fill="none"/>
-                                <circle cx="{{ ($xPorts + $wPort + $xCust) / 2 }}" cy="{{ $portMidY }}" r="3" fill="#34d399"/>
+                                <path d="M {{ $xPorts + $wPort }} {{ $portMidY }} L {{ $xCust }} {{ $portMidY }}" stroke="#10b981" stroke-width="2.2" fill="none"/>
+                                <circle cx="{{ ($xPorts + $wPort + $xCust) / 2 }}" cy="{{ $portMidY }}" r="2.5" fill="#34d399"/>
 
                                 {{-- Unified Subscriber & ONT Card --}}
                                 <g transform="translate({{ $xCust }}, {{ $curY - 6 }})" class="cursor-pointer" onclick="window.open('/crm/customers/{{ $p['customer']['id'] }}', '_blank')" filter="url(#nodeShadow)">
-                                    <rect width="{{ $wCust }}" height="64" rx="12" fill="#0f172a" stroke="{{ $statusDotColor }}" stroke-width="2"/>
+                                    <rect width="{{ $wCust }}" height="58" rx="10" fill="#0f172a" stroke="{{ $statusDotColor }}" stroke-width="1.8"/>
                                     
                                     {{-- Accent Left Bar --}}
-                                    <rect x="0" y="0" width="5" height="64" rx="2.5" fill="{{ $statusDotColor }}"/>
+                                    <rect x="0" y="0" width="4.5" height="58" rx="2" fill="{{ $statusDotColor }}"/>
 
                                     {{-- Row 1: Customer Name & Service Pill --}}
-                                    <text x="16" y="22" fill="#ffffff" font-size="13.5" font-weight="bold" font-family="sans-serif">
-                                        {{ Str::limit($p['customer']['name'] ?? 'Pelanggan FTTH', 22) }}
+                                    <text x="14" y="19" fill="#ffffff" font-size="12.5" font-weight="bold" font-family="sans-serif">
+                                        {{ Str::limit($p['customer']['name'] ?? 'Pelanggan FTTH', 20) }}
                                     </text>
                                     
-                                    <rect x="{{ $wCust - 80 }}" y="8" width="68" height="18" rx="5" fill="#312e81"/>
-                                    <text x="{{ $wCust - 46 }}" y="21" fill="#c7d2fe" font-size="9.5" font-weight="bold" font-family="monospace" text-anchor="middle">
+                                    <rect x="{{ $wCust - 72 }}" y="7" width="62" height="16" rx="4" fill="#312e81"/>
+                                    <text x="{{ $wCust - 41 }}" y="18" fill="#c7d2fe" font-size="8.5" font-weight="bold" font-family="monospace" text-anchor="middle">
                                         {{ $p['service_type'] ?? 'PPPoE' }}
                                     </text>
 
                                     {{-- Row 2: ONT Serial Number & Username --}}
-                                    <text x="16" y="39" fill="#94a3b8" font-size="10.5" font-family="monospace">
-                                        ONT: {{ Str::limit($p['onu']['serial_number'] ?? 'SN-ONT', 14) }} • {{ Str::limit($p['username'] ?? '-', 14) }}
+                                    <text x="14" y="34" fill="#94a3b8" font-size="9.5" font-family="monospace">
+                                        ONT: {{ Str::limit($p['onu']['serial_number'] ?? 'SN-ONT', 13) }} • {{ Str::limit($p['username'] ?? '-', 13) }}
                                     </text>
 
                                     {{-- Row 3: Optical Telemetry & Rx Status --}}
-                                    <text x="16" y="55" fill="{{ $statusDotColor }}" font-size="11" font-weight="900" font-family="monospace">
+                                    <text x="14" y="49" fill="{{ $statusDotColor }}" font-size="10.5" font-weight="900" font-family="monospace">
                                         Rx: {{ !empty($p['onu']['rx_power']) ? $p['onu']['rx_power'] . ' dBm' : '— dBm' }}
                                     </text>
                                     
-                                    <rect x="135" y="44" width="70" height="15" rx="4" fill="{{ $statusDotColor }}"/>
-                                    <text x="170" y="55" fill="#ffffff" font-size="8.5" font-weight="bold" font-family="monospace" text-anchor="middle">
+                                    <rect x="120" y="39" width="60" height="13" rx="3.5" fill="{{ $statusDotColor }}"/>
+                                    <text x="150" y="49" fill="#ffffff" font-size="8" font-weight="bold" font-family="monospace" text-anchor="middle">
                                         {{ $statusText }}
                                     </text>
 
-                                    <circle cx="{{ $wCust - 45 }}" cy="51" r="3.5" fill="#10b981"/>
-                                    <text x="{{ $wCust - 36 }}" y="55" fill="#34d399" font-size="9.5" font-family="sans-serif">Online</text>
+                                    <circle cx="{{ $wCust - 40 }}" cy="45" r="3" fill="#10b981"/>
+                                    <text x="{{ $wCust - 32 }}" y="49" fill="#34d399" font-size="8.5" font-family="sans-serif">Online</text>
                                 </g>
                             @else
                                 {{-- Dashed Dropcore Cable for Available Port --}}
-                                <path d="M {{ $xPorts + $wPort }} {{ $portMidY }} L {{ $xCust }} {{ $portMidY }}" stroke="#334155" stroke-width="1.5" stroke-dasharray="4,4" fill="none"/>
+                                <path d="M {{ $xPorts + $wPort }} {{ $portMidY }} L {{ $xCust }} {{ $portMidY }}" stroke="#334155" stroke-width="1.3" stroke-dasharray="4,4" fill="none"/>
 
                                 {{-- Placeholder Available Card --}}
                                 <g transform="translate({{ $xCust }}, {{ $curY }})" class="cursor-pointer" wire:click="openPortModal({{ $portNum }})">
-                                    <rect width="280" height="{{ $portCardH }}" rx="10" fill="#090d16" stroke="#334155" stroke-width="1.5" stroke-dasharray="5,4"/>
-                                    <circle cx="22" cy="{{ $portCardH / 2 }}" r="9" fill="#1e293b"/>
-                                    <text x="22" y="{{ ($portCardH / 2) + 4 }}" fill="#64748b" font-size="13" font-weight="bold" text-anchor="middle">+</text>
-                                    <text x="40" y="{{ ($portCardH / 2) - 2 }}" fill="#94a3b8" font-size="11" font-weight="bold" font-family="sans-serif">Port Kosong / Siap PSB</text>
-                                    <text x="40" y="{{ ($portCardH / 2) + 12 }}" fill="#64748b" font-size="9.5" font-family="sans-serif">Klik untuk pasang pelanggan baru</text>
+                                    <rect width="250" height="{{ $portCardH }}" rx="9" fill="#090d16" stroke="#334155" stroke-width="1.3" stroke-dasharray="5,4"/>
+                                    <circle cx="18" cy="{{ $portCardH / 2 }}" r="7.5" fill="#1e293b"/>
+                                    <text x="18" y="{{ ($portCardH / 2) + 3.5 }}" fill="#64748b" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                                    <text x="34" y="{{ ($portCardH / 2) - 2 }}" fill="#94a3b8" font-size="10" font-weight="bold" font-family="sans-serif">Port Kosong / Siap PSB</text>
+                                    <text x="34" y="{{ ($portCardH / 2) + 10 }}" fill="#64748b" font-size="8.5" font-family="sans-serif">Klik pasang pelanggan baru</text>
                                 </g>
                             @endif
                         @endforeach
@@ -1170,11 +1203,11 @@
                     <span class="text-emerald-400 font-bold">⚡ Link Budget:</span>
                     <span>OLT (+{{ $sfpTx }})</span>
                     <span class="text-slate-500">➔</span>
-                    <span>Feeder (-{{ $feederLoss }})</span>
+                    <span>Feeder (-{{ $feederLoss + $feederSpliceLoss }})</span>
                     <span class="text-slate-500">➔</span>
                     <span>ODC (-{{ $odcLoss }})</span>
                     <span class="text-slate-500">➔</span>
-                    <span>ODP (-{{ $odpLossVal }})</span>
+                    <span>ODP (-{{ $odpLossVal + $distSpliceLoss }})</span>
                     <span class="text-slate-500">=</span>
                     <span class="text-emerald-300 font-bold">Est. ONT: ~{{ $estOntPower }} dBm</span>
                 </div>
@@ -1998,11 +2031,12 @@
 <script>
 (function() {
     let scale = 1.0;
-    let panX = 40;
-    let panY = 40;
+    let panX = 35;
+    let panY = 30;
     let isDragging = false;
     let startX = 0;
     let startY = 0;
+    let resizeObs = null;
 
     function getElements() {
         return {
@@ -2025,18 +2059,30 @@
         if (!container || !viewport) return;
         try {
             const bbox = viewport.getBBox();
-            const cW = container.clientWidth || 1200;
-            const cH = container.clientHeight || 750;
-            if (bbox.width > 0 && bbox.height > 0) {
-                const isFullscreen = !!document.fullscreenElement;
-                const padX = isFullscreen ? 50 : 35;
-                const padY = isFullscreen ? 50 : 35;
-                const scaleX = (cW - padX) / bbox.width;
-                const scaleY = (cH - padY) / bbox.height;
-                const maxScale = isFullscreen ? 1.6 : 1.25;
-                const minScale = 0.4;
-                scale = Math.min(Math.max(minScale, Math.min(scaleX, scaleY)), maxScale);
-                panX = (cW - (bbox.width * scale)) / 2 - (bbox.x * scale);
+            const rect = container.getBoundingClientRect();
+            const cW = rect.width || container.clientWidth || 1200;
+            const cH = rect.height || container.clientHeight || 640;
+            if (bbox.width > 0 && bbox.height > 0 && cW > 60 && cH > 60) {
+                const padX = 35;
+                const padY = 35;
+                const scaleX = (cW - padX * 2) / bbox.width;
+                const scaleY = (cH - padY * 2) / bbox.height;
+                const fitScale = Math.min(scaleX, scaleY);
+                // Smart auto-scale: Keep diagram cards and typography readable
+                scale = Math.min(1.35, Math.max(0.65, fitScale));
+
+                // If diagram is wider than container at readable scale, center on Hero ODP & Ports
+                if (scale * bbox.width > cW) {
+                    const nodeHero = document.getElementById('nodeTargetOdp');
+                    if (nodeHero) {
+                        const heroBbox = nodeHero.getBBox();
+                        panX = (cW * 0.40) - ((heroBbox.x + heroBbox.width / 2) * scale);
+                    } else {
+                        panX = cW - (bbox.width * scale) - 30;
+                    }
+                } else {
+                    panX = (cW - (bbox.width * scale)) / 2 - (bbox.x * scale);
+                }
                 panY = (cH - (bbox.height * scale)) / 2 - (bbox.y * scale);
                 updateTransform();
             }
@@ -2051,6 +2097,13 @@
         setTimeout(fitToScreen, 50);
         setTimeout(fitToScreen, 180);
         setTimeout(fitToScreen, 450);
+
+        if (!resizeObs && window.ResizeObserver) {
+            resizeObs = new ResizeObserver(() => {
+                fitToScreen();
+            });
+            resizeObs.observe(container);
+        }
 
         if (container.dataset.topoBound === 'true') return;
         container.dataset.topoBound = 'true';
@@ -2076,13 +2129,14 @@
             const { container, viewport } = getElements();
             if (container && viewport) {
                 const bbox = viewport.getBBox();
-                const cW = container.clientWidth || 1200;
-                const cH = container.clientHeight || 750;
+                const rect = container.getBoundingClientRect();
+                const cW = rect.width || container.clientWidth || 1200;
+                const cH = rect.height || container.clientHeight || 640;
                 panX = (cW - bbox.width) / 2 - bbox.x;
                 panY = (cH - bbox.height) / 2 - bbox.y;
             } else {
-                panX = 40;
-                panY = 40;
+                panX = 35;
+                panY = 30;
             }
             updateTransform();
         });
@@ -2093,34 +2147,51 @@
             fitToScreen();
         });
 
-        // Fullscreen
+        // Double Click Container to Fit
+        container.addEventListener('dblclick', (e) => {
+            if (!e.target.closest('a, button, g[cursor="pointer"]')) {
+                fitToScreen();
+            }
+        });
+
+        // Fullscreen Toggle
         document.getElementById('btnTopoFullscreen')?.addEventListener('click', (e) => {
             e.stopPropagation();
             const { wrapper } = getElements();
             if (!wrapper) return;
-            if (!document.fullscreenElement) {
-                wrapper.classList.add('is-fullscreen');
-                wrapper.requestFullscreen?.().then(() => {
-                    setTimeout(fitToScreen, 150);
-                    setTimeout(fitToScreen, 350);
-                }).catch(() => {});
+
+            const isFs = wrapper.classList.toggle('is-topology-fullscreen');
+            if (isFs) {
+                document.body.style.overflow = 'hidden';
+                if (wrapper.requestFullscreen) {
+                    wrapper.requestFullscreen().catch(() => {});
+                }
             } else {
-                wrapper.classList.remove('is-fullscreen');
-                document.exitFullscreen?.().then(() => {
-                    setTimeout(fitToScreen, 150);
-                    setTimeout(fitToScreen, 350);
-                }).catch(() => {});
+                document.body.style.overflow = '';
+                if (document.fullscreenElement && document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                }
+            }
+            setTimeout(fitToScreen, 100);
+            setTimeout(fitToScreen, 300);
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const { wrapper } = getElements();
+                if (wrapper && wrapper.classList.contains('is-topology-fullscreen')) {
+                    wrapper.classList.remove('is-topology-fullscreen');
+                    document.body.style.overflow = '';
+                    setTimeout(fitToScreen, 100);
+                }
             }
         });
 
         document.addEventListener('fullscreenchange', () => {
             const { wrapper } = getElements();
-            if (wrapper) {
-                if (document.fullscreenElement) {
-                    wrapper.classList.add('is-fullscreen');
-                } else {
-                    wrapper.classList.remove('is-fullscreen');
-                }
+            if (wrapper && !document.fullscreenElement) {
+                wrapper.classList.remove('is-topology-fullscreen');
+                document.body.style.overflow = '';
             }
             setTimeout(fitToScreen, 120);
             setTimeout(fitToScreen, 350);
@@ -2188,21 +2259,33 @@
         });
     }
 
-    // Attach lifecycle triggers
-    document.addEventListener('DOMContentLoaded', initOdpTopology);
-    document.addEventListener('livewire:navigated', initOdpTopology);
-    document.addEventListener('livewire:init', () => {
-        if (window.Livewire) {
-            Livewire.hook('commit', ({ succeed }) => {
+    // Expose globally for Alpine and tab switches
+    window.initOdpTopology = initOdpTopology;
+
+    function bindLivewireHooks() {
+        if (window.Livewire && window.Livewire.hook) {
+            window.Livewire.hook('commit', ({ succeed }) => {
                 succeed(() => {
                     setTimeout(initOdpTopology, 50);
                 });
             });
+            window.Livewire.hook('morph.updated', () => {
+                setTimeout(initOdpTopology, 50);
+            });
         }
-    });
+    }
+
+    if (window.Livewire) {
+        bindLivewireHooks();
+    } else {
+        document.addEventListener('livewire:init', bindLivewireHooks);
+    }
+
+    document.addEventListener('DOMContentLoaded', initOdpTopology);
+    document.addEventListener('livewire:navigated', initOdpTopology);
 
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        setTimeout(initOdpTopology, 100);
+        setTimeout(initOdpTopology, 80);
     }
 })();
 </script>
