@@ -150,7 +150,36 @@ class OpnameDashboardAndReportsTest extends TestCase
             ->assertSet('activeTab', 'mutations')
             ->assertSee('Barang Masuk')
             ->call('setTab', 'custody')
-            ->assertSet('activeTab', 'custody');
+            ->assertSet('activeTab', 'custody')
+            ->call('setTab', 'reseller_usage')
+            ->assertSet('activeTab', 'reseller_usage')
+            ->assertSee('Acuan Harga Nominal');
+    }
+
+    public function test_reseller_usage_report_calculates_financial_totals()
+    {
+        $reseller = User::factory()->create(['name' => 'Reseller Sejahtera', 'branch_id' => $this->branch->id]);
+        $reseller->attachRole(UserRole::Reseller->value);
+
+        \App\Models\Inventory\InventoryCustody::create([
+            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'item_id' => $this->item->id,
+            'holder_id' => $reseller->id,
+            'holder_type' => 'reseller',
+            'quantity' => 10,
+            'used_quantity' => 6,
+            'returned_quantity' => 0,
+            'status' => 'in_custody',
+            'branch_id' => $this->branch->id,
+        ]);
+
+        Livewire::test(\App\Livewire\Inventory\Reports\Index::class)
+            ->call('setTab', 'reseller_usage')
+            ->assertSet('activeTab', 'reseller_usage')
+            ->assertSee('Reseller Sejahtera')
+            ->assertSee('Patch Cord SC-UPC 3 Meter')
+            ->assertSee('Rp 90.000') // 6 used * 15.000 = 90.000
+            ->assertSee('Rp 60.000'); // 4 avail * 15.000 = 60.000
     }
 
     public function test_opname_index_route_is_accessible()
