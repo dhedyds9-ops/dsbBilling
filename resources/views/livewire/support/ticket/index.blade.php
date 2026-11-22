@@ -255,7 +255,7 @@ $statusLabels = [
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                     </button>
                                 @endif
-                                <button type="button" wire:click="rowDelete({{ $t->id }})" wire:confirm="Hapus tiket ini?" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200/80 dark:bg-rose-900/30 dark:hover:bg-rose-600 dark:text-rose-300 dark:hover:text-white dark:border-rose-700/60 transition-all duration-150 shadow-2xs cursor-pointer" title="Hapus Tiket">
+                                <button type="button" wire:click="rowDelete({{ $t->id }})" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200/80 dark:bg-rose-900/30 dark:hover:bg-rose-600 dark:text-rose-300 dark:hover:text-white dark:border-rose-700/60 transition-all duration-150 shadow-2xs cursor-pointer" title="Hapus Tiket">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/></svg>
                                 </button>
                             </div>
@@ -354,7 +354,7 @@ $statusLabels = [
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                             </button>
                                         @endif
-                                        <button type="button" wire:click="rowDelete({{ $t->id }})" wire:confirm="Hapus tiket ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 dark:bg-rose-900/40 dark:hover:bg-rose-600 dark:text-rose-300 dark:hover:text-white dark:border-rose-700 transition-all shadow-xs cursor-pointer" title="Hapus Tiket">
+                                        <button type="button" wire:click="rowDelete({{ $t->id }})" class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 dark:bg-rose-900/40 dark:hover:bg-rose-600 dark:text-rose-300 dark:hover:text-white dark:border-rose-700 transition-all shadow-xs cursor-pointer" title="Hapus Tiket">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/></svg>
                                         </button>
                                     </div>
