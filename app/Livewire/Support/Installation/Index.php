@@ -914,10 +914,14 @@ class Index extends BaseEnterpriseList
     protected function sendInstallationWhatsAppNotification(CrmInstallation $wo): void
     {
         try {
-            $wo->loadMissing(['customer', 'technician', 'survey.prospect']);
+            $wo->loadMissing(['customer', 'technician', 'assignedTo', 'survey.prospect']);
             $customer = $wo->customer;
-            $technician = $wo->technician;
             $survey = $wo->survey;
+
+            $assignedTechs = $wo->assignedTechnicians();
+            $technicianName = $assignedTechs->isNotEmpty()
+                ? $assignedTechs->pluck('name')->join(' & ')
+                : ($wo->technician?->name ?? ($wo->assignedTo?->name ?? 'Belum Ditugaskan'));
 
             $customerName = $customer?->name ?? ($wo->customer_name ?: 'Pelanggan');
             $customerPhone = $customer?->phone ?: ($survey?->prospect?->phone ?: '-');
@@ -935,7 +939,7 @@ class Index extends BaseEnterpriseList
                 'longitude'        => $lng,
                 'scheduled_date'   => $wo->scheduled_date ? (is_string($wo->scheduled_date) ? $wo->scheduled_date : $wo->scheduled_date->format('Y-m-d')) : '-',
                 'scheduled_time'   => $wo->scheduled_time ?? '09:00',
-                'technician_name'  => $technician?->name ?? 'Belum Ditugaskan',
+                'technician_name'  => $technicianName,
                 'notes'            => $wo->notes ?? '',
                 'priority'         => $wo->priority ?? 'medium',
             ]);
@@ -981,7 +985,7 @@ class Index extends BaseEnterpriseList
                         'longitude'        => $lng,
                         'scheduled_date'   => $wo->scheduled_date ? (is_string($wo->scheduled_date) ? $wo->scheduled_date : $wo->scheduled_date->format('Y-m-d')) : '-',
                         'scheduled_time'   => $wo->scheduled_time ?? '09:00',
-                        'technician_name'  => $technician?->name ?? 'Belum Ditugaskan',
+                        'technician_name'  => $technicianName,
                         'notes'            => $wo->notes ?? '',
                         'priority'         => $wo->priority ?? 'medium',
                     ], 'created');

@@ -41,13 +41,18 @@ class InstallationTechnicianNotifier
     {
         $result = ['in_app' => false, 'whatsapp' => false, 'whatsapp_error' => null];
 
-        $techId = $wo->assigned_to ?: $wo->technician_id;
-        if (!$techId) {
-            return $result;
+        $techs = $wo->assignedTechnicians();
+        if ($techs->isEmpty()) {
+            $techId = $wo->assigned_to ?: $wo->technician_id;
+            if ($techId) {
+                $user = User::find($techId);
+                if ($user) {
+                    $techs = collect([$user]);
+                }
+            }
         }
 
-        $technician = User::find($techId);
-        if (!$technician) {
+        if ($techs->isEmpty()) {
             return $result;
         }
 
@@ -69,68 +74,85 @@ class InstallationTechnicianNotifier
 
         $heading = $event === 'reassigned' ? 'PENUGASAN ULANG INSTALASI' : 'TUGAS BARU INSTALASI';
 
-        // 1. In-app notification (Portal Teknisi)
-        try {
-            Notification::create([
-                'uuid' => (string) Str::uuid(),
-                'recipient_id' => $technician->id,
-                'title' => ucwords(strtolower($heading)) . ' #' . $wo->id,
-                'message' => "{$customerName} — {$date} {$time} WIB. Alamat: {$address}",
-                'type' => 'in_app',
-                'status' => 'pending',
-                'sent_at' => now(),
-                'data' => [
-                    'url' => $portalUrl,
-                    'icon' => 'construction',
-                    'color' => 'indigo',
-                    'installation_id' => $wo->id,
-                    'event' => $event,
-                ],
-                'created_by' => Auth::id(),
-            ]);
-            $result['in_app'] = true;
-        } catch (\Throwable $e) {
-            Log::warning('[InstallationNotifier] Gagal membuat notifikasi in-app: ' . $e->getMessage(), ['installation_id' => $wo->id]);
-        }
-
-        // 2. WhatsApp ke teknisi
-        $techPhone = $this->normalizePhone(
-            $technician->whatsapp ?: ($technician->phone ?: ($technician->employee?->phone ?? null))
-        );
-
-        if (!$techPhone) {
-            $result['whatsapp_error'] = 'Nomor WhatsApp teknisi belum diisi pada profil user/pegawai.';
-            Log::info('[InstallationNotifier] Teknisi tanpa nomor WhatsApp', ['user_id' => $technician->id]);
-            return $result;
-        }
-
         $latNum = is_numeric($lat) ? (float) $lat : null;
         $lngNum = is_numeric($lng) ? (float) $lng : null;
         $mapsLine = ($latNum !== null && $lngNum !== null && ($latNum != 0.0 || $lngNum != 0.0))
             ? "\n*Lokasi GPS:* https://www.google.com/maps/search/?api=1&query={$latNum},{$lngNum}"
             : "";
 
-        $text = "*[{$heading}]*\n\n"
-            . "Halo {$technician->name},\n"
-            . "Anda ditugaskan untuk pekerjaan instalasi berikut:\n\n"
-            . "*WO:* #{$wo->id}\n"
-            . "*Pelanggan:* {$customerName}\n"
-            . "*No. HP:* {$phone}\n"
-            . "*Alamat:* {$address}"
-            . $mapsLine . "\n"
-            . "*Jadwal:* {$date} {$time} WIB\n"
-            . "*Prioritas:* {$priority}\n"
-            . "*Catatan:* " . ($wo->notes ?: '-') . "\n\n"
-            . "Buka Portal Teknisi: {$portalUrl}";
+        $allNames = $techs->pluck('name')->join(' & ');
+        $teamLine = $techs->count() > 1 ? "\n*Tim Teknisi:* {$allNames}" : "";
 
-        try {
-            $send = WhatsAppDirectSender::send($techPhone, $text);
-            $result['whatsapp'] = (bool) ($send['success'] ?? false);
-            $result['whatsapp_error'] = $send['error'] ?? null;
-        } catch (\Throwable $e) {
-            $result['whatsapp_error'] = $e->getMessage();
-            Log::warning('[InstallationNotifier] Gagal kirim WhatsApp teknisi: ' . $e->getMessage(), ['installation_id' => $wo->id]);
+        $inAppSuccess = false;
+        $waSuccess = false;
+        $waErrors = [];
+
+        foreach ($techs as $technician) {
+            // 1. In-app notification (Portal Teknisi)
+            try {
+                Notification::create([
+                    'uuid' => (string) Str::uuid(),
+                    'recipient_id' => $technician->id,
+                    'title' => ucwords(strtolower($heading)) . ' #' . $wo->id,
+                    'message' => "{$customerName} — {$date} {$time} WIB. Alamat: {$address}" . ($techs->count() > 1 ? " (Tim: {$allNames})" : ""),
+                    'type' => 'in_app',
+                    'status' => 'pending',
+                    'sent_at' => now(),
+                    'data' => [
+                        'url' => $portalUrl,
+                        'icon' => 'construction',
+                        'color' => 'indigo',
+                        'installation_id' => $wo->id,
+                        'event' => $event,
+                    ],
+                    'created_by' => Auth::id(),
+                ]);
+                $inAppSuccess = true;
+            } catch (\Throwable $e) {
+                Log::warning('[InstallationNotifier] Gagal membuat notifikasi in-app: ' . $e->getMessage(), ['installation_id' => $wo->id, 'tech_id' => $technician->id]);
+            }
+
+            // 2. WhatsApp ke teknisi
+            $techPhone = $this->normalizePhone(
+                $technician->whatsapp ?: ($technician->phone ?: ($technician->employee?->phone ?? null))
+            );
+
+            if (!$techPhone) {
+                $waErrors[] = "{$technician->name}: Nomor WhatsApp belum diisi";
+                Log::info('[InstallationNotifier] Teknisi tanpa nomor WhatsApp', ['user_id' => $technician->id]);
+                continue;
+            }
+
+            $text = "*[{$heading}]*\n\n"
+                . "Halo {$technician->name},\n"
+                . "Anda ditugaskan untuk pekerjaan instalasi berikut:\n\n"
+                . "*WO:* #{$wo->id}\n"
+                . "*Pelanggan:* {$customerName}\n"
+                . "*No. HP:* {$phone}\n"
+                . "*Alamat:* {$address}"
+                . $mapsLine . "\n"
+                . "*Jadwal:* {$date} {$time} WIB\n"
+                . "*Prioritas:* {$priority}\n"
+                . "*Catatan:* " . ($wo->notes ?: '-')
+                . $teamLine . "\n\n"
+                . "Buka Portal Teknisi: {$portalUrl}";
+
+            try {
+                $send = WhatsAppDirectSender::send($techPhone, $text);
+                if (!empty($send['success'])) {
+                    $waSuccess = true;
+                } else {
+                    $waErrors[] = "{$technician->name}: " . ($send['error'] ?? 'Gagal');
+                }
+            } catch (\Throwable $e) {
+                $waErrors[] = "{$technician->name}: " . $e->getMessage();
+                Log::warning('[InstallationNotifier] Gagal kirim WhatsApp teknisi: ' . $e->getMessage(), ['installation_id' => $wo->id, 'tech_id' => $technician->id]);
+            }
         }
+
+        $result['in_app'] = $inAppSuccess;
+        $result['whatsapp'] = $waSuccess;
+        $result['whatsapp_error'] = !empty($waErrors) ? implode(', ', $waErrors) : null;
 
         return $result;
     }
