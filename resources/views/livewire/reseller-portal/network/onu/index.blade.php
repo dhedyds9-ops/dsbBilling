@@ -89,6 +89,28 @@
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sync_alt</span>
                     <span>Ganti ONT</span>
                 </a>
+
+                {{-- TOMBOL SINKRONISASI OLT --}}
+                <button type="button" 
+                        wire:click="syncFromOlt" 
+                        wire:loading.attr="disabled" 
+                        class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/40 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap"
+                        title="Sinkronkan status & redaman ONU dari perangkat OLT">
+                    <span class="material-symbols-outlined notranslate text-indigo-600 dark:text-indigo-400" wire:loading.class="animate-spin" wire:target="syncFromOlt,syncAll,syncOlt" translate="no" style="font-size:18px">sync</span>
+                    <span wire:loading.remove wire:target="syncFromOlt,syncAll,syncOlt">Sinkronisasi OLT</span>
+                    <span wire:loading wire:target="syncFromOlt,syncAll,syncOlt">Menyinkronkan...</span>
+                </button>
+
+                {{-- TOMBOL TAUTKAN PELANGGAN OTOMATIS --}}
+                <button type="button" 
+                        wire:click="autoLinkCustomers" 
+                        wire:loading.attr="disabled" 
+                        class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap"
+                        title="Cocokkan otomatis ONU yang belum tertaut dengan PPPoE/Pelanggan">
+                    <span class="material-symbols-outlined notranslate" wire:loading.class="animate-spin" wire:target="autoLinkCustomers" translate="no" style="font-size:18px">link</span>
+                    <span wire:loading.remove wire:target="autoLinkCustomers">Tautkan Pelanggan</span>
+                    <span wire:loading wire:target="autoLinkCustomers">Mencocokkan...</span>
+                </button>
                 @if(($summary['offline'] ?? 0) > 0)
                     <button type="button" 
                             wire:click="deleteAllOfflineOnu" 
@@ -223,6 +245,13 @@
                         <tr wire:key="onu-{{ $onu->id }}" class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                             <td class="px-4 py-3.5 whitespace-nowrap text-center">
                                 <div class="flex items-center justify-center gap-1.5">
+                                    <button type="button" 
+                                            wire:click="syncSingleOnu({{ $onu->id }})" 
+                                            wire:loading.attr="disabled" 
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 transition-colors cursor-pointer" 
+                                            title="Sinkronkan status & redaman ONU ini dari OLT">
+                                        <span class="material-symbols-outlined notranslate" wire:loading.class="animate-spin" wire:target="syncSingleOnu({{ $onu->id }})" translate="no" style="font-size:18px">sync</span>
+                                    </button>
                                     @if($onu->serial_number)
                                         <a href="{{ route('reseller-portal.network.acs-devices.index', ['search' => $onu->serial_number]) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 transition-colors" title="Kelola TR-069 (GenieACS)">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">settings_remote</span>

@@ -202,6 +202,170 @@ class Index extends AdminComponent
         }
     }
 
+    public function syncFromOlt(): void
+    {
+        if (!empty($this->oltFilter) && $this->oltFilter !== 'all') {
+            $this->syncOlt((int) $this->oltFilter);
+        } else {
+            $this->syncAll();
+        }
+    }
+
+    public function syncAll(): void
+    {
+        try {
+            $olts = Olt::forReseller()->whereNotNull('ip_address')->get();
+            if ($olts->isEmpty()) {
+                session()->flash('info', 'Tidak ada OLT yang memiliki IP Address terdaftar pada cakupan Anda.');
+                $this->dispatch('toast', type: 'info', message: 'Tidak ada OLT yang memiliki IP Address terdaftar.');
+                return;
+            }
+
+            $service = app(\App\Services\ISP\OltPollingService::class);
+            $successCount = 0;
+            $failMessages = [];
+
+            foreach ($olts as $olt) {
+                try {
+                    $res = $service->pollOlt($olt);
+                    if (!empty($res['success'])) {
+                        $successCount++;
+                    } else {
+                        $failMessages[] = "{$olt->name}: " . ($res['error'] ?? $res['message'] ?? 'Gagal');
+                    }
+                } catch (\Throwable $te) {
+                    $failMessages[] = "{$olt->name}: " . $te->getMessage();
+                }
+            }
+
+            if ($successCount > 0) {
+                $msg = "Sinkronisasi selesai untuk {$successCount} OLT.";
+                if (!empty($failMessages)) {
+                    $msg .= ' Kendala: ' . implode('; ', $failMessages);
+                }
+                session()->flash('success', $msg);
+                $this->dispatch('toast', type: 'success', message: $msg);
+            } else {
+                $msg = 'Semua OLT gagal disinkronkan: ' . implode('; ', $failMessages);
+                session()->flash('error', $msg);
+                $this->dispatch('toast', type: 'error', message: $msg);
+            }
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal sinkronisasi OLT: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Gagal sinkronisasi OLT: ' . $e->getMessage());
+        }
+    }
+
+    public function syncOlt(int $oltId): void
+    {
+        try {
+            $olt = Olt::forReseller()->findOrFail($oltId);
+            $service = app(\App\Services\ISP\OltPollingService::class);
+            $res = $service->pollOlt($olt);
+
+            if (isset($res['success']) && !$res['success']) {
+                $errMsg = $res['error'] ?? $res['message'] ?? 'Gagal menghubungi perangkat OLT.';
+                throw new \Exception($errMsg);
+            }
+
+            $online = (int)($res['onu_online'] ?? 0);
+            $offline = (int)($res['onu_offline'] ?? 0);
+            $total = $online + $offline;
+            $msg = "Sinkronisasi OLT {$olt->name} selesai: {$online} ONU Online, {$offline} Offline ({$total} Total).";
+            session()->flash('success', $msg);
+            $this->dispatch('toast', type: 'success', message: $msg);
+        } catch (\Throwable $e) {
+            $errMsg = $e->getMessage();
+            session()->flash('error', 'Gagal sinkronisasi OLT: ' . $errMsg);
+            $this->dispatch('toast', type: 'error', message: 'Gagal sync OLT: ' . $errMsg);
+        }
+    }
+
+    public function syncSingleOnu(int $onuId): void
+    {
+        try {
+            $onu = Onu::forReseller()->with('olt')->findOrFail($onuId);
+            if (!$onu->olt) {
+                session()->flash('error', 'ONU ini tidak terhubung ke OLT manapun.');
+                $this->dispatch('toast', type: 'error', message: 'ONU ini tidak terhubung ke OLT.');
+                return;
+            }
+
+            $service = app(\App\Services\ISP\OltPollingService::class);
+            $res = $service->pollOlt($onu->olt);
+
+            if (!empty($res['success'])) {
+                session()->flash('success', "Data ONU {$onu->serial_number} berhasil diperbarui dari OLT {$onu->olt->name}!");
+                $this->dispatch('toast', type: 'success', message: "Data ONU {$onu->serial_number} berhasil diperbarui.");
+            } else {
+                $err = $res['error'] ?? $res['message'] ?? 'Gagal membaca status OLT';
+                session()->flash('error', "Gagal sinkronisasi ONU: {$err}");
+                $this->dispatch('toast', type: 'error', message: "Gagal sinkronisasi: {$err}");
+            }
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal sinkronisasi ONU: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Gagal sinkronisasi ONU: ' . $e->getMessage());
+        }
+    }
+
+    public function autoLinkCustomers(): void
+    {
+        try {
+            $onus = Onu::forReseller()->whereDoesntHave('customerService')->get();
+            $linked = 0;
+
+            foreach ($onus as $onu) {
+                $mac = !empty($onu->mac_address) ? strtoupper(str_replace([':', '-', '.'], '', $onu->mac_address)) : null;
+                $sn = strtoupper(trim($onu->serial_number ?? ''));
+
+                $targetService = null;
+
+                // 1. Coba cari lewat PPPoEUser caller_id / mac_address
+                if ($mac) {
+                    $pppoe = \App\Models\ISP\PPPoEUser::forReseller()
+                        ->where(function ($q) use ($mac, $onu) {
+                            $q->where('mac_address', $onu->mac_address)
+                              ->orWhere('caller_id', $onu->mac_address)
+                              ->orWhereRaw("REPLACE(REPLACE(REPLACE(mac_address, ':', ''), '-', ''), '.', '') = ?", [$mac])
+                              ->orWhereRaw("REPLACE(REPLACE(REPLACE(caller_id, ':', ''), '-', ''), '.', '') = ?", [$mac]);
+                        })
+                        ->first();
+                    if ($pppoe && $pppoe->customer_service_id) {
+                        $targetService = CustomerService::forReseller()->find($pppoe->customer_service_id);
+                    }
+                }
+
+                // 2. Coba cari lewat ACS device inform
+                if (!$targetService && $sn) {
+                    $acs = \App\Models\ACS\ACSDevice::forReseller()
+                        ->where('serial_number', $sn)
+                        ->orWhere('uuid', $sn)
+                        ->first();
+                    if ($acs && !empty($acs->customer_service_id)) {
+                        $targetService = CustomerService::forReseller()->find($acs->customer_service_id);
+                    }
+                }
+
+                if ($targetService && empty($targetService->onu_id)) {
+                    $targetService->update(['onu_id' => $onu->id]);
+                    $linked++;
+                }
+            }
+
+            if ($linked > 0) {
+                $msg = "Berhasil menautkan {$linked} ONU ke akun pelanggan yang sesuai!";
+                session()->flash('success', $msg);
+                $this->dispatch('toast', type: 'success', message: $msg);
+            } else {
+                session()->flash('info', 'Tidak ditemukan data PPPoE/Pelanggan yang cocok otomatis untuk ONU yang belum tertaut.');
+                $this->dispatch('toast', type: 'info', message: 'Tidak ada ONU baru yang cocok otomatis.');
+            }
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal menautkan otomatis: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
+        }
+    }
+
     public function deleteOnu(int $id): void
     {
         try {
