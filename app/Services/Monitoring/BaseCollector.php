@@ -16,7 +16,11 @@ abstract class BaseCollector implements CollectorInterface
     
     protected function putToCache(string $key, array $data, int $ttlInSeconds = 300): void
     {
-        Cache::put($key, $data, now()->addSeconds($ttlInSeconds));
+        try {
+            Cache::put($key, $data, now()->addSeconds($ttlInSeconds));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("BaseCollector cache put non-fatal ({$key}): " . $e->getMessage());
+        }
     }
     
     protected function fireEvent(string $eventName, array $payload = []): void

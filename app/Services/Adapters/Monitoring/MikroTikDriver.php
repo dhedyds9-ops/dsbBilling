@@ -33,7 +33,7 @@ class MikroTikDriver implements DeviceMonitorInterface
                 'pass' => $device->password,
                 'port' => $device->api_port ?? 8728,
                 'ssl' => $device->use_ssl ?? false,
-                'timeout' => !empty($device->timeout) ? (int)$device->timeout : 5,
+                'timeout' => !empty($device->timeout) ? (int)$device->timeout : 10,
             ];
             
             $this->clients[$key] = new Client($config);
@@ -48,7 +48,7 @@ class MikroTikDriver implements DeviceMonitorInterface
                         'pass' => $device->password,
                         'port' => $device->api_port ?? 8728,
                         'ssl' => $device->use_ssl ?? false,
-                        'timeout' => !empty($device->timeout) ? (int)$device->timeout : 5,
+                        'timeout' => !empty($device->timeout) ? (int)$device->timeout : 10,
                     ];
                     $this->clients[$key] = new Client($fallbackConfig);
                     return $this->clients[$key];

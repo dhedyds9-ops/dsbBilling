@@ -1,3 +1,6 @@
+<style>
+    .map-tiles-dark { filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(90%) !important; }
+</style>
 <div class="space-y-3.5 pb-8"
      x-data="technicianAttendanceMap({
          branches: @js($branches ?? []),
@@ -270,8 +273,10 @@
                         maxZoom: 19
                     });
 
-                    const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                        maxZoom: 20
+                    const cartoDark = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                        maxZoom: 22,
+                        className: 'map-tiles-dark'
                     });
 
                     googleHybrid.addTo(this.map);

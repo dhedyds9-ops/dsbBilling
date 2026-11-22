@@ -544,3 +544,8 @@ a[href^="http://"].ip-direct-link {
     text-decoration: none !important;
 }
 
+/* Leaflet Clean Dark Basemap Filter (No watermark, Google Road / OSM night filter) */
+.map-tiles-dark {
+    filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(90%) !important;
+}
+

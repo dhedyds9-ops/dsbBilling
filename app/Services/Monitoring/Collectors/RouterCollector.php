@@ -42,6 +42,12 @@ class RouterCollector extends BaseCollector
         try {
             $isOnline = $this->driver->ping($router);
             
+            // Retry once with a brief 500ms delay to prevent false alarms during transient CPU spike
+            if (!$isOnline) {
+                usleep(500000);
+                $isOnline = $this->driver->ping($router);
+            }
+            
             if (!$isOnline) {
                 $this->saveMonitoringLog($router, [
                     'is_online' => false,
@@ -60,6 +66,13 @@ class RouterCollector extends BaseCollector
                 
                 return;
             }
+
+            // Auto-resolve any previous offline/monitoring error alerts when router is confirmed online
+            \App\Models\Alarm::where('source_type', Router::class)
+                ->where('source_id', $router->id)
+                ->whereIn('title', ['Router is offline', 'Router monitoring error'])
+                ->where('status', 'open')
+                ->update(['status' => 'resolved', 'resolved_at' => now()]);
             
             $systemInfo = $this->driver->getSystemInfo($router);
             $pppSessions = $this->driver->getPPPActive($router);
@@ -314,14 +327,18 @@ class RouterCollector extends BaseCollector
     
     private function updateCache(Router $router, bool $isOnline, ?string $error = null, array $data = []): void
     {
-        $cacheKey = $this->getCacheKey('router', $router->id);
-        $cacheData = [
-            'is_online' => $isOnline,
-            'error_message' => $error,
-            ...$data,
-        ];
-        
-        $this->putToCache($cacheKey, $cacheData);
+        try {
+            $cacheKey = $this->getCacheKey('router', (string)$router->id);
+            $cacheData = [
+                'is_online' => $isOnline,
+                'error_message' => $error,
+                ...$data,
+            ];
+            
+            $this->putToCache($cacheKey, $cacheData);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("RouterCollector: Cache update failed non-fatal for router {$router->name}: " . $e->getMessage());
+        }
     }
     
     private function calculateHealthScore(array $systemInfo): int
@@ -359,7 +376,7 @@ class RouterCollector extends BaseCollector
     private function checkAlerts(Router $router, array $systemInfo, int $healthScore): void
     {
         // CPU load alert
-        $cpuLoad = $systemInfo['cpu_load'] ?? 0;
+        $cpuLoad = (int)($systemInfo['cpu_load'] ?? 0);
         if ($cpuLoad > 90) {
             $this->alertEngine->createAlert(
                 'critical',
@@ -376,6 +393,13 @@ class RouterCollector extends BaseCollector
                 "Router {$router->name} has CPU load at {$cpuLoad}%",
                 ['cpu_load' => $cpuLoad]
             );
+        } else {
+            // Auto-resolve when CPU load returns to normal
+            \App\Models\Alarm::where('source_type', Router::class)
+                ->where('source_id', $router->id)
+                ->whereIn('title', ['High CPU usage', 'Elevated CPU usage'])
+                ->where('status', 'open')
+                ->update(['status' => 'resolved', 'resolved_at' => now()]);
         }
         
         // Memory usage alert
@@ -400,6 +424,13 @@ class RouterCollector extends BaseCollector
                     "Router {$router->name} has memory usage at {$memoryUsagePercent}%",
                     ['memory_usage' => $memoryUsagePercent]
                 );
+            } else {
+                // Auto-resolve when memory usage returns to normal
+                \App\Models\Alarm::where('source_type', Router::class)
+                    ->where('source_id', $router->id)
+                    ->whereIn('title', ['High memory usage', 'Elevated memory usage'])
+                    ->where('status', 'open')
+                    ->update(['status' => 'resolved', 'resolved_at' => now()]);
             }
         }
         
@@ -420,6 +451,13 @@ class RouterCollector extends BaseCollector
                 "Router {$router->name} has health score at {$healthScore}",
                 ['health_score' => $healthScore]
             );
+        } else {
+            // Auto-resolve when health score returns to normal
+            \App\Models\Alarm::where('source_type', Router::class)
+                ->where('source_id', $router->id)
+                ->whereIn('title', ['Low health score', 'Reduced health score'])
+                ->where('status', 'open')
+                ->update(['status' => 'resolved', 'resolved_at' => now()]);
         }
     }
 }

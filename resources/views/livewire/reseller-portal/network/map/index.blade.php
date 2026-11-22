@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.min.js"></script>
 
     <style>
+        .map-tiles-dark { filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(90%) !important; }
         .map-smart-toolbar { 
             display: flex; 
             align-items: center; 
@@ -702,7 +703,7 @@
         
         let googleHybrid = window.L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'], attribution: '&copy; Google Hybrid Satellite HD' });
         let googleRoad = window.L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'], attribution: '&copy; Google Road Clean HD' });
-        let darkLayer = window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20, attribution: 'CARTO' });
+        let darkLayer = window.L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'], className: 'map-tiles-dark', attribution: '&copy; dsBilling Night Mode' });
         
         googleHybrid.addTo(mapInstance);
         window.L.control.layers({ '🛰️ Google Hybrid Satellite HD': googleHybrid, '🗺️ Google Road Clean HD': googleRoad, '🌙 Dark Mode': darkLayer }, null, { position: 'topright' }).addTo(mapInstance);

@@ -782,6 +782,10 @@
         width: 100%;
         border-radius: 8px;
     }
+    /* Clean dark basemap filter without Carto watermark */
+    .map-tiles-dark {
+        filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(90%) !important;
+    }
     .modern-map-popup .leaflet-popup-content-wrapper {
         background: #0f172a !important; /* Very dark navy/slate */
         padding: 0 !important;
@@ -1804,10 +1808,17 @@
             subdomains: ['mt0','mt1','mt2','mt3'],
             attribution: '&copy; Google Road Clean HD'
         });
+
+        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        });
         
-        var darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20,
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+        var darkLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 22,
+            subdomains: ['mt0','mt1','mt2','mt3'],
+            className: 'map-tiles-dark',
+            attribution: '&copy; dsBilling Night Mode (Google)'
         });
 
         // Default to Google Hybrid Satellite HD
@@ -1816,7 +1827,8 @@
         var baseMaps = {
             "🛰️ Google Satellite Hybrid": googleHybrid,
             "🗺️ Google Road Clean": googleRoad,
-            "🌙 Dark Mode": darkLayer
+            "🌐 OpenStreetMap": osm,
+            "🌙 Mode Gelap (Clean Dark)": darkLayer
         };
         L.control.layers(baseMaps).addTo(map);
 
@@ -1827,13 +1839,14 @@
         window.addEventListener('themeChanged', function(e) {
             if (e.detail.theme === 'dark') {
                 if (map.hasLayer(osm)) map.removeLayer(osm);
-                if (map.hasLayer(googleHybrid)) map.removeLayer(googleHybrid);
-                if (!map.hasLayer(darkLayer)) darkLayer.addTo(map);
+                if (map.hasLayer(googleRoad)) map.removeLayer(googleRoad);
+                // Keep hybrid if user prefers satellite, otherwise switch to darkLayer
+                if (!map.hasLayer(googleHybrid) && !map.hasLayer(darkLayer)) darkLayer.addTo(map);
             } else {
-                if (map.hasLayer(darkLayer)) map.removeLayer(darkLayer);
-                // Default to OSM for light mode, unless user was on Satellite? 
-                // For simplicity, switch to OSM.
-                if (!map.hasLayer(osm) && !map.hasLayer(googleHybrid)) osm.addTo(map);
+                if (map.hasLayer(darkLayer)) {
+                    map.removeLayer(darkLayer);
+                    googleHybrid.addTo(map);
+                }
             }
         });
 

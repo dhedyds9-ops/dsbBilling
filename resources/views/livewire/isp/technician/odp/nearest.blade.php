@@ -399,6 +399,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.min.js"></script>
     <style>
+        .map-tiles-dark { filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(90%) !important; }
         .modern-map-popup .leaflet-popup-content-wrapper {
             background: #0f172a !important;
             padding: 0 !important;
@@ -579,9 +580,11 @@
                 subdomains: ['mt0','mt1','mt2','mt3']
             });
 
-            const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-                maxZoom: 20
+            const darkLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                attribution: '&copy; dsBilling Night Mode (Google)',
+                maxZoom: 22,
+                subdomains: ['mt0','mt1','mt2','mt3'],
+                className: 'map-tiles-dark'
             });
 
             // Default to Google Hybrid
