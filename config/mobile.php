@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10126,
-        'latest_version_name' => '1.1.26',
+        'latest_version_code' => 10127,
+        'latest_version_name' => '1.1.27',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'https://winets.mstore.id') . '/downloads/dsbilling-technician.apk',
-        'release_notes' => "dsBilling Staff & Reseller v1.1.26:\n- Redaman Optik Presisi: Normalisasi nilai daya RX/TX optik ZTE TR-069 dan integrasi nilai DDM OLT yang konsisten.\n- Multi-SSID Wi-Fi 5GHz: Sinkronisasi akurat pengaturan SSID 1 (2.4G) dan SSID 2 (5G) beserta deteksi mode keamanan (Open / WPA2).\n- Toleransi Summon TR-069: Menghilangkan kendala Server Error pada modem online melalui task-queue non-blocking.\n- Sinkronisasi C-DATA OLT: Perbaikan pembacaan status ONU online via SNMP dan akselerasi proses hapus ONU.\n- Menu Web Portal Teknisi: Pengaktifan kembali tombol 1-Klik SSO Web Portal di dashboard dan profil teknisi.\n- Peta & ODP: Integrasi tombol Ambil Titik GPS, Buka Peta Jaringan, dan Hubungkan ke ODP.",
+        'release_notes' => "dsBilling Staff & Reseller v1.1.27:\n- Operational Control Center: Monitoring pekerjaan lapangan real-time untuk Admin & NOC langsung dari aplikasi (Tiket, SPK, QC, SLA Breached, dan Teknisi aktif).\n- PSB Mandiri Reseller: Registrasi ONT mandiri untuk Reseller tanpa kewajiban SPK/presensi, sedangkan Teknisi tetap terjaga integritas SPK dan presensi aktif.\n- Pencarian Pelanggan Tiket Gangguan: Pemilih pelanggan interaktif dengan pencarian instan pada pembuatan tiket gangguan oleh Reseller & Admin.\n- Eliminasi Redundansi Menu: Penataan grid 12 menu presisi untuk setiap role (Reseller, Teknisi, Admin) bebas duplikasi aksi.\n- Tombol Pintas SPK: Akses langsung pengerjaan SPK lapangan dari detail tiket gangguan.\n- Push Notification FCM HTTP v1: Notifikasi real-time penugasan SPK, verifikasi QC, dan eskalasi SLA.",
     ],
     'customer' => [
         'latest_version_code' => 10112,
