@@ -16,12 +16,12 @@ class TelnetSshClient
     protected string $enableSecret;
     protected int $timeout;
 
-    public function connect(string $host, ?string $username, ?string $password, string $mode = 'telnet', int $port = 0, ?string $enableSecret = '', int $timeout = 10): static
+    public function connect(string $host, ?string $username, ?string $password, string $mode = 'telnet', int $port = 0, ?string $enableSecret = '', int $timeout = 25): static
     {
         $this->host     = $host;
         $this->username = $username ?? '';
         $this->password = $password ?? '';
-        $this->mode     = $mode;
+        $this->mode     = $port === 22 ? 'ssh' : $mode;
         $this->enableSecret = $enableSecret ?? '';
         $this->timeout  = $timeout;
 
@@ -135,7 +135,7 @@ class SimpleTelnet
     protected $port;
     protected $timeout;
 
-    public function __construct(string $host, int $port = 23, int $timeout = 10)
+    public function __construct(string $host, int $port = 23, int $timeout = 25)
     {
         $this->host = $host;
         $this->port = $port;
@@ -237,12 +237,14 @@ class SimpleTelnet
 
             $result .= $c;
             
-            // Handle pagination "More" prompt for various OLTs (C-Data, ZTE, GBN/HiFocus, BDCOM)
-            if (preg_match('/(?:--More--|----\s*More\b.*?----|Press\s+any\s+key\s+to\s+continue|Press\s*\'?Q\'?\s*to\s*break)/i', substr($result, -150), $m)) {
-                $this->write(" "); // Send space to continue
-                $start = time();
-                $result = substr($result, 0, -strlen($m[0]));
-                usleep(50000); // 50ms pause to let OLT stream next chunk
+            // Handle pagination "More" prompt for various OLTs (C-Data, ZTE, GBN/HiFocus, BDCOM, Huawei)
+            // Supports: --More--, --More ( 14% )--, ---- More ----, More (xx%), Press any key, Press 'Q' to break
+            if (preg_match('/(?:--+\s*More\b.*?--+|----\s*More\b.*?----+|\bMore\b\s*\([^\)]*?\)|Press\s+any\s+key\s+to\s+continue|Press\s*\'?Q\'?\s*to\s*break)/i', substr($result, -150), $m)) {
+                $this->write(" "); // Send space to continue streaming full page
+                $lastDataTime = time();
+                $lastWakeup = time();
+                $result = preg_replace('/' . preg_quote($m[0], '/') . '[\s\x08]*$/i', '', $result);
+                usleep(30000); // 30ms pause to let OLT stream next chunk
             }
 
             if (preg_match($pattern, $result)) {

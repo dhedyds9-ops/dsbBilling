@@ -437,6 +437,10 @@ class CDataOltDriver extends BaseOltDriver
             try {
                 $this->cli->execute("terminal length 0\r\n", false);
                 $this->cli->execute("terminal page 0\r\n", false);
+                $this->cli->execute("terminal page disable\r\n", false);
+                $this->cli->execute("terminal pagination disable\r\n", false);
+                $this->cli->execute("no terminal page\r\n", false);
+                $this->cli->execute("terminal width 0\r\n", false);
             } catch (\Throwable) {}
 
             // Attempt 1: Direct commands (supports 0/1/1, 0/0/1, slot 1 and slot 0)
@@ -1104,12 +1108,31 @@ class CDataOltDriver extends BaseOltDriver
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.8')
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13')
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1') ?: []))))) : [];
+
+            // C-Data GPON Bind Status (.18.10.1.1.4: 1=online, 2=offline)
+            // Beberapa firmware FD1608/FD1616 menyimpan status online nyata pada bind table ini
+            $gponBindStatus = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.10.1.1.4') ?: []) : [];
+            if (!empty($gponBindStatus)) {
+                foreach ($gponBindStatus as $bKey => $bVal) {
+                    $cleanBVal = trim(preg_replace('/^(INTEGER|Gauge32|Counter32|Hex-STRING|STRING|OctetString|Hex)\s*:?\s*/i', '', (string)$bVal), "\" \r\n\t");
+                    if ($cleanBVal === '1' || strtolower($cleanBVal) === 'online' || strtolower($cleanBVal) === 'up') {
+                        $gponRunStatus[$bKey] = 5;
+                    }
+                }
+            }
             
             // GPON Direct Optical Table:
             // gponOnuOpticalInfoTable (.18.6.1 - Official CDATA-GPON-MIB: .3=RxPower, .2=TxPower, .4=Temperature)
             // gponOnuBindRxPower (.18.10.1.1.7)
-            $gponDirectRx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.3')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.10.1.1.7') ?: [])) : [];
+            $gponDirectRx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.3') ?: []) : [];
+            $gponBindRx   = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.10.1.1.7') ?: []) : [];
+            if (!empty($gponBindRx)) {
+                foreach ($gponBindRx as $bKey => $bVal) {
+                    if (!isset($gponDirectRx[$bKey])) {
+                        $gponDirectRx[$bKey] = $bVal;
+                    }
+                }
+            }
             $gponDirectTx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.2') ?: []) : [];
             $gponDirectTemp = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.4') ?: []) : [];
 
@@ -1234,6 +1257,40 @@ class CDataOltDriver extends BaseOltDriver
             $this->cachedOnuTemps = $gponTemps ?: $eponTemps;
             $this->cachedOnuMacs = $eponMacs;
         }
+
+        // Build normalized port.onu_id index maps for fast O(1) matching across any C-DATA MIB table
+        $buildNormMap = function(?array $arr): array {
+            $map = [];
+            if (empty($arr)) return $map;
+            foreach ($arr as $k => $v) {
+                $clean = ltrim(preg_replace('/^.*?(\d+(?:\.\d+)+)$/', '$1', (string)$k), '.');
+                $parts = explode('.', $clean);
+                if (count($parts) >= 2) {
+                    $onuId = (int)end($parts);
+                    $rawP = (int)$parts[count($parts) - 2];
+                    if ($rawP >= 1310721 && $rawP <= 1310736) {
+                        $p = $rawP - 1310720;
+                    } elseif ($rawP > 1000000) {
+                        $p = $rawP & 0xFF;
+                        if ($p === 0) $p = ($rawP >> 8) & 0xFF;
+                    } elseif ($rawP > 16 && $rawP <= 32) {
+                        $p = $rawP - 16;
+                    } else {
+                        $p = $rawP;
+                    }
+                    if ($p <= 0) $p = 1;
+                    $map["{$p}.{$onuId}"] = $v;
+                }
+            }
+            return $map;
+        };
+
+        $normStatuses = $buildNormMap($this->cachedOnuStatuses);
+        $normActives  = $buildNormMap($this->cachedOnuActiveStates);
+        $normRx       = $buildNormMap($this->cachedOnuRx);
+        $normTx       = $buildNormMap($this->cachedOnuTx);
+        $normTemps    = $buildNormMap($this->cachedOnuTemps);
+        $normMacs     = $buildNormMap($this->cachedOnuMacs);
 
         // Helper to normalize and lookup OID suffixes across SNMP result arrays
         $lookupVal = function(?array $arr, string $key) {
@@ -1413,8 +1470,11 @@ class CDataOltDriver extends BaseOltDriver
             }
 
             if ($isPortMatch) {
-                $rawAct = trim((string)($lookupVal($this->cachedOnuActiveStates, (string)$oidKey) ?? ''));
-                $rawSt  = trim((string)($lookupVal($this->cachedOnuStatuses, (string)$oidKey) ?? ''));
+                $targetKey = "{$p}.{$onuId}";
+                $targetNormKey = "{$normalizedTarget}.{$onuId}";
+
+                $rawAct = trim((string)($normActives[$targetKey] ?? ($normActives[$targetNormKey] ?? ($lookupVal($this->cachedOnuActiveStates, (string)$oidKey) ?? ''))));
+                $rawSt  = trim((string)($normStatuses[$targetKey] ?? ($normStatuses[$targetNormKey] ?? ($lookupVal($this->cachedOnuStatuses, (string)$oidKey) ?? ''))));
                 $stRaw  = strtolower($rawSt);
                 $actRaw = strtolower($rawAct);
                 $cleanAct  = trim(preg_replace('/^(INTEGER|Gauge32|Counter32|Hex-STRING|STRING|OctetString|Hex)\s*:?\s*/i', '', $rawAct), "\" \r\n\t");
@@ -1488,8 +1548,10 @@ class CDataOltDriver extends BaseOltDriver
                 }
 
                 // 3. Evaluasi Redaman Optik (RX / TX)
-                $rxVal = $parsePower($lookupVal($this->cachedOnuRx, (string)$oidKey) ?? 0);
-                $txVal = $parsePower($lookupVal($this->cachedOnuTx, (string)$oidKey) ?? 0);
+                $rxRaw = $normRx[$targetKey] ?? ($normRx[$targetNormKey] ?? ($lookupVal($this->cachedOnuRx, (string)$oidKey) ?? 0));
+                $txRaw = $normTx[$targetKey] ?? ($normTx[$targetNormKey] ?? ($lookupVal($this->cachedOnuTx, (string)$oidKey) ?? 0));
+                $rxVal = $parsePower($rxRaw);
+                $txVal = $parsePower($txRaw);
 
                 if ($rxVal === null && $cliRx !== null) {
                     $rxVal = $cliRx;
@@ -1512,13 +1574,13 @@ class CDataOltDriver extends BaseOltDriver
                 }
 
                 $mac = $parsed['mac'] ?? null;
-                $rawMac = $lookupVal($this->cachedOnuMacs, (string)$oidKey);
+                $rawMac = $normMacs[$targetKey] ?? ($normMacs[$targetNormKey] ?? ($lookupVal($this->cachedOnuMacs, (string)$oidKey) ?? null));
                 if (!$mac && !empty($rawMac)) {
                     $mParsed = $cleanSnString($rawMac);
                     $mac = $mParsed['mac'] ?? null;
                 }
 
-                $tempVal = $lookupVal($this->cachedOnuTemps, (string)$oidKey);
+                $tempVal = $normTemps[$targetKey] ?? ($normTemps[$targetNormKey] ?? ($lookupVal($this->cachedOnuTemps, (string)$oidKey) ?? null));
                 $cleanTemp = null;
                 if ($tempVal !== null && $tempVal !== '') {
                     $tFloat = (float)$tempVal;
@@ -1813,10 +1875,8 @@ class CDataOltDriver extends BaseOltDriver
                 $this->cli->execute("exit\r\n", false);
             }
 
-            // Simpan perubahan ke memory/NVRAM secara cepat tanpa blocking lama ke antarmuka pengguna
-            try {
-                $this->cli->execute("write\r\n", false);
-            } catch (\Throwable) {}
+            // Eksekusi penghapusan ONU di memori operasional OLT selesai secara instan.
+            // Tidak menjalankan blocking 'write' di sini agar interaksi pengguna tetap responsif (< 500ms).
 
             Log::info("CDataOltDriver::deleteOnu successfully issued delete command for ONU #{$onu->id} (Port: {$ponPort}, Index: {$onuId})");
             return true;
