@@ -27,6 +27,7 @@ class CDataOltDriver extends BaseOltDriver
     protected ?bool $isNewBranch = null;
     protected ?array $cachedOnuStatuses = null;
     protected ?array $cachedOnuActiveStates = null;
+    protected ?array $cachedOnuBindStatuses = null;
     protected ?array $cachedOnuSerials = null;
     protected ?array $cachedOnuRx = null;
     protected ?array $cachedOnuTx = null;
@@ -1061,9 +1062,14 @@ class CDataOltDriver extends BaseOltDriver
                 // 1. gponOnuSn (.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.3 - Official CDATA-GPON-MIB)
                 $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.3') ?: [];
 
-                // 2. gponOnuBindSn (.18.10.1.1.2)
-                if (empty($gponSerials)) {
-                    $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.10.1.1.2') ?: [];
+                // 2. gponOnuBindSn (.18.10.1.1.2) - Gabungkan seluruh ONU yang terdaftar/terikat pada bind table
+                $bindSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.10.1.1.2') ?: [];
+                if (!empty($bindSerials)) {
+                    foreach ($bindSerials as $bKey => $bVal) {
+                        if (!isset($gponSerials[$bKey])) {
+                            $gponSerials[$bKey] = $bVal;
+                        }
+                    }
                 }
 
                 // 3. FD1608/FD1616 legacy OID (.100.9.2.1.3 or .100.9.2.1.2)
@@ -1094,9 +1100,19 @@ class CDataOltDriver extends BaseOltDriver
             }
             
             // GPON Active State (1 = active/online, 2 = inactive/offline)
-            $gponActive = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.7')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.10.1.1.3')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.7') ?: []))) : [];
+            // Gabungkan gponOnuControlFlag (.18.1.1.7) dan gponOnuBindActiveStatus (.18.10.1.1.3)
+            $gponActive = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.7') ?: []) : [];
+            $gponBindActive = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.10.1.1.3') ?: []) : [];
+            if (!empty($gponBindActive)) {
+                foreach ($gponBindActive as $bKey => $bVal) {
+                    if (!isset($gponActive[$bKey])) {
+                        $gponActive[$bKey] = $bVal;
+                    }
+                }
+            }
+            if (empty($gponActive) && !empty($gponSerials)) {
+                $gponActive = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.7') ?: [];
+            }
 
             // GPON Run Status:
             // 1. gponOnuOperStatus (.18.1.1.8 - Official CDATA-GPON-MIB: 1=online, 5=operation/O5/ONLINE, 101=online)
@@ -1110,7 +1126,7 @@ class CDataOltDriver extends BaseOltDriver
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1') ?: []))))) : [];
 
             // C-Data GPON Bind Status (.18.10.1.1.4: 1=online, 2=offline)
-            // Beberapa firmware FD1608/FD1616 menyimpan status online nyata pada bind table ini
+            // Firmware FD1608/FD1616 menyimpan status online nyata pada bind table ini
             $gponBindStatus = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.10.1.1.4') ?: []) : [];
             if (!empty($gponBindStatus)) {
                 foreach ($gponBindStatus as $bKey => $bVal) {
@@ -1251,6 +1267,7 @@ class CDataOltDriver extends BaseOltDriver
 
             $this->cachedOnuSerials = $gponSerials ?: $eponSerials;
             $this->cachedOnuActiveStates = !empty($gponSerials) ? $gponActive : $eponActive;
+            $this->cachedOnuBindStatuses = !empty($gponSerials) ? $gponBindStatus : null;
             $this->cachedOnuStatuses = !empty($gponSerials) ? $gponRunStatus : $eponStatuses;
             $this->cachedOnuRx = $gponRx ?: $eponRx;
             $this->cachedOnuTx = $gponTx ?: $eponTx;
@@ -1279,18 +1296,28 @@ class CDataOltDriver extends BaseOltDriver
                         $p = $rawP;
                     }
                     if ($p <= 0) $p = 1;
-                    $map["{$p}.{$onuId}"] = $v;
+
+                    $normKey = "{$p}.{$onuId}";
+                    // Jangan timpa data valid yang sudah ada dengan nilai kosong/0
+                    $existing = $map[$normKey] ?? null;
+                    $cleanV = trim(preg_replace('/^(INTEGER|Gauge32|Counter32|Hex-STRING|STRING|OctetString|Hex)\s*:?\s*/i', '', (string)$v), "\" \r\n\t");
+                    $isNewEmpty = ($cleanV === '' || $cleanV === '0' || $cleanV === '--' || $cleanV === 'N/A' || str_contains(strtolower($cleanV), 'no such'));
+
+                    if (!isset($map[$normKey]) || (!$isNewEmpty && ($existing === null || $existing === 0 || $existing === '0' || $existing === '' || $existing === '--'))) {
+                        $map[$normKey] = $v;
+                    }
                 }
             }
             return $map;
         };
 
-        $normStatuses = $buildNormMap($this->cachedOnuStatuses);
-        $normActives  = $buildNormMap($this->cachedOnuActiveStates);
-        $normRx       = $buildNormMap($this->cachedOnuRx);
-        $normTx       = $buildNormMap($this->cachedOnuTx);
-        $normTemps    = $buildNormMap($this->cachedOnuTemps);
-        $normMacs     = $buildNormMap($this->cachedOnuMacs);
+        $normStatuses     = $buildNormMap($this->cachedOnuStatuses);
+        $normActives      = $buildNormMap($this->cachedOnuActiveStates);
+        $normBindStatuses = $buildNormMap($this->cachedOnuBindStatuses);
+        $normRx           = $buildNormMap($this->cachedOnuRx);
+        $normTx           = $buildNormMap($this->cachedOnuTx);
+        $normTemps        = $buildNormMap($this->cachedOnuTemps);
+        $normMacs         = $buildNormMap($this->cachedOnuMacs);
 
         // Helper to normalize and lookup OID suffixes across SNMP result arrays
         $lookupVal = function(?array $arr, string $key) {
@@ -1404,20 +1431,47 @@ class CDataOltDriver extends BaseOltDriver
             return ['sn' => $final, 'mac' => str_contains($final, ':') ? $final : null];
         };
 
-        $parsePower = function($val) {
+        $parsePower = function($val, bool $isTx = false) {
             if ($val === null || $val === '' || $val === '--' || $val === 'N/A') return null;
             if (is_string($val) && preg_match('/[-+]?[0-9]*\.?[0-9]+/', $val, $nm)) {
                 $raw = (float)$nm[0];
             } else {
                 $raw = (float)$val;
             }
-            if ($raw == 0 || $raw <= -65535 || $raw >= 65535) return null;
-            if ($raw < 0 && $raw >= -4500 && $raw <= -100) return round($raw / 100, 2);
-            if ($raw >= 1000 && $raw <= 4500) return round(-($raw / 100), 2);
-            if ($raw >= 100 && $raw <= 450) return round(-($raw / 10), 2);
-            if ($raw >= -45 && $raw <= 10) return round($raw, 2);
-            if ($raw >= -450 && $raw <= -100) return round($raw / 10, 2);
-            if ($raw > 0 && $raw < 100000) return round(10 * log10($raw / 10000), 2);
+            if ($raw == 0 || $raw <= -65535 || ($raw >= 65535 && $raw < 50000)) return null;
+
+            // Handle 16-bit unsigned two's complement for negative numbers (e.g. 50000 to 65534 -> -15536 to -2)
+            if ($raw >= 50000 && $raw <= 65534) {
+                $raw = $raw - 65536; // e.g. 63573 -> -1963
+            }
+
+            if ($isTx) {
+                // Tx Power: laser transmisi CPE/OLT biasanya +0.5 s/d +5.0 dBm
+                if ($raw >= -10.0 && $raw <= 15.0) return round($raw, 2);
+                if ($raw >= 100 && $raw <= 1500) return round($raw / 100, 2);
+                if ($raw >= 1000 && $raw <= 15000) return round($raw / 1000, 2);
+                if ($raw >= 10 && $raw <= 150) return round($raw / 10, 2);
+            } else {
+                // Rx Power: Redaman penerimaan optik selalu NEGATIF (-38.0 s.d -6.0 dBm)
+                // 1. Direct float dBm (-45.0 s/d -5.0)
+                if ($raw >= -45.0 && $raw <= -5.0) return round($raw, 2);
+
+                // 2. Thousandths of dBm (5000 to 45000 or -45000 to -5000, e.g. 19630 -> -19.63 dBm, 12850 -> -12.85 dBm)
+                if (abs($raw) >= 5000 && abs($raw) <= 45000) return round(-abs($raw) / 1000, 2);
+
+                // 3. Hundredths of dBm (500 to 4500 or -4500 to -500, e.g. 1963 -> -19.63 dBm)
+                if (abs($raw) >= 500 && abs($raw) <= 4500) return round(-abs($raw) / 100, 2);
+
+                // 4. Tenths of dBm (50 to 450 or -450 to -50, e.g. 196 -> -19.6 dBm)
+                if (abs($raw) >= 50 && abs($raw) <= 450) return round(-abs($raw) / 10, 2);
+
+                // 5. Microwatt uW fallback (e.g. 100 uW -> -20 dBm)
+                if ($raw > 0 && $raw < 100000) {
+                    $calc = round(10 * log10($raw / 10000), 2);
+                    if ($calc >= -38.0 && $calc <= -6.0) return $calc;
+                }
+            }
+
             return null;
         };
 
@@ -1473,14 +1527,19 @@ class CDataOltDriver extends BaseOltDriver
                 $targetKey = "{$p}.{$onuId}";
                 $targetNormKey = "{$normalizedTarget}.{$onuId}";
 
-                $rawAct = trim((string)($normActives[$targetKey] ?? ($normActives[$targetNormKey] ?? ($lookupVal($this->cachedOnuActiveStates, (string)$oidKey) ?? ''))));
-                $rawSt  = trim((string)($normStatuses[$targetKey] ?? ($normStatuses[$targetNormKey] ?? ($lookupVal($this->cachedOnuStatuses, (string)$oidKey) ?? ''))));
-                $stRaw  = strtolower($rawSt);
-                $actRaw = strtolower($rawAct);
+                $rawAct  = trim((string)($normActives[$targetKey] ?? ($normActives[$targetNormKey] ?? ($lookupVal($this->cachedOnuActiveStates, (string)$oidKey) ?? ''))));
+                $rawSt   = trim((string)($normStatuses[$targetKey] ?? ($normStatuses[$targetNormKey] ?? ($lookupVal($this->cachedOnuStatuses, (string)$oidKey) ?? ''))));
+                $rawBind = trim((string)($normBindStatuses[$targetKey] ?? ($normBindStatuses[$targetNormKey] ?? ($lookupVal($this->cachedOnuBindStatuses, (string)$oidKey) ?? ''))));
+
+                $stRaw     = strtolower($rawSt);
+                $actRaw    = strtolower($rawAct);
+                $bindRaw   = strtolower($rawBind);
                 $cleanAct  = trim(preg_replace('/^(INTEGER|Gauge32|Counter32|Hex-STRING|STRING|OctetString|Hex)\s*:?\s*/i', '', $rawAct), "\" \r\n\t");
                 $cleanSt   = trim(preg_replace('/^(INTEGER|Gauge32|Counter32|Hex-STRING|STRING|OctetString|Hex)\s*:?\s*/i', '', $rawSt), "\" \r\n\t");
+                $cleanBind = trim(preg_replace('/^(INTEGER|Gauge32|Counter32|Hex-STRING|STRING|OctetString|Hex)\s*:?\s*/i', '', $rawBind), "\" \r\n\t");
                 $activeVal = preg_match('/\b(\d+)\b/', $cleanAct, $mAct) ? (int)$mAct[1] : (is_numeric($rawAct) ? (int)$rawAct : 0);
                 $stVal     = preg_match('/\b(\d+)\b/', $cleanSt, $mSt) ? (int)$mSt[1] : (is_numeric($rawSt) ? (int)$rawSt : 0);
+                $bindVal   = preg_match('/\b(\d+)\b/', $cleanBind, $mB) ? (int)$mB[1] : (is_numeric($rawBind) ? (int)$rawBind : 0);
 
                 if ($activeVal === 0) {
                     if (str_contains($actRaw, 'active') || str_contains($actRaw, 'online') || str_contains($actRaw, 'up') || str_contains($actRaw, 'work')) {
@@ -1519,20 +1578,24 @@ class CDataOltDriver extends BaseOltDriver
 
                 // 2. Evaluasi status SNMP
                 // In GPON:
-                // - gponOnuRunState (.18.2.1.1): 1=online, 2=offline
-                // - gponOnuRunStatus (.18.1.1.8 / legacy): 1=init, 5=operation (O5/ONLINE), 101=online
-                // In EPON (CTC standard & C-Data MIB): 1=authenticated/up/online, 2=registered/online
+                // - gponOnuControlFlag / Active (.18.1.1.7): 1=active (registered & online), 2=inactive/disabled
+                // - gponOnuBindOnlineStatus (.18.10.1.1.4): 1=online, 2=offline
+                // - gponOnuOperStatus (.18.1.1.8): 1=init, 5=operation (O5/ONLINE), 6=popup (O6/alarm recovery), 101=online
+                // Di C-Data OLT Web GUI, statistik menunjukkan Active = Online = 308
                 $snmpOnline = false;
-                if ($stVal === 5 || $stVal === 101 || $stVal === 1) {
+                if ($bindVal === 1 || str_contains($bindRaw, 'online') || str_contains($bindRaw, 'up')) {
                     $snmpOnline = true;
-                } elseif ($stVal === 2) {
-                    // Di GPON (.18.2.1.1), 2 adalah offline. Namun di EPON CTC, 2 adalah registered (online).
-                    $snmpOnline = empty($gponSerials) ? true : ($activeVal === 1);
-                } elseif (in_array($stVal, [3, 4, 6, 7, 102], true)) {
-                    $snmpOnline = false;
+                } elseif ($stVal === 5 || $stVal === 101 || $stVal === 1) {
+                    $snmpOnline = true;
                 } elseif (str_contains($stRaw, 'online') || str_contains($stRaw, 'oper') || str_contains($stRaw, 'o5') || str_contains($stRaw, 'up') || str_contains($stRaw, 'work') || str_contains($stRaw, 'auth') || str_contains($stRaw, 'reg')) {
                     $snmpOnline = true;
-                } elseif (str_contains($stRaw, 'offline') || str_contains($stRaw, 'down') || str_contains($stRaw, 'inactive') || str_contains($stRaw, 'standby') || str_contains($stRaw, 'popup') || str_contains($stRaw, 'los') || str_contains($stRaw, 'dereg')) {
+                } elseif ($activeVal === 1 && $bindVal !== 2) {
+                    // Selaras dengan Web GUI C-DATA: Active (1) dihitung sebagai online selama bind status bukan 2 (offline)
+                    $snmpOnline = true;
+                } elseif ($stVal === 2 && empty($gponSerials)) {
+                    // EPON CTC standard: 2 = registered (online)
+                    $snmpOnline = true;
+                } elseif ($bindVal === 2 || $activeVal === 2 || $stVal === 2 || str_contains($stRaw, 'offline') || str_contains($stRaw, 'down') || str_contains($stRaw, 'inactive') || str_contains($stRaw, 'dereg')) {
                     $snmpOnline = false;
                 } else {
                     $snmpOnline = ($activeVal === 1);
@@ -1550,8 +1613,8 @@ class CDataOltDriver extends BaseOltDriver
                 // 3. Evaluasi Redaman Optik (RX / TX)
                 $rxRaw = $normRx[$targetKey] ?? ($normRx[$targetNormKey] ?? ($lookupVal($this->cachedOnuRx, (string)$oidKey) ?? 0));
                 $txRaw = $normTx[$targetKey] ?? ($normTx[$targetNormKey] ?? ($lookupVal($this->cachedOnuTx, (string)$oidKey) ?? 0));
-                $rxVal = $parsePower($rxRaw);
-                $txVal = $parsePower($txRaw);
+                $rxVal = $parsePower($rxRaw, false);
+                $txVal = $parsePower($txRaw, true);
 
                 if ($rxVal === null && $cliRx !== null) {
                     $rxVal = $cliRx;
