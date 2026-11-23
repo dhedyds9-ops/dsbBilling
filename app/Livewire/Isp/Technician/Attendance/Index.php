@@ -48,6 +48,33 @@ class Index extends Component
         $this->longitude = $lng;
     }
 
+    public function useOfficeLocation()
+    {
+        $user = Auth::user();
+        $homeBranch = $user?->branch;
+        if ($homeBranch && !empty($homeBranch->latitude) && !empty($homeBranch->longitude)) {
+            $this->latitude = (float) $homeBranch->latitude;
+            $this->longitude = (float) $homeBranch->longitude;
+            $this->errorMessage = '';
+            $this->dispatch('gps-located', ['lat' => $this->latitude, 'lng' => $this->longitude]);
+            session()->flash('success', "Lokasi GPS berhasil diset ke kantor: {$homeBranch->name}");
+        } else {
+            $firstBranch = \App\Models\Master\Branch::where('is_active', true)
+                ->whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->first();
+            if ($firstBranch) {
+                $this->latitude = (float) $firstBranch->latitude;
+                $this->longitude = (float) $firstBranch->longitude;
+                $this->errorMessage = '';
+                $this->dispatch('gps-located', ['lat' => $this->latitude, 'lng' => $this->longitude]);
+                session()->flash('success', "Lokasi GPS berhasil diset ke kantor: {$firstBranch->name}");
+            } else {
+                $this->errorMessage = "Tidak ditemukan data koordinat kantor cabang aktif di sistem.";
+            }
+        }
+    }
+
     public function checkIn()
     {
         $attendance = $this->todayAttendance;
@@ -57,18 +84,34 @@ class Index extends Component
             return;
         }
 
-        $ip = request()->ip();
-
-        // Validasi GPS: jika tidak ada GPS dan bukan penugasan lapangan, minta aktifkan GPS atau centang tugas luar
-        if ((empty($this->latitude) || empty($this->longitude)) && !$this->isFieldAssignment) {
-            $this->errorMessage = "Sinyal lokasi GPS belum terdeteksi. Pastikan GPS HP Anda aktif dan izin lokasi browser telah diizinkan. Jika sedang di area tanpa sinyal GPS, aktifkan opsi 'Tugas Luar / Lapangan'.";
-            return;
-        }
-
         $now = Carbon::now();
         $user = Auth::user();
         $isAdmin = $user && ($user->isSuperAdmin() || $user->hasRole(['administrator', 'superadmin', 'admin']));
-        $homeBranch = $user->branch;
+        $homeBranch = $user?->branch;
+        $ip = request()->ip();
+
+        // Jika user adalah Admin atau sedang di Web Desktop tanpa GPS hardware, auto-fallback ke koordinat cabang
+        if ($isAdmin && (empty($this->latitude) || empty($this->longitude))) {
+            if ($homeBranch && !empty($homeBranch->latitude) && !empty($homeBranch->longitude)) {
+                $this->latitude = $homeBranch->latitude;
+                $this->longitude = $homeBranch->longitude;
+            } else {
+                $firstBranch = \App\Models\Master\Branch::where('is_active', true)
+                    ->whereNotNull('latitude')
+                    ->whereNotNull('longitude')
+                    ->first();
+                if ($firstBranch) {
+                    $this->latitude = $firstBranch->latitude;
+                    $this->longitude = $firstBranch->longitude;
+                }
+            }
+        }
+
+        // Validasi GPS: jika tidak ada GPS dan bukan penugasan lapangan (dan bukan Admin)
+        if ((empty($this->latitude) || empty($this->longitude)) && !$this->isFieldAssignment && !$isAdmin) {
+            $this->errorMessage = "Sinyal lokasi GPS belum terdeteksi. Pastikan GPS aktif dan izin lokasi browser telah diizinkan. Jika menggunakan Laptop/PC, gunakan tombol 'Pakai Lokasi Kantor' atau aktifkan opsi 'Tugas Luar / Lapangan'.";
+            return;
+        }
 
         // 1. SMART MULTI-BRANCH GEOFENCING:
         // Cek home branch dan seluruh cabang aktif perusahaan yang memiliki koordinat GPS

@@ -139,14 +139,19 @@
         @endif
 
         <!-- GPS ERROR / RETRY PROMPT -->
-        <div x-show="gpsError" x-cloak class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center justify-between gap-2 text-xs text-amber-800 dark:text-amber-300">
+        <div x-show="gpsError" x-cloak class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-amber-800 dark:text-amber-300">
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-amber-500 text-lg">location_disabled</span>
-                <span>GPS belum terdeteksi. Izinkan akses lokasi browser Anda.</span>
+                <span>GPS browser belum aktif. Izinkan akses lokasi atau gunakan lokasi kantor:</span>
             </div>
-            <button type="button" @click="trackLocation()" class="px-2.5 py-1 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 transition cursor-pointer shrink-0">
-                Coba Lagi
-            </button>
+            <div class="flex items-center gap-2 shrink-0">
+                <button type="button" @click="trackLocation()" class="px-2.5 py-1 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 transition cursor-pointer">
+                    Coba Lagi
+                </button>
+                <button type="button" wire:click="useOfficeLocation" class="px-2.5 py-1 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition cursor-pointer">
+                    Pakai Lokasi Kantor
+                </button>
+            </div>
         </div>
     </div>
 
@@ -379,10 +384,14 @@
                     this.gpsLoading = false;
                     this.gpsError = false;
 
-                    // Set coordinates directly to Livewire
-                    @this.set('latitude', lat);
-                    @this.set('longitude', lng);
-                    @this.updateLocation(lat, lng);
+                    // Set coordinates directly to Livewire safely
+                    try {
+                        if (typeof this.$wire !== 'undefined') {
+                            this.$wire.updateLocation(lat, lng);
+                        } else if (typeof Livewire !== 'undefined') {
+                            @this.updateLocation(lat, lng);
+                        }
+                    } catch (e) {}
                     this.$dispatch('gps-located', { lat: lat, lng: lng });
 
                     if (this.map && typeof L !== 'undefined') {
