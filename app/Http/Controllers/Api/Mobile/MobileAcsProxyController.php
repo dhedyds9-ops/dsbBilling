@@ -276,6 +276,33 @@ class MobileAcsProxyController extends Controller
                 ], 403);
             }
 
+            $isDiagnosticOp = in_array($operation, ['summon', 'read', 'ping', 'tasks.view']);
+
+            // Resolusi Branch Device untuk Reseller
+            $resellerDevBranchId = null;
+            if ($cs) {
+                $resellerDevBranchId = $cs->branch_id ?? ($cs->customer_id ? \App\Models\CRM\Customer::withoutGlobalScopes()->where('id', $cs->customer_id)->value('branch_id') : null);
+            }
+            if (!$resellerDevBranchId && $dbOnu) {
+                $resellerDevBranchId = $dbOnu->branch_id;
+            }
+
+            // Reseller ditolak jika perangkat terdaftar di cabang lain
+            if ($resellerDevBranchId && $user->branch_id && (int) $resellerDevBranchId !== (int) $user->branch_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak: Perangkat ini berada di luar cakupan kepemilikan akun Reseller Anda.',
+                ], 403);
+            }
+
+            // Jika bukan pemilik positif dan bukan operasi diagnostik (misal: wifi, wan, reboot, delete, admin)
+            if (!$isOwned && !$isDiagnosticOp) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak: Perangkat ini berada di luar cakupan kepemilikan akun Reseller Anda.',
+                ], 403);
+            }
+
             // Paritas dengan Web Portal Reseller (ACSDevice::scopeForReseller):
             // Perangkat unassigned (belum terikat pelanggan manapun / baru colok di OLT) diizinkan diakses
             // untuk keperluan pembacaan detail, diagnosa, dan pengaturan aktivasi PSB.
@@ -908,6 +935,21 @@ class MobileAcsProxyController extends Controller
                 ?? $flat['Device.Optical.1.Transceiver.RxPower']
                 ?? null;
 
+            $rawTx = $flat['VirtualParameters.TXPower']
+                ?? $flat['VirtualParameters.txPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TxPower']
+                ?? $flat['Device.Optical.1.Transceiver.TxPower']
+                ?? null;
+
+            // Deteksi swap anomali ZTE TR-069 (Rx dilaporkan sebagai Tx dan sebaliknya)
+            if ($rawRx !== null && $rawTx !== null && is_numeric($rawRx) && is_numeric($rawTx) && (float)$rawRx > 0.0 && (float)$rawRx <= 5.0 && abs((float)$rawTx) >= 8.0) {
+                $tempRawRx = $rawTx;
+                $rawTx = $rawRx;
+                $rawRx = $tempRawRx;
+            }
+
             if ($rawRx !== null && trim((string)$rawRx) !== '' && is_numeric($rawRx)) {
                 $numRx = (float) $rawRx;
                 if ($numRx !== 0.0) {
@@ -938,13 +980,6 @@ class MobileAcsProxyController extends Controller
 
             // TX Power Normalization
             $txPower = null;
-            $rawTx = $flat['VirtualParameters.TXPower']
-                ?? $flat['VirtualParameters.txPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TxPower']
-                ?? $flat['Device.Optical.1.Transceiver.TxPower']
-                ?? null;
 
             if ($rawTx !== null && trim((string)$rawTx) !== '' && is_numeric($rawTx)) {
                 $numTx = (float) $rawTx;

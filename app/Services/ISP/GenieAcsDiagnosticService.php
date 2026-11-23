@@ -521,6 +521,13 @@ class GenieAcsDiagnosticService
         $rawOptTemp = $this->extractValue($params, $optTempCandidates);
         $rawLos = $this->extractValue($params, $losCandidates);
 
+        // Deteksi swap anomali ZTE TR-069 (Tx dilaporkan di Rx, dan sebaliknya)
+        if ($rawRx !== null && $rawTx !== null && is_numeric($rawRx) && is_numeric($rawTx) && (float)$rawRx > 0.0 && (float)$rawRx <= 5.0 && abs((float)$rawTx) >= 8.0) {
+            $tempRawRx = $rawTx;
+            $rawTx = $rawRx;
+            $rawRx = $tempRawRx;
+        }
+
         // Parse RX Power
         $rxPower = null;
         $rxDisplay = 'Tidak Didukung';

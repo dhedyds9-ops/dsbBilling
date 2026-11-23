@@ -944,42 +944,48 @@ JS;
             }
             $encodedId = urlencode($realDeviceId);
 
-            // 1. Pemicu utama: Kirim Connection Request dengan refreshObject parameter tree
-            // Menggunakan 'InternetGatewayDevice' untuk TR-098 atau fallback ke root
-            $rootObject = 'InternetGatewayDevice';
+            // 1. Antrikan tugas refresh parameter ke antrean GenieACS (tanpa pemicu langsung)
+            // Ini SELALU berhasil (HTTP 200/202) terlepas modem online, offline, atau di balik NAT
+            $refreshObjects = [
+                'InternetGatewayDevice.LANDevice.1.Hosts',
+                'InternetGatewayDevice.LANDevice.1.WLANConfiguration',
+                'Device.Hosts',
+                'Device.WiFi'
+            ];
+            foreach ($refreshObjects as $obj) {
+                try {
+                    $url = "{$this->baseUrl}/devices/{$encodedId}/tasks";
+                    $resp = Http::timeout(4)
+                        ->withBasicAuth($this->username, $this->password)
+                        ->asJson()
+                        ->post($url, ['name' => 'refreshObject', 'objectName' => $obj]);
+
+                    if ($resp->successful() || in_array($resp->status(), [200, 201, 202, 409])) {
+                        $result['task_queued'] = true;
+                    }
+                } catch (\Throwable) {}
+            }
+
+            // 2. Coba kirim Connection Request aktif (port 7547)
+            // Catatan: Jika modem online tapi berada di balik IP Privat/CGNAT tanpa VPN publik,
+            // GenieACS akan mengembalikan HTTP 502 ("Channel closed" / Connection request failed).
+            // Kegagalan ini normal di ISP dan BUKAN error fatal karena tugas sudah terantre di langkah 1.
             try {
                 $crUrl = "{$this->baseUrl}/devices/{$encodedId}/tasks?connection_request";
-                $crResp = Http::timeout(10)
+                $crResp = Http::timeout(4)
                     ->withBasicAuth($this->username, $this->password)
                     ->asJson()
-                    ->post($crUrl, ['name' => 'refreshObject', 'objectName' => $rootObject]);
+                    ->post($crUrl, [
+                        'name' => 'refreshObject',
+                        'objectName' => 'InternetGatewayDevice.LANDevice.1.Hosts'
+                    ]);
 
                 if ($crResp->successful() || in_array($crResp->status(), [200, 201, 202])) {
                     $result['connection_request_success'] = true;
                     $result['task_queued'] = true;
                 }
             } catch (\Throwable $ce) {
-                // Connection request timeout jika modem berada di balik IP Privat/NAT
-            }
-
-            // 2. Refresh objek terpenting (Hosts klien tersambung & konfigurasi WLAN Wi-Fi)
-            $subObjects = [
-                $rootObject,
-                'InternetGatewayDevice.LANDevice.1.Hosts',
-                'InternetGatewayDevice.LANDevice.1.WLANConfiguration',
-            ];
-            foreach ($subObjects as $sObj) {
-                try {
-                    $url = "{$this->baseUrl}/devices/{$encodedId}/tasks";
-                    $resp = Http::timeout(5)
-                        ->withBasicAuth($this->username, $this->password)
-                        ->asJson()
-                        ->post($url, ['name' => 'refreshObject', 'objectName' => $sObj]);
-
-                    if ($resp->successful() || in_array($resp->status(), [200, 201, 202])) {
-                        $result['task_queued'] = true;
-                    }
-                } catch (\Throwable) {}
+                // Connection request timeout / unreachable jika IP private
             }
 
             return $result;
@@ -1572,6 +1578,7 @@ JS;
         }
 
         $wlans = [];
+        $displayOrder = 1;
         foreach ($foundIndices as $w) {
             $prefix = "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$w}.";
             $tr181Prefix = "Device.WiFi.SSID.{$w}.";
@@ -1592,17 +1599,27 @@ JS;
                 ?? ($wlanNodes[$w]['Enable']['_value'] ?? $wlanNodes[$w]['Enable'] ?? true);
             $wEnabled = ($wEnabledVal === '1' || $wEnabledVal === true || $wEnabledVal === 'true');
 
-            $wBeacon = $flat[$prefix . 'BeaconType'] 
-                ?? ($wlanNodes[$w]['BeaconType']['_value'] ?? 'WPA/WPA2');
+            $rawBeacon = $flat[$prefix . 'BeaconType'] 
+                ?? $flat[$tr181Prefix . 'BeaconType']
+                ?? ($wlanNodes[$w]['BeaconType']['_value'] ?? $wlanNodes[$w]['BeaconType'] ?? 'WPA/WPA2');
+
+            $basicEnc = $flat[$prefix . 'BasicEncryptionModes'] ?? null;
+            if (in_array(strtolower((string)$rawBeacon), ['none', 'open'], true) || strtolower((string)$basicEnc) === 'none' || (empty($wPass) && !str_contains((string)$rawBeacon, 'WPA') && !str_contains((string)$rawBeacon, '11i'))) {
+                $wBeacon = 'None';
+            } else {
+                $wBeacon = (string)$rawBeacon;
+            }
 
             $ssidLower = strtolower((string)($wSsid ?? ''));
             $is5G = ($w === 5 || ($w >= 2 && str_contains($ssidLower, '5g')));
             $bandLabel = $is5G ? "5G" : "2.4G";
-            $label = "SSID {$w} ({$bandLabel})";
 
-            if (!empty($wSsid) || $wEnabled || $w <= 2) {
+            // Hanya sertakan jika ada SSID terkonfigurasi, atau slot utama (1), atau radio 5G aktif (5)
+            if (!empty($wSsid) || $w === 1 || ($wEnabled && $w === 5)) {
+                $label = "SSID {$displayOrder} ({$bandLabel})";
                 $wlans[] = [
                     'index' => $w,
+                    'display_slot' => $displayOrder,
                     'label' => $label,
                     'ssid' => (string)($wSsid ?? ''),
                     'password' => (string)($wPass ?? ''),
@@ -1610,26 +1627,24 @@ JS;
                     'security_mode' => (string)$wBeacon,
                     'is_hidden' => false,
                 ];
+                $displayOrder++;
             }
         }
 
-        // Backfill slots 1..4 agar UI chip selector tab selalu lengkap
-        $existingIndices = array_column($wlans, 'index');
-        for ($i = 1; $i <= 4; $i++) {
-            if (!in_array($i, $existingIndices, true)) {
-                $wlans[] = [
-                    'index' => $i,
-                    'label' => "SSID {$i} " . ($i <= 3 ? "(2.4G)" : "(5G)"),
-                    'ssid' => '',
-                    'password' => '',
-                    'is_enabled' => false,
-                    'security_mode' => 'WPA/WPA2',
-                    'is_hidden' => false,
-                ];
-            }
+        // Jika hanya 1 WLAN dan modem belum melaporkan 5G, tambahkan slot 2 (5G) siap pakai jika dual band
+        if (count($wlans) === 1 && $foundIndices && in_array(5, $foundIndices, true)) {
+            $wlans[] = [
+                'index' => 5,
+                'display_slot' => 2,
+                'label' => "SSID 2 (5G)",
+                'ssid' => '',
+                'password' => '',
+                'is_enabled' => false,
+                'security_mode' => 'WPA/WPA2',
+                'is_hidden' => false,
+            ];
         }
 
-        usort($wlans, fn($a, $b) => $a['index'] <=> $b['index']);
         return $wlans;
     }
 

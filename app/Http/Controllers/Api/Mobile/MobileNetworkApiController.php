@@ -1804,10 +1804,11 @@ class MobileNetworkApiController extends Controller
         // 3. Resolusi Redaman Optik (RX & TX)
         $rx = null;
         $tx = null;
-        if ($liveDiag && isset($liveDiag['optical']['rx_power']) && is_numeric($liveDiag['optical']['rx_power'])) {
-            $rx = (float) $liveDiag['optical']['rx_power'];
-        } elseif ($onu->rx_power_dbm !== null) {
+        // Prioritaskan data DDM OLT yang valid sebagai acuan standar perangkat keras OLT
+        if ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm <= -8.0 && (float)$onu->rx_power_dbm >= -35.0) {
             $rx = (float) $onu->rx_power_dbm;
+        } elseif ($liveDiag && isset($liveDiag['optical']['rx_power']) && is_numeric($liveDiag['optical']['rx_power'])) {
+            $rx = (float) $liveDiag['optical']['rx_power'];
         } elseif ($ad && $ad->signal !== null) {
             $rx = (float) $ad->signal;
         }
@@ -1818,20 +1819,33 @@ class MobileNetworkApiController extends Controller
             $tx = (float) $onu->tx_power_dbm;
         }
 
+        // Deteksi & Swap Anomali TR-069 Vendor (ZTE F609 / TR-069 memetakan Tx sebagai Rx, misal Rx: 1.09 dBm & Tx: 17.21 dBm)
+        if ($rx !== null && $tx !== null && $rx > 0.0 && $rx <= 5.0 && (abs($tx) >= 8.0)) {
+            $realTx = round($rx, 2);
+            $realRx = -abs($tx > 10.0 && $tx < 50.0 ? $tx / 10.0 : ($tx >= 50.0 ? $tx / 100.0 : $tx));
+            $tx = $realTx;
+            // Jika OLT tidak punya data DDM, gunakan hasil kalkulasi swap
+            if ($rx > -8.0) {
+                $rx = $realRx;
+            }
+        }
+
         // Normalisasi Redaman Optik (GPON RX selalu negatif, TX normal +1.0 s/d +5.0 dBm)
         if ($rx !== null) {
             // Jika nilai TR-069 bogus/tidak valid (> -8.0 dBm, misal 1.09 dBm atau 0), fallback ke data DDM OLT yang valid
             if (($rx > -8.0 || $rx > 0.0) && $onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm <= -8.0 && (float)$onu->rx_power_dbm >= -35.0) {
                 $rx = (float) $onu->rx_power_dbm;
-            } elseif ($rx > 0.0) {
+            } else {
                 // Di receiver GPON, RX Power SELALU bernilai negatif
                 $rx = -abs($rx);
             }
         }
         if ($tx !== null) {
             // Jika nilai TX dilaporkan dalam skala tanpa desimal yang benar (misal 17.21 dBm padahal 1.72 dBm)
-            if ($tx > 10.0) {
+            if ($tx > 10.0 && $tx < 50.0) {
                 $tx = round($tx / 10.0, 2);
+            } elseif ($tx >= 50.0) {
+                $tx = round($tx / 100.0, 2);
             }
         }
 

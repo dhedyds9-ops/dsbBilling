@@ -1411,8 +1411,10 @@ class CDataOltDriver extends BaseOltDriver
                 $rawSt  = trim((string)($lookupVal($this->cachedOnuStatuses, (string)$oidKey) ?? ''));
                 $stRaw  = strtolower($rawSt);
                 $actRaw = strtolower($rawAct);
-                $activeVal = is_numeric($rawAct) ? (int)$rawAct : 0;
-                $stVal     = is_numeric($rawSt) ? (int)$rawSt : 0;
+                $cleanAct  = trim(preg_replace('/^(INTEGER|Gauge32|Counter32|Hex-STRING|STRING|OctetString|Hex)\s*:?\s*/i', '', $rawAct), "\" \r\n\t");
+                $cleanSt   = trim(preg_replace('/^(INTEGER|Gauge32|Counter32|Hex-STRING|STRING|OctetString|Hex)\s*:?\s*/i', '', $rawSt), "\" \r\n\t");
+                $activeVal = is_numeric($cleanAct) ? (int)$cleanAct : (is_numeric($rawAct) ? (int)$rawAct : 0);
+                $stVal     = is_numeric($cleanSt) ? (int)$cleanSt : (is_numeric($rawSt) ? (int)$rawSt : 0);
 
                 // 1. Cek dari CLI cache terlebih dahulu jika ada
                 $cliStatus = null;
@@ -1791,8 +1793,10 @@ class CDataOltDriver extends BaseOltDriver
                 $this->cli->execute("exit\r\n", false);
             }
 
-            // Simpan perubahan ke memory/NVRAM
-            $this->cli->execute("write\r\n", false);
+            // Simpan perubahan ke memory/NVRAM secara cepat tanpa blocking lama ke antarmuka pengguna
+            try {
+                $this->cli->execute("write\r\n", false);
+            } catch (\Throwable) {}
 
             Log::info("CDataOltDriver::deleteOnu successfully issued delete command for ONU #{$onu->id} (Port: {$ponPort}, Index: {$onuId})");
             return true;
