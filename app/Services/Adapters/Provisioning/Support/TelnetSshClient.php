@@ -178,25 +178,28 @@ class SimpleTelnet
         }
         $result = '';
         $start = time();
+        $lastDataTime = time();
         $lastWakeup = time();
 
         while (!feof($this->socket)) {
-            // Jika 2 detik belum ada respon atau belum match pattern, kirim \r\n untuk wake-up OLT terminal
-            if (time() - $lastWakeup >= 2 && !preg_match($pattern, $result)) {
+            // Jika 2 detik tidak ada respon/data sama sekali, kirim \r\n untuk wake-up OLT terminal
+            if (time() - $lastDataTime >= 2 && time() - $lastWakeup >= 2 && !preg_match($pattern, $result)) {
                 $this->write("\r\n");
                 $lastWakeup = time();
             }
 
-            if (time() - $start > $this->timeout) {
-                \Illuminate\Support\Facades\Log::warning("Telnet Timeout Debug", ["pattern" => $pattern, "buffer" => $result]); 
-                throw new Exception("Timeout waiting for pattern: $pattern");
-            }
-
             $c = fgetc($this->socket);
             if ($c === false) {
+                // Timeout hanya berlaku jika socket berhenti mengirim data selama timeout detik
+                if (time() - $lastDataTime > $this->timeout) {
+                    \Illuminate\Support\Facades\Log::warning("Telnet Timeout Debug", ["pattern" => $pattern, "buffer" => substr($result, -500)]); 
+                    throw new Exception("Timeout waiting for pattern: $pattern");
+                }
                 usleep(10000);
                 continue;
             }
+
+            $lastDataTime = time();
 
             // Telnet negotiation: IAC (255)
             if (ord($c) === 255) {

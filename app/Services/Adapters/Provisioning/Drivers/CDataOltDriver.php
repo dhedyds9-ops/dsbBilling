@@ -433,6 +433,12 @@ class CDataOltDriver extends BaseOltDriver
                 return empty(trim($s)) || str_contains($l, 'incomplete') || str_contains($l, 'invalid') || str_contains($l, 'unknown') || str_contains($l, 'error') || str_contains($l, 'unrecognized');
             };
 
+            // Nonaktifkan pagination agar OLT mengirim seluruh data ONU tanpa jeda --More--
+            try {
+                $this->cli->execute("terminal length 0\r\n", false);
+                $this->cli->execute("terminal page 0\r\n", false);
+            } catch (\Throwable) {}
+
             // Attempt 1: Direct commands (supports 0/1/1, 0/0/1, slot 1 and slot 0)
             $infoOut = $this->cli->execute("show ont info all\r\n", false);
             if ($isBad($infoOut)) {
@@ -1413,8 +1419,22 @@ class CDataOltDriver extends BaseOltDriver
                 $actRaw = strtolower($rawAct);
                 $cleanAct  = trim(preg_replace('/^(INTEGER|Gauge32|Counter32|Hex-STRING|STRING|OctetString|Hex)\s*:?\s*/i', '', $rawAct), "\" \r\n\t");
                 $cleanSt   = trim(preg_replace('/^(INTEGER|Gauge32|Counter32|Hex-STRING|STRING|OctetString|Hex)\s*:?\s*/i', '', $rawSt), "\" \r\n\t");
-                $activeVal = is_numeric($cleanAct) ? (int)$cleanAct : (is_numeric($rawAct) ? (int)$rawAct : 0);
-                $stVal     = is_numeric($cleanSt) ? (int)$cleanSt : (is_numeric($rawSt) ? (int)$rawSt : 0);
+                $activeVal = preg_match('/\b(\d+)\b/', $cleanAct, $mAct) ? (int)$mAct[1] : (is_numeric($rawAct) ? (int)$rawAct : 0);
+                $stVal     = preg_match('/\b(\d+)\b/', $cleanSt, $mSt) ? (int)$mSt[1] : (is_numeric($rawSt) ? (int)$rawSt : 0);
+
+                if ($activeVal === 0) {
+                    if (str_contains($actRaw, 'active') || str_contains($actRaw, 'online') || str_contains($actRaw, 'up') || str_contains($actRaw, 'work')) {
+                        $activeVal = 1;
+                    } elseif (str_contains($actRaw, 'inactive') || str_contains($actRaw, 'offline') || str_contains($actRaw, 'down')) {
+                        $activeVal = 2;
+                    }
+                }
+
+                if ($stVal === 0) {
+                    if (str_contains($stRaw, 'online') || str_contains($stRaw, 'oper') || str_contains($stRaw, 'o5') || str_contains($stRaw, 'work') || str_contains($stRaw, 'auth') || str_contains($stRaw, 'reg')) {
+                        $stVal = 5;
+                    }
+                }
 
                 // 1. Cek dari CLI cache terlebih dahulu jika ada
                 $cliStatus = null;

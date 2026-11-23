@@ -360,7 +360,7 @@ class OltPollingService
                         }
 
                         // Golden rule 2: Korelasi live dengan GenieACS TR-069
-                        // Jika CPE/modem baru saja Inform dalam 15 menit terakhir, modem 100% online di jaringan optik!
+                        // Jika CPE/modem berstatus online di ACS atau baru saja Inform dalam 2 jam terakhir, modem 100% online di jaringan optik!
                         if ($status !== 'online') {
                             $acsActive = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
                                 ->where(function($q) use ($candidates, $macAddress) {
@@ -369,7 +369,10 @@ class OltPollingService
                                         $q->orWhere('mac_address', $macAddress);
                                     }
                                 })
-                                ->where('last_inform', '>=', now()->subMinutes(15))
+                                ->where(function($q) {
+                                    $q->where('status', 'online')
+                                      ->orWhere('last_inform', '>=', now()->subHours(2));
+                                })
                                 ->exists();
 
                             if ($acsActive) {
