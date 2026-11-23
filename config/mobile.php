@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10125,
-        'latest_version_name' => '1.1.25',
+        'latest_version_code' => 10126,
+        'latest_version_name' => '1.1.26',
         'minimum_supported_code' => 1,
-        'download_url' => env('APP_URL', 'https://winets.mstore.id') . '/downloads/dsbilling-mobile.apk',
-        'release_notes' => "dsBilling Staff & Reseller v1.1.25:\n- Perbaikan Peta Jaringan: Foto titik tiang/ODP kini terbuka jernih dengan modal preview (bebas dari error net::ERR_FILE_NOT_FOUND).\n- Perbaikan Server GenieACS TR-069: Tombol Hapus kini terhubung langsung menghapus perangkat dari TR-069 GenieACS dan basis data lokal.\n- Isolasi Stok PSB: Teknisi dan Reseller yang tidak memegang stok fisik modem dilarang mengambil stok dari gudang pusat.\n- Perbaikan SPK Lapangan: Memperbaiki resolusi akun pelanggan sehingga daftar SPK terbuka stabil tanpa server error.\n- Penyelarasan Izin Reseller: Akun Reseller kini dapat melihat dan mendiagnosa detail modem unassigned/baru colok di OLT sesuai hak aksesnya.",
+        'download_url' => env('APP_URL', 'https://winets.mstore.id') . '/downloads/dsbilling-technician.apk',
+        'release_notes' => "dsBilling Staff & Reseller v1.1.26:\n- Redaman Optik Presisi: Normalisasi nilai daya RX/TX optik ZTE TR-069 dan integrasi nilai DDM OLT yang konsisten.\n- Multi-SSID Wi-Fi 5GHz: Sinkronisasi akurat pengaturan SSID 1 (2.4G) dan SSID 2 (5G) beserta deteksi mode keamanan (Open / WPA2).\n- Toleransi Summon TR-069: Menghilangkan kendala Server Error pada modem online melalui task-queue non-blocking.\n- Sinkronisasi C-DATA OLT: Perbaikan pembacaan status ONU online via SNMP dan akselerasi proses hapus ONU.\n- Menu Web Portal Teknisi: Pengaktifan kembali tombol 1-Klik SSO Web Portal di dashboard dan profil teknisi.\n- Peta & ODP: Integrasi tombol Ambil Titik GPS, Buka Peta Jaringan, dan Hubungkan ke ODP.",
     ],
     'customer' => [
         'latest_version_code' => 10112,
