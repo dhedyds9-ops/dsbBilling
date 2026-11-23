@@ -50,6 +50,11 @@ class SupportMaintenance extends Model
         'qc_verified_at' => 'datetime',
     ];
 
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Master\Branch::class, 'branch_id');
+    }
+
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(Ticket::class, 'ticket_id');

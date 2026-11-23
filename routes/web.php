@@ -399,6 +399,8 @@ Route::middleware(['auth'])->group(function () use ($cs) {
 
         // ==================== 7. SUPPORT ====================
         Route::prefix('support')->name('support.')->middleware(['workforce.checked_in'])->group(function () use ($cs) {
+            // Unified Field Service Operational Control Center (Phase 4.4)
+            Route::get('/control-center', \App\Livewire\Support\ControlCenter\Index::class)->name('control-center');
             // Tiket Support: Kanban | Table | Timeline | Priority | Assignment
             Route::get('/ticket', \App\Livewire\Support\Ticket\Index::class)->name('ticket');
             // Instalasi: Work Order | Schedule | Technician | Map | Checklist
@@ -407,6 +409,8 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/work-orders/history', \App\Livewire\Support\Installation\WorkOrderHistory::class)->name('work-orders.history');
             // Maintenance: Calendar | History | Technician | Material
             Route::get('/maintenance', \App\Livewire\Support\Maintenance\Index::class)->name('maintenance');
+            // Laporan Kinerja SLA Operasional
+            Route::get('/sla-report', \App\Livewire\Support\Sla\Report::class)->name('sla.report');
         });
 
         // Direct link handler dari notifikasi WhatsApp / Telegram (e.g. /tickets/859)
@@ -495,6 +499,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
                 // === NOC ===
         Route::prefix('noc')->name('noc.')->middleware(['job_function:NOC'])->group(function () {
             Route::get('/', \App\Livewire\NOC\Overview::class)->name('overview');
+            Route::get('/control-center', \App\Livewire\Support\ControlCenter\Index::class)->name('control-center');
             
             Route::middleware(['workforce.checked_in'])->group(function () {
                 Route::prefix('acs')->name('acs.')->group(function () {

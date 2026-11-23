@@ -134,6 +134,18 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\Customer\CustomerService::class, 'user_id');
     }
 
+    public function deviceTokens(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\UserDeviceToken::class, 'user_id');
+    }
+
+    public function activeDeviceTokens(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\UserDeviceToken::class, 'user_id')
+            ->where('is_active', true)
+            ->whereNull('revoked_at');
+    }
+
     public function isSuperAdmin(): bool
     {
         return $this->hasRole(\App\Enums\UserRole::Administrator->value) || $this->hasRole('superadmin');

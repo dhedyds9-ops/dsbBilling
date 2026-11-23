@@ -15,10 +15,11 @@ use Illuminate\Support\Str;
 
 class Installation extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, \App\Traits\HasBranchScope, \App\Traits\HasResellerScope;
 
     protected $fillable = [
         'uuid',
+        'branch_id',
         'survey_id',
         'customer_id',
         'reseller_id',
@@ -53,6 +54,12 @@ class Installation extends Model
         'notes',
         'created_by',
         'updated_by',
+        'sla_due_at',
+        'sla_started_at',
+        'sla_target_minutes',
+        'sla_status',
+        'sla_warning_sent_at',
+        'sla_breached_sent_at',
     ];
 
     protected $casts = [
@@ -62,6 +69,11 @@ class Installation extends Model
         'photos' => 'array',
         'checklists' => 'array',
         'technician_ids' => 'array',
+        'sla_due_at' => 'datetime',
+        'sla_started_at' => 'datetime',
+        'sla_target_minutes' => 'integer',
+        'sla_warning_sent_at' => 'datetime',
+        'sla_breached_sent_at' => 'datetime',
     ];
 
     protected static function booted()
@@ -100,6 +112,11 @@ class Installation extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'customer_id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(\App\Models\Master\Branch::class, 'branch_id');
     }
 
     public function reseller()

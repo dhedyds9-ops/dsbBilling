@@ -180,6 +180,14 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
         Route::post('/auth/update-profile', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'updateProfile'])->name('auth.update-profile');
         Route::post('/profile/change-password', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'changePassword']);
         Route::post('/profile/update', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'updateProfile']);
+
+        // FCM Device Tokens (Phase 4.3) - Must not require attendance check-in
+        Route::prefix('device-tokens')->name('device-tokens.')->group(function () {
+            Route::post('/register', [\App\Http\Controllers\Api\Mobile\MobileDeviceTokenApiController::class, 'register'])->name('register');
+            Route::post('/refresh', [\App\Http\Controllers\Api\Mobile\MobileDeviceTokenApiController::class, 'refresh'])->name('refresh');
+            Route::post('/unregister', [\App\Http\Controllers\Api\Mobile\MobileDeviceTokenApiController::class, 'unregister'])->name('unregister');
+            Route::post('/ping', [\App\Http\Controllers\Api\Mobile\MobileDeviceTokenApiController::class, 'ping'])->name('ping');
+        });
     });
 
     Route::middleware(['auth:sanctum', 'workforce.checked_in'])->group(function () {
@@ -188,6 +196,7 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
 
         // Workforce (SPK) - Phase 2A Operational Workflow
         Route::prefix('workforce')->name('workforce.')->group(function () {
+            Route::get('/control-center', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'controlCenter'])->name('control-center');
             Route::get('/work-orders', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'workOrders'])->name('work-orders');
             Route::get('/work-orders/{id}', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'show'])->where('id', '\d+')->name('work-orders.show');
             Route::post('/work-orders/{id}/assign', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'assign'])->where('id', '\d+')->name('work-orders.assign');
@@ -318,6 +327,7 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::post('/{id}/read', [\App\Http\Controllers\Api\Mobile\MobileSyncApiController::class, 'markAsRead'])->where('id', '\d+')->name('read');
             Route::post('/mark-all-read', [\App\Http\Controllers\Api\Mobile\MobileSyncApiController::class, 'markAllAsRead'])->name('mark-all-read');
         });
+
 
         // Operational Reports & History (Phase 2F)
         Route::prefix('reports')->name('reports.')->group(function () {

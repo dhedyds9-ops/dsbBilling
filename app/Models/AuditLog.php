@@ -38,10 +38,13 @@ class AuditLog extends Model
     /**
      * Record an audit event safely without throwing exceptions.
      */
-    public static function record($user, string $event, string $notes, array $details = []): ?self
+    public static function record($user, string $event, string $notes, array $details = [], ?Model $auditable = null): ?self
     {
         try {
+            $auditableModel = $auditable ?: (is_object($user) && $user instanceof Model ? $user : null);
             return static::create([
+                'auditable_type' => $auditableModel ? get_class($auditableModel) : (string) ($details['auditable_type'] ?? User::class),
+                'auditable_id' => $auditableModel ? $auditableModel->getKey() : (int) ($details['auditable_id'] ?? (is_object($user) ? $user->id : 1)),
                 'user_id' => is_object($user) ? $user->id : (is_numeric($user) ? (int)$user : null),
                 'event' => $event,
                 'notes' => $notes,

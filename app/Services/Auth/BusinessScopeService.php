@@ -59,6 +59,18 @@ class BusinessScopeService
     }
 
     /**
+     * Backward-compatible alias untuk scope customer query.
+     */
+    public function scopeCustomerQuery(Builder $query, ?User $user = null): Builder
+    {
+        $targetUser = $user ?? auth()->user();
+        if (!$targetUser) {
+            return $query->whereRaw('1=0');
+        }
+        return $this->scopeCustomers($query, $targetUser);
+    }
+
+    /**
      * Dapatkan collection customer yang dapat diakses user.
      */
     public function getScopedCustomers(User $user, bool $activeOnly = false)

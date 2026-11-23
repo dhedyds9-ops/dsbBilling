@@ -47,4 +47,10 @@ return [
         'sync_enabled' => env('MSTORE_SYNC_ENABLED', null),
     ],
 
+    'fcm' => [
+        'project_id' => env('FCM_PROJECT_ID', 'dsbilling-enterprise'),
+        'service_account_path' => env('FCM_SERVICE_ACCOUNT_PATH', storage_path('app/firebase/service-account.json')),
+        'service_account_json' => env('FCM_SERVICE_ACCOUNT_JSON', null),
+    ],
+
 ];

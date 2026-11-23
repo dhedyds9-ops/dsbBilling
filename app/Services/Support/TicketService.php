@@ -205,12 +205,16 @@ class TicketService
                 (string) $userId,
             ));
 
+            \App\Events\FieldService\TicketOperationalEvent::dispatch('created', $ticket, $userId);
+
             if ($assignedTo) {
                 Event::dispatch(TicketAssignedEvent::create(
                     (string) $ticket->id,
                     (string) $assignedTo,
                     (string) $userId,
                 ));
+
+                \App\Events\FieldService\TicketOperationalEvent::dispatch('assigned', $ticket, $userId);
 
                 // Otomatisasi Terintegrasi: Buat Work Order Maintenance lapangan jika tiket lapangan
                 try {
@@ -300,6 +304,7 @@ class TicketService
                 (string) $assigneeId,
                 (string) $userId,
             ));
+            \App\Events\FieldService\TicketOperationalEvent::dispatch('assigned', $ticket, $userId);
             Log::info('Ticket assigned', ['ticket_id' => $ticketId, 'assignee' => $assigneeId, 'by' => $userId]);
 
             try {
@@ -360,6 +365,7 @@ class TicketService
                 (string) $userId,
                 $note ?: $ticket->resolution_notes,
             ));
+            \App\Events\FieldService\TicketOperationalEvent::dispatch('resolved', $ticket, $userId);
             return $ticket;
         });
     }

@@ -3,11 +3,16 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
+use App\Models\CRM\Installation;
+use App\Models\Support\SupportMaintenance;
 use App\Models\Support\Ticket;
 use App\Models\User;
+use App\Models\Workforce\Attendance;
 use App\Models\Workforce\GPSLog;
 use App\Models\Workforce\MaterialUsage;
 use App\Models\Workforce\WorkOrder;
+use App\Services\Support\SlaTrackingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -289,13 +294,44 @@ class MobileWorkforceApiController extends Controller
         }
 
         $request->validate([
-            'status' => 'required|string|in:pending,assigned,in_progress,pending_approval,completed,cancelled',
+            'status' => 'required|string|in:pending,assigned,in_progress,pending_approval,completed,rejected,cancelled',
             'notes' => 'nullable|string|max:1000',
         ]);
 
         $targetStatus = strtolower((string)$request->input('status'));
         $notes = $request->input('notes');
         $isManager = $this->isManagerOrAdmin($user);
+
+        // Jika Manager menyetujui (completed) atau menolak (rejected), gunakan UnifiedQcApprovalService SSOT
+        if ($isManager && $targetStatus === 'completed') {
+            try {
+                $approvedWo = app(\App\Services\Workforce\UnifiedQcApprovalService::class)->approve($workOrder, $user, $notes);
+                return response()->json([
+                    'success' => true,
+                    'message' => "QC SPK #{$id} berhasil disetujui (Completed).",
+                    'data' => $this->formatWorkOrder($approvedWo, $user),
+                ]);
+            } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 403);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            }
+        }
+
+        if ($isManager && $targetStatus === 'rejected') {
+            try {
+                $rejectedWo = app(\App\Services\Workforce\UnifiedQcApprovalService::class)->reject($workOrder, $user, $notes ?: 'Pekerjaan perlu direvisi');
+                return response()->json([
+                    'success' => true,
+                    'message' => "QC SPK #{$id} ditolak dan dikembalikan ke teknisi untuk revisi.",
+                    'data' => $this->formatWorkOrder($rejectedWo, $user),
+                ]);
+            } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 403);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            }
+        }
 
         // State Machine validation
         if (!$isManager) {
@@ -331,8 +367,31 @@ class MobileWorkforceApiController extends Controller
                     ->where('id', $workOrder->ticket_id)
                     ->update(['status' => 'in_progress']);
             }
+
+            if ($workOrder->installation_id) {
+                \App\Models\CRM\Installation::withoutGlobalScopes()
+                    ->where('id', $workOrder->installation_id)
+                    ->update([
+                        'status' => 'in_progress',
+                        'assigned_to' => $workOrder->assigned_to ?? $user->id,
+                        'technician_id' => $workOrder->assigned_to ?? $user->id,
+                    ]);
+            }
         } elseif ($targetStatus === 'pending_approval') {
-            // Waiting for supervisor approval
+            // Waiting for supervisor approval - tandai pekerjaan fisik selesai di CRM Installation
+            if ($workOrder->installation_id) {
+                $instUpdates = [
+                    'status' => 'completed',
+                    'completed_at' => now(),
+                    'completed_by' => $user->id,
+                ];
+                if (!empty($workOrder->optical_rx_power)) {
+                    $instUpdates['optical_power'] = (string) $workOrder->optical_rx_power;
+                }
+                \App\Models\CRM\Installation::withoutGlobalScopes()
+                    ->where('id', $workOrder->installation_id)
+                    ->update($instUpdates);
+            }
         } elseif ($targetStatus === 'completed') {
             $updates['completed_at'] = $workOrder->completed_at ?? now();
             $updates['approved_by'] = $user->id;
@@ -343,15 +402,44 @@ class MobileWorkforceApiController extends Controller
                     ->where('id', $workOrder->ticket_id)
                     ->update(['status' => 'resolved']);
             }
+
+            if ($workOrder->installation_id) {
+                $inst = \App\Models\CRM\Installation::withoutGlobalScopes()->find($workOrder->installation_id);
+                if ($inst) {
+                    $inst->update([
+                        'status' => 'verified',
+                        'completed_at' => $inst->completed_at ?? ($workOrder->completed_at ?? now()),
+                        'completed_by' => $inst->completed_by ?: $user->id,
+                    ]);
+                    if ($inst->survey) {
+                        $inst->survey->update(['status' => 'completed']);
+                    }
+                }
+            }
         } elseif ($targetStatus === 'cancelled') {
             if ($workOrder->ticket_id) {
                 Ticket::withoutGlobalScopes()
                     ->where('id', $workOrder->ticket_id)
                     ->update(['status' => 'closed']);
             }
+
+            if ($workOrder->installation_id) {
+                \App\Models\CRM\Installation::withoutGlobalScopes()
+                    ->where('id', $workOrder->installation_id)
+                    ->update(['status' => 'cancelled']);
+            }
         }
 
         $workOrder->update($updates);
+
+        // Dispatch Operational Notification Event
+        if ($targetStatus === 'in_progress') {
+            \App\Events\FieldService\WorkOrderOperationalEvent::dispatch('started', $workOrder, $user->id);
+        } elseif ($targetStatus === 'pending_approval') {
+            \App\Events\FieldService\WorkOrderOperationalEvent::dispatch('completed', $workOrder, $user->id);
+        } elseif ($targetStatus === 'completed') {
+            \App\Events\FieldService\WorkOrderOperationalEvent::dispatch('approved', $workOrder, $user->id);
+        }
 
         return response()->json([
             'success' => true,
@@ -434,6 +522,7 @@ class MobileWorkforceApiController extends Controller
 
         $usage = $workOrder->materialUsages()->create([
             'uuid' => (string) Str::uuid(),
+            'installation_id' => $workOrder->installation_id ?: null,
             'material_id' => $request->input('material_id', 0),
             'material_name' => $request->input('material_name'),
             'quantity' => (int) $request->input('quantity', 1),
@@ -734,7 +823,8 @@ class MobileWorkforceApiController extends Controller
 
                 $data = [
                     'company_id' => $user->company_id,
-                    'branch_id' => $user->branch_id,
+                    'branch_id' => $inst->branch_id ?: ($inst->customer?->branch_id ?: $user->branch_id),
+                    'reseller_id' => $inst->reseller_id ?: $inst->customer?->reseller_id,
                     'type' => 'installation',
                     'source_type' => 'installation',
                     'source_id' => $inst->id,
@@ -812,7 +902,8 @@ class MobileWorkforceApiController extends Controller
 
                 $ticketWoData = [
                     'company_id' => $user->company_id,
-                    'branch_id' => $user->branch_id,
+                    'branch_id' => $t->branch_id ?: ($t->customer?->branch_id ?: $user->branch_id),
+                    'reseller_id' => $t->reseller_id ?? $t->customer?->reseller_id,
                     'type' => $t->category ?? 'troubleshooting',
                     'source_type' => 'ticket',
                     'source_id' => $t->id,
@@ -1291,5 +1382,173 @@ class MobileWorkforceApiController extends Controller
             'message' => 'Tiket gangguan berhasil dilaporkan ke pusat NOC.',
             'data' => $ticket,
         ], 201);
+    }
+
+    /**
+     * Unified Operational Control Center for Field Service (Phase 4.4).
+     * GET /api/mobile/workforce/control-center
+     */
+    public function controlCenter(Request $request, SlaTrackingService $slaService): JsonResponse
+    {
+        $user = $request->user();
+
+        $filters = [
+            'start_date' => now()->startOfDay()->toDateString(),
+            'end_date'   => now()->endOfDay()->toDateString(),
+            'branch_id'  => $request->input('branch_id') ?: ($user->branch_id ?: null),
+            'reseller_id'=> $user->isReseller() ? $user->getEffectiveResellerId() : $request->input('reseller_id'),
+        ];
+
+        // 1. Fetch Active Jobs via SSOT SlaTrackingService
+        $allActiveJobs = $slaService->getActiveJobsMonitoring($filters, $user);
+
+        $totalActiveJobs = $allActiveJobs->count();
+        $pendingQcCount = $allActiveJobs->where('status', 'pending_approval')->count();
+
+        $slaBreachedCount = 0;
+        $slaWarningCount = 0;
+        $urgentJobs = [];
+
+        foreach ($allActiveJobs as $job) {
+            $metrics = $job->metrics ?? [];
+            $isBreached = !empty($metrics['is_breached']) || ($metrics['status'] ?? '') === 'breached';
+            $isWarning = !empty($metrics['is_warning']) || ($metrics['status'] ?? '') === 'warning';
+
+            if ($isBreached) {
+                $slaBreachedCount++;
+            } elseif ($isWarning) {
+                $slaWarningCount++;
+            }
+
+            // Include coordinates if available
+            $model = $job->model ?? null;
+            $lat = null;
+            $lng = null;
+            if ($model instanceof WorkOrder) {
+                $lat = $model->customer?->latitude ?: ($model->installation?->latitude ?: null);
+                $lng = $model->customer?->longitude ?: ($model->installation?->longitude ?: null);
+            } elseif ($model instanceof Installation) {
+                $lat = $model->latitude ?: ($model->customer?->latitude ?: null);
+                $lng = $model->longitude ?: ($model->customer?->longitude ?: null);
+            } elseif ($model instanceof Ticket) {
+                $lat = $model->customer?->latitude ?: null;
+                $lng = $model->customer?->longitude ?: null;
+            }
+
+            $urgentJobs[] = [
+                'id'              => $job->entity_id,
+                'entity_type'     => $job->entity_type,
+                'code'            => $job->code,
+                'type'            => $job->type,
+                'title'           => $job->title,
+                'customer_name'   => $job->customer_name,
+                'technician_name' => $job->technician_name,
+                'status'          => $job->status,
+                'priority'        => $job->priority,
+                'is_breached'     => $isBreached,
+                'is_warning'      => $isWarning,
+                'is_qc_pending'   => $job->status === 'pending_approval',
+                'remaining_text'  => $metrics['remaining_formatted'] ?? '-',
+                'due_at'          => !empty($metrics['due_at']) ? $metrics['due_at']->toIso8601String() : null,
+                'latitude'        => $lat ? (float) $lat : null,
+                'longitude'       => $lng ? (float) $lng : null,
+            ];
+        }
+
+        // 2. Fetch Technicians On Duty
+        $techQuery = User::withoutGlobalScopes()
+            ->where(function ($q) {
+                $q->whereHas('roles', fn($rq) => $rq->whereIn('name', ['technician', 'teknisi']))
+                  ->orWhere('job_function', 'TECHNICIAN');
+            })
+            ->where('is_active', true);
+
+        if (!empty($filters['branch_id'])) {
+            $techQuery->where('branch_id', (int) $filters['branch_id']);
+        }
+        $techs = $techQuery->get();
+        $techIds = $techs->pluck('id')->toArray();
+
+        $today = now()->toDateString();
+        $attendances = Attendance::whereIn('technician_id', $techIds)
+            ->whereDate('date', $today)
+            ->get()
+            ->keyBy('technician_id');
+
+        $recentGpsLogs = GPSLog::whereIn('user_id', $techIds)
+            ->where('logged_at', '>=', now()->subHours(12))
+            ->orderBy('logged_at', 'desc')
+            ->get()
+            ->groupBy('user_id')
+            ->map(fn($logs) => $logs->first());
+
+        $techsOnDuty = [];
+        $onDutyCount = 0;
+        foreach ($techs as $tech) {
+            $att = $attendances->get($tech->id);
+            $gps = $recentGpsLogs->get($tech->id);
+            $isWorking = !empty($att?->checked_in_at) && empty($att?->checked_out_at);
+            if ($isWorking) {
+                $onDutyCount++;
+            }
+
+            $lat = $gps?->latitude ?: ($att?->check_in_latitude ?: null);
+            $lng = $gps?->longitude ?: ($att?->check_in_longitude ?: null);
+
+            $techsOnDuty[] = [
+                'id'            => $tech->id,
+                'name'          => $tech->name,
+                'phone'         => $tech->whatsapp ?: $tech->phone,
+                'branch_name'   => $tech->branch?->name ?? 'Pusat',
+                'is_on_duty'    => $isWorking,
+                'checked_in_at' => $att?->checked_in_at?->format('H:i'),
+                'latitude'      => $lat ? (float) $lat : null,
+                'longitude'     => $lng ? (float) $lng : null,
+                'last_seen'     => ($gps?->logged_at ?: $att?->checked_in_at)?->diffForHumans(),
+            ];
+        }
+
+        // 3. Compliance Rate
+        $slaReport = $slaService->getSlaReport($filters, $user);
+
+        // 4. Recent Audit Log (Last 10)
+        $activities = AuditLog::query()
+            ->whereIn('auditable_type', [
+                WorkOrder::class,
+                Ticket::class,
+                Installation::class,
+                SupportMaintenance::class,
+            ])
+            ->with(['user'])
+            ->latest()
+            ->limit(10)
+            ->get()
+            ->map(fn($act) => [
+                'id'         => $act->id,
+                'event'      => $act->event,
+                'notes'      => $act->notes,
+                'user_name'  => $act->user?->name ?? 'Sistem',
+                'created_at' => $act->created_at->diffForHumans(),
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Operational Control Center data loaded successfully.',
+            'data'    => [
+                'kpi' => [
+                    'total_active_jobs'  => $totalActiveJobs,
+                    'techs_on_duty'      => $onDutyCount,
+                    'techs_total'        => count($techs),
+                    'pending_qc'         => $pendingQcCount,
+                    'sla_breached'       => $slaBreachedCount,
+                    'sla_warning'        => $slaWarningCount,
+                    'compliance_rate'    => $slaReport['compliance_rate'] ?? 100.0,
+                    'total_resolved'     => $slaReport['total_jobs'] ?? 0,
+                ],
+                'active_jobs'        => $urgentJobs,
+                'technicians'        => $techsOnDuty,
+                'recent_activities'  => $activities,
+            ],
+        ]);
     }
 }

@@ -215,6 +215,12 @@ abstract class AdminComponent extends Component
                 'label' => 'Monitoring & NOC',
                 'items' => [
                     [
+                        'label' => 'Control Center',
+                        'icon' => 'activity',
+                        'url' => route('support.control-center'),
+                        'active' => 'support.control-center*',
+                    ],
+                    [
                         'label' => 'Alarms',
                         'icon' => 'bell',
                         'url' => '#',

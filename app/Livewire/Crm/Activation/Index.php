@@ -57,11 +57,29 @@ class Index extends BaseCrmComponent
         $this->activation_target_type = $type;
 
         if ($type === 'installation') {
-            $inst = Installation::withoutGlobalScopes()->with(['customer', 'technician', 'onu', 'survey.prospect'])->findOrFail($id);
+            $inst = Installation::withoutGlobalScopes()->with(['customer', 'technician', 'onu', 'survey.prospect'])->find($id);
+            if (!$inst) {
+                $inst = Installation::withoutGlobalScopes()->with(['customer', 'technician', 'onu', 'survey.prospect'])->where('survey_id', $id)->first();
+            }
 
-            // Validasi: Apakah sudah aktif
-            if (in_array($inst->status, ['completed', 'verified'], true) && !empty($inst->completed_at)) {
+            if (!$inst) {
+                // Jika tidak ditemukan di installations, cek apakah ini survey legacy
+                return $this->openActivationModal($id, 'survey');
+            }
+
+            // Validasi 1: Apakah layanan sudah aktif sebelumnya
+            $isAlreadyActive = ($inst->survey?->status === 'activated')
+                || ($inst->customer && $inst->customer->customerServices()->where('status', 'active')->exists());
+            if ($isAlreadyActive) {
                 session()->flash('info', "SPK #{$inst->id} ({$inst->customer_name}) sudah berstatus AKTIF.");
+                $this->showActivationModal = false;
+                return;
+            }
+
+            // Validasi 2: Blokir aktivasi jika instalasi fisik belum selesai
+            if (!in_array($inst->status, ['completed', 'verified'], true)) {
+                session()->flash('error', "Layanan belum dapat diaktifkan: Pekerjaan instalasi fisik (SPK #{$inst->id}) masih berstatus '" . strtoupper($inst->status) . "'. Pastikan teknisi telah menyelesaikan penarikan kabel & scan modem ONT di lapangan.");
+                $this->showActivationModal = false;
                 return;
             }
 
@@ -96,6 +114,7 @@ class Index extends BaseCrmComponent
         $inst = $survey->installation;
         if ($inst && !in_array($inst->status, ['completed', 'verified'], true)) {
             session()->flash('error', "Layanan belum dapat diaktifkan: Pekerjaan instalasi fisik (SPK #{$inst->id}) masih berstatus '" . strtoupper($inst->status) . "'. Pastikan teknisi telah menyelesaikan penarikan kabel & scan modem ONT di lapangan.");
+            $this->showActivationModal = false;
             return;
         }
 
@@ -188,6 +207,7 @@ class Index extends BaseCrmComponent
 
                 $this->showActivationModal = false;
                 $this->activeTab = 'completed';
+                \App\Events\FieldService\InstallationOperationalEvent::dispatch('activated', $inst, $userId);
                 session()->flash('success', "Layanan untuk {$customerName} (SPK #{$inst->id}) berhasil diaktifkan!");
                 return;
             }
@@ -231,6 +251,9 @@ class Index extends BaseCrmComponent
             session()->flash('success', 'Layanan berhasil diaktifkan dan pelanggan didaftarkan!');
 
         } catch (\Throwable $e) {
+            if (isset($inst) && $inst instanceof \App\Models\CRM\Installation) {
+                \App\Events\FieldService\InstallationOperationalEvent::dispatch('activation_failed', $inst, $userId ?? 0, ['error' => $e->getMessage()]);
+            }
             $this->addError('activation', 'Gagal mengaktifkan layanan: ' . $e->getMessage());
         }
     }

@@ -77,7 +77,8 @@ class ActivationQueryTest extends TestCase
            ->assertSee('Hendra Selesai')
            ->assertDontSee('Sarminah Test');
 
-        // Test opening activation modal
+        // Test opening activation modal (installation must be completed before activation)
+        $pendingInst->update(['status' => 'completed', 'completed_at' => now()]);
         $lw->call('switchTab', 'pending')
            ->call('openActivationModal', $pendingInst->id, 'installation')
            ->assertSet('showActivationModal', true)

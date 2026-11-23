@@ -12,12 +12,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WorkOrder extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\HasBranchScope, \App\Traits\HasResellerScope;
 
     protected $fillable = [
         'uuid',
         'company_id',
         'branch_id',
+        'reseller_id',
         'type',
         'source_type',
         'source_id',
@@ -40,6 +41,12 @@ class WorkOrder extends Model
         'optical_tx_power',
         'customer_signature',
         'evidence_photos',
+        'sla_due_at',
+        'sla_started_at',
+        'sla_target_minutes',
+        'sla_status',
+        'sla_warning_sent_at',
+        'sla_breached_sent_at',
     ];
 
     protected $casts = [
@@ -51,6 +58,11 @@ class WorkOrder extends Model
         'optical_tx_power' => 'decimal:2',
         'evidence_photos' => 'array',
         'technician_ids' => 'array',
+        'sla_due_at' => 'datetime',
+        'sla_started_at' => 'datetime',
+        'sla_target_minutes' => 'integer',
+        'sla_warning_sent_at' => 'datetime',
+        'sla_breached_sent_at' => 'datetime',
     ];
 
     public function customer(): BelongsTo
@@ -88,6 +100,11 @@ class WorkOrder extends Model
         return $this->belongsTo(Branch::class, 'branch_id');
     }
 
+    public function reseller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reseller_id');
+    }
+
     public function checklists(): HasMany
     {
         return $this->hasMany(WorkOrderChecklist::class);
@@ -96,5 +113,10 @@ class WorkOrder extends Model
     public function materialUsages(): HasMany
     {
         return $this->hasMany(MaterialUsage::class);
+    }
+
+    public function auditLogs(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(\App\Models\AuditLog::class, 'auditable');
     }
 }

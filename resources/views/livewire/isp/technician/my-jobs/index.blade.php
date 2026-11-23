@@ -170,6 +170,15 @@
                             </span>
                         @endif
                     @endif
+                    @if(!empty($job->sla_due_at))
+                        <x-sla.countdown 
+                            :due-at="$job->sla_due_at" 
+                            :started-at="$job->sla_started_at ?? null" 
+                            :sla-status="$job->sla_status ?? 'normal'" 
+                            :is-completed="$job->is_completed ?? false" 
+                            :compact="true"
+                        />
+                    @endif
                 </div>
             </div>
 

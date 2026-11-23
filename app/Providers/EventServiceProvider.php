@@ -124,6 +124,20 @@ class EventServiceProvider extends ServiceProvider
         \Src\Domain\Support\Events\TicketResolvedEvent::class => [
             \App\Listeners\Support\TicketResolvedListener::class,
         ],
+
+        // ==================== FIELD SERVICE OPERATIONAL EVENTS ====================
+        \App\Events\FieldService\TicketOperationalEvent::class => [
+            \App\Listeners\FieldService\FieldServiceNotificationListener::class,
+        ],
+        \App\Events\FieldService\WorkOrderOperationalEvent::class => [
+            \App\Listeners\FieldService\FieldServiceNotificationListener::class,
+        ],
+        \App\Events\FieldService\InstallationOperationalEvent::class => [
+            \App\Listeners\FieldService\FieldServiceNotificationListener::class,
+        ],
+        \App\Events\FieldService\MaintenanceOperationalEvent::class => [
+            \App\Listeners\FieldService\FieldServiceNotificationListener::class,
+        ],
     ];
 
     public function register(): void
@@ -133,7 +147,11 @@ class EventServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        //
+        foreach ($this->listen as $event => $listeners) {
+            foreach ($listeners as $listener) {
+                Event::listen($event, $listener);
+            }
+        }
     }
 }
 

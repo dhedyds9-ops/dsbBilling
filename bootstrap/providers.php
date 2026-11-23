@@ -2,6 +2,7 @@
 
 return [
     App\Providers\AppServiceProvider::class,
+    App\Providers\EventServiceProvider::class,
     App\Providers\InfrastructureServiceProvider::class,
     Livewire\LivewireServiceProvider::class,
     App\Providers\TenancyServiceProvider::class,

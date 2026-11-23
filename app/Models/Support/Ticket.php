@@ -35,6 +35,12 @@ class Ticket extends Model
         'requires_field_visit',
         'maintenance_wo_id',
         'installation_id',
+        'sla_due_at',
+        'sla_started_at',
+        'sla_target_minutes',
+        'sla_status',
+        'sla_warning_sent_at',
+        'sla_breached_sent_at',
     ];
 
     protected $casts = [
@@ -44,7 +50,17 @@ class Ticket extends Model
         'checklists' => 'array',
         'technician_ids' => 'array',
         'requires_field_visit' => 'boolean',
+        'sla_due_at' => 'datetime',
+        'sla_started_at' => 'datetime',
+        'sla_target_minutes' => 'integer',
+        'sla_warning_sent_at' => 'datetime',
+        'sla_breached_sent_at' => 'datetime',
     ];
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Master\Branch::class, 'branch_id');
+    }
 
     public function customer(): BelongsTo
     {
@@ -91,6 +107,16 @@ class Ticket extends Model
     public function maintenanceWorkOrder(): BelongsTo
     {
         return $this->belongsTo(SupportMaintenance::class, 'maintenance_wo_id');
+    }
+
+    public function workOrders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Workforce\WorkOrder::class, 'ticket_id');
+    }
+
+    public function workOrder(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Models\Workforce\WorkOrder::class, 'ticket_id')->latestOfMany();
     }
 
     public function installation(): BelongsTo

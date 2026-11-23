@@ -13,14 +13,27 @@ class MaterialUsage extends Model
     protected $fillable = [
         'uuid',
         'work_order_id',
+        'installation_id',
+        'item_id',
         'material_id',
         'material_name',
         'quantity',
         'serial_number',
+        'notes',
     ];
 
     public function workOrder(): BelongsTo
     {
         return $this->belongsTo(WorkOrder::class);
+    }
+
+    public function installation(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\CRM\Installation::class, 'installation_id');
+    }
+
+    public function item(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Inventory\Item::class, 'item_id');
     }
 }

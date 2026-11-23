@@ -886,6 +886,9 @@ class Index extends Component
                     'longitude' => $lng,
                     'survey_id' => null,
                     'ticket_id' => $inst->ticket_id ?? null,
+                    'sla_due_at' => $inst->sla_due_at,
+                    'sla_started_at' => $inst->sla_started_at ?: ($inst->scheduled_at ?: $inst->created_at),
+                    'sla_status' => $inst->sla_status ?? 'normal',
                 ]);
             }
         }
@@ -991,6 +994,9 @@ class Index extends Component
                     'survey_id' => null,
                     'ticket_id' => $ticket->id,
                     'maint_id' => null,
+                    'sla_due_at' => $ticket->sla_due_at,
+                    'sla_started_at' => $ticket->sla_started_at ?: $ticket->created_at,
+                    'sla_status' => $ticket->sla_status ?? 'normal',
                 ]);
             }
         }

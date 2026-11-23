@@ -320,4 +320,72 @@ class PsbWizardBranchIsolationTest extends TestCase
         $url2 = \App\Livewire\Isp\Technician\Installation\Wizard::resolveAcsServerUrl();
         $this->assertEquals('http://genieacs.mstore.id:7547', $url2);
     }
+
+    public function test_installation_and_work_order_respect_branch_and_reseller_scope(): void
+    {
+        $branchA = Branch::create(['name' => 'Cabang A', 'code' => 'CBA', 'is_active' => true]);
+        $branchB = Branch::create(['name' => 'Cabang B', 'code' => 'CBB', 'is_active' => true]);
+
+        $mgrA = User::factory()->create([
+            'branch_id' => $branchA->id,
+            'is_active' => true,
+        ]);
+        $mgrA->attachRole(UserRole::Manager->value);
+
+        $reseller = User::factory()->create([
+            'is_active' => true,
+        ]);
+        $reseller->attachRole(UserRole::Reseller->value);
+
+        $reseller2 = User::factory()->create([
+            'is_active' => true,
+        ]);
+        $reseller2->attachRole(UserRole::Reseller->value);
+
+        // Create Installation & WorkOrder under Branch A
+        $instA = \App\Models\CRM\Installation::create([
+            'customer_name' => 'Inst A',
+            'branch_id' => $branchA->id,
+            'reseller_id' => $reseller->id,
+            'status' => 'pending',
+        ]);
+        $woA = \App\Models\Workforce\WorkOrder::create([
+            'uuid' => (string) Str::uuid(),
+            'title' => 'WO A',
+            'branch_id' => $branchA->id,
+            'reseller_id' => $reseller->id,
+            'status' => 'pending',
+        ]);
+
+        // Create Installation & WorkOrder under Branch B (different reseller)
+        $instB = \App\Models\CRM\Installation::create([
+            'customer_name' => 'Inst B',
+            'branch_id' => $branchB->id,
+            'reseller_id' => $reseller2->id,
+            'status' => 'pending',
+        ]);
+        $woB = \App\Models\Workforce\WorkOrder::create([
+            'uuid' => (string) Str::uuid(),
+            'title' => 'WO B',
+            'branch_id' => $branchB->id,
+            'reseller_id' => $reseller2->id,
+            'status' => 'pending',
+        ]);
+
+        // 1. Manager of Branch A should see only Branch A records
+        $this->actingAs($mgrA);
+        $this->assertCount(1, \App\Models\CRM\Installation::all());
+        $this->assertEquals($instA->id, \App\Models\CRM\Installation::first()->id);
+
+        $this->assertCount(1, \App\Models\Workforce\WorkOrder::all());
+        $this->assertEquals($woA->id, \App\Models\Workforce\WorkOrder::first()->id);
+
+        // 2. Reseller should see only records matching their reseller_id
+        $this->actingAs($reseller);
+        $this->assertCount(1, \App\Models\CRM\Installation::all());
+        $this->assertEquals($instA->id, \App\Models\CRM\Installation::first()->id);
+
+        $this->assertCount(1, \App\Models\Workforce\WorkOrder::all());
+        $this->assertEquals($woA->id, \App\Models\Workforce\WorkOrder::first()->id);
+    }
 }

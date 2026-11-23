@@ -1128,9 +1128,10 @@ class Wizard extends Component
             // ==========================================
             // Potong Barang dari Bagasi / Custody Teknisi & Reseller (Enterprise Inventory)
             // ==========================================
+            $consumedFromEnterprise = false;
             try {
                 $stockService = app(\App\Services\Inventory\StockMutationService::class);
-                $stockService->recordPsbConsumption(
+                $usage = $stockService->recordPsbConsumption(
                     technicianId: $user->id,
                     customerId: $customer->id,
                     onuSn: $sn,
@@ -1142,6 +1143,10 @@ class Wizard extends Component
                     requisitionId: $this->requisition_id ?: null,
                     resellerId: $customer->reseller_id ?: ($this->new_customer_reseller_id ?: null)
                 );
+
+                if ($usage) {
+                    $consumedFromEnterprise = true;
+                }
 
                 if (isset($onu) && $onu && \Illuminate\Support\Facades\Schema::hasTable('onu_histories')) {
                     \App\Models\ISP\OnuHistory::withoutGlobalScopes()->create([
@@ -1166,8 +1171,8 @@ class Wizard extends Component
                 \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal potong custody material PSB: ' . $e->getMessage());
             }
 
-            // Fallback backward-compatibility untuk support_maintenance_materials
-            if (($this->dropcore_meters > 0 || $this->fast_connector_qty > 0) && \Illuminate\Support\Facades\Schema::hasTable('support_maintenance_materials')) {
+            // Fallback backward-compatibility untuk support_maintenance_materials (hanya jika Enterprise Inventory tidak memotong stok)
+            if (!$consumedFromEnterprise && ($this->dropcore_meters > 0 || $this->fast_connector_qty > 0) && \Illuminate\Support\Facades\Schema::hasTable('support_maintenance_materials')) {
                 try {
                     if ($this->dropcore_meters > 0) {
                         $dc = \Illuminate\Support\Facades\DB::table('support_maintenance_materials')->where('name', 'like', '%Dropcore%')->first();

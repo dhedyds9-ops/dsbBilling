@@ -8,8 +8,11 @@ use App\Models\Customer\CustomerService;
 use App\Models\Support\SupportMaintenance;
 use App\Models\Support\Ticket;
 use App\Models\User;
+use App\Models\Workforce\WorkOrder;
+use App\Services\Workforce\UnifiedQcApprovalService;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Livewire\WithPagination;
@@ -19,12 +22,19 @@ class WorkOrderHistory extends AdminComponent
     use WithPagination;
 
     public string $search = '';
-    public string $typeFilter = 'all'; // all, installation, repair, maintenance, activation
-    public string $statusFilter = 'all'; // all, completed, pending
+    public string $typeFilter = 'all'; // all, qc_approval, installation, repair, maintenance, activation
+    public string $statusFilter = 'all'; // all, completed, pending, pending_approval
     public $technicianFilter = '';
     public $resellerFilter = '';
     public $selectedMonth;
     public $selectedYear;
+
+    // QC Inspection Modal Properties
+    public bool $showQcModal = false;
+    public ?int $selectedWoId = null;
+    public ?WorkOrder $selectedWo = null;
+    public string $qcNotes = '';
+    public int $pendingQcCount = 0;
 
     public function mount()
     {
@@ -49,8 +59,89 @@ class WorkOrderHistory extends AdminComponent
 
     public function setTypeFilter(string $type)
     {
-        $this->typeFilter = in_array($type, ['all', 'installation', 'repair', 'maintenance', 'activation']) ? $type : 'all';
+        $this->typeFilter = in_array($type, ['all', 'qc_approval', 'installation', 'repair', 'maintenance', 'activation']) ? $type : 'all';
         $this->resetPage();
+    }
+
+    public function openQcInspection(int $workOrderId): void
+    {
+        $this->selectedWoId = $workOrderId;
+        $this->selectedWo = WorkOrder::withoutGlobalScopes()->with([
+            'customer',
+            'technician',
+            'branch',
+            'reseller',
+            'checklists',
+            'ticket',
+            'installation.survey.prospect',
+            'installation.onu',
+            'auditLogs.user',
+        ])->find($workOrderId);
+
+        if (!$this->selectedWo) {
+            $this->dispatch('alert', ['type' => 'error', 'message' => 'Work Order tidak ditemukan.']);
+            return;
+        }
+
+        $this->qcNotes = '';
+        $this->showQcModal = true;
+    }
+
+    public function closeQcModal(): void
+    {
+        $this->showQcModal = false;
+        $this->selectedWoId = null;
+        $this->selectedWo = null;
+        $this->qcNotes = '';
+    }
+
+    public function approveQc(): void
+    {
+        if (!$this->selectedWoId) return;
+
+        $wo = WorkOrder::withoutGlobalScopes()->find($this->selectedWoId);
+        if (!$wo) {
+            $this->dispatch('alert', ['type' => 'error', 'message' => 'Work Order tidak ditemukan.']);
+            return;
+        }
+
+        try {
+            app(UnifiedQcApprovalService::class)->approve($wo, Auth::user(), $this->qcNotes);
+            $this->closeQcModal();
+            $this->dispatch('alert', ['type' => 'success', 'message' => "QC SPK #{$wo->id} berhasil disetujui (Approved)."]);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            $this->dispatch('alert', ['type' => 'error', 'message' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            $this->dispatch('alert', ['type' => 'error', 'message' => 'Gagal menyetujui QC: ' . $e->getMessage()]);
+        }
+    }
+
+    public function rejectQc(): void
+    {
+        if (!$this->selectedWoId) return;
+
+        $this->validate([
+            'qcNotes' => 'required|string|min:3|max:1000',
+        ], [
+            'qcNotes.required' => 'Alasan penolakan QC wajib diisi agar teknisi tahu bagian yang perlu diperbaiki.',
+            'qcNotes.min' => 'Alasan penolakan minimal 3 karakter.',
+        ]);
+
+        $wo = WorkOrder::withoutGlobalScopes()->find($this->selectedWoId);
+        if (!$wo) {
+            $this->dispatch('alert', ['type' => 'error', 'message' => 'Work Order tidak ditemukan.']);
+            return;
+        }
+
+        try {
+            app(UnifiedQcApprovalService::class)->reject($wo, Auth::user(), $this->qcNotes);
+            $this->closeQcModal();
+            $this->dispatch('alert', ['type' => 'success', 'message' => "QC SPK #{$wo->id} ditolak dan dikembalikan ke teknisi untuk perbaikan."]);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            $this->dispatch('alert', ['type' => 'error', 'message' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            $this->dispatch('alert', ['type' => 'error', 'message' => 'Gagal menolak QC: ' . $e->getMessage()]);
+        }
     }
 
     public function render()
@@ -59,6 +150,74 @@ class WorkOrderHistory extends AdminComponent
         $items = collect();
         $m = $this->selectedMonth;
         $y = $this->selectedYear;
+
+        // 0. ANTREAN QC / WORK ORDERS PENDING APPROVAL
+        $qcQuery = app(UnifiedQcApprovalService::class)->getPendingQcQuery(Auth::user());
+        $this->pendingQcCount = $qcQuery->count();
+
+        if ($this->typeFilter === 'all' || $this->typeFilter === 'qc_approval') {
+            $woQ = clone $qcQuery;
+
+            if ($this->technicianFilter) {
+                $woQ->where('assigned_to', $this->technicianFilter);
+            }
+
+            if ($this->resellerFilter) {
+                if ($this->resellerFilter === 'direct') {
+                    $woQ->whereNull('reseller_id');
+                } else {
+                    $woQ->where('reseller_id', $this->resellerFilter);
+                }
+            }
+
+            if ($search) {
+                $woQ->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%")
+                      ->orWhere('uuid', 'like', "%{$search}%")
+                      ->orWhereHas('customer', function ($cq) use ($search) {
+                          $cq->withoutGlobalScopes()->where('name', 'like', "%{$search}%")
+                             ->orWhere('phone', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            $pendingWos = $woQ->get();
+
+            if ($this->typeFilter === 'qc_approval' || $this->statusFilter === 'all' || $this->statusFilter === 'pending' || $this->statusFilter === 'pending_approval') {
+                foreach ($pendingWos as $wo) {
+                    $items->push((object)[
+                        'id' => 'wo_' . $wo->id,
+                        'raw_id' => $wo->id,
+                        'work_order_id' => $wo->id,
+                        'code' => $wo->uuid ? ('SPK-' . strtoupper(substr(str_replace('-', '', $wo->uuid), 0, 6))) : ('SPK-' . $wo->id),
+                        'type' => 'qc_approval',
+                        'type_badge' => 'Menunggu QC',
+                        'service_type' => ucfirst($wo->type ?? 'Work Order'),
+                        'customer_name' => $wo->customer?->name ?? ($wo->title ?: 'Pelanggan SPK #' . $wo->id),
+                        'customer_code' => $wo->customer?->code ?? ('SPK-' . $wo->id),
+                        'customer_phone' => $wo->customer?->phone ?? '-',
+                        'customer_address' => $wo->customer?->address ?? '-',
+                        'technician_name' => $wo->technician?->name ?? 'Teknisi Lapangan',
+                        'reseller_id' => $wo->reseller_id,
+                        'reseller_name' => $wo->reseller?->name ?? null,
+                        'package_name' => $wo->title,
+                        'username' => null,
+                        'device_info' => !empty($wo->optical_rx_power) ? ("RX: {$wo->optical_rx_power} dBm") : '-',
+                        'date' => $wo->completed_at ?? ($wo->started_at ?? $wo->updated_at),
+                        'status' => 'pending_approval',
+                        'status_label' => 'Menunggu Persetujuan QC',
+                        'is_completed' => false,
+                        'is_qc_pending' => true,
+                        'work_order' => $wo,
+                        'sla_due_at' => $wo->sla_due_at,
+                        'sla_started_at' => $wo->sla_started_at ?: ($wo->started_at ?: $wo->created_at),
+                        'sla_status' => $wo->sla_status ?? 'normal',
+                        'priority' => $wo->priority ?? 'normal',
+                    ]);
+                }
+            }
+        }
 
         // 1. INSTALASI PASANG BARU (From CRM Installation Table)
         if ($this->typeFilter === 'all' || $this->typeFilter === 'installation') {
@@ -148,6 +307,10 @@ class WorkOrderHistory extends AdminComponent
                     'status' => $inst->status,
                     'status_label' => $isCompleted ? 'Selesai Terpasang' : ucfirst($inst->status),
                     'is_completed' => $isCompleted,
+                    'sla_due_at' => $inst->sla_due_at,
+                    'sla_started_at' => $inst->sla_started_at ?: ($inst->scheduled_at ?: $inst->created_at),
+                    'sla_status' => $inst->sla_status ?? 'normal',
+                    'priority' => $inst->priority ?? 'normal',
                 ]);
             }
         }
@@ -234,6 +397,10 @@ class WorkOrderHistory extends AdminComponent
                     'status' => $ticket->status,
                     'status_label' => $isCompleted ? 'Selesai Diperbaiki' : 'Sedang Ditangani',
                     'is_completed' => $isCompleted,
+                    'sla_due_at' => $ticket->sla_due_at,
+                    'sla_started_at' => $ticket->sla_started_at ?: $ticket->created_at,
+                    'sla_status' => $ticket->sla_status ?? 'normal',
+                    'priority' => $ticket->priority ?? 'normal',
                 ]);
             }
         }
@@ -435,6 +602,7 @@ class WorkOrderHistory extends AdminComponent
             'totalActivations' => $totalActivations,
             'technicians' => $technicians,
             'resellers' => $resellers,
+            'pendingQcCount' => $this->pendingQcCount,
             'selectedMonthName' => $selectedMonthDate->translatedFormat('F Y'),
         ]);
     }

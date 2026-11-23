@@ -56,6 +56,13 @@ Schedule::command('voucher:reap-expired')
     ->withoutOverlapping(15)
     ->name('Reap Expired Vouchers');
 
+// =================== FIELD SERVICE SLA MONITORING ===================
+Schedule::command('dsbilling:monitor-sla')
+    ->everyFiveMinutes()
+    ->timezone('Asia/Jakarta')
+    ->withoutOverlapping(5)
+    ->name('Field Service SLA Monitoring & Auto-Escalation');
+
 // =================== ISP FIBER POLLING ===================
 Schedule::call(function (OltPollingService $polling) {
     $polling->pollAll();
