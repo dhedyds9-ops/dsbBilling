@@ -97,4 +97,36 @@ class SupportTicketRenderTest extends TestCase
             ->assertSet('newTicket.manual_customer_name', 'ODP: ODP 3682 (ODP-3682)')
             ->assertSet('newTicket.manual_customer_address', 'Jl. Merdeka Binuangeun | Koordinat: -6.800387, 105.939215');
     }
+
+    public function test_ticket_selection_and_select_all_works_without_get_query_crash(): void
+    {
+        \App\Models\Role::firstOrCreate(['name' => UserRole::Manager->value], ['display_name' => 'Manager']);
+        $manager = User::factory()->create([
+            'email' => 'mgr_select@example.com',
+            'is_active' => true,
+        ]);
+        $manager->attachRole(UserRole::Manager->value);
+
+        $ticket = \App\Models\Support\Ticket::create([
+            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'title' => 'Redaman Tinggi Test',
+            'description' => 'Test Deskripsi',
+            'category' => 'internet',
+            'priority' => 'medium',
+            'status' => 'open',
+        ]);
+
+        $this->assertNotEmpty($ticket->ticket_code);
+        $this->assertStringStartsWith('TKT-', $ticket->ticket_code);
+
+        // Test Livewire table checkbox interaction that previously triggered getQuery() on Collection
+        \Livewire\Livewire::actingAs($manager)
+            ->test(\App\Livewire\Support\Ticket\Index::class)
+            ->set('activeTab', 'table')
+            ->set('selected', [(string) $ticket->id])
+            ->set('selectAll', true)
+            ->assertSet('selectAll', true)
+            ->set('selectAll', false)
+            ->assertSet('selected', []);
+    }
 }

@@ -292,8 +292,8 @@ $statusLabels = [
                             <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/40">
                                 <td class="px-3 py-2"><input type="checkbox" wire:model.live="selected" value="{{ (string) $t->id }}" class="rounded border-slate-300 dark:border-slate-600"></td>
                                 <td class="px-3 py-2 font-mono text-xs">
-                                    <span class="text-slate-500 dark:text-slate-400">#{{ $t->id }}</span>
-                                    <span class="text-slate-400 block">{{ substr($t->uuid, -6) }}</span>
+                                    <div class="font-bold text-slate-700 dark:text-slate-200">#{{ $t->id }}</div>
+                                    <div class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">{{ $t->ticket_code }}</div>
                                 </td>
                                 <td class="px-3 py-2 max-w-xs truncate font-medium">{{ $t->title }}</td>
                                 <td class="px-3 py-2 text-xs">

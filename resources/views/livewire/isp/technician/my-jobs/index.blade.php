@@ -180,7 +180,13 @@
                         {{ $job->title }}
                     </h4>
                     @if($job->code && $job->code !== '-')
-                        <span class="text-[11px] font-mono text-slate-400 dark:text-slate-500">ID: {{ $job->code }}</span>
+                        <span class="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                            @if($job->job_type === 'ticket')
+                                ID: <span class="font-bold text-slate-700 dark:text-slate-200">#{{ $job->raw_id ?? $job->ticket_id }}</span> &bull; <span class="font-semibold text-indigo-600 dark:text-indigo-400">{{ $job->code }}</span>
+                            @else
+                                ID: <span class="font-bold text-slate-700 dark:text-slate-200">{{ $job->code }}</span>
+                            @endif
+                        </span>
                     @endif
                 </div>
             </div>
@@ -633,7 +639,7 @@
             <div class="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
                 <div class="flex items-center justify-between">
                     <span class="text-slate-400 font-semibold text-[10px] uppercase">Kode Tiket</span>
-                    <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedTicketCode }}</span>
+                    <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">#{{ $selectedTicketId }} &bull; {{ $selectedTicketCode }}</span>
                 </div>
                 <div class="flex items-center justify-between">
                     <span class="text-slate-400 font-semibold text-[10px] uppercase">Pelanggan</span>
@@ -893,7 +899,7 @@
             <div class="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
                 <div class="flex items-center justify-between">
                     <span class="text-slate-400 font-semibold text-[10px] uppercase">Kode Tiket</span>
-                    <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedTicketCode }}</span>
+                    <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">#{{ $selectedTicketId }} &bull; {{ $selectedTicketCode }}</span>
                 </div>
                 <div class="flex items-center justify-between">
                     <span class="text-slate-400 font-semibold text-[10px] uppercase">Pelanggan</span>
@@ -964,7 +970,7 @@
             <div class="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
                 <div class="flex items-center justify-between">
                     <span class="text-slate-400 font-semibold text-[10px] uppercase">Kode Tiket</span>
-                    <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedTicketCode }}</span>
+                    <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">#{{ $selectedTicketId }} &bull; {{ $selectedTicketCode }}</span>
                 </div>
                 <div class="flex items-center justify-between">
                     <span class="text-slate-400 font-semibold text-[10px] uppercase">Pelanggan</span>

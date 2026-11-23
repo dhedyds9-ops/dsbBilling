@@ -211,6 +211,7 @@ class Index extends Component
         }
 
         $this->progressTicketId = $ticket->id;
+        $this->selectedTicketId = $ticket->id;
         $this->selectedTicketCode = !empty($ticket->uuid)
             ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6)))
             : ('#' . $ticket->id);

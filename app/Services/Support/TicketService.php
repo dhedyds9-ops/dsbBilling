@@ -30,8 +30,12 @@ class TicketService
         return $query;
     }
 
-    public function list(array $filters, string $search, string $sortField, string $sortDirection, int $perPage)
-    {
+    public function query(
+        array $filters = [],
+        string $search = '',
+        string $sortField = 'created_at',
+        string $sortDirection = 'desc'
+    ) {
         $query = $this->scopedQuery()->with(['customer', 'assignedTo', 'reseller', 'installation']);
 
         if (!empty($filters['status'])) {
@@ -85,6 +89,18 @@ class TicketService
         }
         $field = in_array($sortField, $allowed) ? $sortField : 'created_at';
         $query->orderBy($field, $sortDirection);
+
+        return $query;
+    }
+
+    public function list(
+        array $filters = [],
+        string $search = '',
+        string $sortField = 'created_at',
+        string $sortDirection = 'desc',
+        int $perPage = 15
+    ) {
+        $query = $this->query($filters, $search, $sortField, $sortDirection);
 
         return $perPage > 0 ? $query->paginate($perPage) : $query->get();
     }

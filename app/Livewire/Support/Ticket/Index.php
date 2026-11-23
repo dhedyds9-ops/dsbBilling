@@ -249,7 +249,7 @@ class Index extends BaseEnterpriseList
 
     public function getRowsQuery()
     {
-        return $this->ticketService->list($this->filters, $this->search, $this->sortField, $this->sortDirection, 0)->getQuery();
+        return $this->ticketService->query($this->filters, $this->search, $this->sortField, $this->sortDirection);
     }
 
     public function getRows()

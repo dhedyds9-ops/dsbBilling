@@ -98,6 +98,13 @@ class Ticket extends Model
         return $this->belongsTo(\App\Models\CRM\Installation::class, 'installation_id');
     }
 
+    public function getTicketCodeAttribute(): string
+    {
+        return !empty($this->uuid)
+            ? ('TKT-' . strtoupper(substr(str_replace('-', '', $this->uuid), 0, 6)))
+            : ('TKT-' . $this->id);
+    }
+
     /**
      * Payload lengkap untuk notifikasi WhatsApp (Fonnte) & Telegram.
      * Mendukung: Objek Jaringan (ODP/Jalur/ODC), Calon Pelanggan (PSB), dan Pelanggan Resmi.
