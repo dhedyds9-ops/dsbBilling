@@ -180,7 +180,8 @@ class ProvisioningService
                 $networkData
             );
 
-            $this->pppoeService->activatePPPoEUser($pppoeUser->id, $userId);
+            $ignoreHardware = !empty($data['ignore_hardware_errors']) || !empty($data['is_import']);
+            $this->pppoeService->activatePPPoEUser($pppoeUser->id, $userId, $ignoreHardware);
 
             // Step 8: Audit Log
             $this->logAudit($customerService, $userId, 'Service PPPoE Diaktifkan');
@@ -460,9 +461,14 @@ class ProvisioningService
                                 $customer->update(['code' => $code]);
                             }
 
+                            $custEmail = !empty($customer->email) ? trim($customer->email) : null;
+                            if ($custEmail && \App\Models\User::where('email', $custEmail)->exists()) {
+                                $custEmail = null;
+                            }
+
                             $user = \App\Models\User::create([
                                 'name' => $customer->name,
-                                'email' => $customer->email,
+                                'email' => $custEmail,
                                 'whatsapp' => $customer->phone,
                                 'customer_code' => $code,
                                 'username' => $code,
@@ -547,9 +553,14 @@ class ProvisioningService
                         : \App\Services\CRM\CustomerCodeGenerator::generate();
 
                     // Create user portal login
+                    $portalEmail = !empty($data['email']) ? trim($data['email']) : null;
+                    if ($portalEmail && \App\Models\User::where('email', $portalEmail)->exists()) {
+                        $portalEmail = null;
+                    }
+
                     $user = \App\Models\User::create([
                         'name' => $data['name'],
-                        'email' => $data['email'] ?? null,
+                        'email' => $portalEmail,
                         'whatsapp' => $data['phone'],
                         'customer_code' => $generatedCode,
                         'username' => $generatedCode,

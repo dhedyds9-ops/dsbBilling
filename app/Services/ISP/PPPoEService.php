@@ -104,9 +104,9 @@ class PPPoEService
         });
     }
 
-    public function activatePPPoEUser(int $pppoeUserId, int $userId): PPPoEUser
+    public function activatePPPoEUser(int $pppoeUserId, int $userId, bool $ignoreHardwareError = false): PPPoEUser
     {
-        return DB::transaction(function () use ($pppoeUserId, $userId) {
+        return DB::transaction(function () use ($pppoeUserId, $userId, $ignoreHardwareError) {
             $pppoeUser = $this->pppoeUserRepository->find($pppoeUserId);
             $oldStatus = $pppoeUser->status;
 
@@ -119,17 +119,21 @@ class PPPoEService
                     'updated_by' => $userId,
                 ]);
                 Log::error("PPPoE Activation failed on hardware router for user {$pppoeUser->username}: " . $e->getMessage());
-                throw $e;
+                if (!$ignoreHardwareError) {
+                    throw $e;
+                }
             }
 
-            $pppoeUser->update([
-                'status' => 'active',
-                'activated_at' => $pppoeUser->activated_at ?? now(),
-                'suspended_at' => null,
-                'updated_by' => $userId,
-            ]);
+            if ($pppoeUser->status !== 'failed_provisioning') {
+                $pppoeUser->update([
+                    'status' => 'active',
+                    'activated_at' => $pppoeUser->activated_at ?? now(),
+                    'suspended_at' => null,
+                    'updated_by' => $userId,
+                ]);
+            }
 
-            Event::dispatch(new PPPoEUserStatusChangedEvent($pppoeUser, $oldStatus, 'active'));
+            Event::dispatch(new PPPoEUserStatusChangedEvent($pppoeUser, $oldStatus, $pppoeUser->status));
 
             return $pppoeUser;
         });

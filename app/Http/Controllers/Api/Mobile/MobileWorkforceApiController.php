@@ -1201,6 +1201,9 @@ class MobileWorkforceApiController extends Controller
             'optical_tx_power' => $wo->optical_tx_power ? (float)$wo->optical_tx_power : null,
             'has_signature' => !empty($wo->customer_signature),
             'evidence_photos_count' => count($photos),
+            'sla_status' => $wo->sla_status,
+            'sla_due_at' => $wo->sla_due_at?->toIso8601String(),
+            'sla_target_minutes' => $wo->sla_target_minutes,
             'permissions' => [
                 'can_start' => ($isAssignedTech || $isManager) && in_array($wo->status, ['pending', 'assigned']),
                 'can_request_approval' => ($isAssignedTech || $isManager) && $wo->status === 'in_progress',
