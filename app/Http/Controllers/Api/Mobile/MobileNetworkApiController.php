@@ -959,6 +959,7 @@ class MobileNetworkApiController extends Controller
             'tr069_netmask' => 'nullable|string',
             'tr069_gateway' => 'nullable|ip',
             'tr069_acs_url' => 'nullable|string',
+            'transaction_id' => 'nullable|string|max:100',
         ]);
 
         $user = $request->user();
@@ -1036,7 +1037,57 @@ class MobileNetworkApiController extends Controller
             ], 422);
         }
 
-        return DB::transaction(function () use ($validated, $user, $sn, $wifiSecMode) {
+        $txId = !empty($validated['transaction_id'])
+            ? trim((string) $validated['transaction_id'])
+            : ('PROV-' . ($workOrderId ?: 'DIRECT') . '-' . $sn . '-' . date('YmdHis'));
+
+        // Idempotency check: jika transaction_id sudah pernah sukses tercatat pada OnuHistory, kembalikan hasil sebelumnya
+        if (\Illuminate\Support\Facades\Schema::hasTable('onu_histories')) {
+            $existingHistory = \App\Models\ISP\OnuHistory::withoutGlobalScopes()
+                ->where('transaction_id', $txId)
+                ->first();
+            if ($existingHistory && !empty($existingHistory->payload)) {
+                $replayData = is_array($existingHistory->payload) ? $existingHistory->payload : json_decode($existingHistory->payload, true);
+                return response()->json(array_merge($replayData, [
+                    'idempotent_replay' => true,
+                    'message' => "ONT SN {$sn} sudah pernah diprovisioning sebelumnya (Idempotent Replay).",
+                ]));
+            }
+        }
+
+        // Validasi ketersediaan stok fisik / custody teknisi sebelum provisioning dimulai
+        if (!$isAdmin && $user && ($user->isTechnician() || $user->hasRole('technician') || $user->hasRole('teknisi'))) {
+            $hasCustody = false;
+            $itemSerial = \App\Models\Inventory\ItemSerial::where('serial_number', $sn)->first();
+            if ($itemSerial) {
+                $hasCustody = \App\Models\Inventory\InventoryCustody::where('item_serial_id', $itemSerial->id)
+                    ->where('holder_id', $user->id)
+                    ->where('status', 'in_custody')
+                    ->exists();
+            }
+            if (!$hasCustody) {
+                $hasCustody = \App\Models\Inventory\InventoryCustody::where('holder_id', $user->id)
+                    ->where('status', 'in_custody')
+                    ->whereHas('item', function ($q) {
+                        $q->where('name', 'like', '%ONU%')
+                          ->orWhere('name', 'like', '%ONT%')
+                          ->orWhere('name', 'like', '%Modem%')
+                          ->orWhere('sku', 'like', '%ONU%')
+                          ->orWhere('sku', 'like', '%ONT%');
+                    })
+                    ->whereRaw('(quantity - used_quantity - returned_quantity) >= 1')
+                    ->exists();
+            }
+
+            if (!$hasCustody) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Aktivasi PSB ditolak: Perangkat ONT [{$sn}] tidak ditemukan dalam custody/bagasi aktif Anda. Ambil material terlebih dahulu dari gudang sebelum melakukan aktivasi.",
+                ], 422);
+            }
+        }
+
+        return DB::transaction(function () use ($validated, $user, $sn, $wifiSecMode, $txId) {
             // 1. Find or create ONU record
             $onu = Onu::withoutGlobalScopes()->where('serial_number', $sn)->first();
 
@@ -1131,61 +1182,10 @@ class MobileNetworkApiController extends Controller
                         $wo->notes .= "\nPenggunaan Material: " . implode(', ', $materialsUsed);
                     }
 
-                    // Tuntaskan status SPK menjadi Selesai (Completed) setelah wizard aktivasi sukses
-                    $wo->status = 'completed';
-                    if (!$wo->started_at) {
-                        $wo->started_at = now();
-                    }
-                    $wo->completed_at = now();
                     if (isset($validated['optical_power']) && $validated['optical_power'] !== null) {
                         $wo->optical_rx_power = (float) $validated['optical_power'];
                     }
                     $wo->save();
-
-                    // Sinkronkan status tiket gangguan/PSB terkait menjadi resolved
-                    if ($wo->ticket_id) {
-                        try {
-                            \App\Models\Support\Ticket::withoutGlobalScopes()
-                                ->where('id', $wo->ticket_id)
-                                ->update([
-                                    'status' => 'resolved',
-                                    'resolved_at' => now(),
-                                    'resolved_by' => $user->id,
-                                    'resolution_notes' => "PSB berhasil diaktivasi oleh teknisi {$user->name} (ONT SN: {$sn})",
-                                ]);
-                        } catch (\Throwable $te) {
-                            \Log::warning("[provisionOnt] Gagal update ticket dari work order: " . $te->getMessage());
-                        }
-                    }
-
-                    // Sinkronkan status SPK CRM Installation jika ada
-                    if (\Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'installation_id') && $wo->installation_id) {
-                        try {
-                            \App\Models\CRM\Installation::withoutGlobalScopes()
-                                ->where('id', $wo->installation_id)
-                                ->update([
-                                    'status' => 'completed',
-                                    'completed_at' => now(),
-                                    'completed_by' => $user->id,
-                                    'onu_serial_number' => $sn,
-                                    'onu_id' => $onu->id,
-                                ]);
-
-                            // Sinkronkan juga tiket terkait jika SPK ini berasal dari tiket PSB
-                            if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'installation_id')) {
-                                \App\Models\Support\Ticket::withoutGlobalScopes()
-                                    ->where('installation_id', $wo->installation_id)
-                                    ->update([
-                                        'status' => 'resolved',
-                                        'resolved_at' => now(),
-                                        'resolved_by' => $user->id,
-                                        'resolution_notes' => "PSB berhasil diaktivasi oleh teknisi {$user->name} (ONT SN: {$sn})",
-                                    ]);
-                            }
-                        } catch (\Throwable $ie) {
-                            \Log::warning("[provisionOnt] Gagal update installation dari work order: " . $ie->getMessage());
-                        }
-                    }
 
                     $workOrderInfo = [
                         'id' => $wo->id,
@@ -1475,27 +1475,72 @@ class MobileNetworkApiController extends Controller
                     }
                 }
 
-                // Potong Barang dari Bagasi / Custody Teknisi & Reseller (Enterprise Inventory)
-                try {
-                    $stockService = app(\App\Services\Inventory\StockMutationService::class);
-                    $stockService->recordPsbConsumption(
-                        technicianId: (int) $user->id,
-                        customerId: (int) $customer->id,
-                        onuSn: (string) $sn,
-                        dropcoreMeters: (float) ($validated['dropcore_meters'] ?? 0),
-                        fastConnectorQty: (int) ($validated['fast_connector_qty'] ?? 0),
-                        opticalPower: !empty($validated['optical_power']) ? (string) $validated['optical_power'] : null,
-                        installationId: $wo->installation_id ?? null,
-                        ticketId: $wo->ticket_id ?? null,
-                        resellerId: $wo->reseller_id ?? $customer->reseller_id ?? $user->getEffectiveResellerId(),
-                    );
-                } catch (\Throwable $se) {
-                    \Log::warning("[provisionOnt] Gagal potong custody material PSB: " . $se->getMessage());
+                // Potong Barang dari Bagasi / Custody Teknisi & Reseller (Wajib Berhasil — Tanpa Silent Catch)
+                $stockService = app(\App\Services\Inventory\StockMutationService::class);
+                $stockService->recordPsbConsumption(
+                    technicianId: (int) $user->id,
+                    customerId: (int) $customer->id,
+                    onuSn: (string) $sn,
+                    dropcoreMeters: (float) ($validated['dropcore_meters'] ?? 0),
+                    fastConnectorQty: (int) ($validated['fast_connector_qty'] ?? 0),
+                    opticalPower: !empty($validated['optical_power']) ? (string) $validated['optical_power'] : null,
+                    installationId: $wo->installation_id ?? null,
+                    ticketId: $wo->ticket_id ?? null,
+                    resellerId: $wo->reseller_id ?? $customer->reseller_id ?? $user->getEffectiveResellerId(),
+                    transactionId: $txId
+                );
+
+                // Tuntaskan status SPK HANYA jika mutasi stok dan kewajiban inventaris terpenuhi
+                if ($wo) {
+                    $wo->status = 'completed';
+                    if (!$wo->started_at) {
+                        $wo->started_at = now();
+                    }
+                    $wo->completed_at = now();
+                    $wo->save();
+
+                    if ($wo->ticket_id) {
+                        try {
+                            \App\Models\Support\Ticket::withoutGlobalScopes()
+                                ->where('id', $wo->ticket_id)
+                                ->update([
+                                    'status' => 'resolved',
+                                    'resolved_at' => now(),
+                                    'resolved_by' => $user->id,
+                                    'resolution_notes' => "PSB berhasil diaktivasi oleh teknisi {$user->name} (ONT SN: {$sn})",
+                                ]);
+                        } catch (\Throwable $te) {
+                            \Log::warning("[provisionOnt] Gagal update ticket dari work order: " . $te->getMessage());
+                        }
+                    }
+
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'installation_id') && $wo->installation_id) {
+                        try {
+                            \App\Models\CRM\Installation::withoutGlobalScopes()
+                                ->where('id', $wo->installation_id)
+                                ->update([
+                                    'status' => 'completed',
+                                    'completed_at' => now(),
+                                    'completed_by' => $user->id,
+                                    'onu_serial_number' => $sn,
+                                    'onu_id' => $onu->id,
+                                ]);
+                        } catch (\Throwable $ie) {
+                            \Log::warning("[provisionOnt] Gagal update installation dari work order: " . $ie->getMessage());
+                        }
+                    }
+
+                    $workOrderInfo = [
+                        'id' => $wo->id,
+                        'title' => $wo->title,
+                        'status' => $wo->status,
+                    ];
                 }
             }
 
             // 5. Injeksi OMCI WAN & TR-069 IP Host ke OLT C-Data / GPON jika OLT ditentukan
             $enableTr069 = $validated['enable_tr069_iphost'] ?? true;
+            $oltWarning = null;
             if ($enableTr069 && !empty($validated['olt_id'])) {
                 try {
                     $oltModel = Olt::withoutGlobalScopes()->find($validated['olt_id']);
@@ -1517,12 +1562,33 @@ class MobileNetworkApiController extends Controller
                     }
                 } catch (\Throwable $oe) {
                     \Log::warning("[provisionOnt] Gagal push IP Host TR-069 ke OLT via OMCI: " . $oe->getMessage());
+                    $oltWarning = "Provisioning database dan stok selesai, namun konfigurasi OLT hardware memerlukan verifikasi: " . $oe->getMessage();
+                    if ($wo) {
+                        $wo->notes = ($wo->notes ? $wo->notes . "\n" : '') . "[Peringatan Hardware OLT] " . $oe->getMessage();
+                        $wo->save();
+                    }
                 }
+            }
+
+            $responseData = [
+                'success' => true,
+                'message' => "ONT SN {$sn} berhasil dipasangkan dan diprovisioning!",
+                'data' => [
+                    'onu' => $this->formatOnuDevice($onu),
+                    'odp' => $odpInfo,
+                    'customer' => $customerInfo,
+                    'work_order' => $workOrderInfo,
+                    'transaction_id' => $txId,
+                ],
+            ];
+            if ($oltWarning) {
+                $responseData['hardware_warning'] = $oltWarning;
             }
 
             if (\Illuminate\Support\Facades\Schema::hasTable('onu_histories')) {
                 try {
                     \App\Models\ISP\OnuHistory::withoutGlobalScopes()->create([
+                        'transaction_id' => $txId,
                         'onu_id' => $onu->id,
                         'serial_number' => $onu->serial_number,
                         'customer_id' => $customerInfo['id'] ?? null,
@@ -1538,21 +1604,15 @@ class MobileNetworkApiController extends Controller
                         'ticket_id' => $wo->ticket_id ?? null,
                         'work_order_id' => $wo->id ?? null,
                         'branch_id' => $onu->branch_id,
-                        'description' => "Aktivasi PSB ONT SN {$sn} oleh {$user->name}",
+                        'payload' => $responseData,
+                        'description' => "Aktivasi PSB ONT SN {$sn} oleh {$user->name} [TX: {$txId}]",
                     ]);
-                } catch (\Throwable $he) {}
+                } catch (\Throwable $he) {
+                    \Log::warning("[provisionOnt] Gagal mencatat riwayat OnuHistory: " . $he->getMessage());
+                }
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => "ONT SN {$sn} berhasil dipasangkan dan diprovisioning!",
-                'data' => [
-                    'onu' => $this->formatOnuDevice($onu),
-                    'odp' => $odpInfo,
-                    'customer' => $customerInfo,
-                    'work_order' => $workOrderInfo,
-                ],
-            ]);
+            return response()->json($responseData);
         });
     }
 

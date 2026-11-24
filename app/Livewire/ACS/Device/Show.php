@@ -4,11 +4,46 @@ namespace App\Livewire\ACS\Device;
 
 use App\Livewire\AdminComponent;
 use App\Models\ACS\ACSDevice;
+use App\Models\ACS\DeviceTask;
+use App\Services\ACS\AcsTelemetryParser;
+use App\Services\ACS\AcsWanManagerService;
+use App\Services\Adapters\Monitoring\GenieACSDriver;
 
 class Show extends \App\Livewire\ACS\BaseACSComponent
 {
     public $deviceId;
     public $device;
+
+    // Navigation Tab State
+    public string $activeTab = 'overview'; // overview, wan, hardware, optical, wifi, clients, topology, tasks
+    public string $wanSubTab = 'ppp'; // ppp, ip
+
+    // Telemetry & Diagnostics
+    public $hardwareMetrics = [];
+    public $opticalDiagnostics = [];
+    public $wanConnections = [];
+    public $topologyData = [];
+    public $recentTasks = [];
+    public $detectedVendor = 'generic';
+
+    // WAN Management Form Modal State
+    public $showWanModal = false;
+    public $isEditingWan = false;
+    public $isCreatingWan = false;
+    public $editWanFullPath = '';
+    public $wanFormName = '';
+    public $wanFormMode = 'pppoe_route'; // pppoe_route, dhcp_route, bridge_ppp, bridge_ip, static_route
+    public $wanFormServiceList = 'INTERNET';
+    public $wanCustomServiceList = '';
+    public bool $wanFormVlanEnabled = true;
+    public $wanFormVlan = '200';
+    public bool $wanFormNat = true;
+    public $wanFormUsername = '';
+    public $wanFormPassword = '';
+    public $wanBindLan = [1, 2, 3, 4];
+    public $wanBindWlan = [1, 5];
+    public bool $wanUseManualBinding = false;
+    public $wanCustomBindString = '';
 
     public $wifiEnabled = true;
     public $wifiHidden = false;
@@ -150,68 +185,19 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
         ];
     }
 
-    private function parseOpticalPower($val): ?float
-    {
-        if ($val === null || $val === '' || $val === false) return null;
-        $clean = trim(str_ireplace('dBm', '', (string)$val));
-        if (!is_numeric($clean)) return null;
-        $num = (float)$clean;
-        if ($num == 0.0) return null;
-        if ($num < -500.0 || $num > 500.0) {
-            return round($num / 1000.0, 2);
-        }
-        if ($num < -60.0 || $num > 60.0) {
-            return round($num / 100.0, 2);
-        }
-        if ($num > 0.0 && $num < 10000.0) {
-            // Micro-watts to dBm: 10 * log10(uW / 1000)
-            return round(10.0 * log10($num / 1000.0), 2);
-        }
-        return round($num, 2);
-    }
-
     public function loadDeviceStatus()
     {
         try {
             $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
             $params = $driver->getDeviceParameters($this->device->uuid);
             
-            // Flatten all parameters for multi-vendor heuristic lookup (matching genieacs-mobile)
-            $flat = [];
-            $flatten = function ($data, $prefix = '') use (&$flatten, &$flat) {
-                if (!is_array($data)) return;
-                foreach ($data as $k => $v) {
-                    if ($k === '_timestamp' || $k === '_object' || $k === '_writable') continue;
-                    $key = $prefix ? "$prefix.$k" : (string) $k;
-                    if (is_array($v)) {
-                        if (isset($v['_value']) && is_scalar($v['_value'])) {
-                            $flat[$key] = (string) $v['_value'];
-                        }
-                        $flatten($v, $key);
-                    } elseif (is_scalar($v)) {
-                        $flat[$key] = (string) $v;
-                    }
-                }
-            };
-            $flatten($params);
+            // Flatten all parameters using unified AcsTelemetryParser
+            $flat = \App\Services\ACS\AcsTelemetryParser::flatten($params);
 
-            // 1. RX & TX Optical Power (Multi-Vendor + VirtualParameters + uW log10 conversion)
-            $rawRx = $flat['VirtualParameters.RXPower']
-                ?? $flat['VirtualParameters.redaman']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower']
-                ?? $flat['Device.Optical.1.Transceiver.RxPower']
-                ?? collect($flat)->first(fn($v, $k) => (str_contains($k, 'RXPower') || str_contains($k, 'OpticalRxPower') || str_contains($k, 'RxPower')) && !empty($v));
-            $rxPower = $this->parseOpticalPower($rawRx);
-
-            $rawTx = $flat['VirtualParameters.TXPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower']
-                ?? $flat['Device.Optical.1.Transceiver.TxPower']
-                ?? collect($flat)->first(fn($v, $k) => (str_contains($k, 'TXPower') || str_contains($k, 'OpticalTxPower') || str_contains($k, 'TxPower')) && !empty($v));
-            $txPower = $this->parseOpticalPower($rawTx);
+            // 1. RX & TX Optical Power (Multi-Vendor + ZTE Swap Detection + OLT DDM Fallback)
+            $optical = \App\Services\ACS\AcsTelemetryParser::parseOptical($flat, $this->device->onu);
+            $rxPower = $optical['rx_power'];
+            $txPower = $optical['tx_power'];
 
             // Helper untuk mengambil nilai string pertama yang tidak kosong
             $firstNonEmpty = function (...$candidates) {
@@ -417,6 +403,39 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                 'wan_ip' => (string) $wanIp,
                 'wan_mac' => (string) ($wanMac ?? '-'),
             ];
+
+            // 7. Hardware Metrics & Diagnostics
+            $this->hardwareMetrics = AcsTelemetryParser::parseHardwareMetrics($flat, $this->device);
+            $this->opticalDiagnostics = $optical;
+            $this->detectedVendor = $this->hardwareMetrics['vendor'] ?? 'generic';
+
+            // 8. Dynamic WAN Connections (TR-098 & TR-181)
+            $this->wanConnections = AcsTelemetryParser::parseWanTree($params, $this->detectedVendor);
+
+            // 9. Network Topology Data
+            $oltObj = $this->device->olt ?? $this->device->onu?->olt;
+            $odpObj = $this->device->odp ?? $this->device->onu?->odp;
+            $odcObj = $odpObj?->parentOdc ?? null;
+            $custObj = $this->device->customerService?->customer ?? $this->device->onu?->customerService?->customer;
+
+            $this->topologyData = [
+                'olt' => $oltObj?->name ?? 'OLT Utama',
+                'olt_ip' => $oltObj?->ip_address ?? '-',
+                'pon_port' => $this->device->onu?->pon_port ?? ($this->device->onu?->ponPort?->name ?? 'GPON 1'),
+                'odc' => $odcObj?->name ?? 'ODC Utama',
+                'odp' => $odpObj?->name ?? ($odpObj?->code ?? 'ODP'),
+                'splitter' => $this->device->onu?->splitter_ratio ?? '1:8',
+                'onu' => $this->device->serial_number,
+                'customer' => $custObj?->name ?? 'Pelanggan',
+                'service_id' => $this->device->customerService?->service_id ?? '-',
+            ];
+
+            // 10. Recent Activity & Tasks
+            $this->recentTasks = DeviceTask::where('acs_device_id', $this->device->id)
+                ->latest()
+                ->take(15)
+                ->get()
+                ->toArray();
         } catch (\Exception $e) {
             $this->deviceStatus = [];
         }
@@ -897,6 +916,226 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengubah SuperAdmin: ' . $e->getMessage());
             $this->dispatch('notify', ['type' => 'error', 'message' => 'Gagal mengubah SuperAdmin: ' . $e->getMessage()]);
+        }
+    }
+
+    public function setTab(string $tab)
+    {
+        $this->activeTab = $tab;
+    }
+
+    public function setWanSubTab(string $sub)
+    {
+        $this->wanSubTab = $sub;
+    }
+
+    public function updatedWanFormMode($value)
+    {
+        $vendor = $this->detectedVendor;
+        $isFiberHome = str_contains($vendor, 'fiberhome');
+
+        if ($value === 'pppoe_route') {
+            $this->wanFormNat = true;
+            $this->wanFormServiceList = $isFiberHome ? 'TR069,INTERNET' : 'INTERNET';
+        } elseif ($value === 'dhcp_route' || $value === 'static_route') {
+            $this->wanFormNat = true;
+            $this->wanFormServiceList = 'INTERNET';
+        } elseif ($value === 'bridge_ppp' || $value === 'bridge_ip') {
+            $this->wanFormNat = false;
+            $this->wanFormServiceList = 'INTERNET';
+        }
+    }
+
+    public function updatedWanFormVlanEnabled($value)
+    {
+        if (!$value) {
+            $this->wanFormVlan = '';
+        } elseif (empty($this->wanFormVlan)) {
+            $this->wanFormVlan = '200';
+        }
+    }
+
+    public function applyPresetFiberhome()
+    {
+        $this->wanBindLan = [1];
+        $this->wanBindWlan = [1, 5];
+        $this->wanUseManualBinding = false;
+        $this->wanFormServiceList = 'TR069,INTERNET';
+        $this->wanCustomBindString = "InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1,InternetGatewayDevice.LANDevice.1.WLANConfiguration.1,InternetGatewayDevice.LANDevice.1.WLANConfiguration.5";
+    }
+
+    public function applyPresetAllPorts()
+    {
+        $this->wanBindLan = [1, 2, 3, 4];
+        $this->wanBindWlan = [1, 5, 6];
+        $this->wanUseManualBinding = false;
+        $this->wanCustomBindString = "InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1,InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.2,InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.3,InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.4,InternetGatewayDevice.LANDevice.1.WLANConfiguration.1,InternetGatewayDevice.LANDevice.1.WLANConfiguration.5";
+    }
+
+    public function openCreateWanModal()
+    {
+        $this->isEditingWan = false;
+        $this->isCreatingWan = true;
+        $this->showWanModal = true;
+        $isFiberHome = str_contains($this->detectedVendor, 'fiberhome');
+        $this->wanFormMode = 'pppoe_route';
+        $this->wanFormServiceList = $isFiberHome ? 'TR069,INTERNET' : 'INTERNET';
+        $this->wanCustomServiceList = '';
+        $this->wanFormVlanEnabled = true;
+        $this->wanFormVlan = '200';
+        $this->wanFormNat = true;
+        $this->wanFormUsername = '';
+        $this->wanFormPassword = '';
+        $this->wanBindLan = [1, 2, 3, 4];
+        $this->wanBindWlan = [1, 5];
+        $this->wanUseManualBinding = false;
+        $this->wanCustomBindString = '';
+    }
+
+    public function openEditWanModal(string $fullPath)
+    {
+        $wan = collect($this->wanConnections)->firstWhere('fullPath', $fullPath);
+        if (!$wan) {
+            session()->flash('error', 'Koneksi WAN tidak ditemukan.');
+            return;
+        }
+
+        $this->isEditingWan = true;
+        $this->isCreatingWan = false;
+        $this->showWanModal = true;
+        $this->editWanFullPath = $fullPath;
+        $this->wanFormName = $wan['name'] ?? '';
+
+        $connUpper = strtoupper($wan['connection_type'] ?? '');
+        $nameUpper = strtoupper($wan['name'] ?? '');
+
+        if ($connUpper === 'PPPOE_BRIDGED' || (str_contains($nameUpper, 'BRIDGE') && str_contains($fullPath, 'WANPPPConnection') && empty($wan['username']))) {
+            $this->wanFormMode = 'bridge_ppp';
+        } elseif ($connUpper === 'IP_BRIDGED' || str_contains($nameUpper, '_B_') || (str_contains($nameUpper, 'BRIDGE') && str_contains($fullPath, 'WANIPConnection'))) {
+            $this->wanFormMode = 'bridge_ip';
+        } elseif ($wan['type'] === 'PPPoE' || str_contains($connUpper, 'PPPOE_ROUTED') || !empty($wan['username'])) {
+            $this->wanFormMode = 'pppoe_route';
+        } elseif (($wan['addressing_type'] ?? '') === 'Static') {
+            $this->wanFormMode = 'static_route';
+        } else {
+            $this->wanFormMode = 'dhcp_route';
+        }
+
+        $vlanVal = $wan['vlan'] ?? null;
+        $hasVlan = $vlanVal !== null && (int)$vlanVal > 0;
+        $this->wanFormVlanEnabled = $hasVlan;
+        $this->wanFormVlan = $hasVlan ? (string)$vlanVal : '200';
+        $this->wanFormNat = (bool)($wan['nat'] ?? true);
+        $this->wanFormUsername = $wan['username'] ?? '';
+        $this->wanFormPassword = '';
+
+        $svc = $wan['service_list'] ?? '';
+        if (in_array($svc, ['INTERNET', 'TR069,INTERNET', 'OTHER', 'TR069'])) {
+            $this->wanFormServiceList = $svc;
+            $this->wanCustomServiceList = '';
+        } else {
+            $this->wanFormServiceList = 'CUSTOM';
+            $this->wanCustomServiceList = $svc !== '-' ? $svc : '';
+        }
+
+        $this->wanCustomBindString = $wan['port_bind'] ?? '';
+        $this->wanUseManualBinding = false;
+    }
+
+    public function closeWanModal()
+    {
+        $this->showWanModal = false;
+        $this->isEditingWan = false;
+        $this->isCreatingWan = false;
+        $this->editWanFullPath = '';
+    }
+
+    public function saveWan()
+    {
+        if ($this->wanFormMode === 'pppoe_route') {
+            $this->validate(['wanFormUsername' => 'required|string']);
+        }
+        if ($this->wanFormVlanEnabled) {
+            $this->validate(['wanFormVlan' => 'required|numeric|min:1|max:4094']);
+        }
+
+        $data = [
+            'mode' => $this->wanFormMode,
+            'vlan_enabled' => $this->wanFormVlanEnabled,
+            'vlan_id' => $this->wanFormVlan,
+            'service_list' => $this->wanFormServiceList === 'CUSTOM' ? $this->wanCustomServiceList : $this->wanFormServiceList,
+            'nat_enabled' => $this->wanFormNat,
+            'username' => $this->wanFormUsername,
+            'password' => $this->wanFormPassword,
+            'bind_lan' => $this->wanBindLan,
+            'bind_wlan' => $this->wanBindWlan,
+            'custom_binding' => $this->wanUseManualBinding ? $this->wanCustomBindString : null,
+        ];
+
+        try {
+            $driver = new GenieACSDriver();
+            $wanService = new AcsWanManagerService($driver);
+
+            if ($this->isCreatingWan) {
+                $res = $wanService->addWanConnection($this->device->uuid, $data, auth()->id());
+            } else {
+                $res = $wanService->updateWanConnection($this->device->uuid, $this->editWanFullPath, $data, auth()->id());
+            }
+
+            if ($res['success']) {
+                session()->flash('success', $res['message']);
+                $this->closeWanModal();
+                $this->loadDeviceStatus();
+            } else {
+                session()->flash('error', $res['message']);
+            }
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal memproses WAN: ' . $e->getMessage());
+        }
+    }
+
+    public function deleteWan(string $fullPath)
+    {
+        try {
+            $driver = new GenieACSDriver();
+            $wanService = new AcsWanManagerService($driver);
+            $res = $wanService->deleteWanConnection($this->device->uuid, $fullPath, auth()->id());
+            if ($res['success']) {
+                session()->flash('success', $res['message']);
+                $this->loadDeviceStatus();
+            } else {
+                session()->flash('error', $res['message']);
+            }
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal menghapus WAN: ' . $e->getMessage());
+        }
+    }
+
+    public function refreshWan()
+    {
+        try {
+            $driver = new GenieACSDriver();
+            $driver->refreshObject($this->device->uuid, 'InternetGatewayDevice.WANDevice');
+            $driver->refreshObject($this->device->uuid, 'Device.PPP.Interface');
+            $driver->refreshObject($this->device->uuid, 'Device.IP.Interface');
+            $driver->summonDeviceResult($this->device->uuid);
+            session()->flash('success', 'Permintaan refresh konfigurasi WAN berhasil dikirim ke antrean modem.');
+            $this->loadDeviceStatus();
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal merefresh WAN: ' . $e->getMessage());
+        }
+    }
+
+    public function refreshHardware()
+    {
+        try {
+            $driver = new GenieACSDriver();
+            $driver->refreshHardwareTask($this->device->uuid);
+            $driver->summonDeviceResult($this->device->uuid);
+            session()->flash('success', 'Permintaan refresh telemetri hardware berhasil dikirim ke perangkat.');
+            $this->loadDeviceStatus();
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal merefresh hardware: ' . $e->getMessage());
         }
     }
 

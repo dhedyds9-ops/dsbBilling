@@ -16,13 +16,36 @@ class GenieAcsSetupDefault extends Command
 
         $vps = [
             'RXPower' => '
+// 1. Deteksi anomali penamaan terbalik ZTE F609/F660 (Rx terisi Tx, Tx terisi Rx)
+let zteRx = declare("InternetGatewayDevice.WANDevice.*.WANPONInterfaceConfig.*.X_ZTE-COM_RxPower", {value: 1});
+let zteTx = declare("InternetGatewayDevice.WANDevice.*.WANPONInterfaceConfig.*.X_ZTE-COM_TxPower", {value: 1});
+let zRxVal = null;
+let zTxVal = null;
+for (let item of zteRx) {
+    if (item.value && item.value[0]) { zRxVal = item.value[0]; break; }
+}
+for (let item of zteTx) {
+    if (item.value && item.value[0]) { zTxVal = item.value[0]; break; }
+}
+if (zRxVal !== null && zTxVal !== null) {
+    let rNum = parseFloat(zRxVal);
+    let tNum = parseFloat(zTxVal);
+    if (!isNaN(rNum) && !isNaN(tNum) && rNum > 0.0 && rNum <= 6.0 && tNum <= -6.0) {
+        return {writable: false, value: [zTxVal, "xsd:string"]};
+    }
+}
+
 let paths = [
-    "InternetGatewayDevice.WANDevice.*.WANPONInterfaceConfig.*.X_ZTE-COM_RxPower",
     "InternetGatewayDevice.WANDevice.*.WANPONInterfaceConfig.*.X_HW_RxPower",
+    "InternetGatewayDevice.WANDevice.*.WANPONInterfaceConfig.*.X_FH_RxPower",
+    "InternetGatewayDevice.WANDevice.*.WANPONInterfaceConfig.*.X_ZTE-COM_RxPower",
+    "InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANIPConnection.*.X_HW_RxPower",
     "InternetGatewayDevice.WANDevice.*.WANEponInterfaceConfig.*.RxPower",
     "InternetGatewayDevice.WANDevice.*.X_FH_GponInterfaceConfig.RXPower",
     "InternetGatewayDevice.WANDevice.*.X_ZTE-COM_WANPONInterfaceConfig.RXPower",
-    "Device.Optical.1.Transceiver.RxPower"
+    "InternetGatewayDevice.WANDevice.*.X_HW_PONInterfaceConfig.RXPower",
+    "Device.Optical.1.Transceiver.RxPower",
+    "Device.Optical.Interface.1.RxPower"
 ];
 for (let p of paths) {
     let d = declare(p, {value: 1});
@@ -34,13 +57,36 @@ for (let p of paths) {
 }
 return null;',
             'TXPower' => '
+// 1. Deteksi anomali penamaan terbalik ZTE F609/F660 (Rx terisi Tx, Tx terisi Rx)
+let zteRx = declare("InternetGatewayDevice.WANDevice.*.WANPONInterfaceConfig.*.X_ZTE-COM_RxPower", {value: 1});
+let zteTx = declare("InternetGatewayDevice.WANDevice.*.WANPONInterfaceConfig.*.X_ZTE-COM_TxPower", {value: 1});
+let zRxVal = null;
+let zTxVal = null;
+for (let item of zteRx) {
+    if (item.value && item.value[0]) { zRxVal = item.value[0]; break; }
+}
+for (let item of zteTx) {
+    if (item.value && item.value[0]) { zTxVal = item.value[0]; break; }
+}
+if (zRxVal !== null && zTxVal !== null) {
+    let rNum = parseFloat(zRxVal);
+    let tNum = parseFloat(zTxVal);
+    if (!isNaN(rNum) && !isNaN(tNum) && rNum > 0.0 && rNum <= 6.0 && tNum <= -6.0) {
+        return {writable: false, value: [zRxVal, "xsd:string"]};
+    }
+}
+
 let paths = [
-    "InternetGatewayDevice.WANDevice.*.WANPONInterfaceConfig.*.X_ZTE-COM_TxPower",
     "InternetGatewayDevice.WANDevice.*.WANPONInterfaceConfig.*.X_HW_TxPower",
+    "InternetGatewayDevice.WANDevice.*.WANPONInterfaceConfig.*.X_FH_TxPower",
+    "InternetGatewayDevice.WANDevice.*.WANPONInterfaceConfig.*.X_ZTE-COM_TxPower",
+    "InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANIPConnection.*.X_HW_TxPower",
     "InternetGatewayDevice.WANDevice.*.WANEponInterfaceConfig.*.TxPower",
     "InternetGatewayDevice.WANDevice.*.X_FH_GponInterfaceConfig.TXPower",
     "InternetGatewayDevice.WANDevice.*.X_ZTE-COM_WANPONInterfaceConfig.TXPower",
-    "Device.Optical.1.Transceiver.TxPower"
+    "InternetGatewayDevice.WANDevice.*.X_HW_PONInterfaceConfig.TXPower",
+    "Device.Optical.1.Transceiver.TxPower",
+    "Device.Optical.Interface.1.TxPower"
 ];
 for (let p of paths) {
     let d = declare(p, {value: 1});
@@ -253,6 +299,84 @@ if (raw) {
     return {writable: false, value: [clean, "xsd:string"]};
 }
 return null;',
+            'cpuUsage' => '
+let paths = [
+    "InternetGatewayDevice.DeviceInfo.X_ZTE-COM_CpuUsed",
+    "InternetGatewayDevice.DeviceInfo.X_ZTE-COM_CPUUsage",
+    "InternetGatewayDevice.DeviceInfo.ProcessStatus.CPUUsage",
+    "Device.DeviceInfo.ProcessStatus.CPUUsage",
+    "InternetGatewayDevice.DeviceInfo.X_HW_CPUUsage",
+    "InternetGatewayDevice.DeviceInfo.X_FH_CPUUsage",
+    "InternetGatewayDevice.DeviceInfo.X_CMCC_CPUUsage",
+    "InternetGatewayDevice.DeviceInfo.X_CT-COM_CPUUsage"
+];
+for (let p of paths) {
+    let d = declare(p, {value: 1});
+    if (d.value && d.value[0] !== undefined && d.value[0] !== null && d.value[0] !== "") {
+        return {writable: false, value: [String(d.value[0]).trim(), "xsd:string"]};
+    }
+}
+return null;',
+            'ramUsage' => '
+let paths = [
+    "InternetGatewayDevice.DeviceInfo.X_ZTE-COM_MemUsed",
+    "InternetGatewayDevice.DeviceInfo.X_ZTE-COM_MemoryUsage",
+    "InternetGatewayDevice.DeviceInfo.X_HW_MemoryUsage",
+    "InternetGatewayDevice.DeviceInfo.X_FH_MemoryUsage",
+    "InternetGatewayDevice.DeviceInfo.X_CMCC_MemoryUsage"
+];
+for (let p of paths) {
+    let d = declare(p, {value: 1});
+    if (d.value && d.value[0] !== undefined && d.value[0] !== null && d.value[0] !== "") {
+        return {writable: false, value: [String(d.value[0]).trim(), "xsd:string"]};
+    }
+}
+let tot = declare("InternetGatewayDevice.DeviceInfo.MemoryStatus.Total", {value: 1});
+let fre = declare("InternetGatewayDevice.DeviceInfo.MemoryStatus.Free", {value: 1});
+if (!tot.value || !tot.value[0]) tot = declare("Device.DeviceInfo.MemoryStatus.Total", {value: 1});
+if (!fre.value || !fre.value[0]) fre = declare("Device.DeviceInfo.MemoryStatus.Free", {value: 1});
+if (tot.value && tot.value[0] && fre.value && fre.value[0]) {
+    let t = parseFloat(tot.value[0]);
+    let f = parseFloat(fre.value[0]);
+    if (!isNaN(t) && !isNaN(f) && t > 0) {
+        let pct = Math.round(((t - f) / t) * 100);
+        return {writable: false, value: [String(pct) + "%", "xsd:string"]};
+    }
+}
+return null;',
+            'cpuTemperature' => '
+let paths = [
+    "InternetGatewayDevice.DeviceInfo.X_ZTE-COM_Temperature",
+    "InternetGatewayDevice.DeviceInfo.X_HW_Temperature",
+    "InternetGatewayDevice.DeviceInfo.X_FH_Temperature",
+    "InternetGatewayDevice.DeviceInfo.Temperature",
+    "Device.DeviceInfo.Temperature",
+    "InternetGatewayDevice.DeviceInfo.TemperatureStatus.TemperatureSensor.1.Value",
+    "Device.DeviceInfo.TemperatureStatus.TemperatureSensor.1.Value",
+    "InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TransceiverTemperature",
+    "InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TransceiverTemperature",
+    "Device.Optical.1.Transceiver.Temperature"
+];
+for (let p of paths) {
+    let d = declare(p, {value: 1});
+    if (d.value && d.value[0] !== undefined && d.value[0] !== null && d.value[0] !== "") {
+        return {writable: false, value: [String(d.value[0]).trim(), "xsd:string"]};
+    }
+}
+return null;',
+            'deviceUptime' => '
+let paths = [
+    "InternetGatewayDevice.DeviceInfo.UpTime",
+    "InternetGatewayDevice.DeviceInfo.X_ZTE-COM_UpTime",
+    "Device.DeviceInfo.UpTime"
+];
+for (let p of paths) {
+    let d = declare(p, {value: 1});
+    if (d.value && d.value[0] !== undefined && d.value[0] !== null && d.value[0] !== "") {
+        return {writable: false, value: [String(d.value[0]).trim(), "xsd:string"]};
+    }
+}
+return null;',
         ];
 
         $this->info("Pushing Virtual Parameters...");
@@ -272,8 +396,12 @@ declare("Device.ManagementServer.PeriodicInformEnable", {value: 1}, {value: true
 declare("Device.ManagementServer.PeriodicInformInterval", {value: 1}, {value: 300});
 
 // Force refresh of essential parameters when device informs
+declare("InternetGatewayDevice.DeviceInfo.*", {path: 1, value: 1});
+declare("Device.DeviceInfo.*", {path: 1, value: 1});
 declare("InternetGatewayDevice.WANDevice.*", {path: 1, value: 1});
 declare("Device.WANDevice.*", {path: 1, value: 1});
+declare("Device.PPP.Interface.*", {path: 1, value: 1});
+declare("Device.IP.Interface.*", {path: 1, value: 1});
 declare("Device.Optical.*", {path: 1, value: 1});
 ';
         if ($driver->upsertProvision('dsBilling_Inform', $provisionScript)) {

@@ -215,312 +215,6 @@ class Index extends BaseACSComponent
         $deviceId = $deviceData['_id'] ?? null;
         if (!$deviceId) return null;
 
-        $extract = function($path) use ($deviceData) {
-            $parts = explode('.', $path);
-            $node = $deviceData;
-            foreach ($parts as $p) {
-                if (!is_array($node) || !array_key_exists($p, $node)) return null;
-                $node = $node[$p];
-            }
-            return isset($node['_value']) ? $node['_value'] : null;
-        };
-
-        // Helper validasi IP Address yang bukan 0.0.0.0 atau loopback
-        $isValidIp = function ($val) {
-            if (empty($val) || !is_string($val)) return false;
-            $val = trim($val);
-            if ($val === '' || $val === '0.0.0.0' || $val === '::' || $val === '127.0.0.1') return false;
-            return filter_var($val, FILTER_VALIDATE_IP) !== false;
-        };
-
-        $wanDevices = $deviceData['InternetGatewayDevice']['WANDevice'] ?? $deviceData['Device']['WANDevice'] ?? [];
-        $mac = null;
-
-        // 1. Ekstraksi IP PPPoE (Prioritas: VirtualParameters.pppoeIP -> WANPPPConnection)
-        $pppoeIp = null;
-        $vpPppoe = $extract('VirtualParameters.pppoeIP') 
-                ?? $extract('VirtualParameters.pppoeIp')
-                ?? $extract('VirtualParameters.PPPOEIP');
-        if ($isValidIp($vpPppoe)) {
-            $pppoeIp = trim($vpPppoe);
-        }
-
-        if (!$pppoeIp && is_array($wanDevices)) {
-            foreach ($wanDevices as $wdIdx => $wdNode) {
-                if ($wdIdx === '_object' || !is_array($wdNode)) continue;
-                $connDevices = $wdNode['WANConnectionDevice'] ?? [];
-                if (is_array($connDevices)) {
-                    foreach ($connDevices as $cdIdx => $connNode) {
-                        if ($cdIdx === '_object' || !is_array($connNode)) continue;
-                        $pppConns = $connNode['WANPPPConnection'] ?? [];
-                        if (is_array($pppConns)) {
-                            foreach ($pppConns as $pIdx => $ppp) {
-                                if ($pIdx === '_object' || !is_array($ppp)) continue;
-                                $candidate = $ppp['ExternalIPAddress']['_value'] ?? null;
-                                if ($isValidIp($candidate)) {
-                                    $pppoeIp = trim($candidate);
-                                    break 3;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // 2. Ekstraksi IP TR-069 (Prioritas: VirtualParameters.IPTR069 -> ConnectionRequestURL -> WANIPConnection -> _ip)
-        $tr069Ip = null;
-        $vpTr069 = $extract('VirtualParameters.IPTR069')
-                ?? $extract('VirtualParameters.iptr069')
-                ?? $extract('VirtualParameters.ipTR069')
-                ?? $extract('VirtualParameters.Iptr069')
-                ?? $extract('VirtualParameters.TR069IP');
-        if ($isValidIp($vpTr069)) {
-            $tr069Ip = trim($vpTr069);
-        }
-
-        $connReqUrl = $deviceData['InternetGatewayDevice']['ManagementServer']['ConnectionRequestURL']['_value'] ?? 
-                      $deviceData['Device']['ManagementServer']['ConnectionRequestURL']['_value'] ?? null;
-        if (!empty($connReqUrl)) {
-            $parsedHost = parse_url($connReqUrl, PHP_URL_HOST);
-            if ($isValidIp($parsedHost)) {
-                $tr069Ip = $tr069Ip ?: $parsedHost;
-            }
-        }
-
-        if (!$tr069Ip && is_array($wanDevices)) {
-            foreach ($wanDevices as $wdIdx => $wdNode) {
-                if ($wdIdx === '_object' || !is_array($wdNode)) continue;
-                $connDevices = $wdNode['WANConnectionDevice'] ?? [];
-                if (is_array($connDevices)) {
-                    foreach ($connDevices as $cdIdx => $connNode) {
-                        if ($cdIdx === '_object' || !is_array($connNode)) continue;
-                        $ipConns = $connNode['WANIPConnection'] ?? [];
-                        if (is_array($ipConns)) {
-                            foreach ($ipConns as $iIdx => $ipc) {
-                                if ($iIdx === '_object' || !is_array($ipc)) continue;
-                                $candidate = $ipc['ExternalIPAddress']['_value'] ?? null;
-                                if ($isValidIp($candidate)) {
-                                    $tr069Ip = trim($candidate);
-                                    break 3;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (!$tr069Ip && !empty($deviceData['_ip']) && $isValidIp($deviceData['_ip'])) {
-            $tr069Ip = trim($deviceData['_ip']);
-        }
-
-        // Pastikan connection_request_url menyimpan TR-069 IP yang benar untuk pencarian dan pemanggilan
-        if ($tr069Ip) {
-            if (empty($connReqUrl) || str_contains($connReqUrl, '0.0.0.0')) {
-                $connReqUrl = "http://{$tr069Ip}:7547/";
-            }
-        }
-
-        // IP utama: prioritaskan IP PPPoE, jika belum ada/offline gunakan IP TR-069
-        $ip = $pppoeIp ?: ($tr069Ip ?: null);
-
-        // Helper validasi dan pembersih MAC Address
-        $cleanMac = function ($val) {
-            if (empty($val) || !is_string($val)) return null;
-            $val = trim($val);
-            if ($val === '' || $val === '00:00:00:00:00:00' || $val === 'ff:ff:ff:ff:ff:ff' || strtoupper($val) === 'FF:FF:FF:FF:FF:FF') {
-                return null;
-            }
-            $hexOnly = preg_replace('/[^0-9A-Fa-f]/', '', $val);
-            if (strlen($hexOnly) === 12) {
-                return strtoupper(implode(':', str_split($hexOnly, 2)));
-            }
-            if (preg_match('/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/', $val)) {
-                return strtoupper(str_replace('-', ':', $val));
-            }
-            return null;
-        };
-
-        // Ekstraksi MAC Address (Prioritas: VirtualParameters.PonMac untuk ZTE ONU -> pppoeMac -> ZTE Vendor Extension -> WAN Connection -> LAN)
-        $vpPonMac = $cleanMac($extract('VirtualParameters.PonMac'))
-                 ?? $cleanMac($extract('VirtualParameters.ponMac'))
-                 ?? $cleanMac($extract('VirtualParameters.PonMAC'))
-                 ?? $cleanMac($extract('VirtualParameters.PONMAC'))
-                 ?? $cleanMac($extract('VirtualParameters.pon_mac'))
-                 ?? $cleanMac($deviceData['VirtualParameters']['PonMac']['_value'] ?? null)
-                 ?? $cleanMac($deviceData['VirtualParameters']['ponMac']['_value'] ?? null);
-
-        $vpPppoeMac = $cleanMac($extract('VirtualParameters.pppoeMac'))
-                   ?? $cleanMac($extract('VirtualParameters.pppoeMAC'))
-                   ?? $cleanMac($deviceData['VirtualParameters']['pppoeMac']['_value'] ?? null);
-
-        $zteMac = $cleanMac($extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.PonMac'))
-               ?? $cleanMac($extract('Device.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.PonMac'))
-               ?? $cleanMac($extract('InternetGatewayDevice.DeviceInfo.X_ZTE-COM_MacAddress'))
-               ?? $cleanMac($extract('Device.DeviceInfo.X_ZTE-COM_MacAddress'));
-
-        $wanMac = null;
-        if (is_array($wanDevices)) {
-            foreach ($wanDevices as $wdIdx => $wdNode) {
-                if ($wdIdx === '_object' || !is_array($wdNode)) continue;
-                $connDevices = $wdNode['WANConnectionDevice'] ?? [];
-                if (is_array($connDevices)) {
-                    foreach ($connDevices as $cdIdx => $connNode) {
-                        if ($cdIdx === '_object' || !is_array($connNode)) continue;
-                        $pppConns = $connNode['WANPPPConnection'] ?? [];
-                        if (is_array($pppConns)) {
-                            foreach ($pppConns as $pIdx => $ppp) {
-                                if ($pIdx === '_object' || !is_array($ppp)) continue;
-                                $cand = $cleanMac($ppp['MACAddress']['_value'] ?? null);
-                                if ($cand) {
-                                    $wanMac = $cand;
-                                    break 3;
-                                }
-                            }
-                        }
-                        $ipConns = $connNode['WANIPConnection'] ?? [];
-                        if (is_array($ipConns)) {
-                            foreach ($ipConns as $iIdx => $ipc) {
-                                if ($iIdx === '_object' || !is_array($ipc)) continue;
-                                $cand = $cleanMac($ipc['MACAddress']['_value'] ?? null);
-                                if ($cand) {
-                                    $wanMac = $cand;
-                                    break 3;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        $lanMac = $cleanMac($extract('InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress'))
-               ?? $cleanMac($extract('Device.Ethernet.Interface.1.MACAddress'));
-
-        $mac = $vpPonMac ?: ($vpPppoeMac ?: ($zteMac ?: ($wanMac ?: ($lanMac ?: null))));
-        
-        $model = $deviceData['_deviceId']['_ProductClass'] ?? 
-                 $deviceData['InternetGatewayDevice']['DeviceInfo']['ProductClass']['_value'] ?? 
-                 $deviceData['Device']['DeviceInfo']['ProductClass']['_value'] ?? 
-                 $deviceData['InternetGatewayDevice']['DeviceInfo']['ModelName']['_value'] ?? 
-                 $deviceData['Device']['DeviceInfo']['ModelName']['_value'] ?? null;
-        
-        // If model is empty string, try fallback
-        if (empty(trim((string)$model))) {
-            $model = $deviceData['InternetGatewayDevice']['DeviceInfo']['ModelName']['_value'] ?? null;
-        }
-        
-        $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
-        $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) <= 20) ? 'online' : 'offline';
-
-        // Helper pembersih karakter rusak/non-printable (sering terjadi pada VSOL)
-        $cleanSn = function ($val) {
-            if (!$val) return null;
-            $clean = preg_replace('/[^\x20-\x7E]/', '', (string)$val);
-            $clean = preg_replace('/[^A-Za-z0-9_\-:]/', '', $clean);
-            return trim($clean);
-        };
-
-        // Deteksi Serial Number Khusus:
-        // 1. VirtualParameters (getSerialNumber / gponSN) dari GenieACS untuk VSOL & Huawei
-        // 2. Vendor Extension (X_HW_SerialNumber)
-        // 3. Fallback standar TR-069
-        $detectedSn = $cleanSn($extract('VirtualParameters.getSerialNumber'))
-                   ?? $cleanSn($extract('VirtualParameters.serialNumber'))
-                   ?? $cleanSn($extract('VirtualParameters.SerialNumber'))
-                   ?? $cleanSn($extract('VirtualParameters.gponSN'))
-                   ?? $cleanSn($extract('VirtualParameters.GPONSN'))
-                   ?? $cleanSn($extract('InternetGatewayDevice.DeviceInfo.X_HW_SerialNumber'))
-                   ?? $cleanSn($extract('Device.DeviceInfo.X_HW_SerialNumber'))
-                   ?? $cleanSn($extract('InternetGatewayDevice.DeviceInfo.X_HW_GponSN'))
-                   ?? $cleanSn($extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.SerialNumber'));
-
-        $serialNumber = !empty($detectedSn) ? $detectedSn : (
-            $cleanSn($deviceData['_deviceId']['_SerialNumber'] ?? null) ?? 
-            $cleanSn($extract('InternetGatewayDevice.DeviceInfo.SerialNumber')) ?? 
-            $cleanSn($extract('Device.DeviceInfo.SerialNumber')) ?? 
-            $deviceId
-        );
-
-        $firmware = $extract('InternetGatewayDevice.DeviceInfo.SoftwareVersion') ?? $extract('Device.DeviceInfo.SoftwareVersion') ?? $extract('InternetGatewayDevice.DeviceInfo.HardwareVersion');
-        $hardware = $extract('InternetGatewayDevice.DeviceInfo.HardwareVersion') ?? $extract('Device.DeviceInfo.HardwareVersion');
-        
-        $rawPppoeUser = $extract('VirtualParameters.pppoeUsername') 
-                     ?? $extract('VirtualParameters.pppoeUsername2')
-                     ?? $extract('VirtualParameters.pppUsername');
-        $pppoeUsername = (is_scalar($rawPppoeUser) && trim((string)$rawPppoeUser) !== '') ? trim((string)$rawPppoeUser) : null;
-
-        if (!$pppoeUsername && is_array($wanDevices)) {
-            foreach ($wanDevices as $wdIdx => $wdNode) {
-                if ($wdIdx === '_object' || !is_array($wdNode)) continue;
-                $connDevs = $wdNode['WANConnectionDevice'] ?? [];
-                if (is_array($connDevs)) {
-                    foreach ($connDevs as $cdIdx => $cdNode) {
-                        if ($cdIdx === '_object' || !is_array($cdNode)) continue;
-                        $pppConns = $cdNode['WANPPPConnection'] ?? [];
-                        if (is_array($pppConns)) {
-                            foreach ($pppConns as $pppIdx => $pppNode) {
-                                if ($pppIdx === '_object' || !is_array($pppNode)) continue;
-                                $candUser = $pppNode['Username']['_value'] ?? null;
-                                if (is_scalar($candUser) && trim((string)$candUser) !== '') {
-                                    $pppoeUsername = trim((string)$candUser);
-                                    break 3;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Mencari RX Power lebih cerdas (Iterasi WANDevice)
-        $rxPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower')
-                ?? $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower')
-                ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower')
-                ?? $extract('VirtualParameters.RXPower') 
-                ?? $extract('Device.Optical.1.Transceiver.RxPower');
-        if ($rxPower === null && is_array($wanDevices)) {
-            // Cari konfigurasi PON yang ada didalam WANDevice
-            foreach ($wanDevices as $wdIdx => $wdNode) {
-                if ($wdIdx === '_object' || !is_array($wdNode)) continue;
-                $ponConfig = $wdNode['WANPONInterfaceConfig'] ?? $wdNode['WANEponInterfaceConfig'] ?? [];
-                if (is_array($ponConfig)) {
-                    foreach ($ponConfig as $pcIndex => $pcNode) {
-                        if (!is_numeric($pcIndex) || !is_array($pcNode)) continue;
-                        $rxPower = $pcNode['X_ZTE-COM_RxPower']['_value'] ?? $pcNode['X_HW_RxPower']['_value'] ?? $pcNode['RxPower']['_value'] ?? null;
-                        if ($rxPower !== null) break 2;
-                    }
-                }
-            }
-        }
-        
-        if ($rxPower !== null && is_numeric($rxPower)) {
-            $rxPower = (float)$rxPower;
-            if ($rxPower < -500 || $rxPower > 500) {
-                $rxPower /= 1000;
-            } elseif ($rxPower < -50 || $rxPower > 50) {
-                $rxPower /= 100;
-            }
-        }
-
-        $acsDeviceParams = [
-            'signal' => $rxPower,
-            'serial_number' => $serialNumber,
-            'mac_address' => $mac,
-            'model' => $model,
-            'ip_address' => $ip,
-            'connection_request_url' => $connReqUrl,
-            'status' => $status,
-            'last_inform' => $lastInform,
-            'last_contact' => now(),
-            'firmware_version' => $firmware,
-            'software_version' => $firmware,
-            'hardware_version' => $hardware,
-            'manufacturer' => $deviceData['_deviceId']['_Manufacturer'] ?? null,
-            'oui' => $deviceData['_deviceId']['_OUI'] ?? null,
-        ];
-
         // Helper pencarian ONU dengan toleransi format SN (ASCII vs HEX) dan Fallback MAC Address
         $findOnu = function ($sn, $macAddr = null) {
             if (!empty($sn)) {
@@ -596,6 +290,51 @@ class Index extends BaseACSComponent
             return null;
         };
 
+        // Telemetri Multi-Vendor Terpadu (AcsTelemetryParser)
+        $flat = \App\Services\ACS\AcsTelemetryParser::flatten($deviceData);
+        $serialNumber = \App\Services\ACS\AcsTelemetryParser::parseSerialNumber($flat, $deviceId, $deviceData);
+        $mac = \App\Services\ACS\AcsTelemetryParser::parseMacAddress($flat);
+        $matchedOnu = $findOnu($serialNumber, $mac);
+
+        $connReqUrl = $deviceData['InternetGatewayDevice']['ManagementServer']['ConnectionRequestURL']['_value'] ?? 
+                      $deviceData['Device']['ManagementServer']['ConnectionRequestURL']['_value'] ?? null;
+
+        $pppoeAndIp = \App\Services\ACS\AcsTelemetryParser::parsePppoeAndIp($flat, $connReqUrl);
+        $tr069Ip = $pppoeAndIp['tr069_ip'];
+        $pppoeIp = $pppoeAndIp['pppoe_ip'];
+        $pppoeUsername = $pppoeAndIp['pppoe_username'];
+
+        if ($tr069Ip && (empty($connReqUrl) || str_contains($connReqUrl, '0.0.0.0'))) {
+            $connReqUrl = "http://{$tr069Ip}:7547/";
+        }
+        $ip = $pppoeIp ?: ($tr069Ip ?: null);
+
+        // Penguraian Optik Cerdas: Mengatasi Anomali ZTE Swap & Fallback DDM OLT
+        $optical = \App\Services\ACS\AcsTelemetryParser::parseOptical($flat, $matchedOnu);
+        $rxPower = $optical['rx_power'];
+
+        $identity = \App\Services\ACS\AcsTelemetryParser::parseDeviceIdentity($flat, $deviceData, $serialNumber);
+
+        $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
+        $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) <= 20) ? 'online' : 'offline';
+
+        $acsDeviceParams = [
+            'signal' => $rxPower,
+            'serial_number' => $serialNumber,
+            'mac_address' => $mac,
+            'model' => $identity['model'],
+            'ip_address' => $ip,
+            'connection_request_url' => $connReqUrl,
+            'status' => $status,
+            'last_inform' => $lastInform,
+            'last_contact' => now(),
+            'firmware_version' => $identity['software_version'],
+            'software_version' => $identity['software_version'],
+            'hardware_version' => $identity['hardware_version'],
+            'manufacturer' => $identity['manufacturer'],
+            'oui' => $identity['oui'],
+        ];
+
         // AUTO BINDING LOGIC
         if ($pppoeUsername) {
             $customerService = \App\Models\Customer\CustomerService::where('username', $pppoeUsername)->first();
@@ -626,7 +365,8 @@ class Index extends BaseACSComponent
                             'name'             => $customerService->customer?->name ?? strtoupper(trim($serialNumber)),
                             'model'            => $acsDeviceParams['model'] ?? null,
                             'firmware_version' => $acsDeviceParams['software_version'] ?? null,
-                            'rx_power_dbm'     => $acsDeviceParams['signal'] ?? null,
+                            'rx_power_dbm'     => ($rxPower !== null && $rxPower < 0) ? $rxPower : null,
+                            'tx_power_dbm'     => (!empty($optical['tx_power']) && $optical['tx_power'] > 0) ? $optical['tx_power'] : null,
                             'status'           => 'active',
                             'provision_status' => 'provisioned',
                         ]);
@@ -637,8 +377,18 @@ class Index extends BaseACSComponent
 
                 if ($onu) {
                     $acsDeviceParams['onu_id'] = $onu->id; $acsDeviceParams['olt_id'] = $onu->olt_id; $acsDeviceParams['odp_id'] = $onu->odp_id;
+                    $onuUpdates = [];
                     if (empty($onu->mac_address) && $mac) {
-                        $onu->update(['mac_address' => $mac]);
+                        $onuUpdates['mac_address'] = $mac;
+                    }
+                    if ($rxPower !== null && $rxPower < 0) {
+                        $onuUpdates['rx_power_dbm'] = $rxPower;
+                    }
+                    if (!empty($optical['tx_power']) && $optical['tx_power'] > 0) {
+                        $onuUpdates['tx_power_dbm'] = $optical['tx_power'];
+                    }
+                    if (!empty($onuUpdates)) {
+                        $onu->update($onuUpdates);
                     }
                     
                     // Bind Onu ke CustomerService jika berbeda (Modem Baru)
@@ -662,8 +412,18 @@ class Index extends BaseACSComponent
             $onu = $findOnu($serialNumber, $mac);
             if ($onu) {
                 $acsDeviceParams['onu_id'] = $onu->id; $acsDeviceParams['olt_id'] = $onu->olt_id; $acsDeviceParams['odp_id'] = $onu->odp_id;
+                $onuUpdates = [];
                 if (empty($onu->mac_address) && $mac) {
-                    $onu->update(['mac_address' => $mac]);
+                    $onuUpdates['mac_address'] = $mac;
+                }
+                if ($rxPower !== null && $rxPower < 0) {
+                    $onuUpdates['rx_power_dbm'] = $rxPower;
+                }
+                if (!empty($optical['tx_power']) && $optical['tx_power'] > 0) {
+                    $onuUpdates['tx_power_dbm'] = $optical['tx_power'];
+                }
+                if (!empty($onuUpdates)) {
+                    $onu->update($onuUpdates);
                 }
                 $cs = \App\Models\Customer\CustomerService::withoutGlobalScopes()->where('onu_id', $onu->id)->first();
                 if ($cs) {

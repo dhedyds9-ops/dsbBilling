@@ -513,9 +513,17 @@ class MobileInventoryApiController extends Controller
             ], 403);
         }
 
-        $requisition = InventoryRequisition::with('items')->findOrFail($id);
+        $requisition = InventoryRequisition::withoutGlobalScopes()->with('items')->findOrFail($id);
 
-        if ($requisition->status === 'approved') {
+        // Validasi isolasi cabang untuk staff gudang
+        if ($user->branch_id && $requisition->branch_id && (int)$requisition->branch_id !== (int)$user->branch_id && !$user->isSuperAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak: Anda hanya berwenang menyetujui permintaan material cabang Anda sendiri.',
+            ], 403);
+        }
+
+        if (in_array(strtolower((string)$requisition->status), ['approved', 'dispatched', 'completed'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Permintaan ini sudah disetujui sebelumnya.',
@@ -524,7 +532,8 @@ class MobileInventoryApiController extends Controller
 
         DB::beginTransaction();
         try {
-            $requisition->update([
+            $lockedReq = InventoryRequisition::where('id', $id)->lockForUpdate()->firstOrFail();
+            $lockedReq->update([
                 'status' => 'approved',
                 'approved_by' => $user->id,
                 'approved_at' => now(),
@@ -577,80 +586,116 @@ class MobileInventoryApiController extends Controller
         $request->validate([
             'custody_id' => 'required|integer|exists:inventory_custodies,id',
             'to_user_id' => 'required|integer|exists:users,id|different:' . $user->id,
-            'quantity' => 'required|numeric|min:0.1',
+            'quantity' => 'required|numeric|min:0.01',
             'notes' => 'nullable|string|max:255',
         ]);
 
-        $custody = InventoryCustody::findOrFail($request->input('custody_id'));
+        $custodyId = (int) $request->input('custody_id');
+        $toUserId = (int) $request->input('to_user_id');
+        $transferQty = (float) $request->input('quantity');
 
-        if ((int)$custody->holder_id !== (int)$user->id && !$user->isSuperAdmin()) {
+        $targetUser = User::findOrFail($toUserId);
+
+        // Validasi batasan perusahaan
+        if ($user->company_id && $targetUser->company_id && (int)$user->company_id !== (int)$targetUser->company_id && !$user->isSuperAdmin()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Akses ditolak: Material ini bukan dalam penguasaan akun Anda.',
+                'message' => 'Akses ditolak: Teknisi penerima berada di bawah perusahaan yang berbeda.',
             ], 403);
         }
 
-        $avail = max(0, (float)$custody->quantity - (float)$custody->used_quantity - (float)$custody->returned_quantity);
-        $transferQty = (float)$request->input('quantity');
-
-        if ($transferQty > $avail) {
-            return response()->json([
-                'success' => false,
-                'message' => "Jumlah transfer ($transferQty) melebihi stok tersedia ($avail).",
-            ], 422);
-        }
-
-        $targetUser = User::findOrFail($request->input('to_user_id'));
-
-        DB::beginTransaction();
         try {
-            // Deduct from current holder
-            $custody->quantity = (float)$custody->quantity - $transferQty;
-            if ($custody->quantity <= 0) {
-                $custody->status = 'handed_over';
-            }
-            $custody->save();
+            return DB::transaction(function () use ($user, $targetUser, $custodyId, $transferQty, $request) {
+                // Kunci baris custody sumber secara eksklusif (pessimistic locking)
+                $custody = InventoryCustody::where('id', $custodyId)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            // Grant to target user
-            $targetCustody = InventoryCustody::create([
-                'uuid' => (string) Str::uuid(),
-                'item_id' => $custody->item_id,
-                'item_serial_id' => $custody->item_serial_id,
-                'holder_id' => $targetUser->id,
-                'holder_type' => 'technician',
-                'quantity' => $transferQty,
-                'used_quantity' => 0,
-                'returned_quantity' => 0,
-                'status' => 'in_custody',
-                'branch_id' => $targetUser->branch_id,
-                'notes' => "Serah terima dari {$user->name}: " . ($request->input('notes') ?? ''),
-            ]);
+                if ((int)$custody->holder_id !== (int)$user->id && !$user->isSuperAdmin()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Akses ditolak: Material ini bukan dalam penguasaan akun Anda.',
+                    ], 403);
+                }
 
-            // Record transfer log
-            InventoryCustodyTransfer::create([
-                'uuid' => (string) Str::uuid(),
-                'custody_id' => $custody->id,
-                'from_user_id' => $user->id,
-                'from_user_type' => 'technician',
-                'to_user_id' => $targetUser->id,
-                'to_user_type' => 'technician',
-                'item_id' => $custody->item_id,
-                'item_serial_id' => $custody->item_serial_id,
-                'quantity' => $transferQty,
-                'status' => 'accepted',
-                'notes' => $request->input('notes'),
-                'accepted_at' => now(),
-                'branch_id' => $user->branch_id,
-            ]);
+                $avail = max(0, (float)$custody->quantity - (float)$custody->used_quantity - (float)$custody->returned_quantity);
 
-            DB::commit();
+                if ($transferQty > $avail || $avail <= 0) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Jumlah transfer ($transferQty) melebihi stok tersedia ($avail).",
+                    ], 422);
+                }
 
-            return response()->json([
-                'success' => true,
-                'message' => "Material sebanyak $transferQty berhasil diserahterimakan kepada {$targetUser->name}.",
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
+                // Jika berserial, kunci item_serial dan pastikan kuantitas adalah 1
+                if ($custody->item_serial_id) {
+                    if ($transferQty != 1.0) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Barang berserial (ONT/Modem) hanya dapat ditransfer sebanyak 1 unit per nomor seri.',
+                        ], 422);
+                    }
+
+                    $itemSerial = \App\Models\Inventory\ItemSerial::where('id', $custody->item_serial_id)
+                        ->lockForUpdate()
+                        ->first();
+                    if ($itemSerial) {
+                        $itemSerial->custodian_id = $targetUser->id;
+                        $itemSerial->status = 'in_custody_technician';
+                        $itemSerial->save();
+                    }
+                }
+
+                // Potong dari saldo pemegang saat ini secara aman
+                $remainingQty = (float)$custody->quantity - $transferQty;
+                if ($remainingQty < 0) {
+                    throw new \RuntimeException("Terjadi kesalahan kalkulasi stok: saldo tidak boleh bernilai negatif.");
+                }
+
+                $custody->quantity = $remainingQty;
+                if ($remainingQty <= 0) {
+                    $custody->status = 'handed_over';
+                }
+                $custody->save();
+
+                // Tambahkan custody ke penerima
+                $targetCustody = InventoryCustody::create([
+                    'uuid' => (string) Str::uuid(),
+                    'item_id' => $custody->item_id,
+                    'item_serial_id' => $custody->item_serial_id,
+                    'holder_id' => $targetUser->id,
+                    'holder_type' => 'technician',
+                    'quantity' => $transferQty,
+                    'used_quantity' => 0,
+                    'returned_quantity' => 0,
+                    'status' => 'in_custody',
+                    'branch_id' => $targetUser->branch_id,
+                    'notes' => "Serah terima dari {$user->name}: " . ($request->input('notes') ?? ''),
+                ]);
+
+                // Catat riwayat log transfer
+                InventoryCustodyTransfer::create([
+                    'uuid' => (string) Str::uuid(),
+                    'custody_id' => $custody->id,
+                    'from_user_id' => $user->id,
+                    'from_user_type' => 'technician',
+                    'to_user_id' => $targetUser->id,
+                    'to_user_type' => 'technician',
+                    'item_id' => $custody->item_id,
+                    'item_serial_id' => $custody->item_serial_id,
+                    'quantity' => $transferQty,
+                    'status' => 'accepted',
+                    'notes' => $request->input('notes'),
+                    'accepted_at' => now(),
+                    'branch_id' => $user->branch_id,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Material sebanyak $transferQty berhasil diserahterimakan kepada {$targetUser->name}.",
+                ]);
+            });
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal memproses serah terima material: ' . $e->getMessage(),

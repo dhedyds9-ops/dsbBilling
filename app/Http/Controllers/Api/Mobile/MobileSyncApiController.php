@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Inventory\InventoryCustody;
 use App\Models\ISP\Odp;
 use App\Models\Notification\Notification;
+use App\Models\User;
 use App\Models\Workforce\MaterialUsage;
 use App\Models\Workforce\WorkOrder;
 use App\Models\Workforce\WorkOrderChecklist;
@@ -23,17 +25,29 @@ class MobileSyncApiController extends Controller
     {
         $user = $request->user();
 
-        // 1. Work Orders (Assigned to technician or active in branch)
-        $workOrdersQuery = WorkOrder::query()->withoutGlobalScopes();
-        if ($user->hasRole('technician')) {
+        // 1. Work Orders (Assigned to technician or active in branch, strictly company & branch scoped)
+        $workOrdersQuery = WorkOrder::query();
+        if ($user->company_id && !$user->isSuperAdmin()) {
+            $workOrdersQuery->where('company_id', $user->company_id);
+        }
+
+        $isTech = $user->hasRole('technician') || (method_exists($user, 'isTechnician') && $user->isTechnician());
+        $isManagerOrAdmin = $user->isSuperAdmin() || $user->hasAnyRole(['administrator', 'admin', 'manager', 'superadmin']);
+
+        if ($isTech && !$isManagerOrAdmin) {
             $workOrdersQuery->where(function ($q) use ($user) {
-                $q->where('assigned_to', $user->id)
-                  ->orWhere(function ($sub) use ($user) {
-                      $sub->whereNull('assigned_to')
-                          ->where('branch_id', $user->branch_id);
-                  });
+                $q->where('assigned_to', $user->id);
+                try {
+                    $q->orWhereJsonContains('technician_ids', $user->id);
+                } catch (\Throwable) {}
+                if (!empty($user->branch_id)) {
+                    $q->orWhere(function ($sub) use ($user) {
+                        $sub->whereNull('assigned_to')
+                            ->where('branch_id', $user->branch_id);
+                    });
+                }
             });
-        } elseif (!empty($user->branch_id)) {
+        } elseif (!empty($user->branch_id) && !$user->isSuperAdmin()) {
             $workOrdersQuery->where('branch_id', $user->branch_id);
         }
 
@@ -109,27 +123,27 @@ class MobileSyncApiController extends Controller
 
                 switch ($type) {
                     case 'status_update':
-                        $this->processStatusUpdate($user, $woId, $payload, $clientTime);
+                        $this->processStatusUpdate($user, $woId, $payload, $clientTime, $uuid);
                         break;
 
                     case 'checklist_toggle':
-                        $this->processChecklistToggle($user, $woId, $payload);
+                        $this->processChecklistToggle($user, $woId, $payload, $uuid);
                         break;
 
                     case 'checklist_add':
-                        $this->processChecklistAdd($user, $woId, $payload);
+                        $this->processChecklistAdd($user, $woId, $payload, $uuid);
                         break;
 
                     case 'measurement':
-                        $this->processMeasurement($user, $woId, $payload);
+                        $this->processMeasurement($user, $woId, $payload, $uuid);
                         break;
 
                     case 'signature':
-                        $this->processSignature($user, $woId, $payload);
+                        $this->processSignature($user, $woId, $payload, $uuid);
                         break;
 
                     case 'material_usage':
-                        $this->processMaterialUsage($user, $woId, $payload);
+                        $this->processMaterialUsage($user, $woId, $payload, $uuid);
                         break;
 
                     default:
@@ -235,16 +249,98 @@ class MobileSyncApiController extends Controller
         ]);
     }
 
-    // ----------------- Private Action Handlers -----------------
+    // ----------------- Private Action Handlers & Authorization -----------------
 
-    private function processStatusUpdate($user, ?int $woId, array $payload, string $clientTime): void
+    /**
+     * Authorize and validate WorkOrder access for offline sync actions.
+     * Prevents cross-company, cross-branch, and cross-technician IDOR.
+     */
+    protected function getAuthorizedWorkOrder(User $user, ?int $woId, string $actionType, string $actionUuid): WorkOrder
     {
-        if (!$woId) throw new \Exception("ID SPK wajib diisi untuk status update.");
-        $wo = WorkOrder::withoutGlobalScopes()->findOrFail($woId);
+        if (!$woId) {
+            throw new \InvalidArgumentException("ID SPK wajib diisi untuk aksi {$actionType}.");
+        }
 
-        $targetStatus = $payload['status'] ?? 'in_progress';
+        // 1. Check existence with company scope
+        $query = WorkOrder::query();
+        if ($user->company_id && !$user->isSuperAdmin()) {
+            $query->where(function ($q) use ($user) {
+                $q->where('company_id', $user->company_id)
+                  ->orWhereNull('company_id');
+            });
+        }
+
+        $workOrder = $query->find($woId);
+
+        if (!$workOrder) {
+            AuditLog::record($user, 'offline_sync_rejected', "SPK #{$woId} tidak ditemukan atau berada di luar perusahaan untuk aksi {$actionType}", [
+                'work_order_id' => $woId,
+                'action_type' => $actionType,
+                'action_uuid' => $actionUuid,
+            ]);
+            throw new \Exception("SPK #{$woId} tidak ditemukan atau berada di luar batas akses perusahaan Anda.");
+        }
+
+        $isManagerOrAdmin = $user->isSuperAdmin() || $user->hasAnyRole(['administrator', 'admin', 'manager', 'superadmin']);
+        $isAssigned = ($workOrder->assigned_to && (int)$workOrder->assigned_to === (int)$user->id)
+            || (is_array($workOrder->technician_ids) && in_array((int)$user->id, array_map('intval', $workOrder->technician_ids)));
+
+        // 2. Cross-branch isolation check
+        if ($user->branch_id && $workOrder->branch_id && (int)$user->branch_id !== (int)$workOrder->branch_id && !$user->isSuperAdmin()) {
+            if (!$isAssigned && !$isManagerOrAdmin) {
+                AuditLog::record($user, 'offline_sync_cross_branch_violation', "Percobaan akses SPK lintas cabang ditolak (SPK Branch: {$workOrder->branch_id}, User Branch: {$user->branch_id})", [
+                    'work_order_id' => $woId,
+                    'spk_branch_id' => $workOrder->branch_id,
+                    'user_branch_id' => $user->branch_id,
+                    'action_type' => $actionType,
+                    'action_uuid' => $actionUuid,
+                ]);
+                throw new \Exception("Akses ditolak: SPK #{$woId} adalah milik cabang lain.");
+            }
+        }
+
+        // 3. Technician assignment ownership check
+        $isTech = $user->hasRole('technician') || (method_exists($user, 'isTechnician') && $user->isTechnician());
+        if ($isTech && !$user->isSuperAdmin() && !$isManagerOrAdmin) {
+            if ($workOrder->assigned_to && !$isAssigned) {
+                AuditLog::record($user, 'offline_sync_cross_technician_violation', "Percobaan akses SPK teknisi lain ditolak (SPK Assigned: {$workOrder->assigned_to}, User: {$user->id})", [
+                    'work_order_id' => $woId,
+                    'spk_assigned_to' => $workOrder->assigned_to,
+                    'user_id' => $user->id,
+                    'action_type' => $actionType,
+                    'action_uuid' => $actionUuid,
+                ]);
+                throw new \Exception("Akses ditolak: SPK #{$woId} ditugaskan kepada teknisi lain.");
+            }
+        }
+
+        // 4. Status validation: Cannot modify cancelled or closed SPK
+        $currentStatus = strtolower((string)$workOrder->status);
+        if (in_array($currentStatus, ['cancelled', 'closed'])) {
+            AuditLog::record($user, 'offline_sync_invalid_status', "Aksi {$actionType} ditolak karena SPK berstatus {$currentStatus}", [
+                'work_order_id' => $woId,
+                'status' => $currentStatus,
+                'action_type' => $actionType,
+                'action_uuid' => $actionUuid,
+            ]);
+            throw new \Exception("SPK #{$woId} sudah berstatus '{$currentStatus}' dan tidak dapat dimodifikasi lagi.");
+        }
+
+        return $workOrder;
+    }
+
+    private function processStatusUpdate($user, ?int $woId, array $payload, string $clientTime, string $uuid): void
+    {
+        $wo = $this->getAuthorizedWorkOrder($user, $woId, 'status_update', $uuid);
+
+        $targetStatus = strtolower(trim((string) ($payload['status'] ?? 'in_progress')));
+        $allowedStatuses = ['pending', 'scheduled', 'assigned', 'in_progress', 'completed', 'pending_qc'];
+
+        if (!in_array($targetStatus, $allowedStatuses, true)) {
+            throw new \InvalidArgumentException("Status target '{$targetStatus}' tidak valid untuk pembaruan SPK.");
+        }
+
         $notes = $payload['notes'] ?? null;
-
         $wo->status = $targetStatus;
         if (!empty($notes)) {
             $prev = $wo->notes ? $wo->notes . "\n" : '';
@@ -260,36 +356,56 @@ class MobileSyncApiController extends Controller
         $wo->save();
     }
 
-    private function processChecklistToggle($user, ?int $woId, array $payload): void
+    private function processChecklistToggle($user, ?int $woId, array $payload, string $uuid): void
     {
         $chkId = $payload['checklist_id'] ?? null;
-        if (!$chkId) throw new \Exception("Checklist ID wajib diisi.");
+        if (!$chkId) throw new \InvalidArgumentException("Checklist ID wajib diisi.");
 
-        $chk = WorkOrderChecklist::findOrFail($chkId);
+        $wo = $this->getAuthorizedWorkOrder($user, $woId, 'checklist_toggle', $uuid);
+
+        $chk = WorkOrderChecklist::where('id', $chkId)
+            ->where('work_order_id', $wo->id)
+            ->first();
+
+        if (!$chk) {
+            AuditLog::record($user, 'offline_sync_checklist_mismatch', "Checklist #{$chkId} bukan bagian dari SPK #{$wo->id}", [
+                'work_order_id' => $wo->id,
+                'checklist_id' => $chkId,
+                'action_uuid' => $uuid,
+            ]);
+            throw new \Exception("Checklist #{$chkId} tidak ditemukan pada SPK #{$wo->id}.");
+        }
+
         $chk->completed = (bool) ($payload['completed'] ?? true);
         $chk->completed_at = $chk->completed ? now() : null;
         $chk->save();
     }
 
-    private function processChecklistAdd($user, ?int $woId, array $payload): void
+    private function processChecklistAdd($user, ?int $woId, array $payload, string $uuid): void
     {
-        if (!$woId) throw new \Exception("ID SPK wajib diisi.");
+        $wo = $this->getAuthorizedWorkOrder($user, $woId, 'checklist_add', $uuid);
+
+        // Idempotency: Jika checklist dengan action UUID ini sudah ada, skip tanpa duplikasi
+        $existing = WorkOrderChecklist::where('uuid', $uuid)->first();
+        if ($existing) {
+            return;
+        }
+
         $item = trim((string) ($payload['item'] ?? ''));
-        if (empty($item)) throw new \Exception("Item checklist tidak boleh kosong.");
+        if (empty($item)) throw new \InvalidArgumentException("Item checklist tidak boleh kosong.");
 
         WorkOrderChecklist::create([
-            'uuid' => (string) Str::uuid(),
-            'work_order_id' => $woId,
+            'uuid' => $uuid,
+            'work_order_id' => $wo->id,
             'item' => $item,
             'completed' => (bool) ($payload['completed'] ?? false),
             'completed_at' => !empty($payload['completed']) ? now() : null,
         ]);
     }
 
-    private function processMeasurement($user, ?int $woId, array $payload): void
+    private function processMeasurement($user, ?int $woId, array $payload, string $uuid): void
     {
-        if (!$woId) throw new \Exception("ID SPK wajib diisi.");
-        $wo = WorkOrder::withoutGlobalScopes()->findOrFail($woId);
+        $wo = $this->getAuthorizedWorkOrder($user, $woId, 'measurement', $uuid);
 
         if (isset($payload['optical_rx_power'])) {
             $wo->optical_rx_power = (float) $payload['optical_rx_power'];
@@ -298,34 +414,41 @@ class MobileSyncApiController extends Controller
             $wo->optical_tx_power = (float) $payload['optical_tx_power'];
         }
         if (!empty($payload['notes'])) {
-            $wo->notes = ($wo->notes ? $wo->notes . "\n" : '') . $payload['notes'];
+            $wo->notes = ($wo->notes ? $wo->notes . "\n" : '') . "[Offline Ukur] " . $payload['notes'];
         }
         $wo->save();
     }
 
-    private function processSignature($user, ?int $woId, array $payload): void
+    private function processSignature($user, ?int $woId, array $payload, string $uuid): void
     {
-        if (!$woId) throw new \Exception("ID SPK wajib diisi.");
-        $sig = $payload['signature'] ?? null;
-        if (empty($sig)) throw new \Exception("Tanda tangan digital kosong.");
+        $wo = $this->getAuthorizedWorkOrder($user, $woId, 'signature', $uuid);
 
-        $wo = WorkOrder::withoutGlobalScopes()->findOrFail($woId);
+        $sig = $payload['signature'] ?? null;
+        if (empty($sig)) throw new \InvalidArgumentException("Tanda tangan digital kosong.");
+
         $wo->customer_signature = $sig;
         $wo->save();
     }
 
-    private function processMaterialUsage($user, ?int $woId, array $payload): void
+    private function processMaterialUsage($user, ?int $woId, array $payload, string $uuid): void
     {
-        if (!$woId) throw new \Exception("ID SPK wajib diisi.");
+        $wo = $this->getAuthorizedWorkOrder($user, $woId, 'material_usage', $uuid);
+
+        // Idempotency: Jika material usage dengan action UUID ini sudah tercatat, skip tanpa menduplikasi
+        $existing = MaterialUsage::where('uuid', $uuid)->first();
+        if ($existing) {
+            return;
+        }
+
         $name = trim((string) ($payload['material_name'] ?? ''));
-        if (empty($name)) throw new \Exception("Nama material wajib diisi.");
+        if (empty($name)) throw new \InvalidArgumentException("Nama material wajib diisi.");
 
         MaterialUsage::create([
-            'uuid' => (string) Str::uuid(),
-            'work_order_id' => $woId,
-            'material_id' => $payload['material_id'] ?? 'MAT-' . Str::random(6),
+            'uuid' => $uuid,
+            'work_order_id' => $wo->id,
+            'material_id' => $payload['material_id'] ?? ('MAT-' . substr(md5($name), 0, 8)),
             'material_name' => $name,
-            'quantity' => (int) ($payload['quantity'] ?? 1),
+            'quantity' => max(1, (int) ($payload['quantity'] ?? 1)),
             'serial_number' => $payload['serial_number'] ?? null,
         ]);
     }

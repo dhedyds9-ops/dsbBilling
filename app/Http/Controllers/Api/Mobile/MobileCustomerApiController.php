@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\CRM\Customer;
 use App\Models\Customer\CustomerService;
 use App\Models\ISP\ServiceProfile;
@@ -116,11 +117,6 @@ class MobileCustomerApiController extends Controller
                 ?? $primaryService?->hotspotUser?->profile
                 ?? null;
 
-            $servicePassword = $primaryService?->password
-                ?? $primaryService?->pppoeUser?->password
-                ?? $primaryService?->hotspotUser?->password
-                ?? null;
-
             $profileId = $primaryService?->service_profile_id ?? $primaryService?->serviceProfile?->id;
 
             return [
@@ -138,7 +134,7 @@ class MobileCustomerApiController extends Controller
                 'service' => $primaryService ? [
                     'id' => $primaryService->id,
                     'username' => $serviceUsername,
-                    'password' => $servicePassword,
+                    'password' => null, // BUG-06: Masked/hidden from list to prevent credential exposure
                     'status' => $primaryService->status,
                     'profile_id' => $profileId,
                     'profile_name' => $profileName,
@@ -196,7 +192,7 @@ class MobileCustomerApiController extends Controller
         $query = Customer::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])->with([
             'customerServices' => function ($q) {
                 $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
-                  ->with(['serviceProfile', 'onu', 'odp', 'pppoeUser', 'hotspotUser']);
+                  ->with(['serviceProfile', 'onu.odp', 'pppoeUser', 'hotspotUser']);
             }
         ]);
 
@@ -232,15 +228,39 @@ class MobileCustomerApiController extends Controller
                 'latitude' => $customer->latitude,
                 'longitude' => $customer->longitude,
                 'created_at' => $customer->created_at?->toIso8601String(),
-                'services' => $customer->customerServices->map(function (CustomerService $cs) {
+                'services' => $customer->customerServices->map(function (CustomerService $cs) use ($user, $customer) {
                     $profName = $cs->serviceProfile?->name
                         ?? $cs->pppoeUser?->profile
                         ?? $cs->hotspotUser?->profile
                         ?? null;
-                    $pass = $cs->password
+
+                    // BUG-06: Strict credential exposure check & audit trail
+                    $canViewPassword = $user->isSuperAdmin()
+                        || $user->hasRole(['administrator', 'admin', 'manager'])
+                        || $user->hasPermission('customer.view_password')
+                        || $user->hasPermission('view_customer_passwords');
+
+                    $rawPass = $cs->password
                         ?? $cs->pppoeUser?->password
                         ?? $cs->hotspotUser?->password
                         ?? null;
+
+                    $pass = null;
+                    if ($canViewPassword && $rawPass) {
+                        $pass = $rawPass;
+                        AuditLog::record(
+                            $user,
+                            'customer_password_revealed',
+                            "Credentials revealed for customer {$customer->code} (#{$customer->id}) to user #{$user->id}",
+                            [
+                                'customer_id' => $customer->id,
+                                'customer_service_id' => $cs->id,
+                                'service_username' => $cs->username,
+                            ],
+                            $customer
+                        );
+                    }
+
                     $stype = $cs->hotspotUser ? 'hotspot' : ($cs->pppoeUser ? 'pppoe' : (in_array(strtolower($cs->serviceProfile?->service_type ?? ''), ['hotspot', 'member_hotspot', 'voucher']) ? 'hotspot' : 'pppoe'));
 
                     return [
@@ -262,10 +282,10 @@ class MobileCustomerApiController extends Controller
                             'status' => $cs->onu->status,
                             'mac_address' => $cs->onu->mac_address,
                         ] : null,
-                        'odp' => $cs->odp ? [
-                            'id' => $cs->odp->id,
-                            'name' => $cs->odp->name,
-                            'code' => $cs->odp->code,
+                        'odp' => (($cs->relationLoaded('odp') ? $cs->odp : null) ?: $cs->onu?->odp) ? [
+                            'id' => (($cs->relationLoaded('odp') ? $cs->odp : null) ?: $cs->onu?->odp)->id,
+                            'name' => (($cs->relationLoaded('odp') ? $cs->odp : null) ?: $cs->onu?->odp)->name,
+                            'code' => (($cs->relationLoaded('odp') ? $cs->odp : null) ?: $cs->onu?->odp)->code,
                         ] : null,
                     ];
                 }),
@@ -565,6 +585,17 @@ class MobileCustomerApiController extends Controller
                         $primaryService->hotspotUser->password = $newPass;
                         $primaryService->hotspotUser->save();
                     }
+                    AuditLog::record(
+                        $user,
+                        'customer_password_updated',
+                        "Credentials updated for customer {$customer->code} (#{$customer->id}) by user #{$user->id}",
+                        [
+                            'customer_id' => $customer->id,
+                            'customer_service_id' => $primaryService->id,
+                            'service_username' => $primaryService->username,
+                        ],
+                        $customer
+                    );
                 }
 
                 if (isset($normalizedStatus)) {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use App\Models\Billing\Invoice;
 use App\Models\CRM\Customer;
+use App\Models\Payment\Payment;
 use App\Services\Billing\PaymentService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -228,47 +229,103 @@ class MobileInvoiceApiController extends Controller
             });
         }
 
-        $invoice = $query->findOrFail($id);
+        $idempotencyKey = $request->header('X-Idempotency-Key') ?: $request->input('idempotency_key');
+        $idempotencyKey = $idempotencyKey ? trim((string) $idempotencyKey) : null;
 
-        if (in_array(strtolower((string) $invoice->status), ['paid', 'success', 'lunas'])) {
-            return response()->json([
-                'success' => false,
-                'message' => "Invoice {$invoice->invoice_number} sudah lunas sebelumnya.",
-            ], 422);
-        }
-
-        $amountToPay = (float) ($request->input('amount') ?? ($invoice->total_amount - ($invoice->paid_amount ?? 0)));
-        if ($amountToPay <= 0) {
-            $amountToPay = (float) $invoice->total_amount;
+        // Idempotency fast check jika request diulang (misal timeout atau retry mobile)
+        if ($idempotencyKey) {
+            $existingPayment = Payment::where('gateway_transaction_id', $idempotencyKey)
+                ->orWhere('reference_number', $idempotencyKey)
+                ->first();
+            if ($existingPayment) {
+                $inv = $existingPayment->invoices()->first() ?? Invoice::withoutGlobalScopes()->find($id);
+                return response()->json([
+                    'success' => true,
+                    'idempotent_replay' => true,
+                    'message' => "Pembayaran tunai sudah tercatat sebelumnya (Idempotent Replay).",
+                    'data' => [
+                        'invoice_id' => $inv?->id ?? $id,
+                        'invoice_number' => $inv?->invoice_number,
+                        'status' => $inv?->status ?? 'paid',
+                        'paid_amount' => (float) ($inv?->paid_amount ?? $existingPayment->amount),
+                        'payment_id' => $existingPayment->id,
+                        'paid_at' => ($existingPayment->paid_at ?? now())->format('d/m/Y H:i'),
+                    ],
+                ]);
+            }
         }
 
         try {
-            $paymentService = app(PaymentService::class);
-            $payment = $paymentService->createPayment(
-                customerId: $invoice->customer_id,
-                amount: $amountToPay,
-                userId: $user->id,
-                invoiceIds: [$invoice->id],
-                currency: 'IDR',
-                method: 'cash',
-                status: 'success',
-                gateway: 'manual'
-            );
+            return DB::transaction(function () use ($query, $id, $request, $user, $idempotencyKey) {
+                // Kunci baris invoice secara atomik untuk mencegah race condition / double payment
+                $invoice = $query->lockForUpdate()->findOrFail($id);
 
-            $invoice->refresh();
+                if (in_array(strtolower((string) $invoice->status), ['paid', 'success', 'lunas'])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Invoice {$invoice->invoice_number} sudah lunas sebelumnya.",
+                    ], 422);
+                }
 
-            return response()->json([
-                'success' => true,
-                'message' => "Pembayaran tunai sebesar Rp " . number_format($amountToPay, 0, ',', '.') . " berhasil dicatat.",
-                'data' => [
-                    'invoice_id' => $invoice->id,
-                    'invoice_number' => $invoice->invoice_number,
-                    'status' => $invoice->status,
-                    'paid_amount' => (float) $invoice->paid_amount,
-                    'payment_id' => $payment->id ?? null,
-                    'paid_at' => Carbon::now()->format('d/m/Y H:i'),
-                ],
-            ]);
+                $amountToPay = (float) ($request->input('amount') ?? ($invoice->total_amount - ($invoice->paid_amount ?? 0)));
+                if ($amountToPay <= 0) {
+                    $amountToPay = (float) $invoice->total_amount;
+                }
+
+                $refNumber = $idempotencyKey ?: ('PAY-CASH-' . $invoice->id . '-' . date('YmdHis'));
+
+                // Double check idempotency dalam lock
+                if ($idempotencyKey) {
+                    $existingPayment = Payment::where('gateway_transaction_id', $idempotencyKey)
+                        ->orWhere('reference_number', $idempotencyKey)
+                        ->lockForUpdate()
+                        ->first();
+                    if ($existingPayment) {
+                        return response()->json([
+                            'success' => true,
+                            'idempotent_replay' => true,
+                            'message' => "Pembayaran tunai sudah tercatat sebelumnya (Idempotent Replay).",
+                            'data' => [
+                                'invoice_id' => $invoice->id,
+                                'invoice_number' => $invoice->invoice_number,
+                                'status' => $invoice->status,
+                                'paid_amount' => (float) $invoice->paid_amount,
+                                'payment_id' => $existingPayment->id,
+                                'paid_at' => ($existingPayment->paid_at ?? now())->format('d/m/Y H:i'),
+                            ],
+                        ]);
+                    }
+                }
+
+                $paymentService = app(PaymentService::class);
+                $payment = $paymentService->createPayment(
+                    customerId: $invoice->customer_id,
+                    amount: $amountToPay,
+                    userId: $user->id,
+                    invoiceIds: [$invoice->id],
+                    currency: 'IDR',
+                    method: 'cash',
+                    status: 'success',
+                    referenceNumber: $refNumber,
+                    gatewayTransactionId: $idempotencyKey,
+                    gateway: 'cash'
+                );
+
+                $invoice->refresh();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Pembayaran tunai sebesar Rp " . number_format($amountToPay, 0, ',', '.') . " berhasil dicatat.",
+                    'data' => [
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'status' => $invoice->status,
+                        'paid_amount' => (float) $invoice->paid_amount,
+                        'payment_id' => $payment->id ?? null,
+                        'paid_at' => Carbon::now()->format('d/m/Y H:i'),
+                    ],
+                ]);
+            });
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,

@@ -173,29 +173,9 @@ class GenieACSDriver
             return null;
         };
 
-        $candidates = [
-            ['rx' => 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower',
-             'tx' => 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TxPower',
-             'snr'=> 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*',
-             'temp'=>'InternetGatewayDevice.DeviceInfo.X_ZTE-COM_Temperature'],
-            ['rx' => 'Device.Optical.1.Transceiver.RxPower',
-             'tx' => 'Device.Optical.1.Transceiver.TxPower',
-             'snr'=> 'Device.Optical.1.XPON.SNRMarginDownstream',
-             'temp'=>'Device.Optical.1.Transceiver.Temperature'],
-            ['rx' => 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_ALG-COM_RxPower',
-             'tx' => 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_ALG-COM_TxPower',
-             'snr'=> null, 'temp' => null],
-        ];
-        foreach ($candidates as $set) {
-            $candidateRx = $extract($set['rx']);
-            if ($candidateRx !== null && $candidateRx !== '' && $candidateRx !== 0) {
-                $rx = is_numeric($candidateRx) ? (float)$candidateRx / (($candidateRx > 1000 || $candidateRx < -1000) ? 1000 : 1) : null;
-                $tx = $set['tx'] ? ($extract($set['tx']) ?: null) : null;
-                $snr = $set['snr'] ? ($extract($set['snr']) ?: null) : null;
-                $temp = $set['temp'] ? ($extract($set['temp']) ?: null) : null;
-                break;
-            }
-        }
+        $flat = \App\Services\ACS\AcsTelemetryParser::flatten($params);
+        $optical = \App\Services\ACS\AcsTelemetryParser::parseOptical($flat);
+        $identity = \App\Services\ACS\AcsTelemetryParser::parseDeviceIdentity($flat, $params);
 
         $lastInform = $params['_lastInform'] ?? null;
         $online = $lastInform && abs(now()->diffInMinutes(Carbon::parse($lastInform))) < 5;
@@ -204,16 +184,13 @@ class GenieACSDriver
             'device_id' => $deviceId,
             'online' => $online,
             'last_inform' => $lastInform,
-            'rx_power_dbm' => $rx,
-            'tx_power_dbm' => $tx,
-            'snr_db' => $snr,
-            'temperature' => $temp,
-            'firmware_version' => $params['InternetGatewayDevice.DeviceInfo.SoftwareVersion._value']
-                ?? $params['Device.DeviceInfo.SoftwareVersion._value'] ?? null,
-            'hardware_version' => $params['InternetGatewayDevice.DeviceInfo.HardwareVersion._value']
-                ?? $params['Device.DeviceInfo.HardwareVersion._value'] ?? null,
-            'manufacturer' => $params['InternetGatewayDevice.DeviceInfo.Manufacturer._value']
-                ?? $params['Device.DeviceInfo.Manufacturer._value'] ?? null,
+            'rx_power_dbm' => $optical['rx_power'],
+            'tx_power_dbm' => $optical['tx_power'],
+            'snr_db' => $flat['Device.Optical.1.XPON.SNRMarginDownstream'] ?? null,
+            'temperature' => $optical['temperature'] !== 'Tidak Didukung' ? $optical['temperature'] : null,
+            'firmware_version' => $identity['software_version'],
+            'hardware_version' => $identity['hardware_version'],
+            'manufacturer' => $identity['manufacturer'],
             'raw' => $params,
         ];
     }
@@ -778,6 +755,83 @@ class GenieACSDriver
             return $response->successful();
         } catch (\Throwable $e) {
             throw new Exception("Gagal menghapus objek di GenieACS: " . $e->getMessage(), 0, $e);
+        }
+    }
+
+    public function addObject(string $deviceId, string $objectName): array
+    {
+        try {
+            $realDeviceId = $this->resolveDeviceId($deviceId);
+            $payload = ['name' => 'addObject', 'objectName' => $objectName];
+            $response = $this->postTaskWithFallback($realDeviceId, $payload, true);
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'task_id' => $response->header('X-Task-ID') ?? ($response->json('_id') ?? null),
+                    'data' => $response->json(),
+                ];
+            }
+            return [
+                'success' => false,
+                'status' => $response->status(),
+                'error' => $response->body(),
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    public function refreshObject(string $deviceId, string $objectName): bool
+    {
+        try {
+            $realDeviceId = $this->resolveDeviceId($deviceId);
+            $payload = ['name' => 'refreshObject', 'objectName' => $objectName];
+            $response = $this->postTaskWithFallback($realDeviceId, $payload, true);
+            return $response->successful();
+        } catch (\Throwable $e) {
+            Log::warning("GenieACSDriver refreshObject failed for {$deviceId} on {$objectName}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function getParameterValues(string $deviceId, array $parameterNames): array
+    {
+        try {
+            $realDeviceId = $this->resolveDeviceId($deviceId);
+            $payload = ['name' => 'getParameterValues', 'parameterNames' => $parameterNames];
+            $response = $this->postTaskWithFallback($realDeviceId, $payload, true);
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'task_id' => $response->header('X-Task-ID') ?? ($response->json('_id') ?? null),
+                    'data' => $response->json(),
+                ];
+            }
+            return [
+                'success' => false,
+                'error' => $response->body(),
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    public function refreshHardwareTask(string $deviceId): bool
+    {
+        try {
+            $realDeviceId = $this->resolveDeviceId($deviceId);
+            $this->refreshObject($realDeviceId, 'InternetGatewayDevice.DeviceInfo');
+            $this->refreshObject($realDeviceId, 'Device.DeviceInfo');
+            return true;
+        } catch (\Throwable $e) {
+            Log::warning("GenieACSDriver refreshHardwareTask failed for {$deviceId}: " . $e->getMessage());
+            return false;
         }
     }
 

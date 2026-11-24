@@ -516,123 +516,18 @@ class GenieAcsDiagnosticService
             'VirtualParameters.losStatus',
         ];
 
-        $rawRx = $this->extractValue($params, $rxCandidates);
-        $rawTx = $this->extractValue($params, $txCandidates);
-        $rawOptTemp = $this->extractValue($params, $optTempCandidates);
-        $rawLos = $this->extractValue($params, $losCandidates);
-
-        // Deteksi swap anomali ZTE TR-069 (Tx dilaporkan di Rx, dan sebaliknya)
-        if ($rawRx !== null && $rawTx !== null && is_numeric($rawRx) && is_numeric($rawTx) && (float)$rawRx > 0.0 && (float)$rawRx <= 5.0 && abs((float)$rawTx) >= 8.0) {
-            $tempRawRx = $rawTx;
-            $rawTx = $rawRx;
-            $rawRx = $tempRawRx;
-        }
-
-        // Parse RX Power
-        $rxPower = null;
-        $rxDisplay = 'Tidak Didukung';
-        $rxStatus = 'unknown';
-
-        if ($rawRx !== null && trim((string) $rawRx) !== '' && is_numeric($rawRx)) {
-            $num = (float) $rawRx;
-            // Angka 0 pada pembacaan sensor optik GPON menandakan tidak terbaca / tidak ada sensor
-            if ($num !== 0.0) {
-                $absVal = abs($num);
-                if ($absVal >= 7000.0) {
-                    // milli-dBm (e.g. 19630 / -19630 -> 19.63 dBm)
-                    $parsed = $absVal / 1000.0;
-                } elseif ($absVal >= 60.0) {
-                    // 0.01 dBm scale (e.g. 1963, -1963, 1304, 1100 -> 19.63, 13.04, 11.00 dBm)
-                    $parsed = $absVal / 100.0;
-                } else {
-                    $parsed = $absVal;
-                }
-                // Di GPON receiver, RX Power SELALU bernilai negatif:
-                $rxPower = -round($parsed, 2);
-
-                // Jika pembacaan di luar rentang wajar GPON (-38 s/d -5 dBm) dan OLT memiliki data DDM, fallback ke OLT
-                if (($rxPower < -38.0 || $rxPower > -5.0) && $onu && !empty($onu->rx_power_dbm) && is_numeric($onu->rx_power_dbm)) {
-                    $rxPower = round((float) $onu->rx_power_dbm, 2);
-                    if ($rxPower > 0) $rxPower = -abs($rxPower);
-                }
-
-                $rxDisplay = number_format($rxPower, 2) . ' dBm';
-                if ($rxPower >= -24.0 && $rxPower <= -15.0) {
-                    $rxStatus = 'normal'; // Optimal
-                } elseif (($rxPower >= -27.0 && $rxPower < -24.0) || ($rxPower > -15.0 && $rxPower <= -10.0)) {
-                    $rxStatus = 'warning'; // Marginal
-                } else {
-                    $rxStatus = 'critical'; // Buruk / Redaman Tinggi
-                }
-            }
-        }
-
-        // Fallback ke data DDM optik OLT jika TR-069 belum melaporkan RX
-        if ($rxPower === null && $onu && !empty($onu->rx_power_dbm) && is_numeric($onu->rx_power_dbm)) {
-            $rxPower = round((float) $onu->rx_power_dbm, 2);
-            if ($rxPower > 0) $rxPower = -abs($rxPower);
-            $rxDisplay = number_format($rxPower, 2) . ' dBm';
-            if ($rxPower >= -24.0 && $rxPower <= -15.0) {
-                $rxStatus = 'normal';
-            } elseif (($rxPower >= -27.0 && $rxPower < -24.0) || ($rxPower > -15.0 && $rxPower <= -10.0)) {
-                $rxStatus = 'warning';
-            } else {
-                $rxStatus = 'critical';
-            }
-        }
-
-        // Parse TX Power
-        $txPower = null;
-        $txDisplay = 'Tidak Didukung';
-        if ($rawTx !== null && trim((string) $rawTx) !== '' && is_numeric($rawTx)) {
-            $num = (float) $rawTx;
-            if ($num !== 0.0) {
-                if ($num < -500.0 || $num > 500.0) {
-                    $txPower = round($num / 1000.0, 2);
-                } elseif ($num < -60.0 || $num > 60.0) {
-                    $txPower = round($num / 100.0, 2);
-                } else {
-                    $txPower = round($num, 2);
-                }
-                $txDisplay = number_format($txPower, 2) . ' dBm';
-            }
-        } elseif ($onu && !empty($onu->tx_power_dbm) && is_numeric($onu->tx_power_dbm)) {
-            $txPower = round((float) $onu->tx_power_dbm, 2);
-            $txDisplay = number_format($txPower, 2) . ' dBm';
-        }
-
-        // Parse Optical Temperature
-        $opticalTempDisplay = 'Tidak Didukung';
-        if ($rawOptTemp !== null && trim((string) $rawOptTemp) !== '' && is_numeric($rawOptTemp)) {
-            $num = (float) $rawOptTemp;
-            if ($num !== 0.0) {
-                $t = (abs($num) > 1000) ? round($num / 1000, 1) : ((abs($num) > 100) ? round($num / 10, 1) : round($num, 1));
-                $opticalTempDisplay = $t . ' °C';
-            }
-        }
-
-        // Parse LOS Status
-        $losDisplay = 'Tidak Didukung';
-        if ($rawLos !== null && trim((string) $rawLos) !== '') {
-            $lower = strtolower(trim((string) $rawLos));
-            if (in_array($lower, ['1', 'true', 'alarm', 'los', 'down', 'loss'], true)) {
-                $losDisplay = 'LOS Alarm (Kabel Putus / Tidak Terdeteksi)';
-            } elseif (in_array($lower, ['0', 'false', 'normal', 'up', 'ok', 'sync'], true)) {
-                $losDisplay = 'Normal (Tersambung)';
-            } else {
-                $losDisplay = (string) $rawLos;
-            }
-        }
+        $flat = \App\Services\ACS\AcsTelemetryParser::flatten($params);
+        $optical = \App\Services\ACS\AcsTelemetryParser::parseOptical($flat, $onu);
 
         return [
-            'rx_power' => $rxPower,
-            'rx_power_display' => $rxDisplay,
-            'rx_power_status' => $rxStatus,
-            'health' => $rxStatus,
-            'tx_power' => $txPower,
-            'tx_power_display' => $txDisplay,
-            'optical_temperature' => $opticalTempDisplay,
-            'los_status' => $losDisplay,
+            'rx_power' => $optical['rx_power'],
+            'rx_power_display' => $optical['rx_power_display'],
+            'rx_power_status' => $optical['rx_status'],
+            'health' => $optical['rx_status'],
+            'tx_power' => $optical['tx_power'],
+            'tx_power_display' => $optical['tx_power_display'],
+            'optical_temperature' => $optical['temperature'],
+            'los_status' => $optical['los_status'],
         ];
     }
 

@@ -822,8 +822,16 @@ class StockMutationService
         ?int $installationId = null,
         ?int $ticketId = null,
         ?int $requisitionId = null,
-        ?int $resellerId = null
+        ?int $resellerId = null,
+        ?string $transactionId = null
     ): ?InventoryUsage {
+        if ($transactionId) {
+            $existing = InventoryUsage::where('notes', 'like', "%[TX: {$transactionId}]%")->first();
+            if ($existing) {
+                return $existing;
+            }
+        }
+
         return DB::transaction(function () use (
             $technicianId,
             $customerId,
@@ -834,10 +842,13 @@ class StockMutationService
             $installationId,
             $ticketId,
             $requisitionId,
-            $resellerId
+            $resellerId,
+            $transactionId
         ) {
             $techUser = \App\Models\User::find($technicianId);
             $branchId = $techUser?->branch_id;
+
+            $notesText = "Pemakaian material PSB via Wizard (SN: {$onuSn})" . ($transactionId ? " [TX: {$transactionId}]" : "");
 
             $usage = InventoryUsage::create([
                 'uuid' => (string) \Illuminate\Support\Str::uuid(),
@@ -849,7 +860,7 @@ class StockMutationService
                 'work_order_type' => 'psb',
                 'usage_date' => now()->toDateString(),
                 'optical_power' => $opticalPower ?: null,
-                'notes' => "Pemakaian material PSB via Wizard (SN: {$onuSn})",
+                'notes' => $notesText,
                 'branch_id' => $branchId,
             ]);
 
@@ -858,13 +869,14 @@ class StockMutationService
             // 1. Potong Modem ONT berdasarkan Serial Number
             $snClean = strtoupper(trim($onuSn));
             if (!empty($snClean)) {
-                $itemSerial = ItemSerial::where('serial_number', $snClean)->first();
+                $itemSerial = ItemSerial::where('serial_number', $snClean)->lockForUpdate()->first();
                 $custodyOnt = null;
 
                 if ($itemSerial) {
                     $custodyOnt = InventoryCustody::where('item_serial_id', $itemSerial->id)
                         ->whereIn('holder_id', $candidateHolderIds)
                         ->where('status', 'in_custody')
+                        ->lockForUpdate()
                         ->first();
                 }
 
@@ -879,6 +891,7 @@ class StockMutationService
                               ->orWhere('sku', 'like', '%ONT%');
                         })
                         ->whereRaw('(quantity - used_quantity - returned_quantity) >= 1')
+                        ->lockForUpdate()
                         ->first();
                 }
 
@@ -910,6 +923,13 @@ class StockMutationService
                         'quantity' => 1,
                         'notes' => "Modem ONT SN: {$snClean}",
                     ]);
+                } else {
+                    $isAdmin = $techUser && ($techUser->isSuperAdmin() || $techUser->hasAnyRole(['administrator', 'admin', 'manager', 'admin_gudang']));
+                    if (!$isAdmin) {
+                        throw new \InvalidArgumentException(
+                            "Kewajiban inventaris belum terpenuhi: Perangkat ONT SN '{$snClean}' tidak ditemukan dalam custody aktif teknisi. Aktivasi PSB dibatalkan."
+                        );
+                    }
                 }
             }
 

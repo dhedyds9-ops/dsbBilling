@@ -346,6 +346,12 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::post('/devices/{id}/reboot', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'reboot'])->name('devices.reboot');
             Route::post('/devices/{id}/wifi', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'setWifi'])->name('devices.wifi');
             Route::post('/devices/{id}/wan', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'setWan'])->name('devices.wan');
+            Route::get('/devices/{id}/wan', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'getWanList'])->name('devices.wan.index');
+            Route::post('/devices/{id}/wan/add', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'addWan'])->name('devices.wan.add');
+            Route::post('/devices/{id}/wan/update', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'updateWan'])->name('devices.wan.update');
+            Route::post('/devices/{id}/wan/delete', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'deleteWan'])->name('devices.wan.delete');
+            Route::post('/devices/{id}/wan/refresh', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'refreshWan'])->name('devices.wan.refresh');
+            Route::get('/devices/{id}/hardware', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'getHardware'])->name('devices.hardware');
             Route::post('/devices/{id}/admin-account', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'setAdminAccount'])->name('devices.admin-account');
             Route::post('/devices/purge-offline', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'purgeOffline'])->name('devices.purge-offline');
             Route::delete('/devices/{id}', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'deleteDevice'])->name('devices.delete');

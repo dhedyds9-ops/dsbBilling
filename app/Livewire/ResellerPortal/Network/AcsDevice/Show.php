@@ -110,35 +110,17 @@ class Show extends AdminComponent
             $wanIp = null;
             $wanMac = null;
 
-            // PON RX/TX Power
-            $rxPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower')
-                    ?? $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower')
-                    ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower')
-                    ?? $extract('VirtualParameters.RXPower');
-            $txPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower')
-                    ?? $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower')
-                    ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower')
-                    ?? $extract('VirtualParameters.TXPower');
+            // PON RX/TX Power using unified AcsTelemetryParser (ZTE swap anomaly detection & OLT fallback)
+            $flat = \App\Services\ACS\AcsTelemetryParser::flatten($params);
+            $optical = \App\Services\ACS\AcsTelemetryParser::parseOptical($flat, $this->device->onu);
+            $rxPower = $optical['rx_power'];
+            $txPower = $optical['tx_power'];
 
             // Find WAN IP, MAC, PPPoE, and PON stats dynamically
             $wanDevices = $params['InternetGatewayDevice']['WANDevice'] ?? $params['Device']['WANDevice'] ?? [];
             if (is_array($wanDevices)) {
                 foreach ($wanDevices as $wdIndex => $wdNode) {
                     if (!is_numeric($wdIndex) || !is_array($wdNode)) continue;
-                    
-                    // Try to find RX/TX in WANPONInterfaceConfig dynamically
-                    $ponConfig = $wdNode['WANPONInterfaceConfig'] ?? $wdNode['WANEponInterfaceConfig'] ?? [];
-                    if (is_array($ponConfig)) {
-                        foreach ($ponConfig as $pcIndex => $pcNode) {
-                            if (!is_numeric($pcIndex) || !is_array($pcNode)) continue;
-                            if ($rxPower === null) {
-                                $rxPower = $pcNode['X_ZTE-COM_RxPower']['_value'] ?? $pcNode['X_HW_RxPower']['_value'] ?? $pcNode['RxPower']['_value'] ?? null;
-                            }
-                            if ($txPower === null) {
-                                $txPower = $pcNode['X_ZTE-COM_TxPower']['_value'] ?? $pcNode['X_HW_TxPower']['_value'] ?? $pcNode['TxPower']['_value'] ?? null;
-                            }
-                        }
-                    }
 
                     $connDevices = $wdNode['WANConnectionDevice'] ?? [];
                     if (!is_array($connDevices)) continue;
@@ -182,27 +164,7 @@ class Show extends AdminComponent
                 }
             }
 
-            // TR-181 Transceiver fallback
-            if ($rxPower === null) $rxPower = $extract('Device.Optical.1.Transceiver.RxPower');
-            if ($txPower === null) $txPower = $extract('Device.Optical.1.Transceiver.TxPower');
 
-            if ($rxPower !== null && is_numeric($rxPower)) {
-                $rxPower = (float) $rxPower;
-                if ($rxPower < -500 || $rxPower > 500) {
-                    $rxPower /= 1000;
-                } elseif ($rxPower < -50 || $rxPower > 50) {
-                    $rxPower /= 100;
-                }
-            }
-
-            if ($txPower !== null && is_numeric($txPower)) {
-                $txPower = (float) $txPower;
-                if ($txPower < -500 || $txPower > 500) {
-                    $txPower /= 1000;
-                } elseif ($txPower < -50 || $txPower > 50) {
-                    $txPower /= 100;
-                }
-            }
 
             // SSIDs (Dynamic search)
             $ssid1 = null;

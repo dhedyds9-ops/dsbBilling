@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\Log;
 class MobileAcsProxyController extends Controller
 {
     public function __construct(
-        protected GenieACSDriver $driver
+        protected GenieACSDriver $driver,
+        protected \App\Services\ACS\AcsWanManagerService $wanService
     ) {}
 
     /**
@@ -842,85 +843,11 @@ class MobileAcsProxyController extends Controller
             };
             $flatten($params);
 
-            // CPU Usage
-            $rawCpu = $flat['InternetGatewayDevice.DeviceInfo.X_ZTE-COM_CpuUsed']
-                ?? $flat['VirtualParameters.CpuUsed']
-                ?? $flat['VirtualParameters.cpuused']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_ZTE-COM_CPUUsage']
-                ?? $flat['VirtualParameters.cpu']
-                ?? $flat['VirtualParameters.cpu_usage']
-                ?? $flat['VirtualParameters.CPU']
-                ?? $flat['VirtualParameters.CPUUsage']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.ProcessStatus.CPUUsage']
-                ?? $flat['Device.DeviceInfo.ProcessStatus.CPUUsage']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_HW_CPUUsage']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_FH_CPUUsage']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_CMCC_CPUUsage']
-                ?? ($ad?->cpu !== null ? (string)$ad->cpu : null);
-
-            $cpuUsage = null;
-            if ($rawCpu !== null && is_numeric($rawCpu)) {
-                $cpuUsage = round((float)$rawCpu, 1) . '%';
-            } elseif ($rawCpu !== null && trim($rawCpu) !== '') {
-                $cpuUsage = str_ends_with(trim($rawCpu), '%') ? trim($rawCpu) : trim($rawCpu) . '%';
-            }
-
-            // RAM Usage
-            $rawRam = $flat['InternetGatewayDevice.DeviceInfo.X_ZTE-COM_MemUsed']
-                ?? $flat['VirtualParameters.MemUsed']
-                ?? $flat['VirtualParameters.memused']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_ZTE-COM_MemoryUsage']
-                ?? $flat['VirtualParameters.ram']
-                ?? $flat['VirtualParameters.ram_usage']
-                ?? $flat['VirtualParameters.RAM']
-                ?? $flat['VirtualParameters.MemoryUsage']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_HW_MemoryUsage']
-                ?? ($ad?->memory !== null ? (string)$ad->memory : null);
-
-            $ramUsage = null;
-            if ($rawRam !== null && is_numeric($rawRam)) {
-                $ramUsage = round((float)$rawRam, 1) . '%';
-            } elseif ($rawRam !== null && trim($rawRam) !== '') {
-                $ramUsage = str_ends_with(trim($rawRam), '%') ? trim($rawRam) : trim($rawRam) . '%';
-            } else {
-                // Try MemoryStatus Total & Free
-                $memTotal = $flat['InternetGatewayDevice.DeviceInfo.MemoryStatus.Total'] ?? $flat['Device.DeviceInfo.MemoryStatus.Total'] ?? null;
-                $memFree = $flat['InternetGatewayDevice.DeviceInfo.MemoryStatus.Free'] ?? $flat['Device.DeviceInfo.MemoryStatus.Free'] ?? null;
-                if ($memTotal && $memFree && is_numeric($memTotal) && is_numeric($memFree) && (float)$memTotal > 0) {
-                    $usedPct = round(((float)$memTotal - (float)$memFree) / (float)$memTotal * 100, 1);
-                    $ramUsage = $usedPct . '%';
-                }
-            }
-
-            // Temperature
-            $rawTemp = $flat['VirtualParameters.gettemp']
-                ?? $flat['VirtualParameters.getTemp']
-                ?? $flat['VirtualParameters.GetTemp']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_ZTE-COM_Temperature']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_HW_Temperature']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_FH_Temperature']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.Temperature']
-                ?? $flat['Device.DeviceInfo.Temperature']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.TemperatureStatus.TemperatureSensor.1.Value']
-                ?? $flat['Device.DeviceInfo.TemperatureStatus.TemperatureSensor.1.Value']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TransceiverTemperature']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TransceiverTemperature']
-                ?? $flat['VirtualParameters.opticalTemperature']
-                ?? $flat['VirtualParameters.temperature']
-                ?? $flat['VirtualParameters.suhu']
-                ?? ($ad?->temperature !== null ? (string)$ad->temperature : null)
-                ?? ($onu?->temperature !== null ? (string)$onu->temperature : null);
-
-            $temperature = null;
-            if ($rawTemp !== null && trim((string)$rawTemp) !== '' && is_numeric($rawTemp)) {
-                $numTemp = (float) $rawTemp;
-                if ($numTemp != 0.0) {
-                    $t = (abs($numTemp) > 1000) ? round($numTemp / 1000, 1) : ((abs($numTemp) > 100) ? round($numTemp / 10, 1) : round($numTemp, 1));
-                    $temperature = $t . ' °C';
-                }
-            } elseif ($rawTemp !== null && trim($rawTemp) !== '') {
-                $temperature = str_contains(trim($rawTemp), '°C') ? trim($rawTemp) : trim($rawTemp) . ' °C';
-            }
+            // Use unified AcsTelemetryParser for standardized multi-vendor hardware metrics
+            $hw = \App\Services\ACS\AcsTelemetryParser::parseHardwareMetrics($flat, $ad);
+            $cpuUsage = $hw['cpu_usage_display'] !== 'Tidak Didukung' ? $hw['cpu_usage_display'] : null;
+            $ramUsage = $hw['ram_usage_display'] !== 'Tidak Didukung' ? $hw['ram_usage_display'] : null;
+            $temperature = $hw['temperature_display'] !== 'Tidak Didukung' ? $hw['temperature_display'] : null;
 
             // Redaman Optik (RX & TX) Normalization
             $rxPower = null;
@@ -1012,8 +939,26 @@ class MobileAcsProxyController extends Controller
 
             // Populate normalized values into params payload
             $params['cpu_usage'] = $cpuUsage;
+            $params['cpu_usage_raw'] = $hw['cpu_usage'];
+            $params['cpu_status'] = $hw['cpu_status'];
             $params['ram_usage'] = $ramUsage;
+            $params['ram_usage_raw'] = $hw['ram_usage'];
+            $params['ram_total'] = $hw['ram_total_display'];
+            $params['ram_free'] = $hw['ram_free_display'];
+            $params['ram_status'] = $hw['ram_status'];
             $params['temperature'] = $temperature;
+            $params['temperature_status'] = $hw['temperature_status'];
+            $params['flash_total'] = $hw['flash_total_display'];
+            $params['flash_free'] = $hw['flash_free_display'];
+            $params['flash_status'] = $hw['flash_status'];
+            $params['uptime'] = $hw['uptime_display'];
+            $params['uptime_seconds'] = $hw['uptime_seconds'];
+            $params['uptime_status'] = $hw['uptime_status'];
+            $params['hardware_metrics'] = $hw;
+
+            $detectedVendor = $hw['vendor'] ?? 'generic';
+            $wanConnections = \App\Services\ACS\AcsTelemetryParser::parseWanTree($params, $detectedVendor);
+            $params['wan_connections'] = $wanConnections;
             $params['rx_power'] = $rxPower;
             $params['tx_power'] = $txPower;
             if (!isset($params['VirtualParameters']) || !is_array($params['VirtualParameters'])) {
@@ -1383,6 +1328,265 @@ class MobileAcsProxyController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengatur WAN: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get Dynamic WAN Connections list for mobile app.
+     */
+    public function getWanList(Request $request, string $id): JsonResponse
+    {
+        if ($authCheck = $this->authorizeAcsAccess($request)) {
+            return $authCheck;
+        }
+
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'read')) {
+            return $devCheck;
+        }
+
+        try {
+            $data = $this->wanService->getWanConnections($cleanId);
+            return response()->json([
+                'success' => true,
+                'vendor' => $data['vendor'],
+                'data' => $data['connections'],
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil daftar WAN: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Add new WAN instance via mobile API.
+     */
+    public function addWan(Request $request, string $id): JsonResponse
+    {
+        if ($authCheck = $this->authorizeAcsAccess($request)) {
+            return $authCheck;
+        }
+
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'wan')) {
+            return $devCheck;
+        }
+
+        $request->validate([
+            'mode' => 'required|in:pppoe_route,dhcp_route,bridge_ppp,bridge_ip,static_route',
+            'vlan_id' => 'nullable|numeric|min:1|max:4094',
+            'vlan_enabled' => 'nullable|boolean',
+            'username' => 'nullable|string|max:128',
+            'password' => 'nullable|string|max:128',
+            'service_list' => 'nullable|string|max:64',
+            'nat_enabled' => 'nullable|boolean',
+            'bind_lan' => 'nullable|array',
+            'bind_wlan' => 'nullable|array',
+            'custom_binding' => 'nullable|string',
+        ]);
+
+        try {
+            $res = $this->wanService->addWanConnection($cleanId, $request->all(), $request->user()->id);
+
+            try {
+                AuditLog::create([
+                    'user_id' => $request->user()?->id,
+                    'action' => 'acs_add_wan',
+                    'description' => "Tambah WAN baru pada device {$cleanId} (mode: {$request->input('mode')}, vlan: {$request->input('vlan_id')}) via Mobile API.",
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'created_at' => now(),
+                ]);
+            } catch (\Throwable) {}
+
+            return response()->json([
+                'success' => $res['success'],
+                'task_id' => $res['task_id'] ?? null,
+                'message' => $res['message'],
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat WAN: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update existing WAN instance via mobile API.
+     */
+    public function updateWan(Request $request, string $id): JsonResponse
+    {
+        if ($authCheck = $this->authorizeAcsAccess($request)) {
+            return $authCheck;
+        }
+
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'wan')) {
+            return $devCheck;
+        }
+
+        $request->validate([
+            'full_path' => 'required|string',
+            'mode' => 'required|in:pppoe_route,dhcp_route,bridge_ppp,bridge_ip,static_route',
+            'vlan_id' => 'nullable|numeric|min:1|max:4094',
+            'vlan_enabled' => 'nullable|boolean',
+            'username' => 'nullable|string|max:128',
+            'password' => 'nullable|string|max:128',
+            'service_list' => 'nullable|string|max:64',
+            'nat_enabled' => 'nullable|boolean',
+            'bind_lan' => 'nullable|array',
+            'bind_wlan' => 'nullable|array',
+            'custom_binding' => 'nullable|string',
+        ]);
+
+        try {
+            $fullPath = $request->input('full_path');
+            $res = $this->wanService->updateWanConnection($cleanId, $fullPath, $request->all(), $request->user()->id);
+
+            try {
+                AuditLog::create([
+                    'user_id' => $request->user()?->id,
+                    'action' => 'acs_update_wan',
+                    'description' => "Update WAN {$fullPath} pada device {$cleanId} via Mobile API.",
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'created_at' => now(),
+                ]);
+            } catch (\Throwable) {}
+
+            return response()->json([
+                'success' => $res['success'],
+                'task_id' => $res['task_id'] ?? null,
+                'message' => $res['message'],
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui WAN: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete WAN instance via mobile API.
+     */
+    public function deleteWan(Request $request, string $id): JsonResponse
+    {
+        if ($authCheck = $this->authorizeAcsAccess($request)) {
+            return $authCheck;
+        }
+
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'wan')) {
+            return $devCheck;
+        }
+
+        $request->validate([
+            'full_path' => 'required|string',
+        ]);
+
+        $fullPath = $request->input('full_path');
+        if (str_contains(strtoupper($fullPath), 'TR069')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi TR-069 dilindungi dan tidak boleh dihapus.',
+            ], 403);
+        }
+
+        try {
+            $res = $this->wanService->deleteWanConnection($cleanId, $fullPath, $request->user()->id);
+
+            try {
+                AuditLog::create([
+                    'user_id' => $request->user()?->id,
+                    'action' => 'acs_delete_wan',
+                    'description' => "Hapus WAN {$fullPath} pada device {$cleanId} via Mobile API.",
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'created_at' => now(),
+                ]);
+            } catch (\Throwable) {}
+
+            return response()->json([
+                'success' => $res['success'],
+                'task_id' => $res['task_id'] ?? null,
+                'message' => $res['message'],
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus WAN: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Refresh WAN instances from device via TR-069.
+     */
+    public function refreshWan(Request $request, string $id): JsonResponse
+    {
+        if ($authCheck = $this->authorizeAcsAccess($request)) {
+            return $authCheck;
+        }
+
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'read')) {
+            return $devCheck;
+        }
+
+        try {
+            $realDeviceId = $this->driver->resolveDeviceId($cleanId);
+            $this->driver->refreshObject($realDeviceId, 'InternetGatewayDevice.WANDevice');
+            $this->driver->refreshObject($realDeviceId, 'Device.PPP.Interface');
+            $this->driver->refreshObject($realDeviceId, 'Device.IP.Interface');
+            $this->driver->summonDeviceResult($realDeviceId);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Permintaan refresh objek WAN berhasil dikirim ke perangkat.',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal merefresh WAN: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get comprehensive hardware monitoring telemetry.
+     */
+    public function getHardware(Request $request, string $id): JsonResponse
+    {
+        if ($authCheck = $this->authorizeAcsAccess($request)) {
+            return $authCheck;
+        }
+
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'read')) {
+            return $devCheck;
+        }
+
+        try {
+            $realDeviceId = $this->driver->resolveDeviceId($cleanId);
+            $params = $this->driver->getDeviceParameters($realDeviceId);
+            $flat = \App\Services\ACS\AcsTelemetryParser::flatten($params);
+
+            $ad = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where('uuid', $realDeviceId)->orWhere('serial_number', $realDeviceId)->first();
+            $metrics = \App\Services\ACS\AcsTelemetryParser::parseHardwareMetrics($flat, $ad);
+
+            return response()->json([
+                'success' => true,
+                'data' => $metrics,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data hardware: ' . $e->getMessage(),
             ], 500);
         }
     }
