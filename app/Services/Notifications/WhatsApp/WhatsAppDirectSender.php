@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Notifications\WhatsApp;
 
 use App\Models\Setting;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -21,6 +22,16 @@ class WhatsAppDirectSender
         $conn = Setting::getValue('whatsapp.connection', []);
         $provider = strtolower((string)($conn['provider'] ?? 'fonnte'));
         $token = trim((string)($conn['api_token'] ?? ''));
+        $target = trim($target);
+
+        // Idempotency / Deduplication Guard: Cegah pengiriman pesan identik ke target sama dalam 30 detik
+        $dedupKey = 'wa_direct_dedup:' . md5($target . ':' . trim($message));
+        if (!Cache::add($dedupKey, true, 30)) {
+            Log::info('[WhatsAppDirectSender] Duplicate message suppressed by idempotency guard', [
+                'target' => $target,
+            ]);
+            return ['success' => true, 'error' => null, 'response' => ['status' => true, 'deduplicated' => true]];
+        }
         $target = trim($target);
 
         if (empty($token)) {

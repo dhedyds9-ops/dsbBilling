@@ -24,10 +24,7 @@ class SendInvoiceEmailJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $customer = \App\Models\Customer::find($this->invoice->customer_id);
-            if (!$customer) {
-                $customer = \App\Models\CRM\Customer::find($this->invoice->customer_id);
-            }
+            $customer = \App\Models\CRM\Customer::find($this->invoice->customer_id);
 
             if (!$customer || empty($customer->email)) {
                 Log::info('[EMAIL-SEND] Skip sending invoice email, no valid email found for customer ID: ' . $this->invoice->customer_id);

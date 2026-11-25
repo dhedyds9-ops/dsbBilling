@@ -166,11 +166,11 @@
                         <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
                             <td class="px-3 py-3 whitespace-nowrap text-center">
                                 @if($currentType === 'pppoe')
-                                    <button wire:click="kickPppoe({{ $session->id }})" wire:confirm="Yakin ingin memutuskan koneksi sesi PPPoE ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer shadow-sm" title="Putuskan Sesi (Kick)">
+                                    <button wire:click="kickPppoe({{ $session->id }}, '{{ addslashes($session->name ?? '') }}', {{ $session->router_id ? $session->router_id : 'null' }})" wire:confirm="Yakin ingin memutuskan koneksi sesi PPPoE ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer shadow-sm" title="Putuskan Sesi (Kick)">
                                         <span class="material-symbols-outlined notranslate" style="font-size:18px" translate="no">power_settings_new</span>
                                     </button>
                                 @else
-                                    <button wire:click="kickHotspot({{ $session->id }})" wire:confirm="Yakin ingin memutuskan koneksi sesi Hotspot ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer shadow-sm" title="Putuskan Sesi (Kick)">
+                                    <button wire:click="kickHotspot({{ $session->id }}, '{{ addslashes($session->user ?? '') }}', {{ $session->router_id ? $session->router_id : 'null' }})" wire:confirm="Yakin ingin memutuskan koneksi sesi Hotspot ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer shadow-sm" title="Putuskan Sesi (Kick)">
                                         <span class="material-symbols-outlined notranslate" style="font-size:18px" translate="no">power_settings_new</span>
                                     </button>
                                 @endif

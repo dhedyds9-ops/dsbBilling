@@ -48,43 +48,137 @@ class UserOnline extends \App\Livewire\ISP\BaseNetworkComponent
         $this->resetPage();
     }
 
-    public function kickPppoe(int $sessionId)
+    public function kickPppoe(int $sessionId, ?string $username = null, ?int $routerId = null)
     {
-        try {
-            $session = PppActiveSession::with('router')->findOrFail($sessionId);
-            $kicker = app(SessionKickService::class);
-            $result = $kicker->kickPppoe($session, Auth::user());
+        $user = Auth::user();
 
-            $msg = 'PPPoE user berhasil diputuskan!';
-            $pod = $result['pod'] ?? null;
-            if (!$result['success'] || $pod === null || !($pod['success'] ?? false)) {
-                $msg .= ' (Hanya via API RouterOS — PoD RADIUS gagal/tidak tersedia. Radius user dapat reconnect.)';
+        if (empty($username)) {
+            $existing = PppActiveSession::find($sessionId);
+            $username = $existing?->name;
+            $routerId = $routerId ?: $existing?->router_id;
+        }
+
+        if ($user && $user->hasRole('reseller') && !empty($username)) {
+            if (!$this->authorizeResellerAccess('pppoe', $username)) {
+                session()->flash('error', 'Anda tidak memiliki hak akses untuk memutus sesi pengguna ini.');
+                return;
             }
-            session()->flash('success', $msg);
+        }
+
+        try {
+            $kicker = app(SessionKickService::class);
+            $result = $kicker->resolveAndKickPppoe($sessionId, $username, $routerId, $user);
+
+            if (($result['status'] ?? '') === 'already_inactive') {
+                session()->flash('warning', $result['message'] ?? 'Sesi PPPoE sudah tidak aktif atau telah terputus sebelumnya.');
+            } elseif (($result['status'] ?? '') === 'fallback_pod') {
+                session()->flash('success', $result['message']);
+            } else {
+                $msg = 'PPPoE user berhasil diputuskan!';
+                $pod = $result['pod'] ?? null;
+                if (!$result['success'] || $pod === null || !($pod['success'] ?? false)) {
+                    $msg .= ' (Hanya via API RouterOS — PoD RADIUS gagal/tidak tersedia. Radius user dapat reconnect.)';
+                }
+                session()->flash('success', $msg);
+            }
             $this->dispatch('refresh-online');
-        } catch (\Exception $e) {
-            Log::error('Failed to kick PPPoE user', ['session_id' => $sessionId, 'error' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            Log::error('Failed to kick PPPoE user in reseller portal', [
+                'session_id' => $sessionId,
+                'username' => $username,
+                'error' => $e->getMessage(),
+            ]);
             session()->flash('error', 'Gagal memutuskan PPPoE user: ' . $e->getMessage());
         }
     }
 
-    public function kickHotspot(int $sessionId)
+    public function kickHotspot(int $sessionId, ?string $username = null, ?int $routerId = null)
     {
-        try {
-            $session = HotspotActiveSession::with('router')->findOrFail($sessionId);
-            $kicker = app(SessionKickService::class);
-            $result = $kicker->kickHotspot($session, Auth::user());
+        $user = Auth::user();
 
-            $msg = 'Hotspot user berhasil diputuskan!';
-            $pod = $result['pod'] ?? null;
-            if (!$result['success'] || $pod === null || !($pod['success'] ?? false)) {
-                $msg .= ' (Hanya via API RouterOS — PoD RADIUS gagal/tidak tersedia.)';
+        if (empty($username)) {
+            $existing = HotspotActiveSession::find($sessionId);
+            $username = $existing?->user;
+            $routerId = $routerId ?: $existing?->router_id;
+        }
+
+        if ($user && $user->hasRole('reseller') && !empty($username)) {
+            if (!$this->authorizeResellerAccess('hotspot', $username)) {
+                session()->flash('error', 'Anda tidak memiliki hak akses untuk memutus sesi pengguna ini.');
+                return;
             }
-            session()->flash('success', $msg);
+        }
+
+        try {
+            $kicker = app(SessionKickService::class);
+            $result = $kicker->resolveAndKickHotspot($sessionId, $username, $routerId, $user);
+
+            if (($result['status'] ?? '') === 'already_inactive') {
+                session()->flash('warning', $result['message'] ?? 'Sesi Hotspot sudah tidak aktif atau telah terputus sebelumnya.');
+            } elseif (($result['status'] ?? '') === 'fallback_pod') {
+                session()->flash('success', $result['message']);
+            } else {
+                $msg = 'Hotspot user berhasil diputuskan!';
+                $pod = $result['pod'] ?? null;
+                if (!$result['success'] || $pod === null || !($pod['success'] ?? false)) {
+                    $msg .= ' (Hanya via API RouterOS — PoD RADIUS gagal/tidak tersedia.)';
+                }
+                session()->flash('success', $msg);
+            }
             $this->dispatch('refresh-online');
-        } catch (\Exception $e) {
-            Log::error('Failed to kick Hotspot user', ['session_id' => $sessionId, 'error' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            Log::error('Failed to kick Hotspot user in reseller portal', [
+                'session_id' => $sessionId,
+                'username' => $username,
+                'error' => $e->getMessage(),
+            ]);
             session()->flash('error', 'Gagal memutuskan Hotspot user: ' . $e->getMessage());
+        }
+    }
+
+    private function authorizeResellerAccess(string $type, string $username): bool
+    {
+        $user = Auth::user();
+        if (!$user || !$user->hasRole('reseller')) {
+            return true;
+        }
+
+        $effectiveResellerId = $user->getEffectiveResellerId();
+        if (!$effectiveResellerId) {
+            return false;
+        }
+
+        if ($type === 'pppoe') {
+            return \App\Models\ISP\PPPoEUser::withoutGlobalScopes()
+                ->where(function($uq) use ($username) {
+                    $uq->whereRaw('LOWER(username) = LOWER(?)', [$username])
+                       ->orWhereRaw('LOWER(?) LIKE LOWER(username) || \'@%\'', [$username])
+                       ->orWhereRaw('LOWER(username) LIKE LOWER(?) || \'@%\'', [$username]);
+                })
+                ->where(function($rq) use ($effectiveResellerId) {
+                    $rq->where('reseller_id', $effectiveResellerId)
+                       ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $effectiveResellerId)->orWhere('created_by', $effectiveResellerId))
+                       ->orWhereHas('customerService', fn($csq) => $csq->withoutGlobalScopes()->whereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $effectiveResellerId)->orWhere('created_by', $effectiveResellerId)));
+                })
+                ->exists();
+        } else {
+            $isVoucher = \App\Models\ISP\Voucher::where('code', $username)
+                ->where('reseller_id', $effectiveResellerId)
+                ->exists();
+            if ($isVoucher) {
+                return true;
+            }
+
+            return \App\Models\ISP\HotspotUser::withoutGlobalScopes()
+                ->where(function($uq) use ($username) {
+                    $uq->whereRaw('LOWER(username) = LOWER(?)', [$username]);
+                })
+                ->where(function($rq) use ($effectiveResellerId) {
+                    $rq->where('reseller_id', $effectiveResellerId)
+                       ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $effectiveResellerId)->orWhere('created_by', $effectiveResellerId))
+                       ->orWhereHas('customerService', fn($csq) => $csq->withoutGlobalScopes()->whereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $effectiveResellerId)->orWhere('created_by', $effectiveResellerId)));
+                })
+                ->exists();
         }
     }
 

@@ -58,14 +58,38 @@ class ProvisioningService
             // Step 2: Find or Create Contract for Customer
             $contract = $this->findOrCreateContract($customer, $userId);
 
+            $effectiveBranchId = !empty($data['branch_id']) ? $data['branch_id'] : ($customer->branch_id ?? null);
+            $effectiveResellerId = !empty($data['reseller_id']) ? $data['reseller_id'] : ($customer->reseller_id ?? null);
+
             // Step 3: Get Service Profile (SSOT - withoutGlobalScopes to prevent branch/reseller nullification)
             $serviceProfile = null;
             if (!empty($data['service_profile_id'])) {
                 $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find($data['service_profile_id']);
-            }
-            if (!$serviceProfile) {
-                $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->where('is_active', true)->first()
+                if (!$serviceProfile) {
+                    throw new \DomainException("Aktivasi gagal: Paket Layanan ID '{$data['service_profile_id']}' tidak ditemukan.");
+                }
+                if (!$serviceProfile->is_active) {
+                    throw new \DomainException("Aktivasi gagal: Paket Layanan '{$serviceProfile->name}' berstatus tidak aktif.");
+                }
+            } else {
+                $spQuery = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()
+                    ->active()
+                    ->where(function ($q) {
+                        $q->whereIn('service_type', ['pppoe', 'PPPoE', 'ftth', 'FTTH', 'kombinasi', 'Kombinasi'])
+                          ->orWhereNull('service_type');
+                    });
+                if ($effectiveBranchId) {
+                    $spQuery->where(function ($q) use ($effectiveBranchId) {
+                        $q->whereNull('branch_id')->orWhere('branch_id', $effectiveBranchId);
+                    });
+                }
+                $serviceProfile = $spQuery->first()
+                    ?? \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->active()->first()
                     ?? \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->first();
+            }
+
+            if (!$serviceProfile) {
+                throw new \DomainException("Aktivasi gagal: Tidak ada Paket Layanan (ServiceProfile) yang terdaftar di sistem.");
             }
 
             $service = Service::first();
@@ -103,8 +127,20 @@ class ProvisioningService
             }
 
             $actualOnuId = $this->resolveOnuId($data['onu_id'] ?? null, $data, $userId);
-            $effectiveBranchId = !empty($data['branch_id']) ? $data['branch_id'] : ($customer->branch_id ?? null);
-            $effectiveResellerId = !empty($data['reseller_id']) ? $data['reseller_id'] : ($customer->reseller_id ?? null);
+
+            // Cek konflik kepemilikan ONU (cegah pembajakan perangkat yang aktif pada pelanggan lain)
+            if ($actualOnuId) {
+                $conflictCs = CustomerService::withoutGlobalScopes()
+                    ->where('onu_id', $actualOnuId)
+                    ->where('status', 'active')
+                    ->where('customer_id', '!=', $customer->id)
+                    ->first();
+                if ($conflictCs) {
+                    $otherCust = Customer::withoutGlobalScopes()->find($conflictCs->customer_id);
+                    $otherName = $otherCust ? $otherCust->name : "ID #{$conflictCs->customer_id}";
+                    throw new \DomainException("Perangkat ONU sedang aktif digunakan oleh {$otherName}. Aktivasi ditolak untuk mencegah konflik layanan.");
+                }
+            }
 
             // Step 4: Find or Create CustomerService (Idempotent)
             $customerService = CustomerService::withoutGlobalScopes()
@@ -425,14 +461,38 @@ class ProvisioningService
             // Step 2: Find or Create Contract for Customer
             $contract = $this->findOrCreateContract($customer, $userId);
 
+            $effectiveBranchId = !empty($data['branch_id']) ? $data['branch_id'] : ($customer->branch_id ?? null);
+            $effectiveResellerId = !empty($data['reseller_id']) ? $data['reseller_id'] : ($customer->reseller_id ?? null);
+
             // Step 3: Get Service Profile (SSOT - withoutGlobalScopes)
             $serviceProfile = null;
             if (!empty($data['service_profile_id'])) {
                 $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find($data['service_profile_id']);
-            }
-            if (!$serviceProfile) {
-                $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->where('is_active', true)->first()
+                if (!$serviceProfile) {
+                    throw new \DomainException("Aktivasi gagal: Paket Layanan ID '{$data['service_profile_id']}' tidak ditemukan.");
+                }
+                if (!$serviceProfile->is_active) {
+                    throw new \DomainException("Aktivasi gagal: Paket Layanan '{$serviceProfile->name}' berstatus tidak aktif.");
+                }
+            } else {
+                $spQuery = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()
+                    ->active()
+                    ->where(function ($q) {
+                        $q->whereIn('service_type', ['hotspot', 'Hotspot', 'voucher', 'Voucher', 'member_hotspot', 'kombinasi', 'Kombinasi'])
+                          ->orWhereNull('service_type');
+                    });
+                if ($effectiveBranchId) {
+                    $spQuery->where(function ($q) use ($effectiveBranchId) {
+                        $q->whereNull('branch_id')->orWhere('branch_id', $effectiveBranchId);
+                    });
+                }
+                $serviceProfile = $spQuery->first()
+                    ?? \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->active()->first()
                     ?? \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->first();
+            }
+
+            if (!$serviceProfile) {
+                throw new \DomainException("Aktivasi gagal: Tidak ada Paket Layanan (ServiceProfile) yang terdaftar di sistem.");
             }
 
             $service = Service::first();
@@ -470,8 +530,20 @@ class ProvisioningService
             }
 
             $actualOnuId = $this->resolveOnuId($data['onu_id'] ?? null, $data, $userId);
-            $effectiveBranchId = !empty($data['branch_id']) ? $data['branch_id'] : ($customer->branch_id ?? null);
-            $effectiveResellerId = !empty($data['reseller_id']) ? $data['reseller_id'] : ($customer->reseller_id ?? null);
+
+            // Cek konflik kepemilikan ONU (cegah pembajakan perangkat yang aktif pada pelanggan lain)
+            if ($actualOnuId) {
+                $conflictCs = CustomerService::withoutGlobalScopes()
+                    ->where('onu_id', $actualOnuId)
+                    ->where('status', 'active')
+                    ->where('customer_id', '!=', $customer->id)
+                    ->first();
+                if ($conflictCs) {
+                    $otherCust = Customer::withoutGlobalScopes()->find($conflictCs->customer_id);
+                    $otherName = $otherCust ? $otherCust->name : "ID #{$conflictCs->customer_id}";
+                    throw new \DomainException("Perangkat ONU sedang aktif digunakan oleh {$otherName}. Aktivasi ditolak untuk mencegah konflik layanan.");
+                }
+            }
 
             // Step 4: Find or Create CustomerService (Idempotent)
             $customerService = CustomerService::withoutGlobalScopes()
@@ -1269,6 +1341,9 @@ class ProvisioningService
                 'name' => 'ONU ' . ($data['name'] ?? $sn),
                 'serial_number' => $sn,
                 'status' => 'active',
+                'branch_id' => $data['branch_id'] ?? null,
+                'olt_id' => $data['olt_id'] ?? null,
+                'odp_id' => $data['odp_id'] ?? null,
                 'created_by' => $userId,
             ]);
             return (int) $createdOnu->id;

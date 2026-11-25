@@ -231,26 +231,29 @@ class MobileSessionApiController extends Controller
         $user = $request->user();
         $kicker = app(SessionKickService::class);
         $type = strtolower($type);
+        $username = $request->input('username');
+        $routerId = $request->input('router_id') ? (int) $request->input('router_id') : null;
 
         try {
             if ($type === 'pppoe') {
-                $session = PppActiveSession::with('router')->findOrFail($id);
-                $result = $kicker->kickPppoe($session, $user);
+                $result = $kicker->resolveAndKickPppoe($id, $username, $routerId, $user);
             } else {
-                $session = HotspotActiveSession::with('router')->findOrFail($id);
-                $result = $kicker->kickHotspot($session, $user);
+                $result = $kicker->resolveAndKickHotspot($id, $username, $routerId, $user);
             }
 
             $success = $result['success'] ?? false;
+            $message = $result['message'] ?? ($success ? 'Sesi berhasil diputuskan!' : 'Permintaan putus sesi dikirim ke router.');
+
             return response()->json([
                 'success' => $success,
-                'message' => $success ? 'Sesi berhasil diputuskan!' : 'Permintaan putus sesi dikirim ke router.',
+                'message' => $message,
                 'result' => $result,
             ]);
         } catch (\Throwable $e) {
             Log::error('Mobile session kick failed', [
                 'type' => $type,
                 'session_id' => $id,
+                'username' => $username,
                 'error' => $e->getMessage(),
             ]);
 

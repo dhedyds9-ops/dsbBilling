@@ -132,6 +132,7 @@ class PsbWizardCustomerServiceIntegrityTest extends TestCase
             'download_speed' => 20480,
             'upload_speed' => 10240,
             'service_type' => 'pppoe',
+            'status' => 'active',
             'is_active' => true,
             'branch_id' => $this->branch->id,
             'reseller_id' => $this->reseller->id,
@@ -146,6 +147,7 @@ class PsbWizardCustomerServiceIntegrityTest extends TestCase
             'download_speed' => 10240,
             'upload_speed' => 5120,
             'service_type' => 'hotspot',
+            'status' => 'active',
             'is_active' => true,
             'branch_id' => $this->branch->id,
             'reseller_id' => $this->reseller->id,
@@ -706,5 +708,482 @@ class PsbWizardCustomerServiceIntegrityTest extends TestCase
             'reseller_id' => $this->reseller->id,
             'customer_service_id' => $cs->id,
         ]);
+    }
+
+    /**
+     * REQUIREMENT: Customer Existing
+     * Running PSB for an existing customer reuses the customer record,
+     * updates details if needed, and links new service without duplication.
+     */
+    public function test_psb_with_existing_customer_reuses_customer_without_duplication(): void
+    {
+        $this->actingAs($this->technician);
+
+        // Pre-create existing customer
+        $existingCustomer = Customer::create([
+            'code' => 'CUST-EX-001',
+            'name' => 'Bambang Pamungkas',
+            'phone' => '081299887766',
+            'address' => 'Jl. Dago No. 12, Bandung',
+            'branch_id' => $this->branch->id,
+            'reseller_id' => $this->reseller->id,
+            'status' => 'active',
+        ]);
+
+        $onu = Onu::create([
+            'serial_number' => 'ZTEG88991122',
+            'code' => 'ONU-EX-01',
+            'name' => 'ONT Bambang',
+            'branch_id' => $this->branch->id,
+            'olt_id' => $this->olt->id,
+            'status' => 'inactive',
+        ]);
+
+        $service = app(ProvisioningService::class);
+        $result = $service->activatePPPoEService([
+            'customer_id' => $existingCustomer->id,
+            'name' => 'Bambang Pamungkas Updated',
+            'phone' => '081299887766',
+            'address' => 'Jl. Dago No. 12B, Bandung',
+            'service_profile_id' => $this->pppoeProfile->id,
+            'router_id' => $this->router->id,
+            'username' => 'bambang_p',
+            'password' => 'bambangPass123',
+            'onu_id' => $onu->id,
+            'branch_id' => $this->branch->id,
+            'reseller_id' => $this->reseller->id,
+        ], $this->technician->id);
+
+        $this->assertTrue($result['success']);
+        $this->assertEquals($existingCustomer->id, $result['customer']->id);
+
+        // Customer record count must strictly remain 1
+        $this->assertEquals(1, Customer::where('phone', '081299887766')->count(), 'Customer must not be duplicated');
+
+        // Service & Instance must be linked to existing customer
+        $this->assertEquals($existingCustomer->id, $result['customer_service']->customer_id);
+        $this->assertEquals($result['customer_service']->id, $result['service_instance']->customer_service_id);
+    }
+
+    /**
+     * REQUIREMENT: Relasi Paket Kosong
+     * If service_profile_id is missing or null, system resolves the active package fallback
+     * guaranteeing customer_service->service_profile_id is NEVER null.
+     * If no profile exists at all in system, rejects with DomainException.
+     */
+    public function test_relasi_paket_kosong_resolves_fallback_or_rejects_cleanly(): void
+    {
+        $this->actingAs($this->technician);
+
+        $onu = Onu::create([
+            'serial_number' => 'ZTEG44556677',
+            'code' => 'ONU-FALLBACK',
+            'name' => 'ONT Fallback Test',
+            'branch_id' => $this->branch->id,
+            'olt_id' => $this->olt->id,
+            'status' => 'inactive',
+        ]);
+
+        // Scenario A: service_profile_id is not passed -> resolves active fallback package
+        $service = app(ProvisioningService::class);
+        $result = $service->activatePPPoEService([
+            'name' => 'Eko Prasetyo',
+            'phone' => '081234567801',
+            'address' => 'Jl. Pasirkaliki No. 50, Bandung',
+            // service_profile_id omitted
+            'router_id' => $this->router->id,
+            'username' => 'eko_prasetyo',
+            'password' => 'ekoPass123',
+            'onu_id' => $onu->id,
+            'branch_id' => $this->branch->id,
+        ], $this->technician->id);
+
+        $this->assertTrue($result['success']);
+        $this->assertNotNull($result['customer_service']->service_profile_id, 'CustomerService service_profile_id must not be null');
+        $this->assertNotNull($result['customer_service']->serviceProfile, 'CustomerService->serviceProfile relation must resolve');
+
+        // Scenario B: All service profiles deleted -> throws clear DomainException
+        ServiceProfile::query()->forceDelete();
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('Tidak ada Paket Layanan (ServiceProfile) yang terdaftar di sistem');
+
+        $service->activatePPPoEService([
+            'name' => 'Fajar Nugraha',
+            'phone' => '081234567802',
+            'address' => 'Jl. Cihampelas No. 20, Bandung',
+            'router_id' => $this->router->id,
+            'username' => 'fajar_nugraha',
+            'password' => 'fajarPass123',
+            'branch_id' => $this->branch->id,
+        ], $this->technician->id);
+    }
+
+    /**
+     * REQUIREMENT: SN ONU Sudah Digunakan
+     * When an ONU SN is actively assigned to Customer A, attempting to provision
+     * Customer B with the same ONU SN must be rejected with DomainException.
+     */
+    public function test_sn_onu_sudah_digunakan_throws_conflict_exception(): void
+    {
+        $this->actingAs($this->technician);
+
+        $conflictOnu = Onu::create([
+            'serial_number' => 'ZTEG99990001',
+            'code' => 'ONU-CONFLICT-01',
+            'name' => 'ONT Pelanggan Lama',
+            'branch_id' => $this->branch->id,
+            'olt_id' => $this->olt->id,
+            'status' => 'active',
+        ]);
+
+        $custA = Customer::create([
+            'code' => 'CUST-A-01',
+            'name' => 'Pelanggan A',
+            'phone' => '081234567803',
+            'branch_id' => $this->branch->id,
+            'status' => 'active',
+        ]);
+
+        CustomerService::create([
+            'uuid' => (string) Str::uuid(),
+            'customer_id' => $custA->id,
+            'onu_id' => $conflictOnu->id,
+            'service_profile_id' => $this->pppoeProfile->id,
+            'username' => 'pelanggan_a',
+            'password' => 'secret',
+            'status' => 'active',
+            'branch_id' => $this->branch->id,
+        ]);
+
+        // Attempting to provision Pelanggan B with the same ONU
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('Perangkat ONU sedang aktif digunakan oleh Pelanggan A');
+
+        $service = app(ProvisioningService::class);
+        $service->activatePPPoEService([
+            'name' => 'Pelanggan B',
+            'phone' => '081234567804',
+            'address' => 'Jl. Gatot Subroto No. 88, Bandung',
+            'service_profile_id' => $this->pppoeProfile->id,
+            'router_id' => $this->router->id,
+            'username' => 'pelanggan_b',
+            'password' => 'secretB',
+            'onu_id' => $conflictOnu->id,
+            'branch_id' => $this->branch->id,
+        ], $this->technician->id);
+    }
+
+    /**
+     * REQUIREMENT: Tenant Isolation
+     * Technician from Branch A cannot provision or hijack Work Orders / Customers in Branch B.
+     */
+    public function test_tenant_isolation_prevents_cross_branch_work_order_activation(): void
+    {
+        $branchB = Branch::create([
+            'name' => 'Cabang Jakarta Selatan',
+            'code' => 'JKT-01',
+            'is_active' => true,
+        ]);
+
+        $custBranchB = Customer::create([
+            'code' => 'CUST-JKT-01',
+            'name' => 'Pelanggan Jakarta',
+            'phone' => '081234567805',
+            'address' => 'Jl. Sudirman No. 1, Jakarta',
+            'branch_id' => $branchB->id,
+            'status' => 'active',
+        ]);
+
+        $woBranchB = WorkOrder::create([
+            'uuid' => (string) Str::uuid(),
+            'work_order_number' => 'WO-PSB-JKT-01',
+            'title' => 'PSB: Pelanggan Jakarta',
+            'customer_id' => $custBranchB->id,
+            'branch_id' => $branchB->id,
+            'type' => 'installation',
+            'status' => 'in_progress',
+        ]);
+
+        // Technician from Branch Bandung attempts to provision SPK in Branch Jakarta
+        $response = $this->actingAs($this->technician, 'sanctum')
+            ->postJson('/api/mobile/network/onu/provision', [
+                'serial_number' => 'ZTEG77881122',
+                'work_order_id' => $woBranchB->id,
+                'customer_id' => $custBranchB->id,
+                'service_profile_id' => $this->pppoeProfile->id,
+            ]);
+
+        $response->assertStatus(403)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Aktivasi ditolak: Anda tidak memiliki wewenang untuk menyelesaikan SPK di luar cabang kantor Anda (Branch Isolation).');
+    }
+
+    /**
+     * REQUIREMENT: Duplikasi Transaksi dan Mutasi Stok Dicegah
+     * Retrying or re-submitting with the same transaction_id does not create duplicate
+     * InventoryUsage or double-deduct inventory stock.
+     */
+    public function test_duplikasi_transaksi_dan_mutasi_stok_dicegah(): void
+    {
+        $warehouse = Warehouse::create([
+            'name' => 'Gudang Pusat Bandung',
+            'code' => 'GUD-BDG-02',
+            'branch_id' => $this->branch->id,
+            'is_active' => true,
+        ]);
+
+        $item = Item::create([
+            'name' => 'Kabel Dropcore 1 Core',
+            'sku' => 'DC-1C-100',
+            'type' => 'non_serialized',
+            'is_serialized' => false,
+            'is_active' => true,
+        ]);
+
+        \App\Models\Inventory\InventoryStock::create([
+            'warehouse_id' => $warehouse->id,
+            'item_id' => $item->id,
+            'quantity' => 1000,
+            'reserved_quantity' => 0,
+            'branch_id' => $this->branch->id,
+        ]);
+
+        InventoryCustody::create([
+            'item_id' => $item->id,
+            'holder_id' => $this->technician->id,
+            'status' => 'in_custody',
+            'quantity' => 500,
+            'used_quantity' => 0,
+            'returned_quantity' => 0,
+            'held_at' => now(),
+        ]);
+
+        $onuItem = Item::create([
+            'name' => 'ONT ZTE F609',
+            'sku' => 'ONT-ZTE-F609',
+            'type' => 'serialized',
+            'is_serialized' => true,
+            'is_active' => true,
+        ]);
+
+        $itemSerial = ItemSerial::create([
+            'item_id' => $onuItem->id,
+            'serial_number' => 'ZTEG11223399',
+            'status' => 'in_custody',
+        ]);
+
+        InventoryCustody::create([
+            'item_id' => $onuItem->id,
+            'item_serial_id' => $itemSerial->id,
+            'holder_id' => $this->technician->id,
+            'status' => 'in_custody',
+            'quantity' => 1,
+            'held_at' => now(),
+        ]);
+
+        $cust = Customer::create([
+            'code' => 'CUST-STK-01',
+            'name' => 'Guruh Soekarno',
+            'phone' => '081234567806',
+            'branch_id' => $this->branch->id,
+            'status' => 'active',
+        ]);
+
+        $stockService = app(\App\Services\Inventory\StockMutationService::class);
+        $txId = 'PSB-TEST-TX-' . Str::random(8);
+
+        // First Execution
+        $usage1 = $stockService->recordPsbConsumption(
+            technicianId: $this->technician->id,
+            customerId: $cust->id,
+            onuSn: 'ZTEG11223399',
+            dropcoreMeters: 100,
+            fastConnectorQty: 2,
+            transactionId: $txId
+        );
+
+        $this->assertNotNull($usage1);
+
+        // Second Execution with same transactionId (simulating network retry / double tap)
+        $usage2 = $stockService->recordPsbConsumption(
+            technicianId: $this->technician->id,
+            customerId: $cust->id,
+            onuSn: 'ZTEG11223399',
+            dropcoreMeters: 100,
+            fastConnectorQty: 2,
+            transactionId: $txId
+        );
+
+        $this->assertNotNull($usage2);
+        $this->assertEquals($usage1->id, $usage2->id, 'Must return identical usage record without duplicating');
+
+        // Total usage records matching this TX must be exactly 1
+        $count = \App\Models\Inventory\InventoryUsage::where('notes', 'like', "%[TX: {$txId}]%")->count();
+        $this->assertEquals(1, $count, 'Inventory usage must be recorded exactly once per transaction_id');
+    }
+
+    /**
+     * AUDIT VERIFICATION (PHASE 1B.1 - Item 1):
+     * Invalid or inactive service_profile_id passed explicitly must be strictly rejected,
+     * not silently falling back to another active package.
+     */
+    public function test_invalid_or_inactive_service_profile_id_is_strictly_rejected(): void
+    {
+        $this->actingAs($this->technician);
+
+        $service = app(ProvisioningService::class);
+
+        // Case 1: Non-existent service_profile_id
+        try {
+            $service->activatePPPoEService([
+                'name' => 'Bad Profile User',
+                'phone' => '081234990011',
+                'address' => 'Jl. Uji Coba 1',
+                'service_profile_id' => 999999,
+                'router_id' => $this->router->id,
+                'username' => 'bad_profile_user',
+                'password' => 'secret123',
+                'branch_id' => $this->branch->id,
+            ], $this->technician->id);
+            $this->fail('Expected DomainException for non-existent service_profile_id');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('tidak ditemukan', $e->getMessage());
+        }
+
+        // Case 2: Inactive service_profile
+        $inactiveProfile = ServiceProfile::create([
+            'service_profile_type_id' => $this->pppoeProfile->service_profile_type_id,
+            'code' => 'PKG-INACTIVE',
+            'name' => 'Paket Tidak Aktif',
+            'price' => 100000,
+            'base_price' => 100000,
+            'service_type' => 'pppoe',
+            'status' => 'inactive',
+            'branch_id' => $this->branch->id,
+        ]);
+
+        try {
+            $service->activatePPPoEService([
+                'name' => 'Inactive Profile User',
+                'phone' => '081234990022',
+                'address' => 'Jl. Uji Coba 2',
+                'service_profile_id' => $inactiveProfile->id,
+                'router_id' => $this->router->id,
+                'username' => 'inactive_profile_user',
+                'password' => 'secret123',
+                'branch_id' => $this->branch->id,
+            ], $this->technician->id);
+            $this->fail('Expected DomainException for inactive service_profile_id');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('berstatus tidak aktif', $e->getMessage());
+        }
+    }
+
+    /**
+     * AUDIT VERIFICATION (PHASE 1B.1 - Items 2, 4):
+     * - Technician cannot provision using ODP/OLT outside their branch (Branch Isolation).
+     * - ServiceInstance->customer() resolves correctly even when CustomerService is soft-deleted.
+     */
+    public function test_cross_branch_odp_olt_rejection_and_soft_deleted_customer_relation(): void
+    {
+        $otherBranch = Branch::create([
+            'name' => 'Cabang Jakarta Selatan',
+            'code' => 'JKT-01',
+            'is_active' => true,
+        ]);
+
+        $otherOdp = Odp::create([
+            'name' => 'ODP-JKT-01',
+            'code' => 'ODP-JKT-01',
+            'branch_id' => $otherBranch->id,
+            'status' => 'active',
+        ]);
+
+        $otherOlt = Olt::create([
+            'code' => 'OLT-JKT-01',
+            'name' => 'OLT Jakarta',
+            'ip_address' => '10.20.20.1',
+            'vendor_id' => $this->vendor->id,
+            'branch_id' => $otherBranch->id,
+            'status' => 'active',
+        ]);
+
+        $customer = Customer::create([
+            'code' => 'CUST-AUDIT-01',
+            'name' => 'Budi Security Audit',
+            'phone' => '081299881122',
+            'address' => 'Jl. Antapani No. 99, Bandung',
+            'branch_id' => $this->branch->id,
+            'status' => 'active',
+        ]);
+
+        $workOrder = WorkOrder::create([
+            'uuid' => (string) Str::uuid(),
+            'work_order_number' => 'WO-AUDIT-01',
+            'title' => 'PSB: Budi Security Audit',
+            'customer_id' => $customer->id,
+            'branch_id' => $this->branch->id,
+            'assigned_to' => $this->technician->id,
+            'type' => 'installation',
+            'status' => 'in_progress',
+        ]);
+
+        // Attempt provisioning with foreign ODP -> HTTP 403
+        $respOdp = $this->actingAs($this->technician, 'sanctum')
+            ->postJson('/api/mobile/network/onu/provision', [
+                'serial_number' => 'ZTEG99887766',
+                'mac_address' => '112233445566',
+                'model' => 'ZTE-F670L',
+                'work_order_id' => $workOrder->id,
+                'customer_id' => $customer->id,
+                'odp_id' => $otherOdp->id,
+                'olt_id' => $this->olt->id,
+            ]);
+        $respOdp->assertStatus(403)
+            ->assertJsonPath('message', 'Aktivasi ditolak: ODP berada di luar cabang kantor Anda (Branch Isolation).');
+
+        // Attempt provisioning with foreign OLT -> HTTP 403
+        $respOlt = $this->actingAs($this->technician, 'sanctum')
+            ->postJson('/api/mobile/network/onu/provision', [
+                'serial_number' => 'ZTEG99887766',
+                'mac_address' => '112233445566',
+                'model' => 'ZTE-F670L',
+                'work_order_id' => $workOrder->id,
+                'customer_id' => $customer->id,
+                'odp_id' => $this->odp->id,
+                'olt_id' => $otherOlt->id,
+            ]);
+        $respOlt->assertStatus(403)
+            ->assertJsonPath('message', 'Aktivasi ditolak: OLT berada di luar cabang kantor Anda (Branch Isolation).');
+
+        // Test ServiceInstance soft delete customer relation
+        $service = app(ProvisioningService::class);
+        $result = $service->activatePPPoEService([
+            'customer_id' => $customer->id,
+            'name' => $customer->name,
+            'phone' => $customer->phone,
+            'address' => $customer->address,
+            'service_profile_id' => $this->pppoeProfile->id,
+            'router_id' => $this->router->id,
+            'username' => 'budi_soft_del',
+            'password' => 'budiPass123',
+            'branch_id' => $this->branch->id,
+        ], $this->technician->id);
+
+        $cs = $result['customer_service'];
+        $si = $result['service_instance'];
+
+        $this->assertEquals($customer->id, $si->customer->id);
+
+        // Soft delete CustomerService
+        $cs->delete();
+        $this->assertSoftDeleted('customer_services', ['id' => $cs->id]);
+
+        // Fresh instance must still successfully navigate to customer via withTrashedParents()
+        $freshSi = ServiceInstance::find($si->id);
+        $this->assertNotNull($freshSi->customerService);
+        $this->assertNotNull($freshSi->customer);
+        $this->assertEquals($customer->id, $freshSi->customer->id, 'ServiceInstance->customer must resolve even when CustomerService is soft-deleted');
     }
 }

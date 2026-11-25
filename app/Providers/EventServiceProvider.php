@@ -147,11 +147,11 @@ class EventServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        foreach ($this->listen as $event => $listeners) {
-            foreach ($listeners as $listener) {
-                Event::listen($event, $listener);
-            }
-        }
+        // Daftarkan listener multi-event yang menggunakan type-hint object (tidak bisa di-autodiscover oleh Laravel)
+        \Illuminate\Support\Facades\Event::listen(\App\Events\FieldService\TicketOperationalEvent::class, \App\Listeners\FieldService\FieldServiceNotificationListener::class);
+        \Illuminate\Support\Facades\Event::listen(\App\Events\FieldService\WorkOrderOperationalEvent::class, \App\Listeners\FieldService\FieldServiceNotificationListener::class);
+        \Illuminate\Support\Facades\Event::listen(\App\Events\FieldService\InstallationOperationalEvent::class, \App\Listeners\FieldService\FieldServiceNotificationListener::class);
+        \Illuminate\Support\Facades\Event::listen(\App\Events\FieldService\MaintenanceOperationalEvent::class, \App\Listeners\FieldService\FieldServiceNotificationListener::class);
     }
 }
 

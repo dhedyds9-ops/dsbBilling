@@ -36,7 +36,7 @@ class ServiceInstance extends Model
 
     public function customerService()
     {
-        return $this->belongsTo(CustomerService::class);
+        return $this->belongsTo(CustomerService::class)->withTrashed();
     }
 
     public function service()
@@ -52,6 +52,28 @@ class ServiceInstance extends Model
     public function resourceAssignments()
     {
         return $this->hasMany(ResourceAssignment::class);
+    }
+
+    public function customer()
+    {
+        return $this->hasOneThrough(
+            \App\Models\CRM\Customer::class,
+            CustomerService::class,
+            'id',
+            'id',
+            'customer_service_id',
+            'customer_id'
+        )->withTrashedParents();
+    }
+
+    public function getBranchIdAttribute(): ?int
+    {
+        return $this->customerService?->branch_id;
+    }
+
+    public function getResellerIdAttribute(): ?int
+    {
+        return $this->customerService?->reseller_id;
     }
 
     public function createdBy()

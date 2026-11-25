@@ -133,42 +133,60 @@ class Index extends BaseNetworkComponent
         $this->resetPage();
     }
 
-    public function kickPppoe(int $sessionId)
+    public function kickPppoe(int $sessionId, ?string $username = null, ?int $routerId = null)
     {
         try {
-            $session = PppActiveSession::with('router')->findOrFail($sessionId);
             $kicker = app(SessionKickService::class);
-            $result = $kicker->kickPppoe($session, Auth::user());
+            $result = $kicker->resolveAndKickPppoe($sessionId, $username, $routerId, Auth::user());
 
-            $msg = 'PPPoE user berhasil diputuskan!';
-            $pod = $result['pod'] ?? null;
-            if (!$result['success'] || $pod === null || !($pod['success'] ?? false)) {
-                $msg .= ' (Hanya via API RouterOS — PoD RADIUS gagal/tidak tersedia. Radius user dapat reconnect.)';
+            if (($result['status'] ?? '') === 'already_inactive') {
+                session()->flash('warning', $result['message'] ?? 'Sesi PPPoE sudah tidak aktif atau telah terputus sebelumnya.');
+            } elseif (($result['status'] ?? '') === 'fallback_pod') {
+                session()->flash('success', $result['message']);
+            } else {
+                $msg = 'PPPoE user berhasil diputuskan!';
+                $pod = $result['pod'] ?? null;
+                if (!$result['success'] || $pod === null || !($pod['success'] ?? false)) {
+                    $msg .= ' (Hanya via API RouterOS — PoD RADIUS gagal/tidak tersedia. Radius user dapat reconnect.)';
+                }
+                session()->flash('success', $msg);
             }
-            session()->flash('success', $msg);
             $this->dispatch('refresh-online');
-        } catch (\Exception $e) {
-            Log::error('Failed to kick PPPoE user', ['session_id' => $sessionId, 'error' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            Log::error('Failed to kick PPPoE user', [
+                'session_id' => $sessionId,
+                'username' => $username,
+                'error' => $e->getMessage(),
+            ]);
             session()->flash('error', 'Gagal memutuskan PPPoE user: ' . $e->getMessage());
         }
     }
 
-    public function kickHotspot(int $sessionId)
+    public function kickHotspot(int $sessionId, ?string $username = null, ?int $routerId = null)
     {
         try {
-            $session = HotspotActiveSession::with('router')->findOrFail($sessionId);
             $kicker = app(SessionKickService::class);
-            $result = $kicker->kickHotspot($session, Auth::user());
+            $result = $kicker->resolveAndKickHotspot($sessionId, $username, $routerId, Auth::user());
 
-            $msg = 'Hotspot user berhasil diputuskan!';
-            $pod = $result['pod'] ?? null;
-            if (!$result['success'] || $pod === null || !($pod['success'] ?? false)) {
-                $msg .= ' (Hanya via API RouterOS — PoD RADIUS gagal/tidak tersedia.)';
+            if (($result['status'] ?? '') === 'already_inactive') {
+                session()->flash('warning', $result['message'] ?? 'Sesi Hotspot sudah tidak aktif atau telah terputus sebelumnya.');
+            } elseif (($result['status'] ?? '') === 'fallback_pod') {
+                session()->flash('success', $result['message']);
+            } else {
+                $msg = 'Hotspot user berhasil diputuskan!';
+                $pod = $result['pod'] ?? null;
+                if (!$result['success'] || $pod === null || !($pod['success'] ?? false)) {
+                    $msg .= ' (Hanya via API RouterOS — PoD RADIUS gagal/tidak tersedia.)';
+                }
+                session()->flash('success', $msg);
             }
-            session()->flash('success', $msg);
             $this->dispatch('refresh-online');
-        } catch (\Exception $e) {
-            Log::error('Failed to kick Hotspot user', ['session_id' => $sessionId, 'error' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            Log::error('Failed to kick Hotspot user', [
+                'session_id' => $sessionId,
+                'username' => $username,
+                'error' => $e->getMessage(),
+            ]);
             session()->flash('error', 'Gagal memutuskan Hotspot user: ' . $e->getMessage());
         }
     }

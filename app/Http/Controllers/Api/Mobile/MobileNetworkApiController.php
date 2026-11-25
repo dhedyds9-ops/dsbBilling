@@ -1018,12 +1018,53 @@ class MobileNetworkApiController extends Controller
                 ], 403);
             }
 
+            // Validasi branch isolation teknisi
+            if (!$isAdmin && $user && $user->branch_id && $targetWo->branch_id && (int) $user->branch_id !== (int) $targetWo->branch_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aktivasi ditolak: Anda tidak memiliki wewenang untuk menyelesaikan SPK di luar cabang kantor Anda (Branch Isolation).',
+                ], 403);
+            }
+
             // Pastikan status SPK belum selesai atau dibatalkan
             if (in_array(strtolower((string) $targetWo->status), ['completed', 'closed', 'cancelled'])) {
                 return response()->json([
                     'success' => false,
                     'message' => "SPK #{$workOrderId} sudah berstatus {$targetWo->status} dan tidak dapat digunakan untuk pemasangan baru.",
                 ], 422);
+            }
+        }
+
+        // Validasi branch isolation pelanggan
+        if (!$isAdmin && $user && $user->branch_id && !empty($customerId)) {
+            $checkCust = Customer::withoutGlobalScopes()->find((int) $customerId);
+            if ($checkCust && $checkCust->branch_id && (int) $user->branch_id !== (int) $checkCust->branch_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aktivasi ditolak: Pelanggan berada di luar cabang kantor Anda (Branch Isolation).',
+                ], 403);
+            }
+        }
+
+        // Validasi branch isolation ODP dan OLT
+        if (!$isAdmin && $user && $user->branch_id) {
+            if (!empty($validated['odp_id'])) {
+                $checkOdp = \App\Models\ISP\Odp::withoutGlobalScopes()->find((int) $validated['odp_id']);
+                if ($checkOdp && $checkOdp->branch_id && (int) $user->branch_id !== (int) $checkOdp->branch_id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Aktivasi ditolak: ODP berada di luar cabang kantor Anda (Branch Isolation).',
+                    ], 403);
+                }
+            }
+            if (!empty($validated['olt_id'])) {
+                $checkOlt = \App\Models\ISP\Olt::withoutGlobalScopes()->find((int) $validated['olt_id']);
+                if ($checkOlt && $checkOlt->branch_id && (int) $user->branch_id !== (int) $checkOlt->branch_id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Aktivasi ditolak: OLT berada di luar cabang kantor Anda (Branch Isolation).',
+                    ], 403);
+                }
             }
         }
 
@@ -1097,7 +1138,7 @@ class MobileNetworkApiController extends Controller
                 }
 
                 // 1. Find or create ONU record
-                $onu = Onu::withoutGlobalScopes()->where('serial_number', $sn)->first();
+                $onu = Onu::withoutGlobalScopes()->where('serial_number', $sn)->lockForUpdate()->first();
 
                 if ($onu) {
                     $existingActiveCs = CustomerService::withoutGlobalScopes()
@@ -1357,20 +1398,47 @@ class MobileNetworkApiController extends Controller
                     ->where('customer_id', $customerId)
                     ->first();
 
-                $targetCs = null;
+                $targetProfileId = null;
+                if (!empty($validated['service_profile_id'])) {
+                    $spCheck = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find($validated['service_profile_id']);
+                    if (!$spCheck) {
+                        throw new \InvalidArgumentException("Aktivasi gagal: Paket Layanan ID '{$validated['service_profile_id']}' tidak ditemukan.");
+                    }
+                    if (!$spCheck->is_active) {
+                        throw new \InvalidArgumentException("Aktivasi gagal: Paket Layanan '{$spCheck->name}' berstatus nonaktif.");
+                    }
+                    if (!empty($spCheck->branch_id) && $user->branch_id && (int) $spCheck->branch_id !== (int) $user->branch_id) {
+                        throw new \InvalidArgumentException("Aktivasi gagal: Paket Layanan '{$spCheck->name}' hanya berlaku untuk cabang ID #{$spCheck->branch_id}.");
+                    }
+                    $targetProfileId = $spCheck->id;
+                } else {
+                    $spQuery = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->active();
+                    if ($user->branch_id) {
+                        $spQuery->where(function ($q) use ($user) {
+                            $q->whereNull('branch_id')->orWhere('branch_id', $user->branch_id);
+                        });
+                    }
+                    $targetProfileId = (clone $spQuery)->whereIn('service_type', ['pppoe', 'PPPoE', 'ftth', 'FTTH', 'kombinasi', 'Kombinasi'])->value('id')
+                        ?? $spQuery->value('id')
+                        ?? \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->value('id');
+                }
 
                 if ($cs) {
                     $cs->onu_id = $onu->id;
                     $cs->tr069_status = 'provisioned';
                     $cs->status = 'active';
-                    if (!empty($validated['service_profile_id'])) {
-                        $cs->service_profile_id = (int) $validated['service_profile_id'];
-                    }
+                    $cs->service_profile_id = $targetProfileId ?: $cs->service_profile_id;
                     if (!empty($validated['pppoe_username'])) {
                         $cs->username = trim($validated['pppoe_username']);
                     }
                     if (!empty($validated['pppoe_password'])) {
                         $cs->password = bcrypt(trim($validated['pppoe_password']));
+                    }
+                    if (empty($cs->branch_id)) {
+                        $cs->branch_id = $customer->branch_id ?? $user->branch_id;
+                    }
+                    if (empty($cs->reseller_id)) {
+                        $cs->reseller_id = $customer->reseller_id ?? $user->getEffectiveResellerId();
                     }
                     $cs->save();
                     $targetCs = $cs;
@@ -1420,13 +1488,11 @@ class MobileNetworkApiController extends Controller
                         $newCs->customer_id = $customerId;
                         $newCs->uuid = (string) Str::uuid();
                         $newCs->status = 'active';
-                        $newCs->branch_id = $user->branch_id;
+                        $newCs->branch_id = $customer->branch_id ?? $user->branch_id;
                         $newCs->reseller_id = $customer->reseller_id ?? $user->getEffectiveResellerId();
                         $newCs->onu_id = $onu->id;
                         $newCs->tr069_status = 'provisioned';
-                        if (!empty($validated['service_profile_id'])) {
-                            $newCs->service_profile_id = (int) $validated['service_profile_id'];
-                        }
+                        $newCs->service_profile_id = $targetProfileId;
                         $newCs->username = !empty($validated['pppoe_username']) ? trim($validated['pppoe_username']) : ('onu_' . strtolower(substr($sn, -6)));
                         $newCs->password = !empty($validated['pppoe_password']) ? bcrypt(trim($validated['pppoe_password'])) : bcrypt(Str::random(12));
                         $newCs->contract_id = $contractId ?: 1;
@@ -1441,15 +1507,16 @@ class MobileNetworkApiController extends Controller
                 // Sinkronkan ke tabel akun otentikasi (PPPoE User atau Hotspot User) agar muncul di modul jaringan
                 if ($targetCs) {
                     $serviceProfile = null;
-                    if (!empty($validated['service_profile_id'])) {
-                        $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find($validated['service_profile_id']);
+                    if (!empty($targetCs->service_profile_id)) {
+                        $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find($targetCs->service_profile_id);
                     }
                     if (!$serviceProfile) {
                         $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->first();
                     }
 
                     $serviceType = strtolower($serviceProfile?->service_type ?? 'pppoe');
-                    $routerId = \DB::table('routers')->where('branch_id', $user->branch_id)->value('id') 
+                    $effectiveBranchId = $customer->branch_id ?? $user->branch_id;
+                    $routerId = \DB::table('routers')->where('branch_id', $effectiveBranchId)->value('id') 
                              ?? \DB::table('routers')->value('id');
 
                     $credUser = !empty($validated['pppoe_username']) 
@@ -1474,7 +1541,7 @@ class MobileNetworkApiController extends Controller
                                     'port_number' => !empty($validated['odp_port']) ? (int) $validated['odp_port'] : null,
                                     'mac_address' => $sn,
                                     'status' => 'active',
-                                    'branch_id' => $user->branch_id,
+                                    'branch_id' => $effectiveBranchId,
                                     'reseller_id' => $customer->reseller_id ?? $user->getEffectiveResellerId(),
                                     'activated_at' => now(),
                                     'created_by' => $user->id,
@@ -1498,7 +1565,7 @@ class MobileNetworkApiController extends Controller
                                     'port_number' => !empty($validated['odp_port']) ? (int) $validated['odp_port'] : null,
                                     'mac_address' => $sn,
                                     'status' => 'active',
-                                    'branch_id' => $user->branch_id,
+                                    'branch_id' => $effectiveBranchId,
                                     'reseller_id' => $customer->reseller_id ?? $user->getEffectiveResellerId(),
                                     'activated_at' => now(),
                                     'created_by' => $user->id,
@@ -1510,7 +1577,7 @@ class MobileNetworkApiController extends Controller
                     }
                 }
 
-                // Buat atau sinkronkan ServiceInstance untuk CustomerService (SSOT)
+                // Buat atau sinkronkan ServiceInstance dan ProvisionPipeline untuk CustomerService (SSOT)
                 if ($targetCs) {
                     try {
                         $serviceInstance = \App\Models\Provisioning\ServiceInstance::withoutGlobalScopes()
@@ -1518,7 +1585,7 @@ class MobileNetworkApiController extends Controller
                             ->first();
 
                         if (!$serviceInstance && \Illuminate\Support\Facades\Schema::hasTable('service_instances')) {
-                            \App\Models\Provisioning\ServiceInstance::create([
+                            $serviceInstance = \App\Models\Provisioning\ServiceInstance::create([
                                 'uuid' => (string) Str::uuid(),
                                 'customer_service_id' => $targetCs->id,
                                 'service_id' => $targetCs->service_id,
@@ -1529,8 +1596,25 @@ class MobileNetworkApiController extends Controller
                                 'updated_by' => $user->id,
                             ]);
                         }
+
+                        if ($serviceInstance && \Illuminate\Support\Facades\Schema::hasTable('provision_pipelines')) {
+                            $pipeline = \App\Models\Provisioning\ProvisionPipeline::withoutGlobalScopes()
+                                ->where('service_instance_id', $serviceInstance->id)
+                                ->first();
+
+                            if (!$pipeline) {
+                                \App\Models\Provisioning\ProvisionPipeline::create([
+                                    'uuid' => (string) Str::uuid(),
+                                    'service_instance_id' => $serviceInstance->id,
+                                    'status' => 'completed',
+                                    'completed_at' => now(),
+                                    'created_by' => $user->id,
+                                    'updated_by' => $user->id,
+                                ]);
+                            }
+                        }
                     } catch (\Throwable $sie) {
-                        \Log::warning("[provisionOnt] ServiceInstance creation non-fatal: " . $sie->getMessage());
+                        \Log::warning("[provisionOnt] ServiceInstance / ProvisionPipeline creation non-fatal: " . $sie->getMessage());
                     }
                 }
 
@@ -1541,7 +1625,7 @@ class MobileNetworkApiController extends Controller
                             'uuid' => (string) Str::uuid(),
                             'customer_name' => $customer->name,
                             'activation_date' => now()->toDateString(),
-                            'service_package' => !empty($validated['service_profile_id']) ? ('Paket #' . $validated['service_profile_id']) : 'Internet Standar',
+                            'service_package' => !empty($targetCs?->service_profile_id) ? ('Paket #' . $targetCs->service_profile_id) : 'Internet Standar',
                             'status' => 'completed',
                             'notes' => "Aktivasi resmi via Mobile Wizard Teknisi {$user->name} (ONU SN: {$sn})",
                             'created_by' => $user->id,
@@ -1566,10 +1650,15 @@ class MobileNetworkApiController extends Controller
                     transactionId: $txId
                 );
 
-                // Tuntaskan status SPK HANYA jika CustomerService dan mutasi stok terpenuhi
+                // Tuntaskan status SPK HANYA jika Customer, CustomerService, Paket, dan ONU terpenuhi
                 if ($wo) {
-                    if (!$targetCs || !$targetCs->exists) {
-                        \Log::warning("[provisionOnt] Work Order #{$wo->id} ditunda: CustomerService belum berhasil terbentuk.");
+                    $isCoreValid = $customer && $customer->exists
+                        && $targetCs && $targetCs->exists
+                        && !empty($targetCs->service_profile_id)
+                        && !empty($targetCs->onu_id);
+
+                    if (!$isCoreValid) {
+                        \Log::warning("[provisionOnt] Work Order #{$wo->id} ditunda: Data layanan (CustomerService/Paket/ONU) belum lengkap.");
                         $wo->status = 'in_progress';
                         $wo->save();
                     } else {

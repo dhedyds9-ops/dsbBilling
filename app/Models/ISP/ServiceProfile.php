@@ -297,6 +297,11 @@ class ServiceProfile extends Model
     {
         return (float) ($this->promo_price ?? $this->base_price ?? 0);
     }
+
+    public function getIsActiveAttribute(): bool
+    {
+        return empty($this->status) || in_array(strtolower((string) $this->status), ['active', '1', 'true']);
+    }
 }
 
 

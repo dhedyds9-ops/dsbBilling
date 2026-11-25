@@ -204,7 +204,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
     });
 
     // ==================== STAFF / ADMIN AREA ====================
-    Route::middleware(['role:administrator,manager,admin_gudang'])->group(function () use ($cs) {
+    Route::middleware(['role:administrator,manager,admin_gudang,noc'])->group(function () use ($cs) {
 
         // ==================== 1. DASHBOARD (TANPA SUBMENU SESUAI SSOT v2.0) ====================
         Route::get('/dashboard', \App\Livewire\Dashboard\Index::class)->name('dashboard');

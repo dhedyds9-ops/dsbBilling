@@ -195,12 +195,123 @@ class SessionKickService
                     'pod' => $this->disconnectService->sendDisconnect($nas, $identifiers),
                 ];
             }
+
+            $this->writeAccountingTerminate(
+                username: $username,
+                acctSessionId: null,
+                cause: 'Admin-Reset',
+                causeId: 6,
+            );
+
+            $this->deleteOnlineSessionsFor(
+                protocol: 'pppoe',
+                username: $username,
+            );
+            $this->deleteOnlineSessionsFor(
+                protocol: 'hotspot',
+                username: $username,
+            );
+
+            $this->writeAudit('kick_username_globally', null, $operator, [
+                'username' => $username,
+                'results' => $results,
+            ]);
         }
 
         return [
             'success' => count($results) > 0,
             'count' => count($results),
             'results' => $results,
+        ];
+    }
+
+    /**
+     * Resiliently resolve and kick a PPPoE session.
+     * Prevents ModelNotFoundException when session IDs are invalidated by poller jobs.
+     */
+    public function resolveAndKickPppoe(int $sessionId, ?string $username = null, ?int $routerId = null, ?User $operator = null): array
+    {
+        $session = PppActiveSession::with('router')->find($sessionId);
+
+        // Fallback 1: Try finding active session by username and router if ID was reassigned
+        if (!$session && !empty($username)) {
+            $query = PppActiveSession::with('router')->where('name', $username);
+            if ($routerId) {
+                $query->where('router_id', $routerId);
+            }
+            $session = $query->first();
+        }
+
+        if ($session) {
+            $res = $this->kickPppoe($session, $operator);
+            $res['status'] = 'kicked';
+            return $res;
+        }
+
+        // Fallback 2: Session not found in DB cache, but username known -> send PoD disconnect
+        if (!empty($username)) {
+            $globalRes = $this->kickUsernameGlobally($username, $operator);
+            return [
+                'success' => true,
+                'status' => 'fallback_pod',
+                'protocol' => 'pppoe',
+                'username' => $username,
+                'message' => "Sesi PPPoE untuk user '{$username}' sudah tidak aktif di cache sistem, perintah disconnect (PoD) telah dikirimkan ke router.",
+                'global' => $globalRes,
+            ];
+        }
+
+        // Fallback 3: Neither session ID nor username available / already terminated
+        return [
+            'success' => true,
+            'status' => 'already_inactive',
+            'protocol' => 'pppoe',
+            'message' => 'Sesi PPPoE sudah tidak aktif atau telah terputus sebelumnya.',
+        ];
+    }
+
+    /**
+     * Resiliently resolve and kick a Hotspot session.
+     * Prevents ModelNotFoundException when session IDs are invalidated by poller jobs.
+     */
+    public function resolveAndKickHotspot(int $sessionId, ?string $username = null, ?int $routerId = null, ?User $operator = null): array
+    {
+        $session = HotspotActiveSession::with('router')->find($sessionId);
+
+        // Fallback 1: Try finding active session by username and router if ID was reassigned
+        if (!$session && !empty($username)) {
+            $query = HotspotActiveSession::with('router')->where('user', $username);
+            if ($routerId) {
+                $query->where('router_id', $routerId);
+            }
+            $session = $query->first();
+        }
+
+        if ($session) {
+            $res = $this->kickHotspot($session, $operator);
+            $res['status'] = 'kicked';
+            return $res;
+        }
+
+        // Fallback 2: Session not found in DB cache, but username known -> send PoD disconnect
+        if (!empty($username)) {
+            $globalRes = $this->kickUsernameGlobally($username, $operator);
+            return [
+                'success' => true,
+                'status' => 'fallback_pod',
+                'protocol' => 'hotspot',
+                'username' => $username,
+                'message' => "Sesi Hotspot untuk user '{$username}' sudah tidak aktif di cache sistem, perintah disconnect (PoD) telah dikirimkan ke router.",
+                'global' => $globalRes,
+            ];
+        }
+
+        // Fallback 3: Neither session ID nor username available / already terminated
+        return [
+            'success' => true,
+            'status' => 'already_inactive',
+            'protocol' => 'hotspot',
+            'message' => 'Sesi Hotspot sudah tidak aktif atau telah terputus sebelumnya.',
         ];
     }
 
@@ -310,8 +421,8 @@ class SessionKickService
     {
         try {
             $row = [
-                'auditable_type' => $subject ? get_class($subject) : null,
-                'auditable_id' => $subject?->id,
+                'auditable_type' => $subject ? get_class($subject) : PppActiveSession::class,
+                'auditable_id' => $subject?->id ?? 0,
                 'event' => $event,
                 'old_values' => $subject?->getOriginal(),
                 'new_values' => $meta,

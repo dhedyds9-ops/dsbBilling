@@ -111,9 +111,9 @@
                             <td class="px-4 py-3 text-center whitespace-nowrap">
                                 <button 
                                     @if($activeTab === 'pppoe')
-                                        wire:click="kickPppoe({{ $session->id }})" 
+                                        wire:click="kickPppoe({{ $session->id }}, '{{ addslashes($session->name ?? '') }}', {{ $session->router_id ? $session->router_id : 'null' }})" 
                                     @else
-                                        wire:click="kickHotspot({{ $session->id }})" 
+                                        wire:click="kickHotspot({{ $session->id }}, '{{ addslashes($session->user ?? '') }}', {{ $session->router_id ? $session->router_id : 'null' }})" 
                                     @endif
                                     wire:confirm="Yakin ingin memutuskan koneksi sesi ini?"
                                     class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:text-red-400 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors" title="Kick / Putuskan Koneksi">

@@ -112,13 +112,17 @@ class GisMap extends Component
 
     public static function cacheKey(): string
     {
-        return 'gis_map_data';
+        $userId = auth()->id() ?? 'guest';
+        $isReseller = auth()->check() && (method_exists(auth()->user(), 'hasRole') && auth()->user()->hasRole('reseller'));
+        $role = $isReseller ? 'reseller_' . $userId : 'all';
+        return 'gis_map_data_' . $role;
     }
 
     public static function flushCache(): void
     {
         Cache::forget(self::cacheKey());
         Cache::forget('gis_map_data');
+        Cache::forget('gis_map_data_all');
         Cache::forget('gis_map_nodes');
         Cache::forget('gis_nodes_all');
         Cache::forget('gis_regions');
@@ -250,7 +254,7 @@ class GisMap extends Component
                 })->toArray(),
 
                 'customers' => Customer::with(['customerServices.onu'])
-                    ->when(auth()->user()->hasRole('reseller'), function($q) {
+                    ->when(auth()->check() && (method_exists(auth()->user(), 'hasRole') && auth()->user()->hasRole('reseller')), function($q) {
                         $q->where(function($qq) {
                             $qq->where('reseller_id', auth()->id())
                                ->orWhere('created_by', auth()->id());

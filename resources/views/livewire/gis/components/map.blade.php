@@ -15,7 +15,7 @@
             <select id="areaFilter" class="toolbar-select dark:bg-slate-900 dark:text-slate-100">
                 <option value="">{{ __('Semua Area') }}</option>
                 @foreach($coordinators as $coord)
-                    @if($coord->region)
+                    @if(isset($coord->region) && is_object($coord->region) && !empty($coord->region->name))
                         <option value="{{ $coord->region_id }}">{{ $coord->region->name }} ({{ $coord->name }})</option>
                     @endif
                 @endforeach
