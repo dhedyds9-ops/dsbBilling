@@ -57,7 +57,9 @@ class AppServiceProvider extends ServiceProvider
         // CRM Repositories
                                                                                 
         // Provisioning Repositories
-                                                                                
+        \Src\Domain\Provisioning\ServiceInstanceRepositoryInterface::class => ServiceInstanceRepository::class,
+        \Src\Domain\Provisioning\ProvisionPipelineRepositoryInterface::class => ProvisionPipelineRepository::class,
+
         // Billing Repositories
                                 
         // Workforce Repositories

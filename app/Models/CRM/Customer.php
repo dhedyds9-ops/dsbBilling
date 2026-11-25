@@ -82,6 +82,15 @@ class Customer extends Model
                 })
                 ->update(['reseller_id' => $customer->reseller_id]);
 
+            if ($customer->branch_id !== null) {
+                \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                    ->where('customer_id', $customer->id)
+                    ->where(function($q) use ($customer) {
+                        $q->whereNull('branch_id')->orWhere('branch_id', '!=', $customer->branch_id);
+                    })
+                    ->update(['branch_id' => $customer->branch_id]);
+            }
+
             $csIds = \App\Models\Customer\CustomerService::withoutGlobalScopes()
                 ->where('customer_id', $customer->id)
                 ->pluck('id');
@@ -98,6 +107,15 @@ class Customer extends Model
                     })
                     ->update(['reseller_id' => $customer->reseller_id]);
 
+                if ($customer->branch_id !== null) {
+                    \App\Models\ISP\PPPoEUser::withoutGlobalScopes()
+                        ->whereIn('customer_service_id', $csIds)
+                        ->where(function($q) use ($customer) {
+                            $q->whereNull('branch_id')->orWhere('branch_id', '!=', $customer->branch_id);
+                        })
+                        ->update(['branch_id' => $customer->branch_id]);
+                }
+
                 \App\Models\ISP\HotspotUser::withoutGlobalScopes()
                     ->whereIn('customer_service_id', $csIds)
                     ->where(function($q) use ($customer) {
@@ -108,6 +126,15 @@ class Customer extends Model
                         }
                     })
                     ->update(['reseller_id' => $customer->reseller_id]);
+
+                if ($customer->branch_id !== null) {
+                    \App\Models\ISP\HotspotUser::withoutGlobalScopes()
+                        ->whereIn('customer_service_id', $csIds)
+                        ->where(function($q) use ($customer) {
+                            $q->whereNull('branch_id')->orWhere('branch_id', '!=', $customer->branch_id);
+                        })
+                        ->update(['branch_id' => $customer->branch_id]);
+                }
             }
         });
     }

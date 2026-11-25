@@ -1087,16 +1087,43 @@ class MobileNetworkApiController extends Controller
             }
         }
 
-        return DB::transaction(function () use ($validated, $user, $sn, $wifiSecMode, $txId) {
-            // 1. Find or create ONU record
-            $onu = Onu::withoutGlobalScopes()->where('serial_number', $sn)->first();
+        try {
+            return DB::transaction(function () use ($validated, $user, $sn, $wifiSecMode, $txId) {
+                // Pre-check: cegah duplikasi ONT serial number yang sedang aktif terpasang pada pelanggan lain
+                $targetCustomerId = $validated['customer_id'] ?? null;
+                if (!$targetCustomerId && !empty($validated['work_order_id'])) {
+                    $checkWo = WorkOrder::withoutGlobalScopes()->find($validated['work_order_id']);
+                    $targetCustomerId = $checkWo?->customer_id;
+                }
 
-            if (!$onu) {
-                $onu = new Onu();
-                $onu->serial_number = $sn;
-                $onu->code = 'ONU-' . substr(preg_replace('/[^A-Z0-9]/', '', $sn), -6);
-                $onu->name = ($validated['model'] ?? 'ONT') . ' ' . substr($sn, -6);
-            }
+                // 1. Find or create ONU record
+                $onu = Onu::withoutGlobalScopes()->where('serial_number', $sn)->first();
+
+                if ($onu) {
+                    $existingActiveCs = CustomerService::withoutGlobalScopes()
+                        ->where('onu_id', $onu->id)
+                        ->where('status', 'active')
+                        ->first();
+                    if ($existingActiveCs && (!$targetCustomerId || (int) $existingActiveCs->customer_id !== (int) $targetCustomerId)) {
+                        $otherCust = Customer::withoutGlobalScopes()->find($existingActiveCs->customer_id);
+                        $otherName = $otherCust ? $otherCust->name : "ID #{$existingActiveCs->customer_id}";
+                        throw new \InvalidArgumentException("Aktivasi PSB ditolak: Serial number ONU [{$sn}] sedang aktif digunakan oleh pelanggan lain ({$otherName}). Lakukan Swap ONT atau periksa kembali serial number.");
+                    }
+                }
+
+                $existingSerial = \App\Models\Inventory\ItemSerial::where('serial_number', $sn)->first();
+                if ($existingSerial && $existingSerial->status === 'installed' && $existingSerial->customer_id && (!$targetCustomerId || (int) $existingSerial->customer_id !== (int) $targetCustomerId)) {
+                    $otherCust = Customer::withoutGlobalScopes()->find($existingSerial->customer_id);
+                    $otherName = $otherCust ? $otherCust->name : "ID #{$existingSerial->customer_id}";
+                    throw new \InvalidArgumentException("Aktivasi PSB ditolak: Serial number ONU [{$sn}] sudah berstatus 'installed' pada pelanggan lain ({$otherName}).");
+                }
+
+                if (!$onu) {
+                    $onu = new Onu();
+                    $onu->serial_number = $sn;
+                    $onu->code = 'ONU-' . substr(preg_replace('/[^A-Z0-9]/', '', $sn), -6);
+                    $onu->name = ($validated['model'] ?? 'ONT') . ' ' . substr($sn, -6);
+                }
 
             // Update attributes
             if (!empty($validated['mac_address'])) {
@@ -1364,6 +1391,31 @@ class MobileNetworkApiController extends Controller
                             ]);
                         }
 
+                        $catalogServiceId = \DB::table('services')->value('id');
+                        if (!$catalogServiceId && \Illuminate\Support\Facades\Schema::hasTable('services')) {
+                            $catalogId = \DB::table('service_catalogs')->value('id');
+                            if (!$catalogId && \Illuminate\Support\Facades\Schema::hasTable('service_catalogs')) {
+                                $catalogId = \DB::table('service_catalogs')->insertGetId([
+                                    'uuid' => (string) Str::uuid(),
+                                    'name' => 'Default Catalog',
+                                    'is_active' => true,
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ]);
+                            }
+
+                            $catalogServiceId = \DB::table('services')->insertGetId([
+                                'uuid' => (string) Str::uuid(),
+                                'service_catalog_id' => $catalogId ?: 1,
+                                'name' => 'Default Internet Service',
+                                'type' => 'pppoe',
+                                'price' => 0,
+                                'is_active' => true,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
+
                         $newCs = new CustomerService();
                         $newCs->customer_id = $customerId;
                         $newCs->uuid = (string) Str::uuid();
@@ -1378,11 +1430,11 @@ class MobileNetworkApiController extends Controller
                         $newCs->username = !empty($validated['pppoe_username']) ? trim($validated['pppoe_username']) : ('onu_' . strtolower(substr($sn, -6)));
                         $newCs->password = !empty($validated['pppoe_password']) ? bcrypt(trim($validated['pppoe_password'])) : bcrypt(Str::random(12));
                         $newCs->contract_id = $contractId ?: 1;
-                        $newCs->service_id = $validated['service_profile_id'] ?? (\DB::table('services')->value('id') ?? 1);
+                        $newCs->service_id = $catalogServiceId ?: 1;
                         $newCs->save();
                         $targetCs = $newCs;
                     } catch (\Throwable $e) {
-                        \Log::info("Provision ONT: CustomerService link deferred: " . $e->getMessage());
+                        \Log::error("[provisionOnt] Gagal create CustomerService: " . $e->getMessage());
                     }
                 }
 
@@ -1458,6 +1510,30 @@ class MobileNetworkApiController extends Controller
                     }
                 }
 
+                // Buat atau sinkronkan ServiceInstance untuk CustomerService (SSOT)
+                if ($targetCs) {
+                    try {
+                        $serviceInstance = \App\Models\Provisioning\ServiceInstance::withoutGlobalScopes()
+                            ->where('customer_service_id', $targetCs->id)
+                            ->first();
+
+                        if (!$serviceInstance && \Illuminate\Support\Facades\Schema::hasTable('service_instances')) {
+                            \App\Models\Provisioning\ServiceInstance::create([
+                                'uuid' => (string) Str::uuid(),
+                                'customer_service_id' => $targetCs->id,
+                                'service_id' => $targetCs->service_id,
+                                'status' => 'active',
+                                'provisioned_at' => now(),
+                                'activated_at' => now(),
+                                'created_by' => $user->id,
+                                'updated_by' => $user->id,
+                            ]);
+                        }
+                    } catch (\Throwable $sie) {
+                        \Log::warning("[provisionOnt] ServiceInstance creation non-fatal: " . $sie->getMessage());
+                    }
+                }
+
                 // Catat riwayat aktivasi resmi pada CRM
                 if (\Illuminate\Support\Facades\Schema::hasTable('activations')) {
                     try {
@@ -1490,43 +1566,49 @@ class MobileNetworkApiController extends Controller
                     transactionId: $txId
                 );
 
-                // Tuntaskan status SPK HANYA jika mutasi stok dan kewajiban inventaris terpenuhi
+                // Tuntaskan status SPK HANYA jika CustomerService dan mutasi stok terpenuhi
                 if ($wo) {
-                    $wo->status = 'completed';
-                    if (!$wo->started_at) {
-                        $wo->started_at = now();
-                    }
-                    $wo->completed_at = now();
-                    $wo->save();
-
-                    if ($wo->ticket_id) {
-                        try {
-                            \App\Models\Support\Ticket::withoutGlobalScopes()
-                                ->where('id', $wo->ticket_id)
-                                ->update([
-                                    'status' => 'resolved',
-                                    'resolved_at' => now(),
-                                    'resolved_by' => $user->id,
-                                    'resolution_notes' => "PSB berhasil diaktivasi oleh teknisi {$user->name} (ONT SN: {$sn})",
-                                ]);
-                        } catch (\Throwable $te) {
-                            \Log::warning("[provisionOnt] Gagal update ticket dari work order: " . $te->getMessage());
+                    if (!$targetCs || !$targetCs->exists) {
+                        \Log::warning("[provisionOnt] Work Order #{$wo->id} ditunda: CustomerService belum berhasil terbentuk.");
+                        $wo->status = 'in_progress';
+                        $wo->save();
+                    } else {
+                        $wo->status = 'completed';
+                        if (!$wo->started_at) {
+                            $wo->started_at = now();
                         }
-                    }
+                        $wo->completed_at = now();
+                        $wo->save();
 
-                    if (\Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'installation_id') && $wo->installation_id) {
-                        try {
-                            \App\Models\CRM\Installation::withoutGlobalScopes()
-                                ->where('id', $wo->installation_id)
-                                ->update([
-                                    'status' => 'completed',
-                                    'completed_at' => now(),
-                                    'completed_by' => $user->id,
-                                    'onu_serial_number' => $sn,
-                                    'onu_id' => $onu->id,
-                                ]);
-                        } catch (\Throwable $ie) {
-                            \Log::warning("[provisionOnt] Gagal update installation dari work order: " . $ie->getMessage());
+                        if ($wo->ticket_id) {
+                            try {
+                                \App\Models\Support\Ticket::withoutGlobalScopes()
+                                    ->where('id', $wo->ticket_id)
+                                    ->update([
+                                        'status' => 'resolved',
+                                        'resolved_at' => now(),
+                                        'resolved_by' => $user->id,
+                                        'resolution_notes' => "PSB berhasil diaktivasi oleh teknisi {$user->name} (ONT SN: {$sn})",
+                                    ]);
+                            } catch (\Throwable $te) {
+                                \Log::warning("[provisionOnt] Gagal update ticket dari work order: " . $te->getMessage());
+                            }
+                        }
+
+                        if (\Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'installation_id') && $wo->installation_id) {
+                            try {
+                                \App\Models\CRM\Installation::withoutGlobalScopes()
+                                    ->where('id', $wo->installation_id)
+                                    ->update([
+                                        'status' => 'completed',
+                                        'completed_at' => now(),
+                                        'completed_by' => $user->id,
+                                        'onu_serial_number' => $sn,
+                                        'onu_id' => $onu->id,
+                                    ]);
+                            } catch (\Throwable $ie) {
+                                \Log::warning("[provisionOnt] Gagal update installation dari work order: " . $ie->getMessage());
+                            }
                         }
                     }
 
@@ -1562,10 +1644,15 @@ class MobileNetworkApiController extends Controller
                     }
                 } catch (\Throwable $oe) {
                     \Log::warning("[provisionOnt] Gagal push IP Host TR-069 ke OLT via OMCI: " . $oe->getMessage());
-                    $oltWarning = "Provisioning database dan stok selesai, namun konfigurasi OLT hardware memerlukan verifikasi: " . $oe->getMessage();
+                    $oltWarning = "Provisioning database dan stok selesai, namun konfigurasi OLT hardware memerlukan verifikasi/rekonsiliasi: " . $oe->getMessage();
                     if ($wo) {
-                        $wo->notes = ($wo->notes ? $wo->notes . "\n" : '') . "[Peringatan Hardware OLT] " . $oe->getMessage();
+                        $wo->status = 'in_progress';
+                        $wo->completed_at = null;
+                        $wo->notes = ($wo->notes ? $wo->notes . "\n" : '') . "[Peringatan Hardware OLT: Memerlukan Rekonsiliasi] " . $oe->getMessage();
                         $wo->save();
+                        if (is_array($workOrderInfo)) {
+                            $workOrderInfo['status'] = 'in_progress';
+                        }
                     }
                 }
             }
@@ -1614,7 +1701,19 @@ class MobileNetworkApiController extends Controller
 
             return response()->json($responseData);
         });
+    } catch (\InvalidArgumentException $ie) {
+        return response()->json([
+            'success' => false,
+            'message' => $ie->getMessage(),
+        ], 422);
+    } catch (\Throwable $e) {
+        \Log::error("[provisionOnt] Fatal error: " . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Gagal melakukan provisioning ONT: ' . $e->getMessage(),
+        ], 500);
     }
+}
 
     /**
      * Get live device diagnostics (Optical RX/TX power, online status, GenieACS link).

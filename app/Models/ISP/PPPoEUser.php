@@ -96,9 +96,14 @@ class PPPoEUser extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            if (empty($model->reseller_id) && !empty($model->customer_service_id)) {
+            if (!empty($model->customer_service_id)) {
                 $cs = \App\Models\Customer\CustomerService::withoutGlobalScopes()->find($model->customer_service_id);
-                $model->reseller_id = $cs?->reseller_id ?? $cs?->customer?->reseller_id;
+                if (empty($model->reseller_id)) {
+                    $model->reseller_id = $cs?->reseller_id ?? $cs?->customer?->reseller_id;
+                }
+                if (empty($model->branch_id)) {
+                    $model->branch_id = $cs?->branch_id ?? $cs?->customer?->branch_id;
+                }
             }
         });
     }

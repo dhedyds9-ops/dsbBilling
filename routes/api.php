@@ -265,6 +265,7 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::put('/devices/{id}/name', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'updateName'])->name('devices.update-name');
             Route::delete('/devices/{id}', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'deleteDevice'])->name('devices.destroy');
             Route::post('/devices/provision-ont', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'provisionOnt'])->name('devices.provision');
+            Route::post('/onu/provision', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'provisionOnt'])->name('onu.provision');
             Route::post('/devices/sensus', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'sensusOnt'])->name('devices.sensus');
             Route::post('/devices/swap-ont', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'swapOnt'])->name('devices.swap');
             Route::post('/devices/dismantle', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'dismantle'])->name('devices.dismantle');

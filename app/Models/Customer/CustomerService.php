@@ -62,6 +62,10 @@ class CustomerService extends Model
                 $model->reseller_id = \App\Models\CRM\Customer::withoutGlobalScopes()->where('id', $model->customer_id)->value('reseller_id');
             }
 
+            if (empty($model->branch_id) && !empty($model->customer_id)) {
+                $model->branch_id = \App\Models\CRM\Customer::withoutGlobalScopes()->where('id', $model->customer_id)->value('branch_id');
+            }
+
             if (empty($model->contract_id) && !empty($model->customer_id)) {
                 $contract = \App\Models\CRM\Contract::firstOrCreate(
                     ['customer_id' => $model->customer_id],
@@ -229,6 +233,16 @@ class CustomerService extends Model
     public function acsDevice()
     {
         return $this->hasOne(\App\Models\ACS\ACSDevice::class, 'customer_service_id');
+    }
+
+    public function serviceInstance(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Models\Provisioning\ServiceInstance::class, 'customer_service_id');
+    }
+
+    public function serviceInstances(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Provisioning\ServiceInstance::class, 'customer_service_id');
     }
 }
 

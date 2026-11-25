@@ -16,6 +16,19 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
+class SyncSecurityException extends \Exception
+{
+    public string $event;
+    public array $details;
+
+    public function __construct(string $message, string $event, array $details = [])
+    {
+        parent::__construct($message);
+        $this->event = $event;
+        $this->details = $details;
+    }
+}
+
 class MobileSyncApiController extends Controller
 {
     /**
@@ -162,6 +175,15 @@ class MobileSyncApiController extends Controller
             } catch (\Throwable $e) {
                 DB::rollBack();
 
+                if ($e instanceof SyncSecurityException) {
+                    AuditLog::record(
+                        $user,
+                        $e->event,
+                        $e->getMessage(),
+                        $e->details
+                    );
+                }
+
                 $results[] = [
                     'uuid' => $uuid,
                     'action_type' => $type,
@@ -262,23 +284,33 @@ class MobileSyncApiController extends Controller
         }
 
         // 1. Check existence with company scope
-        $query = WorkOrder::query();
-        if ($user->company_id && !$user->isSuperAdmin()) {
-            $query->where(function ($q) use ($user) {
-                $q->where('company_id', $user->company_id)
-                  ->orWhereNull('company_id');
-            });
-        }
-
-        $workOrder = $query->find($woId);
+        $workOrder = WorkOrder::withoutGlobalScopes()->find($woId);
 
         if (!$workOrder) {
-            AuditLog::record($user, 'offline_sync_rejected', "SPK #{$woId} tidak ditemukan atau berada di luar perusahaan untuk aksi {$actionType}", [
-                'work_order_id' => $woId,
-                'action_type' => $actionType,
-                'action_uuid' => $actionUuid,
-            ]);
-            throw new \Exception("SPK #{$woId} tidak ditemukan atau berada di luar batas akses perusahaan Anda.");
+            throw new SyncSecurityException(
+                "SPK #{$woId} tidak ditemukan.",
+                'offline_sync_rejected',
+                [
+                    'work_order_id' => $woId,
+                    'action_type' => $actionType,
+                    'action_uuid' => $actionUuid,
+                ]
+            );
+        }
+
+        // 1a. Cross-company isolation check
+        if ($user->company_id && $workOrder->company_id && (int)$user->company_id !== (int)$workOrder->company_id && !$user->isSuperAdmin()) {
+            throw new SyncSecurityException(
+                "Akses ditolak: SPK #{$woId} adalah milik perusahaan lain.",
+                'offline_sync_cross_company_violation',
+                [
+                    'work_order_id' => $woId,
+                    'spk_company_id' => $workOrder->company_id,
+                    'user_company_id' => $user->company_id,
+                    'action_type' => $actionType,
+                    'action_uuid' => $actionUuid,
+                ]
+            );
         }
 
         $isManagerOrAdmin = $user->isSuperAdmin() || $user->hasAnyRole(['administrator', 'admin', 'manager', 'superadmin']);
@@ -288,14 +320,17 @@ class MobileSyncApiController extends Controller
         // 2. Cross-branch isolation check
         if ($user->branch_id && $workOrder->branch_id && (int)$user->branch_id !== (int)$workOrder->branch_id && !$user->isSuperAdmin()) {
             if (!$isAssigned && !$isManagerOrAdmin) {
-                AuditLog::record($user, 'offline_sync_cross_branch_violation', "Percobaan akses SPK lintas cabang ditolak (SPK Branch: {$workOrder->branch_id}, User Branch: {$user->branch_id})", [
-                    'work_order_id' => $woId,
-                    'spk_branch_id' => $workOrder->branch_id,
-                    'user_branch_id' => $user->branch_id,
-                    'action_type' => $actionType,
-                    'action_uuid' => $actionUuid,
-                ]);
-                throw new \Exception("Akses ditolak: SPK #{$woId} adalah milik cabang lain.");
+                throw new SyncSecurityException(
+                    "Akses ditolak: SPK #{$woId} adalah milik cabang lain.",
+                    'offline_sync_cross_branch_violation',
+                    [
+                        'work_order_id' => $woId,
+                        'spk_branch_id' => $workOrder->branch_id,
+                        'user_branch_id' => $user->branch_id,
+                        'action_type' => $actionType,
+                        'action_uuid' => $actionUuid,
+                    ]
+                );
             }
         }
 
@@ -303,27 +338,33 @@ class MobileSyncApiController extends Controller
         $isTech = $user->hasRole('technician') || (method_exists($user, 'isTechnician') && $user->isTechnician());
         if ($isTech && !$user->isSuperAdmin() && !$isManagerOrAdmin) {
             if ($workOrder->assigned_to && !$isAssigned) {
-                AuditLog::record($user, 'offline_sync_cross_technician_violation', "Percobaan akses SPK teknisi lain ditolak (SPK Assigned: {$workOrder->assigned_to}, User: {$user->id})", [
-                    'work_order_id' => $woId,
-                    'spk_assigned_to' => $workOrder->assigned_to,
-                    'user_id' => $user->id,
-                    'action_type' => $actionType,
-                    'action_uuid' => $actionUuid,
-                ]);
-                throw new \Exception("Akses ditolak: SPK #{$woId} ditugaskan kepada teknisi lain.");
+                throw new SyncSecurityException(
+                    "Akses ditolak: SPK #{$woId} ditugaskan kepada teknisi lain.",
+                    'offline_sync_cross_technician_violation',
+                    [
+                        'work_order_id' => $woId,
+                        'spk_assigned_to' => $workOrder->assigned_to,
+                        'user_id' => $user->id,
+                        'action_type' => $actionType,
+                        'action_uuid' => $actionUuid,
+                    ]
+                );
             }
         }
 
         // 4. Status validation: Cannot modify cancelled or closed SPK
         $currentStatus = strtolower((string)$workOrder->status);
         if (in_array($currentStatus, ['cancelled', 'closed'])) {
-            AuditLog::record($user, 'offline_sync_invalid_status', "Aksi {$actionType} ditolak karena SPK berstatus {$currentStatus}", [
-                'work_order_id' => $woId,
-                'status' => $currentStatus,
-                'action_type' => $actionType,
-                'action_uuid' => $actionUuid,
-            ]);
-            throw new \Exception("SPK #{$woId} sudah berstatus '{$currentStatus}' dan tidak dapat dimodifikasi lagi.");
+            throw new SyncSecurityException(
+                "SPK #{$woId} sudah berstatus '{$currentStatus}' dan tidak dapat dimodifikasi lagi.",
+                'offline_sync_invalid_status',
+                [
+                    'work_order_id' => $woId,
+                    'status' => $currentStatus,
+                    'action_type' => $actionType,
+                    'action_uuid' => $actionUuid,
+                ]
+            );
         }
 
         return $workOrder;
@@ -368,12 +409,15 @@ class MobileSyncApiController extends Controller
             ->first();
 
         if (!$chk) {
-            AuditLog::record($user, 'offline_sync_checklist_mismatch', "Checklist #{$chkId} bukan bagian dari SPK #{$wo->id}", [
-                'work_order_id' => $wo->id,
-                'checklist_id' => $chkId,
-                'action_uuid' => $uuid,
-            ]);
-            throw new \Exception("Checklist #{$chkId} tidak ditemukan pada SPK #{$wo->id}.");
+            throw new SyncSecurityException(
+                "Checklist #{$chkId} tidak ditemukan pada SPK #{$wo->id}.",
+                'offline_sync_checklist_mismatch',
+                [
+                    'work_order_id' => $wo->id,
+                    'checklist_id' => $chkId,
+                    'action_uuid' => $uuid,
+                ]
+            );
         }
 
         $chk->completed = (bool) ($payload['completed'] ?? true);
@@ -385,14 +429,26 @@ class MobileSyncApiController extends Controller
     {
         $wo = $this->getAuthorizedWorkOrder($user, $woId, 'checklist_add', $uuid);
 
-        // Idempotency: Jika checklist dengan action UUID ini sudah ada, skip tanpa duplikasi
-        $existing = WorkOrderChecklist::where('uuid', $uuid)->first();
-        if ($existing) {
-            return;
-        }
-
         $item = trim((string) ($payload['item'] ?? ''));
         if (empty($item)) throw new \InvalidArgumentException("Item checklist tidak boleh kosong.");
+
+        // Idempotency: Jika checklist dengan action UUID ini sudah ada, pastikan payload identik
+        $existing = WorkOrderChecklist::where('uuid', $uuid)->first();
+        if ($existing) {
+            if ($existing->item !== $item || (int)$existing->work_order_id !== (int)$wo->id) {
+                throw new SyncSecurityException(
+                    "Konflik Idempotensi: Action UUID '{$uuid}' sudah digunakan untuk item checklist berbeda.",
+                    'offline_sync_payload_conflict',
+                    [
+                        'action_uuid' => $uuid,
+                        'existing_item' => $existing->item,
+                        'attempted_item' => $item,
+                        'work_order_id' => $wo->id,
+                    ]
+                );
+            }
+            return;
+        }
 
         WorkOrderChecklist::create([
             'uuid' => $uuid,
@@ -434,9 +490,25 @@ class MobileSyncApiController extends Controller
     {
         $wo = $this->getAuthorizedWorkOrder($user, $woId, 'material_usage', $uuid);
 
-        // Idempotency: Jika material usage dengan action UUID ini sudah tercatat, skip tanpa menduplikasi
+        // Idempotency: Jika material usage dengan action UUID ini sudah tercatat, periksa konflik payload
         $existing = MaterialUsage::where('uuid', $uuid)->first();
         if ($existing) {
+            $name = trim((string) ($payload['material_name'] ?? ''));
+            $qty = max(1, (int) ($payload['quantity'] ?? 1));
+            if ($existing->work_order_id !== $wo->id || $existing->material_name !== $name || (int) $existing->quantity !== $qty) {
+                throw new SyncSecurityException(
+                    "Konflik Idempotensi: Action UUID '{$uuid}' sudah digunakan untuk material usage berbeda.",
+                    'offline_sync_payload_conflict',
+                    [
+                        'action_uuid' => $uuid,
+                        'existing_material' => $existing->material_name,
+                        'existing_quantity' => $existing->quantity,
+                        'attempted_material' => $name,
+                        'attempted_quantity' => $qty,
+                        'work_order_id' => $wo->id,
+                    ]
+                );
+            }
             return;
         }
 

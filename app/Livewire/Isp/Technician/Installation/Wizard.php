@@ -1020,7 +1020,11 @@ class Wizard extends Component
 
                     return [
                         'type' => 'pppoe',
+                        'success' => $result['success'] ?? false,
+                        'hardware_error' => $result['hardware_error'] ?? null,
+                        'customer' => $customer,
                         'customer_service' => $cs,
+                        'service_instance' => $result['service_instance'] ?? null,
                         'onu' => $onu,
                         'username' => $username,
                         'password' => $password,
@@ -1032,7 +1036,11 @@ class Wizard extends Component
 
                     return [
                         'type' => 'hotspot',
+                        'success' => $result['success'] ?? false,
+                        'hardware_error' => $result['hardware_error'] ?? null,
+                        'customer' => $customer,
                         'customer_service' => $cs,
+                        'service_instance' => $result['service_instance'] ?? null,
                         'onu' => $onu,
                         'username' => $username,
                         'password' => $password,
@@ -1047,20 +1055,18 @@ class Wizard extends Component
             $password = $executionResult['password'] ?? '';
             $npId = $executionResult['network_profile_id'] ?? null;
             $cs = $executionResult['customer_service'] ?? null;
+            $serviceInstance = $executionResult['service_instance'] ?? null;
             $this->completed_onu_id = $onu->id;
             $this->last_provisioned_at = now()->format('d M Y H:i:s');
+            $this->completed_pipeline_id = $serviceInstance?->provisionPipeline?->id;
 
             if ($executionResult['type'] === 'pppoe' && $cs) {
-                try {
-                    $serviceInstance = $provisioningService->startProvisioning($cs, $user->id);
-                    $this->completed_pipeline_id = $serviceInstance->provisionPipeline?->id;
-                    $this->provisioning_status = 'queued';
-                    $this->provisioning_message = 'Instalasi PPPoE berhasil disimpan. Task provisioning ONT telah dikirim ke GenieACS NBI.';
-                } catch (\Throwable $pe) {
-                    \Illuminate\Support\Facades\Log::warning('[Wizard] Pipeline provisioning post-commit non-fatal: ' . $pe->getMessage());
-                    $this->completed_pipeline_id = null;
+                if ($executionResult['success']) {
+                    $this->provisioning_status = 'completed';
+                    $this->provisioning_message = 'Instalasi PPPoE berhasil disimpan dan router MikroTik terkonfigurasi aktif.';
+                } else {
                     $this->provisioning_status = 'pending';
-                    $this->provisioning_message = 'Data pelanggan & layanan PPPoE berhasil disimpan. Task hardware OLT dijadwalkan ulang: ' . $pe->getMessage();
+                    $this->provisioning_message = 'Data pelanggan & layanan PPPoE berhasil disimpan. Status hardware: ' . ($executionResult['hardware_error'] ?? 'Router belum terjangkau.');
                 }
             } else {
                 $this->completed_pipeline_id = null;
@@ -1131,6 +1137,7 @@ class Wizard extends Component
             $consumedFromEnterprise = false;
             try {
                 $stockService = app(\App\Services\Inventory\StockMutationService::class);
+                $txId = 'PSB-WIZARD-' . ($this->ticket_id ? 'TKT' . $this->ticket_id : ($this->installation_id ? 'INST' . $this->installation_id : 'CUST' . $customer->id));
                 $usage = $stockService->recordPsbConsumption(
                     technicianId: $user->id,
                     customerId: $customer->id,
@@ -1141,7 +1148,8 @@ class Wizard extends Component
                     installationId: $this->installation_id ?: null,
                     ticketId: $this->ticket_id ?: null,
                     requisitionId: $this->requisition_id ?: null,
-                    resellerId: $customer->reseller_id ?: ($this->new_customer_reseller_id ?: null)
+                    resellerId: $customer->reseller_id ?: ($this->new_customer_reseller_id ?: null),
+                    transactionId: $txId
                 );
 
                 if ($usage) {
@@ -1217,18 +1225,37 @@ class Wizard extends Component
                 }
             }
 
-            // 7. Update status tiket / surat perintah kerja terkait menjadi selesai & sinkronkan data
+            // Validasi integritas sebelum penyelesaian SPK (Phase E)
+            $isCoreValid = $customer && $customer->exists 
+                && $cs && $cs->exists 
+                && !empty($cs->service_profile_id) 
+                && !empty($cs->onu_id);
+
+            $isHardwareProvisioned = ($executionResult['success'] ?? false) === true;
+
+            $statusNotes = ($isCoreValid && $isHardwareProvisioned)
+                ? 'PSB berhasil diaktivasi secara penuh oleh teknisi ' . $user->name . ' pada ' . now()->format('d/m/Y H:i') . ' (ONU SN: ' . $sn . ')'
+                : 'Data pelanggan & layanan tersimpan. Provisioning hardware tertunda/gagal: ' . ($executionResult['hardware_error'] ?? 'menunggu koneksi router') . '. Menunggu tindakan teknisi.';
+
+            // 7. Update status tiket / surat perintah kerja terkait
             if ($this->ticket_id) {
                 try {
+                    $ticketUpdate = [
+                        'customer_id' => $customer->id,
+                        'resolution_notes' => $statusNotes,
+                    ];
+                    if ($isCoreValid && $isHardwareProvisioned) {
+                        $ticketUpdate['status'] = 'resolved';
+                        $ticketUpdate['resolved_at'] = now();
+                        $ticketUpdate['resolved_by'] = $user->id;
+                    } else {
+                        // Jangan tandai selesai jika provisioning hardware belum berhasil
+                        $ticketUpdate['status'] = 'in_progress';
+                    }
+
                     \App\Models\Support\Ticket::withoutGlobalScopes()
                         ->where('id', $this->ticket_id)
-                        ->update([
-                            'customer_id' => $customer->id,
-                            'status' => 'resolved',
-                            'resolved_at' => now(),
-                            'resolved_by' => $user->id,
-                            'resolution_notes' => 'PSB berhasil diaktivasi oleh teknisi ' . $user->name . ' pada ' . now()->format('d/m/Y H:i') . ' (ONU SN: ' . $sn . ')',
-                        ]);
+                        ->update($ticketUpdate);
                 } catch (\Throwable $te) {
                     \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal update status tiket: ' . $te->getMessage());
                 }
@@ -1238,35 +1265,48 @@ class Wizard extends Component
                 try {
                     $instModel = \App\Models\CRM\Installation::withoutGlobalScopes()->with(['survey.prospect'])->find($this->installation_id);
                     if ($instModel) {
-                        $instModel->update([
+                        $instUpdate = [
                             'customer_id' => $customer->id,
-                            'status' => 'completed',
-                            'completed_at' => now(),
-                            'completed_by' => $user->id,
                             'onu_serial_number' => $sn,
                             'onu_id' => $onu->id,
-                        ]);
+                            'notes' => ($instModel->notes ? $instModel->notes . "\n" : '') . $statusNotes,
+                        ];
 
-                        // Tandai Survey & Prospect sebagai activated resmi (agar sinkron di CRM Aktivasi)
-                        if ($instModel->survey) {
-                            $instModel->survey->update(['status' => 'activated']);
-                            if ($instModel->survey->prospect) {
-                                $instModel->survey->prospect->update(['status' => 'activated']);
+                        if ($isCoreValid && $isHardwareProvisioned) {
+                            $instUpdate['status'] = 'completed';
+                            $instUpdate['completed_at'] = now();
+                            $instUpdate['completed_by'] = $user->id;
+                        } else {
+                            $instUpdate['status'] = 'in_progress';
+                        }
+
+                        $instModel->update($instUpdate);
+
+                        // Tandai Survey & Prospect sebagai activated resmi HANYA jika instalasi benar-benar verified
+                        if ($isCoreValid && $isHardwareProvisioned) {
+                            if ($instModel->survey) {
+                                $instModel->survey->update(['status' => 'activated']);
+                                if ($instModel->survey->prospect) {
+                                    $instModel->survey->prospect->update(['status' => 'activated']);
+                                }
                             }
                         }
 
-                        // Jika ada tiket tertaut ke SPK instalasi ini, update statusnya menjadi resolved
+                        // Jika ada tiket tertaut ke SPK instalasi ini, sinkronkan
                         if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'installation_id')) {
+                            $linkedTicketUpdate = [
+                                'customer_id' => $customer->id,
+                                'resolution_notes' => $statusNotes,
+                            ];
+                            if ($isCoreValid && $isHardwareProvisioned) {
+                                $linkedTicketUpdate['status'] = 'resolved';
+                                $linkedTicketUpdate['resolved_at'] = now();
+                            }
                             \App\Models\Support\Ticket::withoutGlobalScopes()
                                 ->where('installation_id', $instModel->id)
                                 ->where('status', '!=', 'resolved')
                                 ->where('status', '!=', 'closed')
-                                ->update([
-                                    'customer_id' => $customer->id,
-                                    'status' => 'resolved',
-                                    'resolved_at' => now(),
-                                    'resolution_notes' => 'PSB SPK #' . $instModel->id . ' selesai dipasang & diaktivasi oleh teknisi ' . $user->name . ' (ONU SN: ' . $sn . ')',
-                                ]);
+                                ->update($linkedTicketUpdate);
                         }
                     }
                 } catch (\Throwable $ie) {
@@ -1281,8 +1321,8 @@ class Wizard extends Component
                     'customer_name' => $customer->name,
                     'activation_date' => now()->toDateString(),
                     'service_package' => $selectedProfile?->name ?? strtoupper($this->service_type),
-                    'status' => 'completed',
-                    'notes' => 'Aktivasi resmi via Wizard PSB Teknisi ' . $user->name . ' (ONU SN: ' . $sn . ')',
+                    'status' => ($isCoreValid && $isHardwareProvisioned) ? 'completed' : 'pending_provisioning',
+                    'notes' => $statusNotes,
                     'created_by' => $user->id,
                 ]);
             } catch (\Throwable $ae) {
@@ -1290,7 +1330,11 @@ class Wizard extends Component
             }
 
             $this->currentStep = 7;
-            session()->flash('success', 'Pemasangan Baru (PSB) Berhasil Disimpan!');
+            if ($isCoreValid && $isHardwareProvisioned) {
+                session()->flash('success', 'Pemasangan Baru (PSB) Berhasil Disimpan & Layanan Telah Aktif!');
+            } else {
+                session()->flash('warning', 'Data Pelanggan & Layanan Berhasil Disimpan. Namun verifikasi router MikroTik/hardware belum berhasil: ' . ($executionResult['hardware_error'] ?? 'router tidak merespons') . '. Status layanan: provisioning_failed.');
+            }
         } catch (\DomainException $e) {
             session()->flash('error', $e->getMessage());
             $this->addError('general', $e->getMessage());

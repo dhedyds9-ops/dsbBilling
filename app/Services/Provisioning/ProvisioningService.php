@@ -6,6 +6,8 @@ use App\Jobs\Provisioning\ReserveResourcesJob;
 use App\Jobs\Provisioning\RollbackProvisioningJob;
 use App\Jobs\Notifications\SendNotificationJob;
 use App\Models\AuditLog;
+use App\Models\Billing\Invoice;
+use App\Models\Billing\Subscription;
 use App\Models\CRM\Customer;
 use App\Models\CRM\Contract;
 use App\Models\Customer\CustomerService;
@@ -43,23 +45,30 @@ class ProvisioningService
 
     public function activatePPPoEService(array $data, int $userId): array
     {
-        return DB::transaction(function () use ($data, $userId) {
-            // Validasi Keunikan Data (Nomor HP, Username lintas sistem)
-            if (empty($data['customer_id'])) {
-                \App\Services\CRM\CustomerValidationService::validateBeforeCreate($data);
-            }
+        // Validasi Keunikan Data (Nomor HP, Username lintas sistem)
+        if (empty($data['customer_id'])) {
+            \App\Services\CRM\CustomerValidationService::validateBeforeCreate($data);
+        }
 
+        // STEP 1-8: Core Database Transaction (Pelanggan, Layanan, Paket, Instance, Akun Jaringan)
+        $coreData = DB::transaction(function () use ($data, $userId) {
             // Step 1: Find or Create Customer
             $customer = $this->findOrCreateCustomer($data, $userId);
 
             // Step 2: Find or Create Contract for Customer
             $contract = $this->findOrCreateContract($customer, $userId);
 
-            // Step 3: Get Service Profile (Single Source of Truth)
-            $serviceProfile = \App\Models\ISP\ServiceProfile::find($data['service_profile_id'] ?? null) ?? \App\Models\ISP\ServiceProfile::first();
+            // Step 3: Get Service Profile (SSOT - withoutGlobalScopes to prevent branch/reseller nullification)
+            $serviceProfile = null;
+            if (!empty($data['service_profile_id'])) {
+                $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find($data['service_profile_id']);
+            }
+            if (!$serviceProfile) {
+                $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->where('is_active', true)->first()
+                    ?? \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->first();
+            }
+
             $service = Service::first();
-            
-            // Auto-create default Service and Catalog if empty to prevent NOT NULL constraint
             if (!$service) {
                 try {
                     $catalog = \App\Models\ServiceCatalog\ServiceCatalog::withoutGlobalScopes()->firstOrCreate(
@@ -79,7 +88,7 @@ class ProvisioningService
                         throw $e;
                     }
                 }
-                
+
                 $service = Service::create([
                     'uuid' => (string) Str::uuid(),
                     'service_catalog_id' => $catalog->id,
@@ -94,244 +103,84 @@ class ProvisioningService
             }
 
             $actualOnuId = $this->resolveOnuId($data['onu_id'] ?? null, $data, $userId);
+            $effectiveBranchId = !empty($data['branch_id']) ? $data['branch_id'] : ($customer->branch_id ?? null);
+            $effectiveResellerId = !empty($data['reseller_id']) ? $data['reseller_id'] : ($customer->reseller_id ?? null);
 
-            // Step 4: Create CustomerService
-            $customerService = CustomerService::create([
-                'uuid' => (string) Str::uuid(),
-                'customer_id' => $customer->id,
-                'contract_id' => $contract->id,
-                'service_id' => $service?->id,
-                'service_profile_id' => $serviceProfile?->id,
-                'network_profile_id' => $data['network_profile_id'] ?? null,
-                'onu_id' => $actualOnuId,
-                'username' => $data['username'],
-                'password' => $data['password'],
-                'status' => $data['status'] ?? 'active',
-                'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : ($customer->reseller_id ?? null),
-                'branch_id' => !empty($data['branch_id']) ? $data['branch_id'] : ($customer->branch_id ?? null),
-                'activated_at' => isset($data['activation_date']) ? \Illuminate\Support\Carbon::parse($data['activation_date']) : now(),
-                'attributes' => [
-                    'name' => $data['name'],
-                    'phone' => $data['phone'],
-                    'email' => $data['email'] ?? null,
-                    'address' => $data['address'] ?? null,
-                    'notes' => $data['notes'] ?? null,
-                ],
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]);
+            // Step 4: Find or Create CustomerService (Idempotent)
+            $customerService = CustomerService::withoutGlobalScopes()
+                ->where('customer_id', $customer->id)
+                ->where(function ($q) use ($data) {
+                    $q->where('username', $data['username']);
+                    if (!empty($data['service_profile_id'])) {
+                        $q->orWhere('service_profile_id', $data['service_profile_id']);
+                    }
+                })
+                ->first();
 
-            // Step 5: Create Subscription - Use base_price from ServiceProfile
-            $isFreePackage = $serviceProfile && ($serviceProfile->is_free || (float) $serviceProfile->base_price === 0.0);
-            $recurringPrice = $isFreePackage ? 0.0 : (float) ($serviceProfile?->base_price ?? 0);
-
-            $subscription = $this->subscriptionService->createSubscription(
-                $customerService,
-                $contract,
-                $recurringPrice,
-                $userId
-            );
-
-            // Step 6: Create First Invoice
-            $invoiceStatus = $isFreePackage ? 'paid' : 'unpaid';
-            $packageName = $serviceProfile?->name ?? 'Bulanan';
-            $itemDescription = $isFreePackage ? "Langganan {$packageName} (Gratis)" : "Langganan {$packageName}";
-
-            $invoice = $this->invoiceService->createInvoice(
-                $contract->customer_id,
-                $userId,
-                [
-                    [
-                        'description' => $itemDescription,
-                        'quantity' => 1,
-                        'unit_price' => $recurringPrice,
-                    ]
-                ],
-                null,
-                null,
-                null,
-                $contract->id,
-                'IDR',
-                $invoiceStatus
-            );
-
-            if ($isFreePackage) {
-                $invoice->update([
-                    'paid_amount' => 0,
-                    'paid_at' => now(),
-                    'payment_method' => 'free',
-                    'status' => 'paid',
+            if ($customerService) {
+                $customerService->update([
+                    'service_id' => $service?->id ?? $customerService->service_id,
+                    'service_profile_id' => $serviceProfile?->id ?? $customerService->service_profile_id,
+                    'network_profile_id' => $data['network_profile_id'] ?? $customerService->network_profile_id,
+                    'onu_id' => $actualOnuId ?: $customerService->onu_id,
+                    'username' => $data['username'],
+                    'password' => $data['password'],
+                    'reseller_id' => $effectiveResellerId,
+                    'branch_id' => $effectiveBranchId,
+                    'status' => 'pending_provisioning',
+                    'updated_by' => $userId,
                 ]);
-            }
-
-            // Step 7: Create PPPoE User
-            $networkData = collect($data)->only([
-                'router_id', 'mac_address', 'static_ip', 'odp_id', 'port_number', 'onu_id', 
-                'reseller_id', 'branch_id', 'billing_cycle', 'setup_fee'
-            ])->filter(fn($val) => $val !== null && $val !== '')->toArray();
-
-            $pppoeUser = $this->pppoeService->createPPPoEUser(
-                $customerService,
-                $serviceProfile?->id ?? 1,
-                null,
-                $userId,
-                $data['username'],
-                $data['password'],
-                $networkData
-            );
-
-            $ignoreHardware = !empty($data['ignore_hardware_errors']) || !empty($data['is_import']);
-            $this->pppoeService->activatePPPoEUser($pppoeUser->id, $userId, $ignoreHardware);
-
-            // Step 8: Audit Log
-            $this->logAudit($customerService, $userId, 'Service PPPoE Diaktifkan');
-
-            // Step 9: Create Notification
-            $notification = Notification::create([
-                'uuid' => (string) Str::uuid(),
-                'recipient_id' => $userId,
-                'title' => 'Layanan PPPoE Aktif',
-                'message' => "Layanan PPPoE untuk {$data['name']} ({$data['username']}) telah aktif.",
-                'type' => 'system',
-                'status' => 'pending',
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]);
-            SendNotificationJob::dispatch($notification);
-
-            // Step 10: Dispatch Service Activated Event
-            Event::dispatch(new ServiceActivatedEvent(
-                $customerService->uuid,
-                $customer->id,
-                $userId
-            ));
-
-            // Step 11: Otomatis kirim notifikasi WhatsApp ke Pelanggan Baru via Gateway
-            try {
-                $user = \App\Models\User::find($customer->user_id);
-                $dueDate = isset($invoice) && $invoice?->due_date 
-                    ? (is_object($invoice->due_date) ? $invoice->due_date->format('d M Y') : (string)$invoice->due_date)
-                    : now()->addMonth()->format('d M Y');
-
-                app(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class)->notifyCustomerCreated(
-                    $customer,
-                    [
-                        'service_type' => 'pppoe',
-                        'package_name' => $serviceProfile?->name ?? 'Internet PPPoE',
-                        'due_date' => $dueDate,
-                        'portal_username' => $user?->username ?? $customer->code ?? $customer->phone,
-                        'portal_password' => '123456',
+            } else {
+                $customerService = CustomerService::create([
+                    'uuid' => (string) Str::uuid(),
+                    'customer_id' => $customer->id,
+                    'contract_id' => $contract->id,
+                    'service_id' => $service?->id,
+                    'service_profile_id' => $serviceProfile?->id,
+                    'network_profile_id' => $data['network_profile_id'] ?? null,
+                    'onu_id' => $actualOnuId,
+                    'username' => $data['username'],
+                    'password' => $data['password'],
+                    'status' => 'pending_provisioning',
+                    'reseller_id' => $effectiveResellerId,
+                    'branch_id' => $effectiveBranchId,
+                    'activated_at' => isset($data['activation_date']) ? \Illuminate\Support\Carbon::parse($data['activation_date']) : now(),
+                    'attributes' => [
+                        'name' => $data['name'],
+                        'phone' => $data['phone'],
+                        'email' => $data['email'] ?? null,
+                        'address' => $data['address'] ?? null,
+                        'notes' => $data['notes'] ?? null,
                     ],
-                    sync: true
-                );
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('[ProvisioningService] Gagal kirim WA notif pelanggan PPPoE baru: ' . $e->getMessage());
-            }
-
-            return [
-                'success' => true,
-                'customer' => $customer,
-                'customer_service' => $customerService,
-                'subscription' => $subscription,
-                'invoice' => $invoice,
-                'pppoe_user' => $pppoeUser,
-            ];
-        });
-    }
-
-    public function activateHotspotService(array $data, int $userId): array
-    {
-        return DB::transaction(function () use ($data, $userId) {
-            // Validasi Keunikan Data (Nomor HP, Username lintas sistem)
-            if (empty($data['customer_id'])) {
-                \App\Services\CRM\CustomerValidationService::validateBeforeCreate($data);
-            }
-
-            // Step 1: Find or Create Customer
-            $customer = $this->findOrCreateCustomer($data, $userId);
-
-            // Step 2: Find or Create Contract for Customer
-            $contract = $this->findOrCreateContract($customer, $userId);
-
-            // Step 3: Get Service Profile (Single Source of Truth)
-            $serviceProfile = \App\Models\ISP\ServiceProfile::find($data['service_profile_id'] ?? null) ?? \App\Models\ISP\ServiceProfile::first();
-            $service = Service::first();
-            
-            // Auto-create default Service and Catalog if empty to prevent NOT NULL constraint
-            if (!$service) {
-                try {
-                    $catalog = \App\Models\ServiceCatalog\ServiceCatalog::withoutGlobalScopes()->firstOrCreate(
-                        ['name' => 'Layanan Internet'],
-                        [
-                            'uuid' => (string) Str::uuid(),
-                            'description' => 'Katalog Layanan Default',
-                            'is_active' => true,
-                            'created_by' => $userId,
-                            'updated_by' => $userId
-                        ]
-                    );
-                } catch (\Illuminate\Database\QueryException $e) {
-                    if ($e->errorInfo[1] == 1062 || $e->errorInfo[1] == 19) {
-                        $catalog = \App\Models\ServiceCatalog\ServiceCatalog::withoutGlobalScopes()->where('name', 'Layanan Internet')->firstOrFail();
-                    } else {
-                        throw $e;
-                    }
-                }
-                
-                $service = Service::create([
-                    'uuid' => (string) Str::uuid(),
-                    'service_catalog_id' => $catalog->id,
-                    'name' => 'Default Internet Service',
-                    'description' => 'Auto-generated service',
-                    'type' => 'pppoe',
-                    'price' => 0,
-                    'is_active' => true,
                     'created_by' => $userId,
-                    'updated_by' => $userId
+                    'updated_by' => $userId,
                 ]);
             }
 
-            $actualOnuId = $this->resolveOnuId($data['onu_id'] ?? null, $data, $userId);
-
-            // Step 4: Create CustomerService
-            $customerService = CustomerService::create([
-                'uuid' => (string) Str::uuid(),
-                'customer_id' => $customer->id,
-                'contract_id' => $contract->id,
-                'service_id' => $service?->id,
-                'service_profile_id' => $serviceProfile?->id,
-                'network_profile_id' => $data['network_profile_id'] ?? null,
-                'onu_id' => $actualOnuId,
-                'username' => $data['username'],
-                'password' => $data['password'],
-                'status' => $data['status'] ?? 'active',
-                'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : ($customer->reseller_id ?? null),
-                'branch_id' => !empty($data['branch_id']) ? $data['branch_id'] : ($customer->branch_id ?? null),
-                'activated_at' => isset($data['activation_date']) ? \Illuminate\Support\Carbon::parse($data['activation_date']) : now(),
-                'attributes' => [
-                    'name' => $data['name'],
-                    'phone' => $data['phone'],
-                    'email' => $data['email'] ?? null,
-                    'address' => $data['address'] ?? null,
-                    'notes' => $data['notes'] ?? null,
-                ],
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]);
-
-            // Step 5: Create Subscription if base_price exists or profile is free
+            // Step 5: Create or Retrieve Subscription
             $isFreePackage = $serviceProfile && ($serviceProfile->is_free || (float) $serviceProfile->base_price === 0.0);
             $recurringPrice = $isFreePackage ? 0.0 : (float) ($serviceProfile?->base_price ?? 0);
-            $subscription = null;
-            if ($recurringPrice > 0 || $isFreePackage) {
+
+            $subscription = \App\Models\Billing\Subscription::withoutGlobalScopes()
+                ->where('customer_service_id', $customerService->id)
+                ->first();
+
+            if (!$subscription) {
                 $subscription = $this->subscriptionService->createSubscription(
                     $customerService,
                     $contract,
                     $recurringPrice,
                     $userId
                 );
+            }
 
-                // Step 6: Create First Invoice
+            // Step 6: Create First Invoice if not yet exists
+            $invoice = Invoice::withoutGlobalScopes()
+                ->where('contract_id', $contract->id)
+                ->where('status', 'unpaid')
+                ->first();
+
+            if (!$invoice && ($recurringPrice > 0 || $isFreePackage)) {
                 $invoiceStatus = $isFreePackage ? 'paid' : 'unpaid';
                 $packageName = $serviceProfile?->name ?? 'Bulanan';
                 $itemDescription = $isFreePackage ? "Langganan {$packageName} (Gratis)" : "Langganan {$packageName}";
@@ -364,49 +213,520 @@ class ProvisioningService
                 }
             }
 
-            // Step 7: Create Hotspot User
+            // Step 7: Create or Update PPPoE User
             $networkData = collect($data)->only([
                 'router_id', 'mac_address', 'static_ip', 'odp_id', 'port_number', 'onu_id', 
                 'reseller_id', 'branch_id', 'billing_cycle', 'setup_fee'
             ])->filter(fn($val) => $val !== null && $val !== '')->toArray();
 
-            $hotspotUser = $this->hotspotService->createHotspotUser(
-                $customerService,
-                $serviceProfile?->id ?? 1,
-                null,
-                $userId,
-                $data['username'],
-                $data['password'],
-                true, // provisionOnCreate
-                $networkData
-            );
+            $networkData['reseller_id'] = $effectiveResellerId;
+            $networkData['branch_id'] = $effectiveBranchId;
+            $networkData['status'] = 'pending_provisioning';
 
-            $this->hotspotService->activateHotspotUser($hotspotUser->id, $userId);
+            $pppoeUser = \App\Models\ISP\PPPoEUser::withoutGlobalScopes()
+                ->where('customer_service_id', $customerService->id)
+                ->orWhere('username', $data['username'])
+                ->first();
 
-            // Step 8: Audit Log
-            $this->logAudit($customerService, $userId, 'Service Hotspot Diaktifkan');
+            if ($pppoeUser) {
+                $pppoeUser->update(array_merge([
+                    'customer_service_id' => $customerService->id,
+                    'service_profile_id' => $serviceProfile?->id ?? $pppoeUser->service_profile_id,
+                    'username' => $data['username'],
+                    'password' => $data['password'],
+                    'updated_by' => $userId,
+                ], $networkData));
+            } else {
+                $pppoeUser = $this->pppoeService->createPPPoEUser(
+                    $customerService,
+                    $serviceProfile?->id ?? 1,
+                    null,
+                    $userId,
+                    $data['username'],
+                    $data['password'],
+                    $networkData
+                );
+            }
 
-            // Step 9: Create Notification
-            $notification = Notification::create([
-                'uuid' => (string) Str::uuid(),
-                'recipient_id' => $userId,
-                'title' => 'Layanan Hotspot Aktif',
-                'message' => "Layanan Hotspot untuk {$data['name']} ({$data['username']}) telah aktif.",
-                'type' => 'system',
-                'status' => 'pending',
-                'created_by' => $userId,
-                'updated_by' => $userId,
+            // Step 8: Ensure ServiceInstance & ProvisionPipeline exist (SSOT)
+            $serviceInstance = ServiceInstance::withoutGlobalScopes()
+                ->where('customer_service_id', $customerService->id)
+                ->first();
+
+            if (!$serviceInstance) {
+                $serviceInstance = $this->serviceInstanceRepository->create([
+                    'uuid' => (string) Str::uuid(),
+                    'customer_service_id' => $customerService->id,
+                    'service_id' => $customerService->service_id,
+                    'status' => 'pending_provisioning',
+                    'provisioned_at' => null,
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
+                ]);
+            }
+
+            $pipeline = ProvisionPipeline::withoutGlobalScopes()
+                ->where('service_instance_id', $serviceInstance->id)
+                ->first();
+
+            if (!$pipeline) {
+                $pipeline = $this->pipelineRepository->create([
+                    'uuid' => (string) Str::uuid(),
+                    'service_instance_id' => $serviceInstance->id,
+                    'status' => 'pending',
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
+                ]);
+                $this->createPipelineSteps($pipeline, $customerService);
+            }
+
+            // Audit Log
+            $this->logAudit($customerService, $userId, 'Service PPPoE Didaftarkan');
+
+            return [
+                'customer' => $customer,
+                'contract' => $contract,
+                'customer_service' => $customerService,
+                'subscription' => $subscription,
+                'invoice' => $invoice,
+                'pppoe_user' => $pppoeUser,
+                'service_instance' => $serviceInstance,
+                'pipeline' => $pipeline,
+                'service_profile' => $serviceProfile,
+            ];
+        });
+
+        $customer = $coreData['customer'];
+        $contract = $coreData['contract'] ?? null;
+        $customerService = $coreData['customer_service'];
+        $subscription = $coreData['subscription'];
+        $invoice = $coreData['invoice'];
+        $pppoeUser = $coreData['pppoe_user'];
+        $serviceInstance = $coreData['service_instance'];
+        $pipeline = $coreData['pipeline'];
+        $serviceProfile = $coreData['service_profile'];
+
+        // STEP 9: Eksekusi Hardware Provisioning (Terpisah dari Transaksi Inti DB)
+        $hardwareSuccess = false;
+        $hardwareError = null;
+
+        try {
+            $ignoreHardware = !empty($data['ignore_hardware_errors']) || !empty($data['is_import']);
+            $this->pppoeService->activatePPPoEUser($pppoeUser->id, $userId, $ignoreHardware);
+            $hardwareSuccess = true;
+        } catch (\Throwable $e) {
+            $hardwareError = $e->getMessage();
+            \Illuminate\Support\Facades\Log::warning("[ProvisioningService] PPPoE MikroTik hardware provisioning failed: {$hardwareError}");
+        }
+
+        if ($hardwareSuccess) {
+            $customerService->update([
+                'status' => 'active',
+                'service_status' => 'online',
+                'activated_at' => $customerService->activated_at ?? now(),
             ]);
-            SendNotificationJob::dispatch($notification);
+            $pppoeUser->update(['status' => 'active']);
+            $serviceInstance->update([
+                'status' => 'active',
+                'provisioned_at' => now(),
+                'activated_at' => now(),
+            ]);
+            if ($pipeline) {
+                $pipeline->update(['status' => 'completed', 'completed_at' => now()]);
+            }
 
-            // Step 10: Dispatch Service Activated Event
-            Event::dispatch(new ServiceActivatedEvent(
-                $customerService->uuid,
-                $customer->id,
-                $userId
-            ));
+            // Create Notification
+            try {
+                $notification = Notification::create([
+                    'uuid' => (string) Str::uuid(),
+                    'recipient_id' => $userId,
+                    'title' => 'Layanan PPPoE Aktif',
+                    'message' => "Layanan PPPoE untuk {$data['name']} ({$data['username']}) telah aktif.",
+                    'type' => 'system',
+                    'status' => 'pending',
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
+                ]);
+                SendNotificationJob::dispatch($notification);
+            } catch (\Throwable $ne) {}
 
-            // Step 11: Otomatis kirim notifikasi WhatsApp ke Pelanggan Baru via Gateway
+            // Dispatch Service Activated Event
+            try {
+                Event::dispatch(new ServiceActivatedEvent(
+                    $customerService->uuid,
+                    $customer->id,
+                    $userId
+                ));
+            } catch (\Throwable $ee) {}
+
+            // Otomatis kirim notifikasi WhatsApp ke Pelanggan Baru via Gateway
+            try {
+                $user = \App\Models\User::find($customer->user_id);
+                $dueDate = isset($invoice) && $invoice?->due_date 
+                    ? (is_object($invoice->due_date) ? $invoice->due_date->format('d M Y') : (string)$invoice->due_date)
+                    : now()->addMonth()->format('d M Y');
+
+                app(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class)->notifyCustomerCreated(
+                    $customer,
+                    [
+                        'service_type' => 'pppoe',
+                        'package_name' => $serviceProfile?->name ?? 'Internet PPPoE',
+                        'due_date' => $dueDate,
+                        'portal_username' => $user?->username ?? $customer->code ?? $customer->phone,
+                        'portal_password' => '123456',
+                    ],
+                    sync: true
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[ProvisioningService] Gagal kirim WA notif pelanggan PPPoE baru: ' . $e->getMessage());
+            }
+        } else {
+            $customerService->update([
+                'status' => 'provisioning_failed',
+                'service_status' => 'hardware_unreachable',
+            ]);
+            $pppoeUser->update(['status' => 'failed_provisioning']);
+            $serviceInstance->update(['status' => 'failed']);
+            if ($pipeline) {
+                $pipeline->update([
+                    'status' => 'failed',
+                    'error_message' => $hardwareError,
+                    'failed_at' => now(),
+                ]);
+            }
+        }
+
+        return [
+            'success' => $hardwareSuccess,
+            'hardware_error' => $hardwareError,
+            'customer' => $customer,
+            'contract' => $contract,
+            'customer_service' => $customerService,
+            'service_instance' => $serviceInstance,
+            'subscription' => $subscription,
+            'invoice' => $invoice,
+            'pppoe_user' => $pppoeUser,
+        ];
+    }
+
+
+    public function activateHotspotService(array $data, int $userId): array
+    {
+        // Validasi Keunikan Data (Nomor HP, Username lintas sistem)
+        if (empty($data['customer_id'])) {
+            \App\Services\CRM\CustomerValidationService::validateBeforeCreate($data);
+        }
+
+        // STEP 1-8: Core Database Transaction (Pelanggan, Layanan, Paket, Instance, Akun Jaringan)
+        $coreData = DB::transaction(function () use ($data, $userId) {
+            // Step 1: Find or Create Customer
+            $customer = $this->findOrCreateCustomer($data, $userId);
+
+            // Step 2: Find or Create Contract for Customer
+            $contract = $this->findOrCreateContract($customer, $userId);
+
+            // Step 3: Get Service Profile (SSOT - withoutGlobalScopes)
+            $serviceProfile = null;
+            if (!empty($data['service_profile_id'])) {
+                $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find($data['service_profile_id']);
+            }
+            if (!$serviceProfile) {
+                $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->where('is_active', true)->first()
+                    ?? \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->first();
+            }
+
+            $service = Service::first();
+            if (!$service) {
+                try {
+                    $catalog = \App\Models\ServiceCatalog\ServiceCatalog::withoutGlobalScopes()->firstOrCreate(
+                        ['name' => 'Layanan Internet'],
+                        [
+                            'uuid' => (string) Str::uuid(),
+                            'description' => 'Katalog Layanan Default',
+                            'is_active' => true,
+                            'created_by' => $userId,
+                            'updated_by' => $userId
+                        ]
+                    );
+                } catch (\Illuminate\Database\QueryException $e) {
+                    if ($e->errorInfo[1] == 1062 || $e->errorInfo[1] == 19) {
+                        $catalog = \App\Models\ServiceCatalog\ServiceCatalog::withoutGlobalScopes()->where('name', 'Layanan Internet')->firstOrFail();
+                    } else {
+                        throw $e;
+                    }
+                }
+
+                $service = Service::create([
+                    'uuid' => (string) Str::uuid(),
+                    'service_catalog_id' => $catalog->id,
+                    'name' => 'Default Internet Service',
+                    'description' => 'Auto-generated service',
+                    'type' => 'hotspot',
+                    'price' => 0,
+                    'is_active' => true,
+                    'created_by' => $userId,
+                    'updated_by' => $userId
+                ]);
+            }
+
+            $actualOnuId = $this->resolveOnuId($data['onu_id'] ?? null, $data, $userId);
+            $effectiveBranchId = !empty($data['branch_id']) ? $data['branch_id'] : ($customer->branch_id ?? null);
+            $effectiveResellerId = !empty($data['reseller_id']) ? $data['reseller_id'] : ($customer->reseller_id ?? null);
+
+            // Step 4: Find or Create CustomerService (Idempotent)
+            $customerService = CustomerService::withoutGlobalScopes()
+                ->where('customer_id', $customer->id)
+                ->where(function ($q) use ($data) {
+                    $q->where('username', $data['username']);
+                    if (!empty($data['service_profile_id'])) {
+                        $q->orWhere('service_profile_id', $data['service_profile_id']);
+                    }
+                })
+                ->first();
+
+            if ($customerService) {
+                $customerService->update([
+                    'service_id' => $service?->id ?? $customerService->service_id,
+                    'service_profile_id' => $serviceProfile?->id ?? $customerService->service_profile_id,
+                    'network_profile_id' => $data['network_profile_id'] ?? $customerService->network_profile_id,
+                    'onu_id' => $actualOnuId ?: $customerService->onu_id,
+                    'username' => $data['username'],
+                    'password' => $data['password'],
+                    'reseller_id' => $effectiveResellerId,
+                    'branch_id' => $effectiveBranchId,
+                    'status' => 'pending_provisioning',
+                    'updated_by' => $userId,
+                ]);
+            } else {
+                $customerService = CustomerService::create([
+                    'uuid' => (string) Str::uuid(),
+                    'customer_id' => $customer->id,
+                    'contract_id' => $contract->id,
+                    'service_id' => $service?->id,
+                    'service_profile_id' => $serviceProfile?->id,
+                    'network_profile_id' => $data['network_profile_id'] ?? null,
+                    'onu_id' => $actualOnuId,
+                    'username' => $data['username'],
+                    'password' => $data['password'],
+                    'status' => 'pending_provisioning',
+                    'reseller_id' => $effectiveResellerId,
+                    'branch_id' => $effectiveBranchId,
+                    'activated_at' => isset($data['activation_date']) ? \Illuminate\Support\Carbon::parse($data['activation_date']) : now(),
+                    'attributes' => [
+                        'name' => $data['name'],
+                        'phone' => $data['phone'],
+                        'email' => $data['email'] ?? null,
+                        'address' => $data['address'] ?? null,
+                        'notes' => $data['notes'] ?? null,
+                    ],
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
+                ]);
+            }
+
+            // Step 5: Create or Retrieve Subscription if base_price exists or profile is free
+            $isFreePackage = $serviceProfile && ($serviceProfile->is_free || (float) $serviceProfile->base_price === 0.0);
+            $recurringPrice = $isFreePackage ? 0.0 : (float) ($serviceProfile?->base_price ?? 0);
+
+            $subscription = \App\Models\Billing\Subscription::withoutGlobalScopes()
+                ->where('customer_service_id', $customerService->id)
+                ->first();
+
+            if (!$subscription && ($recurringPrice > 0 || $isFreePackage)) {
+                $subscription = $this->subscriptionService->createSubscription(
+                    $customerService,
+                    $contract,
+                    $recurringPrice,
+                    $userId
+                );
+            }
+
+            // Step 6: Create First Invoice if not exists
+            $invoice = Invoice::withoutGlobalScopes()
+                ->where('contract_id', $contract->id)
+                ->where('status', 'unpaid')
+                ->first();
+
+            if (!$invoice && ($recurringPrice > 0 || $isFreePackage)) {
+                $invoiceStatus = $isFreePackage ? 'paid' : 'unpaid';
+                $packageName = $serviceProfile?->name ?? 'Bulanan';
+                $itemDescription = $isFreePackage ? "Langganan {$packageName} (Gratis)" : "Langganan {$packageName}";
+
+                $invoice = $this->invoiceService->createInvoice(
+                    $contract->customer_id,
+                    $userId,
+                    [
+                        [
+                            'description' => $itemDescription,
+                            'quantity' => 1,
+                            'unit_price' => $recurringPrice,
+                        ]
+                    ],
+                    null,
+                    null,
+                    null,
+                    $contract->id,
+                    'IDR',
+                    $invoiceStatus
+                );
+
+                if ($isFreePackage) {
+                    $invoice->update([
+                        'paid_amount' => 0,
+                        'paid_at' => now(),
+                        'payment_method' => 'free',
+                        'status' => 'paid',
+                    ]);
+                }
+            }
+
+            // Step 7: Create or Update Hotspot User
+            $networkData = collect($data)->only([
+                'router_id', 'mac_address', 'static_ip', 'odp_id', 'port_number', 'onu_id', 
+                'reseller_id', 'branch_id', 'billing_cycle', 'setup_fee'
+            ])->filter(fn($val) => $val !== null && $val !== '')->toArray();
+
+            $networkData['reseller_id'] = $effectiveResellerId;
+            $networkData['branch_id'] = $effectiveBranchId;
+            $networkData['status'] = 'pending_provisioning';
+
+            $hotspotUser = \App\Models\ISP\HotspotUser::withoutGlobalScopes()
+                ->where('customer_service_id', $customerService->id)
+                ->orWhere('username', $data['username'])
+                ->first();
+
+            if ($hotspotUser) {
+                $hotspotUser->update(array_merge([
+                    'customer_service_id' => $customerService->id,
+                    'service_profile_id' => $serviceProfile?->id ?? $hotspotUser->service_profile_id,
+                    'username' => $data['username'],
+                    'password' => $data['password'],
+                    'updated_by' => $userId,
+                ], $networkData));
+            } else {
+                $hotspotUser = $this->hotspotService->createHotspotUser(
+                    $customerService,
+                    $serviceProfile?->id ?? 1,
+                    null,
+                    $userId,
+                    $data['username'],
+                    $data['password'],
+                    false, // provision deferred to step 9
+                    $networkData
+                );
+            }
+
+            // Step 8: Ensure ServiceInstance & ProvisionPipeline exist (SSOT)
+            $serviceInstance = ServiceInstance::withoutGlobalScopes()
+                ->where('customer_service_id', $customerService->id)
+                ->first();
+
+            if (!$serviceInstance) {
+                $serviceInstance = $this->serviceInstanceRepository->create([
+                    'uuid' => (string) Str::uuid(),
+                    'customer_service_id' => $customerService->id,
+                    'service_id' => $customerService->service_id,
+                    'status' => 'pending_provisioning',
+                    'provisioned_at' => null,
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
+                ]);
+            }
+
+            $pipeline = ProvisionPipeline::withoutGlobalScopes()
+                ->where('service_instance_id', $serviceInstance->id)
+                ->first();
+
+            if (!$pipeline) {
+                $pipeline = $this->pipelineRepository->create([
+                    'uuid' => (string) Str::uuid(),
+                    'service_instance_id' => $serviceInstance->id,
+                    'status' => 'pending',
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
+                ]);
+                $this->createPipelineSteps($pipeline, $customerService);
+            }
+
+            // Audit Log
+            $this->logAudit($customerService, $userId, 'Service Hotspot Didaftarkan');
+
+            return [
+                'customer' => $customer,
+                'contract' => $contract,
+                'customer_service' => $customerService,
+                'subscription' => $subscription,
+                'invoice' => $invoice,
+                'hotspot_user' => $hotspotUser,
+                'service_instance' => $serviceInstance,
+                'pipeline' => $pipeline,
+                'service_profile' => $serviceProfile,
+            ];
+        });
+
+        $customer = $coreData['customer'];
+        $contract = $coreData['contract'] ?? null;
+        $customerService = $coreData['customer_service'];
+        $subscription = $coreData['subscription'];
+        $invoice = $coreData['invoice'];
+        $hotspotUser = $coreData['hotspot_user'];
+        $serviceInstance = $coreData['service_instance'];
+        $pipeline = $coreData['pipeline'];
+        $serviceProfile = $coreData['service_profile'];
+
+        // STEP 9: Eksekusi Hardware Provisioning (Terpisah dari Transaksi Inti DB)
+        $hardwareSuccess = false;
+        $hardwareError = null;
+
+        try {
+            $this->hotspotService->activateHotspotUser($hotspotUser->id, $userId);
+            $hardwareSuccess = true;
+        } catch (\Throwable $e) {
+            $hardwareError = $e->getMessage();
+            \Illuminate\Support\Facades\Log::warning("[ProvisioningService] Hotspot hardware provisioning failed: {$hardwareError}");
+        }
+
+        if ($hardwareSuccess) {
+            $customerService->update([
+                'status' => 'active',
+                'service_status' => 'online',
+                'activated_at' => $customerService->activated_at ?? now(),
+            ]);
+            $hotspotUser->update(['status' => 'active']);
+            $serviceInstance->update([
+                'status' => 'active',
+                'provisioned_at' => now(),
+                'activated_at' => now(),
+            ]);
+            if ($pipeline) {
+                $pipeline->update(['status' => 'completed', 'completed_at' => now()]);
+            }
+
+            // Notification
+            try {
+                $notification = Notification::create([
+                    'uuid' => (string) Str::uuid(),
+                    'recipient_id' => $userId,
+                    'title' => 'Layanan Hotspot Aktif',
+                    'message' => "Layanan Hotspot untuk {$data['name']} ({$data['username']}) telah aktif.",
+                    'type' => 'system',
+                    'status' => 'pending',
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
+                ]);
+                SendNotificationJob::dispatch($notification);
+            } catch (\Throwable $ne) {}
+
+            // Dispatch Event
+            try {
+                Event::dispatch(new ServiceActivatedEvent(
+                    $customerService->uuid,
+                    $customer->id,
+                    $userId
+                ));
+            } catch (\Throwable $ee) {}
+
+            // WA Notification
             try {
                 $user = \App\Models\User::find($customer->user_id);
                 $dueDate = isset($invoice) && $invoice?->due_date 
@@ -429,17 +749,35 @@ class ProvisioningService
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('[ProvisioningService] Gagal kirim WA notif pelanggan Hotspot baru: ' . $e->getMessage());
             }
+        } else {
+            $customerService->update([
+                'status' => 'provisioning_failed',
+                'service_status' => 'hardware_unreachable',
+            ]);
+            $hotspotUser->update(['status' => 'failed_provisioning']);
+            $serviceInstance->update(['status' => 'failed']);
+            if ($pipeline) {
+                $pipeline->update([
+                    'status' => 'failed',
+                    'error_message' => $hardwareError,
+                    'failed_at' => now(),
+                ]);
+            }
+        }
 
-            return [
-                'success' => true,
-                'customer' => $customer,
-                'customer_service' => $customerService,
-                'subscription' => $subscription,
-                'invoice' => $invoice ?? null,
-                'hotspot_user' => $hotspotUser,
-            ];
-        });
+        return [
+            'success' => $hardwareSuccess,
+            'hardware_error' => $hardwareError,
+            'customer' => $customer,
+            'contract' => $contract,
+            'customer_service' => $customerService,
+            'service_instance' => $serviceInstance,
+            'subscription' => $subscription,
+            'invoice' => $invoice ?? null,
+            'hotspot_user' => $hotspotUser,
+        ];
     }
+
 
     protected function findOrCreateCustomer(array $data, int $userId): Customer
     {

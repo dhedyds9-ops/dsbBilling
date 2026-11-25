@@ -239,6 +239,15 @@ class MobileInvoiceApiController extends Controller
                 ->first();
             if ($existingPayment) {
                 $inv = $existingPayment->invoices()->first() ?? Invoice::withoutGlobalScopes()->find($id);
+                $reqAmount = $request->input('amount') !== null ? (float) $request->input('amount') : null;
+                if (($inv && (int) $inv->id !== (int) $id) ||
+                    ($reqAmount !== null && abs((float) $existingPayment->amount - $reqAmount) > 0.01)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Konflik Idempotensi: Idempotency Key '{$idempotencyKey}' sudah digunakan untuk transaksi pembayaran berbeda (nominal atau invoice berbeda).",
+                    ], 422);
+                }
+
                 return response()->json([
                     'success' => true,
                     'idempotent_replay' => true,
@@ -281,6 +290,14 @@ class MobileInvoiceApiController extends Controller
                         ->lockForUpdate()
                         ->first();
                     if ($existingPayment) {
+                        $reqAmount = $request->input('amount') !== null ? (float) $request->input('amount') : null;
+                        if ($reqAmount !== null && abs((float) $existingPayment->amount - $reqAmount) > 0.01) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Konflik Idempotensi: Idempotency Key '{$idempotencyKey}' sudah digunakan untuk transaksi pembayaran berbeda (nominal tidak cocok).",
+                            ], 422);
+                        }
+
                         return response()->json([
                             'success' => true,
                             'idempotent_replay' => true,

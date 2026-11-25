@@ -690,6 +690,28 @@ class MobileInventoryApiController extends Controller
                     'branch_id' => $user->branch_id,
                 ]);
 
+                if (\Illuminate\Support\Facades\Schema::hasTable('audit_logs')) {
+                    try {
+                        \App\Models\AuditLog::record(
+                            action: 'inventory_custody_transfer',
+                            modelType: InventoryCustodyTransfer::class,
+                            modelId: $custody->id,
+                            oldValues: [
+                                'holder_id' => $user->id,
+                                'available_qty' => $avail,
+                            ],
+                            newValues: [
+                                'target_user_id' => $targetUser->id,
+                                'transferred_qty' => $transferQty,
+                                'remaining_qty' => $remainingQty,
+                            ],
+                            notes: "Transfer custody {$transferQty} unit kepada {$targetUser->name}"
+                        );
+                    } catch (\Throwable $ae) {
+                        \Log::warning("[transferCustody] AuditLog record non-fatal: " . $ae->getMessage());
+                    }
+                }
+
                 return response()->json([
                     'success' => true,
                     'message' => "Material sebanyak $transferQty berhasil diserahterimakan kepada {$targetUser->name}.",
