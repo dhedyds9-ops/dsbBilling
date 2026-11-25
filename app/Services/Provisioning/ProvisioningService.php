@@ -154,6 +154,10 @@ class ProvisioningService
                 ->first();
 
             if ($customerService) {
+                $attrs = is_array($customerService->attributes) ? $customerService->attributes : [];
+                if (!empty($data['due_date'])) {
+                    $attrs['due_date'] = \Illuminate\Support\Carbon::parse($data['due_date'])->format('Y-m-d');
+                }
                 $customerService->update([
                     'service_id' => $service?->id ?? $customerService->service_id,
                     'service_profile_id' => $serviceProfile?->id ?? $customerService->service_profile_id,
@@ -164,6 +168,7 @@ class ProvisioningService
                     'reseller_id' => $effectiveResellerId,
                     'branch_id' => $effectiveBranchId,
                     'status' => 'pending_provisioning',
+                    'attributes' => $attrs,
                     'updated_by' => $userId,
                 ]);
             } else {
@@ -187,6 +192,7 @@ class ProvisioningService
                         'email' => $data['email'] ?? null,
                         'address' => $data['address'] ?? null,
                         'notes' => $data['notes'] ?? null,
+                        'due_date' => !empty($data['due_date']) ? \Illuminate\Support\Carbon::parse($data['due_date'])->format('Y-m-d') : null,
                     ],
                     'created_by' => $userId,
                     'updated_by' => $userId,
@@ -210,6 +216,12 @@ class ProvisioningService
                 );
             }
 
+            if ($subscription && !empty($data['due_date'])) {
+                $subscription->update([
+                    'next_billing_date' => \Illuminate\Support\Carbon::parse($data['due_date']),
+                ]);
+            }
+
             // Step 6: Create First Invoice if not yet exists
             $invoice = Invoice::withoutGlobalScopes()
                 ->where('contract_id', $contract->id)
@@ -220,6 +232,7 @@ class ProvisioningService
                 $invoiceStatus = $isFreePackage ? 'paid' : 'unpaid';
                 $packageName = $serviceProfile?->name ?? 'Bulanan';
                 $itemDescription = $isFreePackage ? "Langganan {$packageName} (Gratis)" : "Langganan {$packageName}";
+                $firstInvoiceDueDate = !empty($data['due_date']) ? \Illuminate\Support\Carbon::parse($data['due_date']) : null;
 
                 $invoice = $this->invoiceService->createInvoice(
                     $contract->customer_id,
@@ -232,7 +245,7 @@ class ProvisioningService
                         ]
                     ],
                     null,
-                    null,
+                    $firstInvoiceDueDate,
                     null,
                     $contract->id,
                     'IDR',
@@ -557,6 +570,10 @@ class ProvisioningService
                 ->first();
 
             if ($customerService) {
+                $attrs = is_array($customerService->attributes) ? $customerService->attributes : [];
+                if (!empty($data['due_date'])) {
+                    $attrs['due_date'] = \Illuminate\Support\Carbon::parse($data['due_date'])->format('Y-m-d');
+                }
                 $customerService->update([
                     'service_id' => $service?->id ?? $customerService->service_id,
                     'service_profile_id' => $serviceProfile?->id ?? $customerService->service_profile_id,
@@ -567,6 +584,7 @@ class ProvisioningService
                     'reseller_id' => $effectiveResellerId,
                     'branch_id' => $effectiveBranchId,
                     'status' => 'pending_provisioning',
+                    'attributes' => $attrs,
                     'updated_by' => $userId,
                 ]);
             } else {
@@ -590,6 +608,7 @@ class ProvisioningService
                         'email' => $data['email'] ?? null,
                         'address' => $data['address'] ?? null,
                         'notes' => $data['notes'] ?? null,
+                        'due_date' => !empty($data['due_date']) ? \Illuminate\Support\Carbon::parse($data['due_date'])->format('Y-m-d') : null,
                     ],
                     'created_by' => $userId,
                     'updated_by' => $userId,
@@ -613,6 +632,12 @@ class ProvisioningService
                 );
             }
 
+            if ($subscription && !empty($data['due_date'])) {
+                $subscription->update([
+                    'next_billing_date' => \Illuminate\Support\Carbon::parse($data['due_date']),
+                ]);
+            }
+
             // Step 6: Create First Invoice if not exists
             $invoice = Invoice::withoutGlobalScopes()
                 ->where('contract_id', $contract->id)
@@ -623,6 +648,7 @@ class ProvisioningService
                 $invoiceStatus = $isFreePackage ? 'paid' : 'unpaid';
                 $packageName = $serviceProfile?->name ?? 'Bulanan';
                 $itemDescription = $isFreePackage ? "Langganan {$packageName} (Gratis)" : "Langganan {$packageName}";
+                $firstInvoiceDueDate = !empty($data['due_date']) ? \Illuminate\Support\Carbon::parse($data['due_date']) : null;
 
                 $invoice = $this->invoiceService->createInvoice(
                     $contract->customer_id,
@@ -635,7 +661,7 @@ class ProvisioningService
                         ]
                     ],
                     null,
-                    null,
+                    $firstInvoiceDueDate,
                     null,
                     $contract->id,
                     'IDR',

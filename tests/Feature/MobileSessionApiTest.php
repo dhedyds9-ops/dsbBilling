@@ -62,4 +62,65 @@ class MobileSessionApiTest extends TestCase
                 'data',
             ]);
     }
+
+    public function test_kick_stale_pppoe_session_id_gracefully_falls_back_without_model_not_found_exception(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'reseller'], ['display_name' => 'Reseller', 'guard_name' => 'web']);
+        $reseller = User::factory()->create([
+            'is_active' => true,
+            'wilayah' => 'Cibinong Raya',
+        ]);
+        $reseller->roles()->attach($role->id);
+
+        // Stale session ID 45127 does not exist in ppp_active_sessions!
+        // Client sends username fallback 'user_speedy_stale'
+        $response = $this->actingAs($reseller, 'sanctum')
+            ->postJson('/api/mobile/sessions/pppoe/45127/kick', [
+                'username' => 'user_speedy_stale',
+                'router_id' => 1,
+            ]);
+
+        // Must succeed without 500 error / ModelNotFoundException
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true);
+        $this->assertStringContainsString('user_speedy_stale', $response->json('message'));
+    }
+
+    public function test_kick_nonexistent_pppoe_session_without_username_returns_safe_response(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'reseller'], ['display_name' => 'Reseller', 'guard_name' => 'web']);
+        $reseller = User::factory()->create([
+            'is_active' => true,
+            'wilayah' => 'Cibinong Raya',
+        ]);
+        $reseller->roles()->attach($role->id);
+
+        // Session ID 45127 does not exist, and no username passed
+        $response = $this->actingAs($reseller, 'sanctum')
+            ->postJson('/api/mobile/sessions/pppoe/45127/kick');
+
+        // Must return safe 200 indicating session is already inactive
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Sesi PPPoE sudah tidak aktif atau telah terputus sebelumnya.');
+    }
+
+    public function test_kick_stale_hotspot_session_id_gracefully_handled(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'reseller'], ['display_name' => 'Reseller', 'guard_name' => 'web']);
+        $reseller = User::factory()->create([
+            'is_active' => true,
+            'wilayah' => 'Cibinong Raya',
+        ]);
+        $reseller->roles()->attach($role->id);
+
+        $response = $this->actingAs($reseller, 'sanctum')
+            ->postJson('/api/mobile/sessions/hotspot/99999/kick', [
+                'username' => 'hotspot_user_test',
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true);
+        $this->assertStringContainsString('hotspot_user_test', $response->json('message'));
+    }
 }

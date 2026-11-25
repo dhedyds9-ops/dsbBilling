@@ -38,6 +38,7 @@ class Create extends AdminComponent
     public $reseller_id;
 
     public $activation_date;
+    public $due_date;
     public $status = 'active';
     public $isSaving = false;
 
@@ -54,6 +55,8 @@ class Create extends AdminComponent
             ['label' => 'Tambah User'],
         ];
         $this->activation_date = now()->format('Y-m-d');
+        $dueDays = (int) \App\Models\Setting::getValue('billing.due_days', 7);
+        $this->due_date = now()->addDays($dueDays)->format('Y-m-d');
     }
 
     public function updatedLoginMethod($value)
@@ -122,7 +125,8 @@ class Create extends AdminComponent
             'onu_id' => 'nullable|string',
             'reseller_id' => 'nullable|exists:users,id',
             'billing_cycle' => 'required|in:monthly,prepaid,postpaid',
-            'setup_fee' => 'nullable|numeric'
+            'setup_fee' => 'nullable|numeric',
+            'due_date' => 'nullable|date',
         ]);
 
         try {
@@ -198,6 +202,7 @@ class Create extends AdminComponent
                 'reseller_id' => $this->reseller_id,
                 'billing_cycle' => $this->billing_cycle,
                 'setup_fee' => $this->setup_fee,
+                'due_date' => $this->due_date,
             ], auth()->id());
 
             session()->flash('success', "User PPPoE berhasil dibuat! Username: {$result['pppoe_user']->username}");

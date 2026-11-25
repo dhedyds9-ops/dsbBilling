@@ -17,6 +17,7 @@ class Edit extends AdminComponent
 
     // Service
     public $username, $password, $service_profile_id, $billing_cycle, $setup_fee, $status, $activation_date;
+    public $due_date, $due_date_reason;
 
     // Network
     public $router_id, $mac_address, $static_ip, $odp_id, $port_number, $onu_id, $genieacs_device_id, $network_profile_id;
@@ -48,6 +49,9 @@ class Edit extends AdminComponent
         $this->setup_fee = $this->pppoeUser->setup_fee;
         $this->status = $this->pppoeUser->status;
         $this->activation_date = $this->pppoeUser->activated_at ? $this->pppoeUser->activated_at->format('Y-m-d') : '';
+
+        $dueDateService = app(\App\Services\Billing\CustomerBillingDueDateService::class);
+        $this->due_date = $cs ? $dueDateService->getDueDate($cs) : null;
 
         $this->router_id = $this->pppoeUser->router_id;
         $this->mac_address = $this->pppoeUser->mac_address;
@@ -121,6 +125,8 @@ class Edit extends AdminComponent
             'service_profile_id' => 'required|exists:service_profiles,id',
             'billing_cycle' => 'required|in:monthly,prepaid,postpaid',
             'setup_fee' => 'nullable|numeric',
+            'due_date' => 'nullable|date',
+            'due_date_reason' => 'nullable|string|max:255',
             'status' => 'required|in:active,inactive,suspended,terminated',
             'activation_date' => 'nullable|date',
         ]);
@@ -151,6 +157,25 @@ class Edit extends AdminComponent
                 'password' => $this->password,
                 'status' => $this->status,
             ]);
+
+            if (!empty($this->due_date)) {
+                $dueDateService = app(\App\Services\Billing\CustomerBillingDueDateService::class);
+                $currentDueDate = $dueDateService->getDueDate($this->pppoeUser->customerService);
+                if ($this->due_date !== $currentDueDate) {
+                    try {
+                        $dueDateService->updateDueDate(
+                            $this->pppoeUser->customerService,
+                            $this->due_date,
+                            $this->due_date_reason ?: 'Diperbarui melalui form Edit PPPoE User',
+                            auth()->id()
+                        );
+                    } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+                        $this->addError('due_date', $e->getMessage());
+                        $this->dispatch('toast', type: 'error', message: $e->getMessage());
+                        return;
+                    }
+                }
+            }
         }
 
         $this->dispatch('toast', type: 'success', message: 'Layanan & Billing berhasil diperbarui!');

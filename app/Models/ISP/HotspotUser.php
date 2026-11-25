@@ -94,6 +94,11 @@ class HotspotUser extends Model
         );
     }
 
+    public function getDueDateAttribute(): ?string
+    {
+        return $this->customerService?->due_date;
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

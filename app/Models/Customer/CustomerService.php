@@ -244,6 +244,16 @@ class CustomerService extends Model
     {
         return $this->hasMany(\App\Models\Provisioning\ServiceInstance::class, 'customer_service_id');
     }
+
+    public function subscription(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Models\Billing\Subscription::class, 'customer_service_id');
+    }
+
+    public function getDueDateAttribute(): ?string
+    {
+        return app(\App\Services\Billing\CustomerBillingDueDateService::class)->getDueDate($this);
+    }
 }
 
 
