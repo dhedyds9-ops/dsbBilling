@@ -58,7 +58,7 @@ class CustomerBillingDueDateService
         }
 
         // Administrator / SuperAdmin always authorized
-        if ($user->isSuperAdmin() || $user->hasRole(UserRole::Administrator->value) || $user->hasRole('admin')) {
+        if ($user->isSuperAdmin() || $user->roles->contains('name', UserRole::Administrator->value) || $user->roles->contains('name', 'admin')) {
             return true;
         }
 
@@ -70,7 +70,7 @@ class CustomerBillingDueDateService
         }
 
         // Reseller Isolation: reseller can only manage their own customers
-        if ($user->hasRole(UserRole::Reseller->value) || !empty($user->getEffectiveResellerId())) {
+        if ($user->roles->contains('name', UserRole::Reseller->value) || !empty($user->getEffectiveResellerId())) {
             $effectiveResellerId = $user->getEffectiveResellerId();
             if ((int)$customerService->reseller_id !== (int)$effectiveResellerId) {
                 return false;
@@ -78,12 +78,17 @@ class CustomerBillingDueDateService
             return true;
         }
 
+        // Technicians or NOC staff without billing permission should never manage billing due dates
+        if ($user->roles->contains('name', UserRole::Teknisi->value) || $user->roles->contains('name', 'teknisi') || $user->roles->contains('name', 'noc')) {
+            return $user->hasPermission('invoice.update');
+        }
+
         // Staff / Manager permissions check
         if ($user->hasPermission('invoice.update') || $user->hasPermission('customer.update')) {
             return true;
         }
 
-        if ($user->hasRole([UserRole::Manager->value, UserRole::Kasir->value])) {
+        if ($user->roles->whereIn('name', [UserRole::Manager->value, UserRole::Kasir->value])->isNotEmpty()) {
             return true;
         }
 

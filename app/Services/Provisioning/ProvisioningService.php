@@ -228,6 +228,12 @@ class ProvisioningService
                 ->where('status', 'unpaid')
                 ->first();
 
+            if ($invoice && !empty($data['due_date'])) {
+                $invoice->update([
+                    'due_date' => \Illuminate\Support\Carbon::parse($data['due_date']),
+                ]);
+            }
+
             if (!$invoice && ($recurringPrice > 0 || $isFreePackage)) {
                 $invoiceStatus = $isFreePackage ? 'paid' : 'unpaid';
                 $packageName = $serviceProfile?->name ?? 'Bulanan';
@@ -643,6 +649,12 @@ class ProvisioningService
                 ->where('contract_id', $contract->id)
                 ->where('status', 'unpaid')
                 ->first();
+
+            if ($invoice && !empty($data['due_date'])) {
+                $invoice->update([
+                    'due_date' => \Illuminate\Support\Carbon::parse($data['due_date']),
+                ]);
+            }
 
             if (!$invoice && ($recurringPrice > 0 || $isFreePackage)) {
                 $invoiceStatus = $isFreePackage ? 'paid' : 'unpaid';
