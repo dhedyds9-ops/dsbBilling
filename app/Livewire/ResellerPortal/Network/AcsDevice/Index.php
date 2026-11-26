@@ -65,30 +65,77 @@ class Index extends AdminComponent
 
     public function syncDevices(): void
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(300);
+
         try {
             $driver = app(GenieACSDriver::class);
-            $query = [
-                'projection' => '_id,_deviceId,_ip,_lastInform,VirtualParameters,VirtualParameters.PonMac,VirtualParameters.ponMac,VirtualParameters.pppoeIP,VirtualParameters.IPTR069,VirtualParameters.pppoeMac,VirtualParameters.getSerialNumber,InternetGatewayDevice.DeviceInfo,Device.DeviceInfo,InternetGatewayDevice.WANDevice,Device.WANDevice,Device.Optical,InternetGatewayDevice.ManagementServer.ConnectionRequestURL,Device.ManagementServer.ConnectionRequestURL'
+            $projectionFields = [
+                '_id',
+                '_deviceId',
+                '_ip',
+                '_lastInform',
+                'VirtualParameters',
+                'InternetGatewayDevice.DeviceInfo',
+                'Device.DeviceInfo',
+                'InternetGatewayDevice.ManagementServer.ConnectionRequestURL',
+                'Device.ManagementServer.ConnectionRequestURL',
+                'InternetGatewayDevice.WANDevice',
+                'InternetGatewayDevice.X_HW_DEBUG.AMP.OpticalInfo',
+                'InternetGatewayDevice.X_ALU_OntOpticalParam',
+                'InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress',
+                'Device.WANDevice',
+                'Device.Optical',
+                'Device.PPP',
+                'Device.IP',
+                'Device.Ethernet.Interface.1.MACAddress',
             ];
-            $devices = $driver->listDevices($query, 5000);
-            
+
+            $query = [
+                'projection' => implode(',', $projectionFields)
+            ];
+
             $adminAcs = app(\App\Livewire\ACS\Device\Index::class);
+            $syncStartTime = now()->subMinutes(1);
             $count = 0;
-            $syncedIds = [];
+            $batchSize = 250;
+            $skip = 0;
+            $maxLimit = 10000;
 
-            \Illuminate\Support\Facades\DB::transaction(function () use ($devices, $adminAcs, &$count, &$syncedIds) {
-                foreach ($devices as $deviceData) {
-                    $savedId = $adminAcs->saveDeviceData($deviceData);
-                    if ($savedId) {
-                        $syncedIds[] = $savedId;
-                        $count++;
+            while ($skip < $maxLimit) {
+                $devices = $driver->listDevices($query, $batchSize, $skip);
+                if (empty($devices) || !is_array($devices)) {
+                    break;
+                }
+
+                \Illuminate\Support\Facades\DB::transaction(function () use ($devices, $adminAcs, &$count) {
+                    foreach ($devices as $deviceData) {
+                        $savedId = $adminAcs->saveDeviceData($deviceData, false);
+                        if ($savedId) {
+                            $count++;
+                        }
                     }
+                });
+
+                $fetched = count($devices);
+                unset($devices);
+                if (function_exists('gc_collect_cycles')) {
+                    gc_collect_cycles();
                 }
 
-                if (count($syncedIds) > 0) {
-                    ACSDevice::whereNotIn('uuid', $syncedIds)->update(['status' => 'offline']);
+                if ($fetched < $batchSize) {
+                    break;
                 }
-            });
+                $skip += $fetched;
+            }
+
+            if ($count > 0) {
+                ACSDevice::forReseller()->where(function ($q) use ($syncStartTime) {
+                    $q->whereNull('last_contact')
+                      ->orWhere('last_contact', '<', $syncStartTime);
+                })->where('status', '!=', 'offline')
+                  ->update(['status' => 'offline']);
+            }
 
             $msg = "Sinkronisasi selesai: Berhasil memperbarui {$count} perangkat dari GenieACS!";
             session()->flash('success', $msg);

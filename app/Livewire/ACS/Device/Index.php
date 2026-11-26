@@ -177,29 +177,77 @@ class Index extends BaseACSComponent
 
     public function syncDevicesBackground()
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(300);
+
         try {
             $acsService = new \App\Services\Adapters\Monitoring\GenieACSDriver();
-            $query = [
-                'projection' => '_id,_deviceId,_ip,_lastInform,VirtualParameters,InternetGatewayDevice,Device'
+            $projectionFields = [
+                '_id',
+                '_deviceId',
+                '_ip',
+                '_lastInform',
+                'VirtualParameters',
+                'InternetGatewayDevice.DeviceInfo',
+                'Device.DeviceInfo',
+                'InternetGatewayDevice.ManagementServer.ConnectionRequestURL',
+                'Device.ManagementServer.ConnectionRequestURL',
+                'InternetGatewayDevice.WANDevice',
+                'InternetGatewayDevice.X_HW_DEBUG.AMP.OpticalInfo',
+                'InternetGatewayDevice.X_ALU_OntOpticalParam',
+                'InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress',
+                'Device.WANDevice',
+                'Device.Optical',
+                'Device.PPP',
+                'Device.IP',
+                'Device.Ethernet.Interface.1.MACAddress',
             ];
-            $devices = $acsService->listDevices($query, 5000);
+
+            $query = [
+                'projection' => implode(',', $projectionFields)
+            ];
+
+            $syncStartTime = now()->subMinutes(1);
             $count = 0;
-            $syncedIds = [];
-            
-            \Illuminate\Support\Facades\DB::transaction(function () use ($devices, &$count, &$syncedIds) {
-                foreach ($devices as $deviceData) {
-                    $savedId = $this->saveDeviceData($deviceData);
-                    if ($savedId) {
-                        $syncedIds[] = $savedId;
-                        $count++;
+            $batchSize = 250;
+            $skip = 0;
+            $maxLimit = 10000;
+
+            while ($skip < $maxLimit) {
+                $devices = $acsService->listDevices($query, $batchSize, $skip);
+                if (empty($devices) || !is_array($devices)) {
+                    break;
+                }
+
+                \Illuminate\Support\Facades\DB::transaction(function () use ($devices, &$count) {
+                    foreach ($devices as $deviceData) {
+                        $savedId = $this->saveDeviceData($deviceData, false);
+                        if ($savedId) {
+                            $count++;
+                        }
                     }
+                });
+
+                $fetched = count($devices);
+                unset($devices);
+                if (function_exists('gc_collect_cycles')) {
+                    gc_collect_cycles();
                 }
-            
-                // Tandai perangkat yang tidak ada di ACS sebagai offline
-                if (count($syncedIds) > 0) {
-                    \App\Models\ACS\ACSDevice::whereNotIn('uuid', $syncedIds)->update(['status' => 'offline']);
+
+                if ($fetched < $batchSize) {
+                    break;
                 }
-            });
+                $skip += $fetched;
+            }
+
+            // Tandai perangkat yang tidak ada di ACS Inform / sync sebagai offline
+            if ($count > 0) {
+                \App\Models\ACS\ACSDevice::where(function ($q) use ($syncStartTime) {
+                    $q->whereNull('last_contact')
+                      ->orWhere('last_contact', '<', $syncStartTime);
+                })->where('status', '!=', 'offline')
+                  ->update(['status' => 'offline']);
+            }
 
             session()->flash('success', "Berhasil mensinkronisasi {$count} perangkat dari GenieACS!");
         } catch (\Exception $e) {
@@ -210,7 +258,7 @@ class Index extends BaseACSComponent
     /**
      * Memproses dan menyimpan/mengupdate data satu perangkat dari GenieACS ke database dsBilling
      */
-    public function saveDeviceData(array $deviceData): ?string
+    public function saveDeviceData(array $deviceData, bool $autoRefreshOptical = false): ?string
     {
         $deviceId = $deviceData['_id'] ?? null;
         if (!$deviceId) return null;
@@ -327,8 +375,8 @@ class Index extends BaseACSComponent
         $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
         $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) <= 20) ? 'online' : 'offline';
 
-        // Auto-queue refresh task for online devices lacking TR-069 optical power telemetry
-        if ($status === 'online' && $optical['onu_rx_power'] === null) {
+        // Auto-queue refresh task for online devices lacking TR-069 optical power telemetry (only if requested)
+        if ($autoRefreshOptical && $status === 'online' && $optical['onu_rx_power'] === null) {
             try {
                 $acsService = new \App\Services\Adapters\Monitoring\GenieACSDriver();
                 $acsService->refreshOpticalTask($deviceId);
@@ -569,7 +617,7 @@ class Index extends BaseACSComponent
                 try {
                     $latest = $driver->getDeviceParameters($uuid);
                     if (!empty($latest)) {
-                        $this->saveDeviceData($latest);
+                        $this->saveDeviceData($latest, true);
                     }
                 } catch (\Throwable $te) {}
 

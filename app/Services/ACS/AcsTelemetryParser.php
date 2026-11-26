@@ -178,7 +178,112 @@ class AcsTelemetryParser
         if (isset($flat['InternetGatewayDevice']) || isset($flat['Device']) || isset($flat['VirtualParameters'])) {
             $flat = self::flatten($flat);
         }
-        $rxCandidates = [
+
+        $vendor = self::detectVendor($flat);
+        $model = self::parseModelName($flat);
+        $sn = self::parseSerialNumber($flat, $ad?->serial_number ?? $onu?->serial_number ?? '');
+        $profile = VendorCapabilityCatalog::resolveProfile($vendor, $model, $sn);
+
+        // Prioritized optical candidates based on detected vendor & verified catalog profile
+        $rxCandidates = [];
+        $txCandidates = [];
+
+        // 1. Profile-defined verified paths
+        if (!empty($profile['optical']['rx_path'])) {
+            $rxCandidates[] = $profile['optical']['rx_path'];
+        }
+        if (!empty($profile['optical']['rx_candidate_paths']) && is_array($profile['optical']['rx_candidate_paths'])) {
+            foreach ($profile['optical']['rx_candidate_paths'] as $rcp) {
+                $rxCandidates[] = $rcp;
+            }
+        }
+        if (!empty($profile['optical']['tx_path'])) {
+            $txCandidates[] = $profile['optical']['tx_path'];
+        }
+
+        // 2. Vendor-targeted paths
+        $vendorLower = strtolower($vendor);
+        if ($vendorLower === 'zte' || str_starts_with(strtoupper($sn), 'ZTEG') || str_starts_with(strtoupper($sn), '5A544547')) {
+            $rxCandidates = array_merge($rxCandidates, [
+                'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower',
+                'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RxPower',
+            ]);
+            $txCandidates = array_merge($txCandidates, [
+                'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TxPower',
+                'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.TXPower',
+                'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.TxPower',
+            ]);
+        } elseif ($vendorLower === 'huawei' || str_starts_with(strtoupper($sn), 'HWTC') || str_starts_with(strtoupper($sn), '48575443')) {
+            $rxCandidates = array_merge($rxCandidates, [
+                'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RxPower',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.1.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.RxPower',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.1.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RxPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.RxPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.RxPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.RxPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.RxPower',
+                'InternetGatewayDevice.X_HW_DEBUG.AMP.OpticalInfo.RxPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_OpticalRxPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverRxPower',
+            ]);
+            $txCandidates = array_merge($txCandidates, [
+                'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TxPower',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.1.TXPower',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.TXPower',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.TxPower',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.1.TXPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TxPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.TXPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.TxPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.TXPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.TxPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.TXPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.TxPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.TxPower',
+                'InternetGatewayDevice.X_HW_DEBUG.AMP.OpticalInfo.TxPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_OpticalTxPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverTxPower',
+            ]);
+        } elseif ($vendorLower === 'fiberhome' || str_starts_with(strtoupper($sn), 'FHTT') || str_starts_with(strtoupper($sn), '46485454')) {
+            $rxCandidates = array_merge($rxCandidates, [
+                'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RxPower',
+                'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.1.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.RxPower',
+                'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.1.RXPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_RxPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_TransceiverRxPower',
+            ]);
+            $txCandidates = array_merge($txCandidates, [
+                'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower',
+                'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TxPower',
+                'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.1.TXPower',
+                'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.TXPower',
+                'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.TxPower',
+                'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.1.TXPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_TxPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_TransceiverTxPower',
+            ]);
+        }
+
+        // 3. VirtualParameters and Universal TR-098 / TR-181 Paths
+        $rxCandidates = array_values(array_unique(array_merge($rxCandidates, [
             'VirtualParameters.RXPower',
             'VirtualParameters.rxPower',
             'VirtualParameters.opticalRxPower',
@@ -209,10 +314,6 @@ class AcsTelemetryParser
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_OpticalRxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverRxPower',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RXPower',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.RxPower',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.RXPower',
             'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower',
             'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RxPower',
             'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.RXPower',
@@ -223,6 +324,10 @@ class AcsTelemetryParser
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_RxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_TransceiverRxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RXPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.RxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.RXPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.OpticalAttenuation',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxAttenuation',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.OpticalAttenuation',
@@ -238,9 +343,9 @@ class AcsTelemetryParser
             'Device.Optical.Interface.1.RxPower',
             'Device.Optical.Interface.1.RXPower',
             'Device.Optical.Interface.1.OpticalRxPower',
-        ];
+        ])));
 
-        $txCandidates = [
+        $txCandidates = array_values(array_unique(array_merge($txCandidates, [
             'VirtualParameters.TXPower',
             'VirtualParameters.txPower',
             'VirtualParameters.opticalTxPower',
@@ -269,10 +374,6 @@ class AcsTelemetryParser
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_OpticalTxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverTxPower',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxPower',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TXPower',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.TxPower',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.TXPower',
             'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower',
             'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TxPower',
             'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.TXPower',
@@ -283,6 +384,10 @@ class AcsTelemetryParser
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_TxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_TransceiverTxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TXPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.TxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.TXPower',
             'InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.1.TxPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_HW_TxPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_HW_TxPower',
@@ -294,7 +399,7 @@ class AcsTelemetryParser
             'Device.Optical.Interface.1.TxPower',
             'Device.Optical.Interface.1.TXPower',
             'Device.Optical.Interface.1.OpticalTxPower',
-        ];
+        ])));
 
         $tempCandidates = [
             'InternetGatewayDevice.DeviceInfo.X_HW_Temperature',
@@ -369,13 +474,20 @@ class AcsTelemetryParser
         ];
 
         $findWithKey = function (array $candidates, string $regex = '') use ($flat) {
+            $zeroFallback = [null, null];
             foreach ($candidates as $cand) {
                 if (array_key_exists($cand, $flat)) {
                     $val = $flat[$cand];
                     if (is_scalar($val)) {
                         $trimmed = trim((string)$val);
                         if ($trimmed !== '' && $trimmed !== '-' && strtolower($trimmed) !== 'null' && strtolower($trimmed) !== 'undefined') {
-                            return [$cand, $trimmed];
+                            if (is_numeric($trimmed) && (float)$trimmed == 0.0) {
+                                if ($zeroFallback[0] === null) {
+                                    $zeroFallback = [$cand, $trimmed];
+                                }
+                            } else {
+                                return [$cand, $trimmed];
+                            }
                         }
                     }
                 }
@@ -385,10 +497,19 @@ class AcsTelemetryParser
                     if (preg_match($regex, $k) && is_scalar($v)) {
                         $trimmed = trim((string)$v);
                         if ($trimmed !== '' && $trimmed !== '-' && strtolower($trimmed) !== 'null' && strtolower($trimmed) !== 'undefined') {
-                            return [$k, $trimmed];
+                            if (is_numeric($trimmed) && (float)$trimmed == 0.0) {
+                                if ($zeroFallback[0] === null) {
+                                    $zeroFallback = [$k, $trimmed];
+                                }
+                            } else {
+                                return [$k, $trimmed];
+                            }
                         }
                     }
                 }
+            }
+            if ($zeroFallback[0] !== null) {
+                return $zeroFallback;
             }
             return [null, null];
         };
@@ -400,10 +521,6 @@ class AcsTelemetryParser
         [$biasPath, $rawBias] = $findWithKey($biasCandidates, '/(\b|_)(BiasCurrent|LaserBiasCurrent|TransceiverBiasCurrent|Bias)(?:\._value)?$/i');
         [$losPath, $rawLos] = $findWithKey($losCandidates, '/(\b|_)(LOSStatus|LOS|LinkStatus)(?:\._value)?$/i');
 
-        $vendor = self::detectVendor($flat);
-        $model = self::parseModelName($flat);
-        $sn = self::parseSerialNumber($flat, $ad?->serial_number ?? $onu?->serial_number ?? '');
-        $profile = VendorCapabilityCatalog::resolveProfile($vendor, $model, $sn);
         $shouldSwap = !empty($profile['optical']['swap_rx_tx'])
             || strtolower($vendor) === 'zte'
             || str_starts_with(strtoupper($sn), 'ZTEG')
@@ -425,6 +542,9 @@ class AcsTelemetryParser
             $absRxNormal = $rxNormal !== null ? abs($rxNormal) : null;
             $absTxNormal = $txNormal !== null ? abs($txNormal) : null;
 
+            $isRawRxEmptyOrZero = $rawRx === null || (is_numeric($rawRx) && (float)$rawRx == 0.0);
+            $isRawTxEmptyOrZero = $rawTx === null || (is_numeric($rawTx) && (float)$rawTx == 0.0);
+
             if ($absTxInvert !== null && $absTxInvert > 0.0 && $absTxInvert <= 6.5 && $absRxInvert !== null && $absRxInvert >= 6.5) {
                 // Swapped by ZTE firmware:
                 $rx = -abs($rxInvert);
@@ -435,17 +555,31 @@ class AcsTelemetryParser
                 // Standard non-inverted ZTE firmware:
                 $rx = -abs($rxNormal);
                 $tx = abs($txNormal);
-            } elseif ($absTxInvert !== null && $absTxInvert > 0.0 && $absTxInvert <= 6.5 && $rawTx === null) {
+                $rxFormula = 'Verified Vendor Profile: Standard RX Parameter';
+                $txFormula = 'Verified Vendor Profile: Standard TX Parameter';
+            } elseif ($absTxInvert !== null && $absTxInvert > 0.0 && $absTxInvert <= 6.5 && $isRawTxEmptyOrZero) {
+                // Single reading in RX parameter is actually TX laser (+0.5 to +6.5 dBm)
                 $tx = abs($txInvert);
-                $rx = null;
+                $rx = (is_numeric($rawTx) && (float)$rawTx == 0.0) ? 0.0 : null;
                 $txFormula = 'Verified Vendor Profile Anomaly: Single positive value in RX parameter detected as TX laser';
-            } elseif ($absRxInvert !== null && $absRxInvert >= 6.5 && $rawRx === null) {
+            } elseif ($absRxInvert !== null && $absRxInvert >= 6.5 && $isRawRxEmptyOrZero) {
+                // Single reading in TX parameter is actually RX power (magnitude >= 6.5 dBm)
                 $rx = -abs($rxInvert);
-                $tx = null;
-                $rxFormula = 'Verified Vendor Profile Anomaly: Value in TX parameter detected as RX power';
+                $tx = (is_numeric($rawRx) && (float)$rawRx == 0.0) ? 0.0 : null;
+                $rxFormula = 'Verified Vendor Profile Anomaly: Value in TX parameter detected as RX power (applied negative sign)';
+            } elseif ($absRxNormal !== null && $absRxNormal >= 6.5 && $isRawTxEmptyOrZero) {
+                // Single reading in RX parameter is standard RX power (magnitude >= 6.5 dBm)
+                $rx = -abs($rxNormal);
+                $tx = (is_numeric($rawTx) && (float)$rawTx == 0.0) ? 0.0 : null;
+                $rxFormula = 'Verified Vendor Profile: Value in RX parameter detected as RX power (applied negative sign)';
+            } elseif ($absTxNormal !== null && $absTxNormal > 0.0 && $absTxNormal <= 6.5 && $isRawRxEmptyOrZero) {
+                // Single reading in TX parameter is standard TX laser (+0.5 to +6.5 dBm)
+                $tx = abs($txNormal);
+                $rx = (is_numeric($rawRx) && (float)$rawRx == 0.0) ? 0.0 : null;
+                $txFormula = 'Verified Vendor Profile: Value in TX parameter detected as TX laser';
             } else {
-                $rx = self::normalizePowerValue($rawRx);
-                $tx = self::normalizePowerValue($rawTx);
+                $rx = self::normalizePowerValue($rawRx, true);
+                $tx = self::normalizePowerValue($rawTx, false);
             }
         } else {
             $rx = self::normalizePowerValue($rawRx, true);

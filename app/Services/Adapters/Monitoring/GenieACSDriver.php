@@ -42,17 +42,18 @@ class GenieACSDriver
         return $vendors[$vendorKey][$parameter] ?? $vendors['default'][$parameter] ?? '';
     }
 
-    public function listDevices(array $query = [], int $limit = 100): array
+    public function listDevices(array $query = [], int $limit = 100, int $skip = 0): array
     {
         try {
-            $effectiveTimeout = min(6, max(3, (int) ($this->timeout ?: 5)));
+            $effectiveTimeout = max(15, (int) ($this->timeout ?: 15));
+            $params = array_merge(['limit' => $limit, 'skip' => $skip], $query);
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($effectiveTimeout)
                 ->asJson()
-                ->get("{$this->baseUrl}/devices", array_merge(['limit' => $limit], $query));
+                ->get("{$this->baseUrl}/devices", $params);
                 
             if ($response->successful()) {
-                return $response->json();
+                return $response->json() ?? [];
             }
             throw new Exception("GenieACS listDevices failed: HTTP " . $response->status());
         } catch (ConnectionException|RequestException $e) {

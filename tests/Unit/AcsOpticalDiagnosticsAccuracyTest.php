@@ -298,4 +298,62 @@ class AcsOpticalDiagnosticsAccuracyTest extends TestCase
         $this->assertEquals('-21.80 dBm', $optical['onu_rx_display']);
         $this->assertEquals('2.35 dBm', $optical['onu_tx_display']);
     }
+
+    /** Test ZTE vendor path prioritized over dummy zero WANPONInterfaceConfig node */
+    public function test_zte_vendor_path_prioritized_over_dummy_zero_wanpon_node(): void
+    {
+        $flat = [
+            'InternetGatewayDevice.DeviceInfo.Manufacturer' => 'ZTE',
+            'InternetGatewayDevice.DeviceInfo.ModelName' => 'F670L',
+            'InternetGatewayDevice.DeviceInfo.SerialNumber' => 'ZTEGC1122334',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower' => '0.0',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxPower' => '0.0',
+            'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower' => '235', // 2.35 dBm laser
+            'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower' => '-1980', // -19.80 dBm redaman
+        ];
+
+        $optical = AcsTelemetryParser::parseOptical($flat);
+
+        $this->assertEquals(-19.80, $optical['onu_rx_power'], 'ZTE vendor path must override dummy zero WANPON node and swap redaman');
+        $this->assertEquals(2.35, $optical['onu_tx_power'], 'ZTE vendor path must override dummy zero WANPON node and swap laser');
+        $this->assertEquals('-19.80 dBm', $optical['onu_rx_display']);
+        $this->assertEquals('2.35 dBm', $optical['onu_tx_display']);
+    }
+
+    /** Test ZTE single reading with zero in opposite parameter */
+    public function test_zte_single_reading_with_zero_opposite_parameter(): void
+    {
+        $flat = [
+            'InternetGatewayDevice.DeviceInfo.Manufacturer' => 'ZTE',
+            'InternetGatewayDevice.DeviceInfo.ModelName' => 'F609',
+            'InternetGatewayDevice.DeviceInfo.SerialNumber' => 'ZTEGC9988776',
+            'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower' => '0',
+            'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower' => '-22.40',
+        ];
+
+        $optical = AcsTelemetryParser::parseOptical($flat);
+
+        $this->assertEquals(-22.40, $optical['onu_rx_power'], 'ZTE single value in TXPower must be recognized as RX power even when RX is 0');
+        $this->assertEquals(0.0, $optical['onu_tx_power']);
+        $this->assertEquals('-22.40 dBm', $optical['onu_rx_display']);
+    }
+
+    /** Test FiberHome optical reading */
+    public function test_fiberhome_optical_reading(): void
+    {
+        $flat = [
+            'InternetGatewayDevice.DeviceInfo.Manufacturer' => 'FiberHome',
+            'InternetGatewayDevice.DeviceInfo.ModelName' => 'HG6145F',
+            'InternetGatewayDevice.DeviceInfo.SerialNumber' => 'FHTT12345678',
+            'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower' => '-20.50',
+            'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower' => '2.10',
+        ];
+
+        $optical = AcsTelemetryParser::parseOptical($flat);
+
+        $this->assertEquals(-20.50, $optical['onu_rx_power'], 'FiberHome must read optical RX correctly');
+        $this->assertEquals(2.10, $optical['onu_tx_power'], 'FiberHome must read optical TX correctly');
+        $this->assertEquals('-20.50 dBm', $optical['onu_rx_display']);
+        $this->assertEquals('2.10 dBm', $optical['onu_tx_display']);
+    }
 }
