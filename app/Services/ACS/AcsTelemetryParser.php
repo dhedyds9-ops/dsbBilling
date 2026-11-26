@@ -65,7 +65,7 @@ class AcsTelemetryParser
      * Parse and normalize raw optical telemetry into standard dBm.
      * Handles milli-dBm, 0.01 dBm, micro-watts, and negative sign conventions.
      */
-    public static function normalizePowerValue($raw): ?float
+    public static function normalizePowerValue($raw, ?bool $isRx = null): ?float
     {
         if (is_array($raw)) {
             $raw = $raw['_value'] ?? ($raw[0] ?? null);
@@ -108,6 +108,44 @@ class AcsTelemetryParser
 
         $abs = abs($val);
 
+        if ($isRx === true) {
+            // Explicitly normalizing an optical RX power parameter (range typically -8.0 to -40.0 dBm)
+            if ($val < 0) {
+                if ($abs >= 6000.0) {
+                    return -round($abs / 1000.0, 2);
+                } elseif ($abs >= 50.0 && $abs < 6000.0) {
+                    return -round($abs / 100.0, 2);
+                }
+                return -round($abs, 2);
+            } else {
+                // Positive raw value on RX parameter:
+                // Attenuation magnitude (>= 6.0 dBm) should be inverted to negative optical power
+                if ($val >= 6000.0) {
+                    return -round($val / 1000.0, 2);
+                } elseif ($val >= 50.0 && $val < 6000.0) {
+                    return -round($val / 100.0, 2);
+                } elseif ($val >= 6.0 && $val < 50.0) {
+                    return -round($val, 2);
+                }
+                // Positive value < 6.0 dBm is anomalous for GPON RX: preserve positive sign so anomaly detector flags it
+                return round($val, 2);
+            }
+        }
+
+        if ($isRx === false) {
+            // Explicitly normalizing an optical TX laser parameter (range typically +0.5 to +6.5 dBm)
+            if ($abs >= 500.0) {
+                // milli-dBm (e.g. 2230 -> 2.23 dBm)
+                return round($abs / 1000.0, 2);
+            } elseif ($abs >= 30.0 && $abs < 500.0) {
+                // 0.01 dBm scale (e.g. 223 -> 2.23 dBm)
+                return round($abs / 100.0, 2);
+            }
+            // Direct dBm
+            return round($abs, 2);
+        }
+
+        // Generic / Fallback when role is unspecified:
         if ($val > 0) {
             // Positive values (typically TX laser power: range +0.5 to +5.0 dBm, or unscaled positive attenuation)
             if ($val >= 500.0) {
@@ -123,7 +161,7 @@ class AcsTelemetryParser
             if ($abs >= 6000.0) {
                 // milli-dBm (e.g. -19630 -> -19.63 dBm)
                 return round($val / 1000.0, 2);
-            } elseif ($abs >= 60.0 && $abs < 6000.0) {
+            } elseif ($abs >= 50.0 && $abs < 6000.0) {
                 // 0.01 dBm scale (e.g. -1963 -> -19.63 dBm)
                 return round($val / 100.0, 2);
             }
@@ -373,13 +411,56 @@ class AcsTelemetryParser
             || ($rxPath && stripos($rxPath, 'X_ZTE-COM') !== false)
             || ($txPath && stripos($txPath, 'X_ZTE-COM') !== false);
 
-        $rx = self::normalizePowerValue($rawRx);
-        $tx = self::normalizePowerValue($rawTx);
+        if ($shouldSwap) {
+            // ZTE inverted parameters: candidate in RX path might be TX laser, candidate in TX path might be RX power
+            $rxInvert = self::normalizePowerValue($rawTx, true);   // TX parameter as RX power
+            $txInvert = self::normalizePowerValue($rawRx, false);  // RX parameter as TX laser
+
+            $rxNormal = self::normalizePowerValue($rawRx, true);   // RX parameter as RX power
+            $txNormal = self::normalizePowerValue($rawTx, false);  // TX parameter as TX laser
+
+            $absRxInvert = $rxInvert !== null ? abs($rxInvert) : null;
+            $absTxInvert = $txInvert !== null ? abs($txInvert) : null;
+
+            $absRxNormal = $rxNormal !== null ? abs($rxNormal) : null;
+            $absTxNormal = $txNormal !== null ? abs($txNormal) : null;
+
+            if ($absTxInvert !== null && $absTxInvert > 0.0 && $absTxInvert <= 6.5 && $absRxInvert !== null && $absRxInvert >= 6.5) {
+                // Swapped by ZTE firmware:
+                $rx = -abs($rxInvert);
+                $tx = abs($txInvert);
+                $rxFormula = 'Verified Vendor Profile Swap: Inverted from TX Parameter (applied negative sign)';
+                $txFormula = 'Verified Vendor Profile Swap: Inverted from RX Parameter';
+            } elseif ($absRxNormal !== null && $absRxNormal >= 6.5 && $absTxNormal !== null && $absTxNormal > 0.0 && $absTxNormal <= 6.5) {
+                // Standard non-inverted ZTE firmware:
+                $rx = -abs($rxNormal);
+                $tx = abs($txNormal);
+            } elseif ($absTxInvert !== null && $absTxInvert > 0.0 && $absTxInvert <= 6.5 && $rawTx === null) {
+                $tx = abs($txInvert);
+                $rx = null;
+                $txFormula = 'Verified Vendor Profile Anomaly: Single positive value in RX parameter detected as TX laser';
+            } elseif ($absRxInvert !== null && $absRxInvert >= 6.5 && $rawRx === null) {
+                $rx = -abs($rxInvert);
+                $tx = null;
+                $rxFormula = 'Verified Vendor Profile Anomaly: Value in TX parameter detected as RX power';
+            } else {
+                $rx = self::normalizePowerValue($rawRx);
+                $tx = self::normalizePowerValue($rawTx);
+            }
+        } else {
+            $rx = self::normalizePowerValue($rawRx, true);
+            $tx = self::normalizePowerValue($rawTx, false);
+
+            if ($rx !== null && !$isAttenuation && $rx >= 6.0 && $rx <= 45.0) {
+                $rx = -abs($rx);
+                $rxFormula .= ' (applied negative sign for optical power)';
+            }
+        }
 
         // Track formulas and units
-        $rxFormula = 'direct';
+        $rxFormula = $rxFormula ?? 'direct';
         $rxUnit = 'dBm';
-        $txFormula = 'direct';
+        $txFormula = $txFormula ?? 'direct';
         $txUnit = 'dBm';
 
         if ($rawRx !== null) {
@@ -431,42 +512,6 @@ class AcsTelemetryParser
         if ($rxPath && stripos($rxPath, 'Attenuation') !== false) {
             $isAttenuation = true;
             $rxFormula .= ' (optical attenuation in dB)';
-        }
-
-        // SWAP RULE:
-        // In GPON, laser diode TX power is strictly in the range +0.5 to +6.5 dBm.
-        // Received signal RX power is strictly in the range -8.0 to -35.0 dBm (or reported as positive magnitude).
-        // On ZTE firmware (F609, F670L, etc.), the TX laser is reported under the RX parameter (e.g. 2.23 dBm)
-        // and the RX received power is reported under the TX parameter (e.g. 17.60 dBm or -17.60 dBm).
-        if ($shouldSwap && $rx !== null && $tx !== null) {
-            if ($rx > 0.0 && $rx <= 6.5 && abs($tx) >= 6.0) {
-                // Swapped according to tested vendor capability profile:
-                // Parameter in RX is actually TX laser, parameter in TX is actually RX power!
-                $actualRx = -abs($tx);
-                $actualTx = abs($rx);
-                $rx = $actualRx;
-                $tx = $actualTx;
-                $rxFormula = 'Verified Vendor Profile Swap: Inverted from TX Parameter (applied negative sign)';
-                $txFormula = 'Verified Vendor Profile Swap: Inverted from RX Parameter';
-            } elseif (abs($rx) >= 6.0 && $tx > 0.0 && $tx <= 6.5) {
-                // Values are in correct positions; ensure standard negative sign for RX and positive for TX
-                $rx = -abs($rx);
-                $tx = abs($tx);
-            }
-        } elseif ($shouldSwap && $rx !== null && $rx > 0.0 && $rx <= 6.5 && $tx === null) {
-            $tx = abs($rx);
-            $rx = null;
-            $txFormula = 'Verified Vendor Profile Anomaly: Single positive value detected as TX laser';
-        } elseif ($shouldSwap && $tx !== null && $tx < 0 && $rx === null) {
-            $rx = $tx;
-            $tx = null;
-            $rxFormula = 'Verified Vendor Profile Anomaly: Single negative value detected as RX power';
-        }
-
-        // Anomaly: Positive attenuation reported on optical power parameter without minus sign
-        if (!$isAttenuation && $rx !== null && $rx >= 6.0 && $rx <= 45.0) {
-            $rx = -abs($rx);
-            $rxFormula .= ' (applied negative sign for optical power)';
         }
 
         // EXPLICIT SEPARATION: ONU Optical readings vs OLT DDM readings

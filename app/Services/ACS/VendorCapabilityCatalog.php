@@ -117,8 +117,76 @@ class VendorCapabilityCatalog
                     'max_ssids_5' => 0,
                     'lan_ports' => 4,
                     'optical' => [
-                        'rx_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower',
-                        'tx_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower',
+                        'rx_path' => 'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
+                        'tx_path' => 'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
+                        'rx_candidate_paths' => [
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.RxPower',
+                        ],
+                        'tx_candidate_paths' => [
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.TxPower',
+                        ],
+                        'temp_path' => 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverTemperature',
+                        'voltage_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.Voltage',
+                        'bias_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.BiasCurrent',
+                        'swap_rx_tx' => false,
+                        'rx_unit' => '0.01 dBm / dBm',
+                        'formula' => 'val >= 60 ? val / 100 : val',
+                    ],
+                    'wifi' => [
+                        'base_path_24' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration',
+                        'instances_24' => [1, 2, 3, 4],
+                        'base_path_5' => null,
+                        'instances_5' => [],
+                        'rf_band_param' => 'X_HW_RFBand',
+                        'channel_param' => 'Channel',
+                    ],
+                    'wan' => [
+                        'vlan_param' => 'X_HW_VLAN',
+                        'vlan_enable_param' => null,
+                        'service_list_param' => 'X_HW_ServiceList',
+                        'port_bind_param' => 'X_HW_LANBinding',
+                    ],
+                    'status' => self::STATUS_VERIFIED_WRITE,
+                    'physical_verification' => self::STATUS_PHYSICALLY_VERIFIED,
+                ],
+                'HG8245H5' => [
+                    'product_class' => 'HG8245H5',
+                    'data_model' => 'TR-098',
+                    'hardware_versions' => ['V1.0', 'V2.0'],
+                    'software_versions' => ['V5R019C00S105', 'V5R020C00S125'],
+                    'bands' => ['2.4GHz'],
+                    'max_ssids_24' => 4,
+                    'max_ssids_5' => 0,
+                    'lan_ports' => 4,
+                    'optical' => [
+                        'rx_path' => 'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
+                        'tx_path' => 'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
+                        'rx_candidate_paths' => [
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.RxPower',
+                        ],
+                        'tx_candidate_paths' => [
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.TxPower',
+                        ],
                         'temp_path' => 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverTemperature',
                         'voltage_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.Voltage',
                         'bias_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.BiasCurrent',
@@ -153,8 +221,24 @@ class VendorCapabilityCatalog
                     'max_ssids_5' => 0,
                     'lan_ports' => 4,
                     'optical' => [
-                        'rx_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower',
-                        'tx_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower',
+                        'rx_path' => 'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
+                        'tx_path' => 'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
+                        'rx_candidate_paths' => [
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.RxPower',
+                        ],
+                        'tx_candidate_paths' => [
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.TxPower',
+                        ],
                         'temp_path' => 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverTemperature',
                         'voltage_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.Voltage',
                         'bias_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.BiasCurrent',
@@ -189,8 +273,24 @@ class VendorCapabilityCatalog
                     'max_ssids_5' => 0,
                     'lan_ports' => 4,
                     'optical' => [
-                        'rx_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower',
-                        'tx_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower',
+                        'rx_path' => 'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
+                        'tx_path' => 'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
+                        'rx_candidate_paths' => [
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.RxPower',
+                        ],
+                        'tx_candidate_paths' => [
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.TxPower',
+                        ],
                         'temp_path' => 'InternetGatewayDevice.DeviceInfo.X_HW_Temperature',
                         'voltage_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.Voltage',
                         'bias_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.BiasCurrent',
@@ -225,8 +325,24 @@ class VendorCapabilityCatalog
                     'max_ssids_5' => 0,
                     'lan_ports' => 4,
                     'optical' => [
-                        'rx_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower',
-                        'tx_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower',
+                        'rx_path' => 'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
+                        'tx_path' => 'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
+                        'rx_candidate_paths' => [
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.RxPower',
+                        ],
+                        'tx_candidate_paths' => [
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxPower',
+                            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower',
+                            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.TxPower',
+                        ],
                         'temp_path' => 'InternetGatewayDevice.DeviceInfo.X_HW_Temperature',
                         'voltage_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.Voltage',
                         'bias_path' => 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.BiasCurrent',
@@ -378,11 +494,11 @@ class VendorCapabilityCatalog
         $sn = strtoupper(trim((string)$serialNumber));
 
         $vendorKey = null;
-        if (str_contains($mfg, 'zte') || str_starts_with($sn, 'ZTEG') || str_starts_with($sn, '5A544547')) {
+        if (str_contains($mfg, 'zte') || str_starts_with($sn, 'ZTEG') || str_starts_with($sn, '5A544547') || str_starts_with($pc, 'F6') || str_starts_with($pc, 'ZXHN')) {
             $vendorKey = 'zte';
-        } elseif (str_contains($mfg, 'huawei') || str_starts_with($sn, 'HWTC') || str_starts_with($sn, '48575443')) {
+        } elseif (str_contains($mfg, 'huawei') || str_starts_with($sn, 'HWTC') || str_starts_with($sn, '48575443') || str_starts_with($pc, 'HG8') || str_starts_with($pc, 'EG8') || str_starts_with($pc, 'HS8')) {
             $vendorKey = 'huawei';
-        } elseif (str_contains($mfg, 'fiberhome') || str_starts_with($sn, 'FHTT') || str_starts_with($sn, '46485454')) {
+        } elseif (str_contains($mfg, 'fiberhome') || str_starts_with($sn, 'FHTT') || str_starts_with($sn, '46485454') || str_starts_with($pc, 'HG6') || str_starts_with($pc, 'AN5506')) {
             $vendorKey = 'fiberhome';
         }
 

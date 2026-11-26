@@ -180,7 +180,7 @@ class Index extends BaseACSComponent
         try {
             $acsService = new \App\Services\Adapters\Monitoring\GenieACSDriver();
             $query = [
-                'projection' => '_id,_deviceId,_ip,_lastInform,VirtualParameters,VirtualParameters.PonMac,VirtualParameters.ponMac,VirtualParameters.pppoeIP,VirtualParameters.IPTR069,VirtualParameters.pppoeMac,VirtualParameters.getSerialNumber,InternetGatewayDevice.DeviceInfo,Device.DeviceInfo,InternetGatewayDevice.WANDevice,Device.WANDevice,Device.Optical,InternetGatewayDevice.ManagementServer.ConnectionRequestURL,Device.ManagementServer.ConnectionRequestURL'
+                'projection' => '_id,_deviceId,_ip,_lastInform,VirtualParameters,InternetGatewayDevice,Device'
             ];
             $devices = $acsService->listDevices($query, 5000);
             $count = 0;
@@ -313,13 +313,30 @@ class Index extends BaseACSComponent
         $optical = \App\Services\ACS\AcsTelemetryParser::parseOptical($flat, $matchedOnu);
         $rxPower = $optical['rx_power'];
 
+        $compositeSignal = null;
+        if ($rxPower !== null && is_numeric($rxPower)) {
+            $val = (float) $rxPower;
+            $compositeSignal = $val > 0 ? -$val : $val;
+        } elseif (!empty($matchedOnu?->rx_power_dbm) && is_numeric($matchedOnu->rx_power_dbm)) {
+            $val = (float) $matchedOnu->rx_power_dbm;
+            $compositeSignal = $val > 0 ? -$val : $val;
+        }
+
         $identity = \App\Services\ACS\AcsTelemetryParser::parseDeviceIdentity($flat, $deviceData, $serialNumber);
 
         $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
         $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) <= 20) ? 'online' : 'offline';
 
+        // Auto-queue refresh task for online devices lacking TR-069 optical power telemetry
+        if ($status === 'online' && $optical['onu_rx_power'] === null) {
+            try {
+                $acsService = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+                $acsService->refreshOpticalTask($deviceId);
+            } catch (\Throwable) {}
+        }
+
         $acsDeviceParams = [
-            'signal' => ($rxPower !== null && $rxPower < 0) ? $rxPower : ($matchedOnu?->rx_power_dbm ?? null),
+            'signal' => $compositeSignal,
             'serial_number' => $serialNumber,
             'mac_address' => $mac,
             'model' => $identity['model'],

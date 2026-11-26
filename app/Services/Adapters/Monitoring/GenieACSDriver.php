@@ -839,19 +839,47 @@ class GenieACSDriver
     {
         try {
             $realDeviceId = $this->resolveDeviceId($deviceId);
-            $opticalObjects = [
-                'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig',
-                'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo',
-                'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig',
-                'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig',
-                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig',
-                'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig',
-                'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig',
-                'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig',
-                'InternetGatewayDevice.DeviceInfo',
-                'Device.Optical',
-                'Device.Optical.Interface',
-            ];
+
+            // Resolve vendor to target precise objects
+            $ad = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->where('uuid', $realDeviceId)
+                ->orWhere('serial_number', $deviceId)
+                ->first();
+            $vendor = strtolower($ad?->manufacturer ?? '');
+            $sn = strtoupper($ad?->serial_number ?? $deviceId);
+            $pc = strtoupper($ad?->model ?? '');
+
+            $opticalObjects = [];
+            if (str_contains($vendor, 'huawei') || str_starts_with($sn, 'HWTC') || str_starts_with($sn, '48575443') || str_starts_with($pc, 'HG8') || str_starts_with($pc, 'EG8') || str_starts_with($pc, 'HS8')) {
+                $opticalObjects = [
+                    'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig',
+                    'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig',
+                    'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig',
+                    'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo',
+                    'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig',
+                ];
+            } elseif (str_contains($vendor, 'zte') || str_starts_with($sn, 'ZTEG') || str_starts_with($sn, '5A544547') || str_starts_with($pc, 'F6') || str_starts_with($pc, 'ZXHN')) {
+                $opticalObjects = [
+                    'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig',
+                    'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig',
+                ];
+            } elseif (str_contains($vendor, 'fiberhome') || str_starts_with($sn, 'FHTT') || str_starts_with($sn, '46485454') || str_starts_with($pc, 'HG6') || str_starts_with($pc, 'AN5506')) {
+                $opticalObjects = [
+                    'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig',
+                    'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig',
+                    'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig',
+                ];
+            } else {
+                $opticalObjects = [
+                    'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig',
+                    'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig',
+                    'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig',
+                    'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig',
+                    'Device.Optical.Interface',
+                    'Device.Optical',
+                ];
+            }
+
             foreach ($opticalObjects as $obj) {
                 $this->refreshObject($realDeviceId, $obj);
             }
@@ -1249,6 +1277,39 @@ if (connUrl) {
   if (match) {
     ipAddress = match[1];
   }
+}
+
+// 3b. Multi-Vendor Optical Power Telemetry Polling on Inform
+let mfgUpper = (manufacturer || "").toUpperCase();
+let pcUpper = (productClass || "").toUpperCase();
+let snUpper = (serialNumber || "").toUpperCase();
+
+if (mfgUpper.includes("HUAWEI") || pcUpper.includes("HG8") || pcUpper.includes("EG8") || pcUpper.includes("HS8") || snUpper.startsWith("HWTC") || snUpper.startsWith("48575443")) {
+  declare("InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.RXPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.TXPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.RxPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.TxPower", {value: 1});
+} else if (mfgUpper.includes("ZTE") || pcUpper.includes("F6") || pcUpper.includes("ZXHN") || snUpper.startsWith("ZTEG") || snUpper.startsWith("5A544547")) {
+  declare("InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TxPower", {value: 1});
+} else if (mfgUpper.includes("FIBERHOME") || pcUpper.includes("HG6") || pcUpper.includes("AN5506") || snUpper.startsWith("FHTT") || snUpper.startsWith("46485454")) {
+  declare("InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.RXPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.TXPower", {value: 1});
+} else {
+  declare("Device.Optical.Interface.1.RxPower", {value: 1});
+  declare("Device.Optical.Interface.1.TxPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower", {value: 1});
+  declare("InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxPower", {value: 1});
 }
 
 // 4. Send Event via Extension

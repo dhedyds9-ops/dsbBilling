@@ -244,4 +244,58 @@ class AcsOpticalDiagnosticsAccuracyTest extends TestCase
         $this->assertEquals(-15.78, $optical['composite_rx_power']);
         $this->assertEquals('-15.78 dBm', $optical['composite_rx_display']);
     }
+
+    /** Test ZTE with 0.01 dBm scale (e.g. Rx: 223 -> 2.23 dBm, Tx: 1760 -> 17.60 dBm) */
+    public function test_zte_swapped_with_001_dbm_scale(): void
+    {
+        $flat = [
+            'InternetGatewayDevice.DeviceInfo.Manufacturer' => 'ZTE',
+            'InternetGatewayDevice.DeviceInfo.ModelName' => 'F609',
+            'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower' => '223',  // 2.23 dBm laser
+            'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower' => '1760', // 17.60 dBm received power
+        ];
+
+        $optical = AcsTelemetryParser::parseOptical($flat);
+
+        $this->assertEquals(-17.60, $optical['onu_rx_power'], 'ZTE 1760 in 0.01 dBm scale must normalize to -17.60 dBm');
+        $this->assertEquals(2.23, $optical['onu_tx_power'], 'ZTE 223 in 0.01 dBm scale must normalize to 2.23 dBm');
+        $this->assertEquals('-17.60 dBm', $optical['onu_rx_display']);
+        $this->assertEquals('2.23 dBm', $optical['onu_tx_display']);
+    }
+
+    /** Test ZTE with non-inverted firmware (RXPower is already RX, TXPower is already TX) */
+    public function test_zte_standard_non_inverted_firmware(): void
+    {
+        $flat = [
+            'InternetGatewayDevice.DeviceInfo.SerialNumber' => 'ZTEGC1234567',
+            'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower' => '-19.40',
+            'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower' => '2.10',
+        ];
+
+        $optical = AcsTelemetryParser::parseOptical($flat);
+
+        $this->assertEquals(-19.40, $optical['onu_rx_power']);
+        $this->assertEquals(2.10, $optical['onu_tx_power']);
+        $this->assertEquals('-19.40 dBm', $optical['onu_rx_display']);
+        $this->assertEquals('2.10 dBm', $optical['onu_tx_display']);
+    }
+
+    /** Test Huawei HG8245H5 profile resolution and optical reading */
+    public function test_huawei_hg8245h5_optical_and_profile_resolution(): void
+    {
+        $flat = [
+            'InternetGatewayDevice.DeviceInfo.Manufacturer' => 'Huawei',
+            'InternetGatewayDevice.DeviceInfo.ModelName' => 'HG8245H5',
+            'InternetGatewayDevice.DeviceInfo.SerialNumber' => 'HWTCD5CF84A3',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower' => '-21.80',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower' => '2.35',
+        ];
+
+        $optical = AcsTelemetryParser::parseOptical($flat);
+
+        $this->assertEquals(-21.80, $optical['onu_rx_power'], 'Huawei HG8245H5 must read optical RX correctly');
+        $this->assertEquals(2.35, $optical['onu_tx_power'], 'Huawei HG8245H5 must read optical TX correctly');
+        $this->assertEquals('-21.80 dBm', $optical['onu_rx_display']);
+        $this->assertEquals('2.35 dBm', $optical['onu_tx_display']);
+    }
 }
