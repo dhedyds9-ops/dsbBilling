@@ -114,6 +114,13 @@ class AcsTelemetryParserTest extends TestCase
         $this->assertEquals('E4:47:83:83:5A:0C', AcsTelemetryParser::normalizeMac('E44783835A0C'));
         $this->assertNull(AcsTelemetryParser::normalizeMac('00:00:00:00:00:00'));
         $this->assertNull(AcsTelemetryParser::normalizeMac('FF:FF:FF:FF:FF:FF'));
+
+        // Array inputs (e.g. GenieACS parameter container objects or arrays with _value)
+        $this->assertEquals('E4:47:83:83:5A:0C', AcsTelemetryParser::normalizeMac(['_value' => 'e4:47:83:83:5a:0c']));
+        $this->assertEquals('E4:47:83:83:5A:0C', AcsTelemetryParser::normalizeMac(['e4:47:83:83:5a:0c']));
+        $this->assertNull(AcsTelemetryParser::normalizeMac([]));
+        $this->assertNull(AcsTelemetryParser::normalizeMac(['_timestamp' => 12345678]));
+        $this->assertNull(AcsTelemetryParser::normalizeMac(null));
     }
 
     /** Test Device Identity detection */
@@ -344,6 +351,42 @@ class AcsTelemetryParserTest extends TestCase
         $this->assertEquals('-21.34 dBm', $optical['rx_power_display']);
         $this->assertEquals('2.15 dBm', $optical['tx_power_display']);
         $this->assertEquals('normal', $optical['rx_status']);
+    }
+
+    /** Test parseWifiDetailed handles unexpanded BSSID/SSID array nodes without TypeError */
+    public function test_parse_wifi_detailed_handles_unexpanded_array_bssid_and_ssid(): void
+    {
+        $rawParams = [
+            'InternetGatewayDevice' => [
+                'LANDevice' => [
+                    '1' => [
+                        'WLANConfiguration' => [
+                            '1' => [
+                                'SSID' => ['_value' => 'ZTE_Fiber_2.4G'],
+                                // BSSID node has sub-object array without _value (typical in GenieACS unpopulated parameters)
+                                'BSSID' => ['_timestamp' => 1700000000, '_writable' => false],
+                                'Enable' => ['_value' => true],
+                                'BeaconType' => ['_value' => '11i'],
+                                'Channel' => ['_value' => 6],
+                            ],
+                            '2' => [
+                                // Unpopulated placeholder node where SSID and BSSID are arrays without _value
+                                'SSID' => ['_object' => true],
+                                'BSSID' => ['_object' => true],
+                                'Enable' => ['_value' => false],
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $flat = AcsTelemetryParser::flatten($rawParams);
+        $result = AcsTelemetryParser::parseWifiDetailed($rawParams, $flat);
+
+        $this->assertNotEmpty($result['all_ssids']);
+        $this->assertEquals('ZTE_Fiber_2.4G', $result['all_ssids'][0]['ssid']);
+        $this->assertNull($result['all_ssids'][0]['bssid']);
     }
 }
 

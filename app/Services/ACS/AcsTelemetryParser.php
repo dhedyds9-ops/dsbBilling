@@ -67,7 +67,11 @@ class AcsTelemetryParser
      */
     public static function normalizePowerValue($raw): ?float
     {
-        if ($raw === null || $raw === '' || $raw === false) {
+        if (is_array($raw)) {
+            $raw = $raw['_value'] ?? ($raw[0] ?? null);
+        }
+
+        if ($raw === null || $raw === '' || $raw === false || !is_scalar($raw)) {
             return null;
         }
 
@@ -704,13 +708,17 @@ class AcsTelemetryParser
     /**
      * Clean and format MAC Address into uppercase XX:XX:XX:XX:XX:XX.
      */
-    public static function normalizeMac(?string $mac): ?string
+    public static function normalizeMac($mac): ?string
     {
-        if (empty($mac) || !is_string($mac)) {
+        if (is_array($mac)) {
+            $mac = $mac['_value'] ?? ($mac[0] ?? null);
+        }
+
+        if (empty($mac) || !is_scalar($mac)) {
             return null;
         }
 
-        $val = trim($mac);
+        $val = trim((string)$mac);
         if ($val === '' || $val === '00:00:00:00:00:00' || strtoupper($val) === 'FF:FF:FF:FF:FF:FF') {
             return null;
         }
@@ -1039,21 +1047,17 @@ class AcsTelemetryParser
 
                     $prefix = "InternetGatewayDevice.LANDevice.{$ldIdx}.WLANConfiguration.{$wIdx}";
 
-                    $ssid = $wNode['SSID']['_value'] 
-                        ?? $wNode['SSID'] 
-                        ?? ($flat["{$prefix}.SSID"] ?? null);
+                    $rawSsid = $wNode['SSID']['_value'] 
+                        ?? (is_scalar($wNode['SSID'] ?? null) ? $wNode['SSID'] : ($flat["{$prefix}.SSID"] ?? null));
+                    $ssid = is_scalar($rawSsid) ? trim((string)$rawSsid) : '';
 
-                    $bssid = self::normalizeMac(
-                        $wNode['BSSID']['_value'] 
-                        ?? $wNode['BSSID'] 
-                        ?? ($flat["{$prefix}.BSSID"] ?? null)
-                    );
+                    $rawBssid = $wNode['BSSID']['_value'] 
+                        ?? (is_scalar($wNode['BSSID'] ?? null) ? $wNode['BSSID'] : ($flat["{$prefix}.BSSID"] ?? null));
+                    $bssid = self::normalizeMac($rawBssid);
 
-                    $enable = (bool) (
-                        $wNode['Enable']['_value'] 
-                        ?? $wNode['Enable'] 
-                        ?? ($flat["{$prefix}.Enable"] ?? true)
-                    );
+                    $rawEnable = $wNode['Enable']['_value'] 
+                        ?? (is_scalar($wNode['Enable'] ?? null) ? $wNode['Enable'] : ($flat["{$prefix}.Enable"] ?? true));
+                    $enable = (bool) $rawEnable;
 
                     // Skip empty / inactive placeholder nodes if no SSID and no BSSID
                     if (empty($ssid) && empty($bssid)) {
@@ -1174,12 +1178,14 @@ class AcsTelemetryParser
             if (is_array($tr181Ssids)) {
                 foreach ($tr181Ssids as $sIdx => $sNode) {
                     if (!is_numeric($sIdx) || !is_array($sNode)) continue;
-                    $prefix = "Device.WiFi.SSID.{$sIdx}";
-                    $ssid = $sNode['SSID']['_value'] ?? $sNode['SSID'] ?? ($flat["{$prefix}.SSID"] ?? null);
+                    $rawSsid = $sNode['SSID']['_value'] ?? (is_scalar($sNode['SSID'] ?? null) ? $sNode['SSID'] : ($flat["{$prefix}.SSID"] ?? null));
+                    $ssid = is_scalar($rawSsid) ? trim((string)$rawSsid) : '';
                     if (empty($ssid)) continue;
 
-                    $bssid = self::normalizeMac($sNode['BSSID']['_value'] ?? $sNode['BSSID'] ?? ($flat["{$prefix}.BSSID"] ?? null));
-                    $enable = (bool) ($sNode['Enable']['_value'] ?? $sNode['Enable'] ?? true);
+                    $rawBssid = $sNode['BSSID']['_value'] ?? (is_scalar($sNode['BSSID'] ?? null) ? $sNode['BSSID'] : ($flat["{$prefix}.BSSID"] ?? null));
+                    $bssid = self::normalizeMac($rawBssid);
+                    $rawEnable = $sNode['Enable']['_value'] ?? (is_scalar($sNode['Enable'] ?? null) ? $sNode['Enable'] : true);
+                    $enable = (bool) $rawEnable;
                     $lowerLayers = (string) ($sNode['LowerLayers']['_value'] ?? '');
 
                     $band = 'Unknown';
