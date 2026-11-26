@@ -65,7 +65,19 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
     public $superadminEditPassword = '';
 
     public $connectedDevices = [];
-    public $deviceStatus = [];
+    public $deviceStatus = [
+        'rx_power' => '-',
+        'tx_power' => '-',
+        'pppoe_username' => '-',
+        'pppoe_password' => '-',
+        'superadmin_user' => 'admin',
+        'superadmin_password' => '-',
+        'customer_name' => '-',
+        'ssid_1' => '-',
+        'ssid_2' => '-',
+        'wan_ip' => '-',
+        'wan_mac' => '-',
+    ];
 
     public function mount($id = null)
     {
@@ -452,7 +464,20 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                 ->get()
                 ->toArray();
         } catch (\Exception $e) {
-            $this->deviceStatus = [];
+            \Illuminate\Support\Facades\Log::warning("Show@loadDeviceStatus failed for device {$this->deviceId}: " . $e->getMessage());
+            $this->deviceStatus = [
+                'rx_power' => '-',
+                'tx_power' => '-',
+                'pppoe_username' => '-',
+                'pppoe_password' => '-',
+                'superadmin_user' => 'admin',
+                'superadmin_password' => '-',
+                'customer_name' => '-',
+                'ssid_1' => '-',
+                'ssid_2' => '-',
+                'wan_ip' => '-',
+                'wan_mac' => '-',
+            ];
         }
     }
 

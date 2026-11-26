@@ -162,7 +162,7 @@
                     {{ $deviceStatus['ssid_1'] ?? '-' }}
                 </div>
                 <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate" title="5G: {{ $deviceStatus['ssid_2'] ?? '-' }}">
-                    5G: {{ $deviceStatus['ssid_2'] && $deviceStatus['ssid_2'] !== '-' ? $deviceStatus['ssid_2'] : 'Tidak aktif' }}
+                    5G: {{ (!empty($deviceStatus['ssid_2']) && $deviceStatus['ssid_2'] !== '-') ? $deviceStatus['ssid_2'] : 'Tidak aktif' }}
                 </div>
             </div>
         </div>
