@@ -642,7 +642,7 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl flex items-center justify-center {{ ($opticalDiagnostics['is_los'] ?? false) ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400' }}">
-                    <span class="material-symbols-outlined text-[24px]">{{ ($opticalDiagnostics['is_los'] ?? false) ? 'link_off' : 'optical_audio' }}</span>
+                    <span class="material-symbols-outlined notranslate text-[24px]" translate="no">{{ ($opticalDiagnostics['is_los'] ?? false) ? 'link_off' : 'settings_input_antenna' }}</span>
                 </div>
                 <div>
                     <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100">Status Tautan GPON & Diagnostik Laser</h3>
@@ -652,8 +652,9 @@
                     </p>
                 </div>
             </div>
-            <button wire:click="summonDevice" wire:loading.attr="disabled" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 transition-colors">
-                <span class="material-symbols-outlined text-[15px]">refresh</span>
+            <button wire:click="refreshOptical" wire:loading.attr="disabled" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 transition-colors">
+                <span wire:loading.remove wire:target="refreshOptical" class="material-symbols-outlined notranslate text-[15px]" translate="no">refresh</span>
+                <span wire:loading wire:target="refreshOptical" class="material-symbols-outlined notranslate animate-spin text-[15px]" translate="no">progress_activity</span>
                 <span>Refresh Optik Live</span>
             </button>
         </div>

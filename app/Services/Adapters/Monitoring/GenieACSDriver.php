@@ -835,6 +835,29 @@ class GenieACSDriver
         }
     }
 
+    public function refreshOpticalTask(string $deviceId): bool
+    {
+        try {
+            $realDeviceId = $this->resolveDeviceId($deviceId);
+            $opticalObjects = [
+                'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig',
+                'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig',
+                'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig',
+                'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig',
+                'InternetGatewayDevice.DeviceInfo',
+                'Device.Optical',
+            ];
+            foreach ($opticalObjects as $obj) {
+                $this->refreshObject($realDeviceId, $obj);
+            }
+            return true;
+        } catch (\Throwable $e) {
+            Log::warning("GenieACSDriver refreshOpticalTask failed for {$deviceId}: " . $e->getMessage());
+            return false;
+        }
+    }
+
     public function provisionPppoe(string $deviceId, string $username, string $password, ?string $vlanId = null): bool
     {
         try {
@@ -1003,8 +1026,14 @@ JS;
             $refreshObjects = [
                 'InternetGatewayDevice.LANDevice.1.Hosts',
                 'InternetGatewayDevice.LANDevice.1.WLANConfiguration',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig',
+                'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig',
+                'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig',
+                'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig',
                 'Device.Hosts',
-                'Device.WiFi'
+                'Device.WiFi',
+                'Device.Optical',
             ];
             foreach ($refreshObjects as $obj) {
                 try {

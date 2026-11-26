@@ -1137,6 +1137,37 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
         }
     }
 
+    public function refreshOptical()
+    {
+        try {
+            $driver = new GenieACSDriver();
+            $driver->refreshOpticalTask($this->device->uuid);
+            $res = $driver->summonDeviceResult($this->device->uuid);
+
+            \App\Models\ACS\DeviceTask::create([
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'acs_device_id' => $this->device->id,
+                'type' => 'refresh_optical',
+                'status' => ($res['connection_request_success'] || $res['task_queued']) ? 'completed' : 'pending',
+                'created_by' => auth()->id()
+            ]);
+
+            if ($res['connection_request_success']) {
+                session()->flash('success', '📡 Permintaan refresh parameter optik berhasil dikirim ke modem via TR-069!');
+                usleep(1500000);
+                $this->cachedDeviceParams = null;
+                $this->loadDeviceStatus();
+            } elseif ($res['task_queued']) {
+                session()->flash('info', '📡 Tugas refresh optik berhasil diantrikan ke GenieACS. Nilai akan diperbarui saat modem terhubung.');
+            } else {
+                session()->flash('warning', 'Perintah refresh optik terkirim ke antrean GenieACS.');
+            }
+            $this->dispatch('notify', ['type' => 'success', 'message' => 'Refresh optik selesai diproses.']);
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal merefresh parameter optik: ' . $e->getMessage());
+        }
+    }
+
     public function render()
     {
         return view('livewire.acs.device.show');

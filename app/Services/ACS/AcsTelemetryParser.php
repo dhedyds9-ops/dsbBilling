@@ -71,15 +71,35 @@ class AcsTelemetryParser
             return null;
         }
 
-        $clean = trim(str_ireplace(['dBm', 'dbm', ' '], '', (string)$raw));
+        $rawStr = trim((string)$raw);
+        $isMicroWatt = (bool) preg_match('/(?:uW|µW|uw)/i', $rawStr);
+        $isMilliWatt = (bool) preg_match('/(?:mW|mw)/i', $rawStr);
+
+        $clean = trim(str_ireplace(['dBm', 'dbm', 'uW', 'µW', 'uw', 'mW', 'mw', ' '], '', $rawStr));
         if (!is_numeric($clean)) {
             return null;
         }
 
         $val = (float) $clean;
-        // 0.0 on GPON optics indicates unread, missing sensor, or loss of signal
+        // Zero value indicates laser disabled, dark fiber, or loss of signal
         if ($val == 0.0) {
-            return null;
+            return 0.0;
+        }
+
+        if ($isMicroWatt) {
+            // Optical physics formula: 10 * log10(val_uW / 1000)
+            if ($val > 0.0) {
+                return round(10.0 * log10($val / 1000.0), 2);
+            }
+            return 0.0;
+        }
+
+        if ($isMilliWatt) {
+            // Optical physics formula: 10 * log10(val_mW)
+            if ($val > 0.0) {
+                return round(10.0 * log10($val), 2);
+            }
+            return 0.0;
         }
 
         $abs = abs($val);
@@ -129,10 +149,13 @@ class AcsTelemetryParser
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_RxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.OpticalAttenuation',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxAttenuation',
             'InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.1.RxPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_HW_RxPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_ALG-COM_RxPower',
             'Device.Optical.1.Transceiver.RxPower',
+            'Device.Optical.1.Transceiver.RxAttenuation',
             'Device.Optical.Interface.1.RxPower',
         ];
 
@@ -225,12 +248,18 @@ class AcsTelemetryParser
             return [null, null];
         };
 
-        [$rxPath, $rawRx] = $findWithKey($rxCandidates, '/(RXPower|RxPower|OpticalRxPower)$/i');
+        [$rxPath, $rawRx] = $findWithKey($rxCandidates, '/(RXPower|RxPower|OpticalRxPower|OpticalAttenuation|RxAttenuation|Attenuation)$/i');
         [$txPath, $rawTx] = $findWithKey($txCandidates, '/(TXPower|TxPower|OpticalTxPower)$/i');
         [$tempPath, $rawTemp] = $findWithKey($tempCandidates, '/(TransceiverTemperature|opticalTemperature)$/i');
         [$voltagePath, $rawVoltage] = $findWithKey($voltageCandidates, '/(SupplyVoltage|TransceiverVoltage|opticalVoltage)$/i');
         [$biasPath, $rawBias] = $findWithKey($biasCandidates, '/(BiasCurrent|LaserBiasCurrent|TransceiverBiasCurrent)$/i');
         [$losPath, $rawLos] = $findWithKey($losCandidates, '/(LOSStatus|LOS)$/i');
+
+        $vendor = self::detectVendor($flat);
+        $model = self::parseModelName($flat);
+        $sn = self::parseSerialNumber($flat);
+        $profile = VendorCapabilityCatalog::resolveProfile($vendor, $model, $sn);
+        $shouldSwap = !empty($profile['optical']['swap_rx_tx']);
 
         $rx = self::normalizePowerValue($rawRx);
         $tx = self::normalizePowerValue($rawTx);
@@ -242,88 +271,125 @@ class AcsTelemetryParser
         $txUnit = 'dBm';
 
         if ($rawRx !== null) {
-            $numRx = abs((float)$rawRx);
-            if ($numRx >= 6000.0) {
-                $rxUnit = 'milli-dBm';
-                $rxFormula = 'val / 1000';
-            } elseif ($numRx >= 60.0) {
-                $rxUnit = '0.01 dBm';
-                $rxFormula = 'val / 100';
-            }
-        }
-        if ($rawTx !== null) {
-            $numTx = abs((float)$rawTx);
-            if ($numTx >= 500.0) {
-                $txUnit = 'milli-dBm';
-                $txFormula = 'val / 1000';
-            } elseif ($numTx >= 40.0) {
-                $txUnit = '0.01 dBm';
-                $txFormula = 'val / 100';
+            $rawRxStr = (string)$rawRx;
+            if (preg_match('/(?:uW|µW|uw)/i', $rawRxStr)) {
+                $rxUnit = 'uW';
+                $rxFormula = '10 * log10(val / 1000)';
+            } elseif (preg_match('/(?:mW|mw)/i', $rawRxStr)) {
+                $rxUnit = 'mW';
+                $rxFormula = '10 * log10(val)';
+            } else {
+                $numRx = abs((float)$rawRx);
+                if ($numRx == 0.0) {
+                    $rxFormula = 'zero_power_or_laser_off';
+                } elseif ($numRx >= 6000.0) {
+                    $rxUnit = 'milli-dBm';
+                    $rxFormula = 'val / 1000';
+                } elseif ($numRx >= 60.0) {
+                    $rxUnit = '0.01 dBm';
+                    $rxFormula = 'val / 100';
+                }
             }
         }
 
-        // =========================================================================
-        // GPON PHYSICAL & VENDOR ANOMALY HEURISTICS
-        // =========================================================================
-        // Physics Rule:
-        // - RX (received power from OLT): ALWAYS NEGATIVE on GPON (-8 dBm to -35 dBm).
-        // - TX (modem laser transmit power): ALWAYS POSITIVE (+0.5 dBm to +5.0 dBm).
-        //
-        // Anomaly A (ZTE Firmware Swap):
-        // ZTE F609 / F660 firmware often outputs TX in `X_ZTE-COM_RxPower` (+0.73, +1.08)
-        // and true RX in `X_ZTE-COM_TxPower` (-19.xx, -21.xx).
-        if ($rx !== null && $tx !== null) {
+        if ($rawTx !== null) {
+            $rawTxStr = (string)$rawTx;
+            if (preg_match('/(?:uW|µW|uw)/i', $rawTxStr)) {
+                $txUnit = 'uW';
+                $txFormula = '10 * log10(val / 1000)';
+            } elseif (preg_match('/(?:mW|mw)/i', $rawTxStr)) {
+                $txUnit = 'mW';
+                $txFormula = '10 * log10(val)';
+            } else {
+                $numTx = abs((float)$rawTx);
+                if ($numTx == 0.0) {
+                    $txFormula = 'zero_power_or_laser_off';
+                } elseif ($numTx >= 500.0) {
+                    $txUnit = 'milli-dBm';
+                    $txFormula = 'val / 1000';
+                } elseif ($numTx >= 40.0) {
+                    $txUnit = '0.01 dBm';
+                    $txFormula = 'val / 100';
+                }
+            }
+        }
+
+        // Attenuation Parameter Semantics Check
+        $isAttenuation = false;
+        if ($rxPath && stripos($rxPath, 'Attenuation') !== false) {
+            $isAttenuation = true;
+            $rxFormula .= ' (optical attenuation in dB)';
+        }
+
+        // SWAP RULE: Swap ONLY based on verified vendor profile (e.g. ZTE F609/F670L where swap_rx_tx === true)
+        // Never swap based on blind guessing!
+        if ($shouldSwap && $rx !== null && $tx !== null) {
             if ($rx > 0.0 && $rx <= 6.0 && $tx <= -6.0) {
-                // Swapped! Invert them to match physics
+                // Swapped according to tested vendor capability profile
                 $temp = $rx;
                 $rx = $tx;
                 $tx = $temp;
-                $rxFormula = 'ZTE Swap: Inverted from TX Parameter';
-                $txFormula = 'ZTE Swap: Inverted from RX Parameter';
+                $rxFormula = 'Verified Vendor Profile Swap: Inverted from TX Parameter';
+                $txFormula = 'Verified Vendor Profile Swap: Inverted from RX Parameter';
             }
-        } elseif ($rx !== null && $rx > 0.0 && $rx <= 6.0 && $tx === null) {
-            // Only one parameter was found in RX path, but it's a typical positive TX value (e.g. 0.73, 1.08)
-            // It is definitely TX power!
+        } elseif ($shouldSwap && $rx !== null && $rx > 0.0 && $rx <= 6.0 && $tx === null) {
             $tx = $rx;
             $rx = null;
-            $txFormula = 'ZTE Anomaly: Single positive value detected as TX laser';
+            $txFormula = 'Verified Vendor Profile Anomaly: Single positive value detected as TX laser';
         }
 
-        // Anomaly B (Positive Attenuation reported without minus sign):
-        // Some firmwares report attenuation as positive (e.g. 19.50 or 22.30 dBm)
-        if ($rx !== null && $rx >= 7.0 && $rx <= 45.0) {
+        // Anomaly: Positive attenuation reported on optical power parameter without minus sign
+        if (!$isAttenuation && $rx !== null && $rx >= 7.0 && $rx <= 45.0) {
             $rx = -abs($rx);
-            $rxFormula .= ' (applied negative sign)';
+            $rxFormula .= ' (applied negative sign for optical power)';
         }
 
-        // Anomaly C (OLT DDM Cross-Validation & Fallback):
-        // If TR-069 RX power is missing, invalid (> -5.0 dBm or < -40.0 dBm),
-        // fallback to OLT optical reading from linked ONU if available.
-        if (($rx === null || $rx > -5.0 || $rx < -40.0) && $onu && !empty($onu->rx_power_dbm) && is_numeric($onu->rx_power_dbm)) {
-            $oltRx = (float) $onu->rx_power_dbm;
-            if ($oltRx > 0) {
-                $oltRx = -abs($oltRx);
+        // EXPLICIT SEPARATION: ONU Optical readings vs OLT DDM readings
+        // NEVER overwrite ONU TR-069 values with OLT values!
+        $oltRx = null;
+        $oltRxDisplay = 'Tidak Tersedia';
+        if ($onu && !empty($onu->rx_power_dbm) && is_numeric($onu->rx_power_dbm)) {
+            $val = (float) $onu->rx_power_dbm;
+            $oltRx = round($val > 0 ? -$val : $val, 2);
+            $oltRxDisplay = number_format($oltRx, 2) . ' dBm';
+        }
+
+        $oltTx = null;
+        $oltTxDisplay = 'Tidak Tersedia';
+        if ($onu && !empty($onu->tx_power_dbm) && is_numeric($onu->tx_power_dbm)) {
+            $oltTx = round((float) $onu->tx_power_dbm, 2);
+            $oltTxDisplay = number_format($oltTx, 2) . ' dBm';
+        }
+
+        // Anomaly Flagging
+        $isAnomalous = false;
+        if ($rx !== null) {
+            if ($rx > 0.0 || $rx < -45.0) {
+                $isAnomalous = true;
             }
-            $rx = round($oltRx, 2);
-            $rxFormula = 'OLT DDM Telemetry Fallback';
-            $rxUnit = 'dBm';
         }
-
-        if (($tx === null || $tx < 0.0) && $onu && !empty($onu->tx_power_dbm) && is_numeric($onu->tx_power_dbm)) {
-            $tx = round((float) $onu->tx_power_dbm, 2);
-            $txFormula = 'OLT Laser Fallback';
-            $txUnit = 'dBm';
+        if ($tx !== null) {
+            if ($tx < -10.0 || $tx > 15.0) {
+                $isAnomalous = true;
+            }
         }
 
         // Format Displays
         $rxDisplay = $rx !== null ? number_format($rx, 2) . ' dBm' : 'Tidak Didukung';
         $txDisplay = $tx !== null ? number_format($tx, 2) . ' dBm' : 'Tidak Didukung';
 
+        // Composite backwards compatibility fallback (falls back to OLT only if ONU TR-069 is absent)
+        $compositeRx = $rx ?? $oltRx;
+        $compositeTx = $tx ?? $oltTx;
+        $compositeRxDisplay = $rx !== null ? $rxDisplay : ($oltRx !== null ? $oltRxDisplay : 'Tidak Didukung');
+        $compositeTxDisplay = $tx !== null ? $txDisplay : ($oltTx !== null ? $oltTxDisplay : 'Tidak Didukung');
+
         $status = 'unknown';
-        if ($rx !== null) {
-            if ($rx >= -24.0 && $rx <= -15.0) {
+        $statusPower = $rx ?? $oltRx;
+        if ($statusPower !== null) {
+            if ($statusPower >= -24.0 && $statusPower <= -15.0) {
                 $status = 'normal'; // Optimal
-            } elseif (($rx >= -27.0 && $rx < -24.0) || ($rx > -15.0 && $rx <= -10.0)) {
+            } elseif (($statusPower >= -27.0 && $statusPower < -24.0) || ($statusPower > -15.0 && $statusPower <= -10.0)) {
                 $status = 'warning'; // Marginal
             } else {
                 $status = 'critical'; // Redaman Tinggi / Buruk
@@ -426,19 +492,44 @@ class AcsTelemetryParser
             }
         }
 
-        $freshness = ($rx !== null || $tx !== null) ? 'fresh' : 'unknown';
+        $informTimestamp = $flat['_lastInform'] ?? ($ad?->last_inform ?? null);
+        $freshness = 'unknown';
+        $readingTimestamp = null;
+        if ($informTimestamp) {
+            try {
+                $carbonInform = is_numeric($informTimestamp) ? \Illuminate\Support\Carbon::createFromTimestampMs((int)$informTimestamp) : \Illuminate\Support\Carbon::parse($informTimestamp);
+                $readingTimestamp = $carbonInform->toIso8601String();
+                $diffSeconds = abs(now()->diffInSeconds($carbonInform));
+                $freshness = $diffSeconds <= 180 ? 'fresh' : 'stale';
+            } catch (\Throwable) {
+                $freshness = ($rx !== null || $tx !== null) ? 'fresh' : 'unknown';
+            }
+        } else {
+            $freshness = ($rx !== null || $tx !== null) ? 'fresh' : 'unknown';
+        }
 
         return [
-            'rx_power' => $rx,
-            'rx_power_display' => $rxDisplay,
+            'onu_rx_power' => $rx,
+            'onu_rx_display' => $rxDisplay,
+            'onu_tx_power' => $tx,
+            'onu_tx_display' => $txDisplay,
+
+            'olt_rx_power' => $oltRx,
+            'olt_rx_display' => $oltRxDisplay,
+            'olt_tx_power' => $oltTx,
+            'olt_tx_display' => $oltTxDisplay,
+
+            // Backwards compatibility aliases (falls back to OLT only if ONU TR-069 is absent)
+            'rx_power' => $compositeRx,
+            'rx_power_display' => $compositeRxDisplay,
             'rx_status' => $status,
             'rx_path' => $rxPath,
             'rx_raw' => $rawRx,
             'rx_unit' => $rxUnit,
             'rx_formula' => $rxFormula,
 
-            'tx_power' => $tx,
-            'tx_power_display' => $txDisplay,
+            'tx_power' => $compositeTx,
+            'tx_power_display' => $compositeTxDisplay,
             'tx_path' => $txPath,
             'tx_raw' => $rawTx,
             'tx_unit' => $txUnit,
@@ -471,6 +562,9 @@ class AcsTelemetryParser
             'los_raw' => $rawLos,
             'is_los' => $isLos,
 
+            'is_anomalous' => $isAnomalous,
+            'is_attenuation' => $isAttenuation,
+            'reading_timestamp' => $readingTimestamp,
             'last_updated' => now()->toIso8601String(),
             'freshness_status' => $freshness,
         ];
@@ -658,6 +752,31 @@ class AcsTelemetryParser
             $vendor = 'VSOL';
         } elseif (str_starts_with($snUpper, 'CDAT') || str_contains($manUpper, 'C-DATA') || str_contains($manUpper, 'CDATA')) {
             $vendor = 'C-Data';
+        } else {
+            // Check parameter keys for TR-069 vendor extension markers (e.g. X_ZTE-COM, X_HW, X_FH)
+            foreach (array_keys($flat) as $key) {
+                $keyUpper = strtoupper($key);
+                if (str_contains($keyUpper, 'X_ZTE-COM') || str_contains($keyUpper, '_ZTE_') || str_contains($keyUpper, '.ZTE.')) {
+                    $vendor = 'ZTE';
+                    break;
+                }
+                if (str_contains($keyUpper, 'X_HW') || str_contains($keyUpper, 'X_HUAWEI')) {
+                    $vendor = 'Huawei';
+                    break;
+                }
+                if (str_contains($keyUpper, 'X_FH') || str_contains($keyUpper, 'X_FIBERHOME')) {
+                    $vendor = 'FiberHome';
+                    break;
+                }
+                if (str_contains($keyUpper, 'X_VSOL')) {
+                    $vendor = 'VSOL';
+                    break;
+                }
+                if (str_contains($keyUpper, 'X_CT-COM')) {
+                    $vendor = 'ZTE';
+                    break;
+                }
+            }
         }
 
         // Clean redundant vendor from model
@@ -675,6 +794,27 @@ class AcsTelemetryParser
             'hardware_version' => $hardwareVersion,
             'oui' => $oui,
         ];
+    }
+
+    public static function parseModelName(array $params): string
+    {
+        $flat = self::flatten($params);
+        $identity = self::parseDeviceIdentity($flat);
+        return $identity['model'] !== '-' ? $identity['model'] : '';
+    }
+
+    public static function parseFirmwareVersion(array $params): string
+    {
+        $flat = self::flatten($params);
+        $identity = self::parseDeviceIdentity($flat);
+        return (string)($identity['software_version'] ?? '');
+    }
+
+    public static function detectVendor(array $params): string
+    {
+        $flat = self::flatten($params);
+        $identity = self::parseDeviceIdentity($flat);
+        return strtolower($identity['vendor'] ?? 'generic');
     }
 
     /**
@@ -1568,8 +1708,12 @@ class AcsTelemetryParser
             $desiredStatus = 'Mismatch';
         }
 
+        $instanceNum = is_numeric($pathIndex) ? (int)$pathIndex : (int)(explode('.', (string)$pathIndex)[2] ?? 1);
+
         return [
             'id' => $pathIndex,
+            'index' => $instanceNum,
+            'instance_number' => $instanceNum,
             'name' => $name,
             'type' => $defaultType,
             'mode_label' => $modeLabel,
@@ -1589,6 +1733,7 @@ class AcsTelemetryParser
             'gateway' => ($gateway && $gateway !== '0.0.0.0') ? $gateway : null,
             'dns' => ($dns && $dns !== '0.0.0.0') ? $dns : null,
             'fullPath' => $fullPath,
+            'full_path' => $fullPath,
             'is_tr069' => $isTr069,
             'writable' => (bool)$isWritable,
             'desired_status' => $desiredStatus,

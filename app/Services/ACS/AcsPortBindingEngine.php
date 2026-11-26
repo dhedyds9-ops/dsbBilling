@@ -15,14 +15,8 @@ class AcsPortBindingEngine
      */
     public static function discover(array $params, array $wans = [], string $vendor = 'generic'): array
     {
-        $ports = [
-            'LAN1' => self::emptyPort('LAN1', 1),
-            'LAN2' => self::emptyPort('LAN2', 2),
-            'LAN3' => self::emptyPort('LAN3', 3),
-            'LAN4' => self::emptyPort('LAN4', 4),
-        ];
-
-        // 1. Check physical LAN port existence in TR-098
+        // 1. Detect actual physical port instances from TR-098 or TR-181
+        $detectedPortIndices = [];
         $lanDevices = $params['InternetGatewayDevice']['LANDevice'] ?? [];
         if (is_array($lanDevices)) {
             foreach ($lanDevices as $ldIdx => $ldNode) {
@@ -31,45 +25,65 @@ class AcsPortBindingEngine
                 if (is_array($lanConfigs)) {
                     foreach ($lanConfigs as $idx => $node) {
                         if (!is_numeric($idx) || !is_array($node)) continue;
-                        $portKey = "LAN{$idx}";
-                        if (isset($ports[$portKey])) {
-                            $ports[$portKey]['exists'] = true;
-                            $speedVal = $node['MaxBitRate']['_value'] ?? $node['MaxBitRate'] ?? ($node['Status']['_value'] ?? 'Auto');
-                            $ports[$portKey]['speed'] = is_numeric($speedVal) ? $speedVal . 'M' : (string)$speedVal;
-                            $statusVal = $node['Status']['_value'] ?? $node['Status'] ?? 'Up';
-                            $ports[$portKey]['status'] = (string)$statusVal;
-                            $ports[$portKey]['status_physical'] = (string)$statusVal;
-                            $ports[$portKey]['path'] = "InternetGatewayDevice.LANDevice.{$ldIdx}.LANEthernetInterfaceConfig.{$idx}";
-                        }
+                        $detectedPortIndices[(int)$idx] = [
+                            'path' => "InternetGatewayDevice.LANDevice.{$ldIdx}.LANEthernetInterfaceConfig.{$idx}",
+                            'node' => $node,
+                        ];
                     }
                 }
             }
         }
 
-        // 2. Check physical LAN port existence in TR-181
-        if (!collect($ports)->contains('exists', true)) {
+        if (empty($detectedPortIndices)) {
             $ethInterfaces = $params['Device']['Ethernet']['Interface'] ?? [];
             if (is_array($ethInterfaces)) {
                 foreach ($ethInterfaces as $idx => $node) {
                     if (!is_numeric($idx) || !is_array($node)) continue;
-                    $portKey = "LAN{$idx}";
-                    if (isset($ports[$portKey])) {
-                        $ports[$portKey]['exists'] = true;
-                        $ports[$portKey]['speed'] = $node['MaxBitRate']['_value'] ?? 'Auto';
-                        $ports[$portKey]['status_physical'] = $node['Status']['_value'] ?? 'Up';
-                        $ports[$portKey]['path'] = "Device.Ethernet.Interface.{$idx}";
-                    }
+                    $detectedPortIndices[(int)$idx] = [
+                        'path' => "Device.Ethernet.Interface.{$idx}",
+                        'node' => $node,
+                    ];
                 }
             }
         }
 
-        // If no physical LAN detected via TR-069, default LAN1-LAN4 as present
-        foreach ($ports as &$p) {
-            if (!$p['exists']) {
-                $p['exists'] = true; // Most ONUs physically have LAN1..LAN4
+        // 2. Resolve port count: use exact detected TR-069 instances, or fallback to catalog specification
+        if ($vendor === 'generic') {
+            $detected = AcsTelemetryParser::detectVendor($params);
+            if ($detected !== 'generic') {
+                $vendor = $detected;
             }
         }
-        unset($p);
+        $model = AcsTelemetryParser::parseModelName($params);
+        $sn = AcsTelemetryParser::parseSerialNumber($params);
+        $catalogCount = VendorCapabilityCatalog::getPhysicalLanPortCount($vendor, $model, $sn);
+
+        $ports = [];
+        if (!empty($detectedPortIndices)) {
+            ksort($detectedPortIndices);
+            foreach ($detectedPortIndices as $idx => $meta) {
+                $portKey = "LAN{$idx}";
+                $node = $meta['node'];
+                $port = self::emptyPort($portKey, $idx);
+                $port['exists'] = true;
+                $speedVal = $node['MaxBitRate']['_value'] ?? $node['MaxBitRate'] ?? ($node['Status']['_value'] ?? 'Auto');
+                $port['speed'] = is_numeric($speedVal) ? $speedVal . 'M' : (string)$speedVal;
+                $statusVal = $node['Status']['_value'] ?? $node['Status'] ?? 'Unknown';
+                $port['status'] = (string)$statusVal;
+                $port['status_physical'] = (string)$statusVal;
+                $port['physical_status'] = (strcasecmp($statusVal, 'Up') === 0) ? 'Link Up' : ((strcasecmp($statusVal, 'Down') === 0 || strcasecmp($statusVal, 'Dormant') === 0) ? 'Link Down' : (string)$statusVal);
+                $port['path'] = $meta['path'];
+                $ports[$portKey] = $port;
+            }
+        } else {
+            // Not reported in TR-069 telemetry: create ports according to catalog specification (e.g. 1 for HG6045F3, 4 for F670L)
+            for ($i = 1; $i <= $catalogCount; $i++) {
+                $portKey = "LAN{$i}";
+                $port = self::emptyPort($portKey, $i);
+                $port['exists'] = true;
+                $ports[$portKey] = $port;
+            }
+        }
 
         // 3. Correlate with discovered WAN connections
         foreach ($wans as $wan) {
@@ -77,14 +91,14 @@ class AcsPortBindingEngine
             $wanName = $wan['name'] ?? $wan['id'] ?? 'WAN';
             $wanMode = $wan['mode_label'] ?? $wan['type'] ?? 'PPPoE';
             $vlan = $wan['vlan'] ?? null;
-            $fullPath = $wan['fullPath'] ?? '';
+            $fullPath = $wan['fullPath'] ?? ($wan['full_path'] ?? '');
 
             if (empty($bindStr) || $bindStr === '-') {
                 continue;
             }
 
-            for ($i = 1; $i <= 4; $i++) {
-                $portKey = "LAN{$i}";
+            foreach ($ports as $portKey => &$port) {
+                $i = $port['index'];
                 $patterns = [
                     "LAN{$i}",
                     "lan{$i}",
@@ -103,17 +117,19 @@ class AcsPortBindingEngine
                 }
 
                 if ($matched) {
-                    $ports[$portKey]['is_bound'] = true;
-                    $ports[$portKey]['bound_wan'] = $wanName;
-                    $ports[$portKey]['bound_wan_name'] = $wanName;
-                    $ports[$portKey]['bound_wan_path'] = $fullPath;
-                    $ports[$portKey]['wan_mode'] = $wanMode;
-                    $ports[$portKey]['vlan'] = $vlan;
-                    $ports[$portKey]['vlan_id'] = $vlan;
-                    $ports[$portKey]['binding_raw'] = $bindStr;
-                    $ports[$portKey]['writable'] = (bool)($wan['writable'] ?? true);
+                    $port['is_bound'] = true;
+                    $port['binding_status'] = 'Bound';
+                    $port['bound_wan'] = $wanName;
+                    $port['bound_wan_name'] = $wanName;
+                    $port['bound_wan_path'] = $fullPath;
+                    $port['wan_mode'] = $wanMode;
+                    $port['vlan'] = $vlan;
+                    $port['vlan_id'] = $vlan;
+                    $port['binding_raw'] = $bindStr;
+                    $port['writable'] = (bool)($wan['writable'] ?? true);
                 }
             }
+            unset($port);
         }
 
         // 3b. Scan direct parameter tree for vendor inline binding if not yet resolved from $wans
@@ -130,21 +146,23 @@ class AcsPortBindingEngine
                         break;
                     }
                 }
-                $wanName = $matchedWan['name'] ?? 'WAN';
-                $vlan = $matchedWan['vlan_id'] ?? ($matchedWan['vlan'] ?? null);
+                $wanName = $matchedWan['name'] ?? ($flat["{$pathPrefix}.Name"] ?? ($flat["{$pathPrefix}._name"] ?? 'WAN'));
+                $vlan = $matchedWan['vlan_id'] ?? ($matchedWan['vlan'] ?? ($flat["{$pathPrefix}.X_HW_VLAN"] ?? ($flat["{$pathPrefix}.X_ZTE-COM_VLANID"] ?? ($flat["{$pathPrefix}.VLANIDMark"] ?? null))));
 
-                for ($i = 1; $i <= 4; $i++) {
-                    $portKey = "LAN{$i}";
+                foreach ($ports as $portKey => &$port) {
+                    $i = $port['index'];
                     if (stripos($bindStr, "LAN{$i}") !== false || stripos($bindStr, "eth{$i}") !== false) {
-                        $ports[$portKey]['is_bound'] = true;
-                        $ports[$portKey]['bound_wan'] = $wanName;
-                        $ports[$portKey]['bound_wan_name'] = $wanName;
-                        $ports[$portKey]['bound_wan_path'] = $pathPrefix;
-                        $ports[$portKey]['vlan'] = $vlan;
-                        $ports[$portKey]['vlan_id'] = $vlan;
-                        $ports[$portKey]['binding_raw'] = $bindStr;
+                        $port['is_bound'] = true;
+                        $port['binding_status'] = 'Bound';
+                        $port['bound_wan'] = $wanName;
+                        $port['bound_wan_name'] = $wanName;
+                        $port['bound_wan_path'] = $pathPrefix;
+                        $port['vlan'] = $vlan;
+                        $port['vlan_id'] = $vlan;
+                        $port['binding_raw'] = $bindStr;
                     }
                 }
+                unset($port);
             }
         }
 
@@ -156,8 +174,8 @@ class AcsPortBindingEngine
                 $wanIf = $bNode['WANInterface']['_value'] ?? '';
                 $lanIf = $bNode['LANInterface']['_value'] ?? '';
 
-                for ($i = 1; $i <= 4; $i++) {
-                    $portKey = "LAN{$i}";
+                foreach ($ports as $portKey => &$port) {
+                    $i = $port['index'];
                     if (stripos($lanIf, "LAN{$i}") !== false || stripos($lanIf, ".{$i}") !== false) {
                         $matchedWan = null;
                         foreach ($wans as $w) {
@@ -167,17 +185,27 @@ class AcsPortBindingEngine
                                 break;
                             }
                         }
-                        $ports[$portKey]['is_bound'] = true;
-                        $ports[$portKey]['bound_wan'] = $matchedWan['name'] ?? ($wanIf ?: 'ZTE WAN');
-                        $ports[$portKey]['bound_wan_name'] = $matchedWan['name'] ?? ($wanIf ?: 'ZTE WAN');
-                        $ports[$portKey]['bound_wan_path'] = $wanIf;
-                        $ports[$portKey]['vlan'] = $matchedWan['vlan_id'] ?? ($matchedWan['vlan'] ?? null);
-                        $ports[$portKey]['vlan_id'] = $matchedWan['vlan_id'] ?? ($matchedWan['vlan'] ?? null);
-                        $ports[$portKey]['status_note'] = 'ZTE Table Binding';
+                        $port['is_bound'] = true;
+                        $port['binding_status'] = 'Bound';
+                        $port['bound_wan'] = $matchedWan['name'] ?? ($wanIf ?: 'ZTE WAN');
+                        $port['bound_wan_name'] = $matchedWan['name'] ?? ($wanIf ?: 'ZTE WAN');
+                        $port['bound_wan_path'] = $wanIf;
+                        $port['vlan'] = $matchedWan['vlan_id'] ?? ($matchedWan['vlan'] ?? null);
+                        $port['vlan_id'] = $matchedWan['vlan_id'] ?? ($matchedWan['vlan'] ?? null);
+                        $port['status_note'] = 'ZTE Table Binding';
                     }
                 }
+                unset($port);
             }
         }
+
+        // Final normalization: ensure binding_status and status_display are populated
+        foreach ($ports as &$p) {
+            $p['binding_status'] = $p['is_bound'] ? 'Bound' : 'Unbound';
+            $phys = $p['physical_status'] ?? ($p['status_physical'] ?? 'Unknown');
+            $p['status_display'] = "{$p['binding_status']} ({$phys})";
+        }
+        unset($p);
 
         return [
             'ports' => $ports,
@@ -196,6 +224,7 @@ class AcsPortBindingEngine
             'port' => $index,
             'exists' => false,
             'is_bound' => false,
+            'binding_status' => 'Unbound',
             'bound_wan' => 'Unbound',
             'bound_wan_name' => 'Unbound (Tidak Terikat)',
             'bound_wan_path' => null,
@@ -205,6 +234,8 @@ class AcsPortBindingEngine
             'speed' => 'Auto',
             'status' => 'Unknown',
             'status_physical' => 'Unknown',
+            'physical_status' => 'Unknown',
+            'status_display' => 'Unbound (Unknown)',
             'path' => null,
             'binding_raw' => null,
             'writable' => true,
@@ -223,5 +254,14 @@ class AcsPortBindingEngine
             }
         }
         return implode(' | ', $parts);
+    }
+
+    /**
+     * Discover physical ports as a sequential list of port objects.
+     */
+    public static function discoverPhysicalPorts(array $params, array $wans = [], string $vendor = 'generic'): array
+    {
+        $res = self::discover($params, $wans, $vendor);
+        return $res['lan_ports'];
     }
 }

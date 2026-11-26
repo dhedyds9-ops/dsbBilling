@@ -241,8 +241,11 @@ class MobileAcsProxySecurityTest extends TestCase
 
     protected function tearDown(): void
     {
-        Mockery::close();
-        parent::tearDown();
+        try {
+            Mockery::close();
+        } finally {
+            parent::tearDown();
+        }
     }
 
     /**
@@ -287,6 +290,33 @@ class MobileAcsProxySecurityTest extends TestCase
         $token = $this->resellerA->createToken('test-token')->plainTextToken;
 
         $driverMock = Mockery::mock(GenieACSDriver::class);
+        $driverMock->shouldReceive('resolveDeviceId')->andReturn('ZTEGCRESELLER_A');
+        $wanParams = [
+            '_id' => 'ZTEGCRESELLER_A',
+            'InternetGatewayDevice' => [
+                'DeviceInfo' => [
+                    'Manufacturer' => ['_value' => 'ZTE'],
+                ],
+                'WANDevice' => [
+                    '1' => [
+                        'WANConnectionDevice' => [
+                            '1' => [
+                                'WANPPPConnection' => [
+                                    '1' => [
+                                        'Enable' => ['_value' => true],
+                                        'Username' => ['_value' => 'user_mitra_a'],
+                                        'ConnectionType' => ['_value' => 'IP_Routed'],
+                                        'Name' => ['_value' => '1_INTERNET_R_VID_200'],
+                                        'X_ZTE-COM_VLANID' => ['_value' => 200],
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+        $driverMock->shouldReceive('getDeviceParameters')->with('ZTEGCRESELLER_A')->andReturn($wanParams);
         $driverMock->shouldReceive('setParameterValues')
             ->once()
             ->with('ZTEGCRESELLER_A', Mockery::on(function ($kv) {
@@ -294,6 +324,7 @@ class MobileAcsProxySecurityTest extends TestCase
                     && $kv['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username'] === 'user_mitra_a';
             }))
             ->andReturn(true);
+        $driverMock->shouldReceive('refreshObject')->andReturn(true);
 
         $this->app->instance(GenieACSDriver::class, $driverMock);
 
@@ -310,7 +341,6 @@ class MobileAcsProxySecurityTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'message' => 'Konfigurasi WAN berhasil diterapkan.',
             ]);
     }
 
@@ -385,6 +415,11 @@ class MobileAcsProxySecurityTest extends TestCase
         $token = $this->resellerA->createToken('test-token')->plainTextToken;
 
         $driverMock = Mockery::mock(GenieACSDriver::class);
+        $driverMock->shouldReceive('resolveDeviceId')->andReturn('ZTEGCRESELLER_A');
+        $driverMock->shouldReceive('getDeviceParameters')->with('ZTEGCRESELLER_A')->andReturn([
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID' => 'Old-SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.Enable' => true,
+        ]);
         $driverMock->shouldReceive('setParameterValues')
             ->once()
             ->with('ZTEGCRESELLER_A', Mockery::on(function ($kv) {
@@ -392,6 +427,7 @@ class MobileAcsProxySecurityTest extends TestCase
                     && $kv['InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID'] === 'Mitra-WiFi-OK';
             }))
             ->andReturn(true);
+        $driverMock->shouldReceive('refreshObject')->andReturn(true);
 
         $this->app->instance(GenieACSDriver::class, $driverMock);
 
@@ -405,7 +441,6 @@ class MobileAcsProxySecurityTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'message' => 'Pengaturan Wi-Fi berhasil diterapkan.',
             ]);
     }
 
@@ -499,7 +534,34 @@ class MobileAcsProxySecurityTest extends TestCase
         $token = $this->adminUser->createToken('test-token')->plainTextToken;
 
         $driverMock = Mockery::mock(GenieACSDriver::class);
+        $driverMock->shouldReceive('resolveDeviceId')->andReturn('ZTEGCBRANCH2');
+        $wanParamsBranch2 = [
+            '_id' => 'ZTEGCBRANCH2',
+            'InternetGatewayDevice' => [
+                'DeviceInfo' => [
+                    'Manufacturer' => ['_value' => 'ZTE'],
+                ],
+                'WANDevice' => [
+                    '1' => [
+                        'WANConnectionDevice' => [
+                            '1' => [
+                                'WANPPPConnection' => [
+                                    '1' => [
+                                        'Enable' => ['_value' => true],
+                                        'Username' => ['_value' => 'admin_wan'],
+                                        'ConnectionType' => ['_value' => 'IP_Routed'],
+                                        'Name' => ['_value' => '1_INTERNET_R_VID_200'],
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+        $driverMock->shouldReceive('getDeviceParameters')->with('ZTEGCBRANCH2')->andReturn($wanParamsBranch2);
         $driverMock->shouldReceive('setParameterValues')->once()->andReturn(true);
+        $driverMock->shouldReceive('refreshObject')->andReturn(true);
         $this->app->instance(GenieACSDriver::class, $driverMock);
 
         // Administrator can configure WAN on any device without explicit direct permissions

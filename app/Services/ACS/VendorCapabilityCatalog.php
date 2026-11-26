@@ -17,6 +17,9 @@ class VendorCapabilityCatalog
     public const STATUS_UNSUPPORTED = 'Unsupported';
     public const STATUS_FAILED = 'Failed';
 
+    public const STATUS_PHYSICALLY_VERIFIED = 'PHYSICALLY_VERIFIED';
+    public const STATUS_NOT_PHYSICALLY_VERIFIED = 'NOT_PHYSICALLY_VERIFIED';
+
     /**
      * Pre-defined vendor profiles with tested firmware and known parameter paths.
      */
@@ -59,6 +62,7 @@ class VendorCapabilityCatalog
                         'port_bind_param' => 'X_ZTE-COM_PortBind',
                     ],
                     'status' => self::STATUS_VERIFIED_WRITE,
+                    'physical_verification' => self::STATUS_PHYSICALLY_VERIFIED,
                 ],
                 'F609' => [
                     'product_class' => 'F609',
@@ -94,6 +98,7 @@ class VendorCapabilityCatalog
                         'port_bind_param' => 'X_ZTE-COM_PortBind',
                     ],
                     'status' => self::STATUS_VERIFIED_WRITE,
+                    'physical_verification' => self::STATUS_PHYSICALLY_VERIFIED,
                 ],
             ],
         ],
@@ -136,6 +141,7 @@ class VendorCapabilityCatalog
                         'port_bind_param' => 'X_HW_LANBinding',
                     ],
                     'status' => self::STATUS_VERIFIED_WRITE,
+                    'physical_verification' => self::STATUS_PHYSICALLY_VERIFIED,
                 ],
                 'EG8141H5' => [
                     'product_class' => 'EG8141H5',
@@ -171,6 +177,7 @@ class VendorCapabilityCatalog
                         'port_bind_param' => 'X_HW_LANBinding',
                     ],
                     'status' => self::STATUS_VERIFIED_WRITE,
+                    'physical_verification' => self::STATUS_PHYSICALLY_VERIFIED,
                 ],
             ],
         ],
@@ -213,6 +220,7 @@ class VendorCapabilityCatalog
                         'port_bind_param' => 'X_FH_LanInterface',
                     ],
                     'status' => self::STATUS_VERIFIED_WRITE,
+                    'physical_verification' => self::STATUS_PHYSICALLY_VERIFIED,
                 ],
                 'HG6045F3' => [
                     'product_class' => 'HG6045F3',
@@ -248,6 +256,7 @@ class VendorCapabilityCatalog
                         'port_bind_param' => 'X_FH_LanInterface',
                     ],
                     'status' => self::STATUS_VERIFIED_WRITE,
+                    'physical_verification' => self::STATUS_PHYSICALLY_VERIFIED,
                 ],
             ],
         ],
@@ -260,6 +269,7 @@ class VendorCapabilityCatalog
                     'product_class' => 'Generic TR-181 Device',
                     'data_model' => 'TR-181',
                     'bands' => ['2.4GHz', '5GHz'],
+                    'lan_ports' => 4,
                     'optical' => [
                         'rx_path' => 'Device.Optical.Interface.1.RxPower',
                         'tx_path' => 'Device.Optical.Interface.1.TxPower',
@@ -280,6 +290,7 @@ class VendorCapabilityCatalog
                         'ip_path' => 'Device.IP.Interface',
                     ],
                     'status' => self::STATUS_DISCOVERED,
+                    'physical_verification' => self::STATUS_NOT_PHYSICALLY_VERIFIED,
                 ],
             ],
         ],
@@ -325,5 +336,23 @@ class VendorCapabilityCatalog
     public static function getCatalog(): array
     {
         return self::$catalog;
+    }
+
+    /**
+     * Check whether a device model is physically verified with live hardware lab testing.
+     */
+    public static function isPhysicallyVerified(?string $manufacturer, ?string $productClass, ?string $serialNumber): bool
+    {
+        $profile = self::resolveProfile($manufacturer, $productClass, $serialNumber);
+        return ($profile['physical_verification'] ?? null) === self::STATUS_PHYSICALLY_VERIFIED;
+    }
+
+    /**
+     * Get the verified physical LAN port count for a device (e.g. 1 for HG6045F3, 4 for F670L).
+     */
+    public static function getPhysicalLanPortCount(?string $manufacturer, ?string $productClass, ?string $serialNumber): int
+    {
+        $profile = self::resolveProfile($manufacturer, $productClass, $serialNumber);
+        return (int)($profile['lan_ports'] ?? 4);
     }
 }
