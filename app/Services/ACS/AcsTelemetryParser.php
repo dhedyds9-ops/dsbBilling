@@ -521,6 +521,13 @@ class AcsTelemetryParser
         [$biasPath, $rawBias] = $findWithKey($biasCandidates, '/(\b|_)(BiasCurrent|LaserBiasCurrent|TransceiverBiasCurrent|Bias)(?:\._value)?$/i');
         [$losPath, $rawLos] = $findWithKey($losCandidates, '/(\b|_)(LOSStatus|LOS|LinkStatus)(?:\._value)?$/i');
 
+        $rxFormula = null;
+        $txFormula = null;
+        $isAttenuation = false;
+        if ($rxPath && stripos($rxPath, 'Attenuation') !== false) {
+            $isAttenuation = true;
+        }
+
         $shouldSwap = !empty($profile['optical']['swap_rx_tx'])
             || strtolower($vendor) === 'zte'
             || str_starts_with(strtoupper($sn), 'ZTEG')
@@ -587,7 +594,7 @@ class AcsTelemetryParser
 
             if ($rx !== null && !$isAttenuation && $rx >= 6.0 && $rx <= 45.0) {
                 $rx = -abs($rx);
-                $rxFormula .= ' (applied negative sign for optical power)';
+                $rxFormula = ($rxFormula ? $rxFormula . ' ' : '') . '(applied negative sign for optical power)';
             }
         }
 
@@ -642,10 +649,8 @@ class AcsTelemetryParser
         }
 
         // Attenuation Parameter Semantics Check
-        $isAttenuation = false;
-        if ($rxPath && stripos($rxPath, 'Attenuation') !== false) {
-            $isAttenuation = true;
-            $rxFormula .= ' (optical attenuation in dB)';
+        if ($isAttenuation) {
+            $rxFormula = ($rxFormula ? $rxFormula . ' ' : '') . '(optical attenuation in dB)';
         }
 
         // EXPLICIT SEPARATION: ONU Optical readings vs OLT DDM readings
