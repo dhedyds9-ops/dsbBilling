@@ -188,57 +188,70 @@ class Index extends Component
 
     public function updateCustomerCoordinates(int $customerId, $latitude, $longitude): void
     {
-        $customer = \App\Models\CRM\Customer::withoutGlobalScopes()->find($customerId);
-        if ($customer) {
-            $customer->update([
-                'latitude' => round((float) $latitude, 8),
-                'longitude' => round((float) $longitude, 8),
-            ]);
-            session()->flash('success', "Titik koordinat pelanggan {$customer->name} berhasil diperbarui dari GPS HP Anda!");
-        } else {
-            session()->flash('error', "Pelanggan tidak ditemukan.");
+        try {
+            $customer = \App\Models\CRM\Customer::withoutGlobalScopes()->find($customerId);
+            if ($customer) {
+                $customer->update([
+                    'latitude' => round((float) $latitude, 8),
+                    'longitude' => round((float) $longitude, 8),
+                ]);
+                session()->flash('success', "Titik koordinat pelanggan {$customer->name} berhasil diperbarui dari GPS HP Anda!");
+            } else {
+                session()->flash('error', "Pelanggan tidak ditemukan.");
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[MyJobs] updateCustomerCoordinates error: ' . $e->getMessage());
+            session()->flash('error', "Gagal memperbarui koordinat pelanggan: " . $e->getMessage());
         }
     }
 
     public function openProgressTicketModal(int $id): void
     {
-        $ticket = Ticket::withoutGlobalScopes()
-            ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
-            ->findOrFail($id);
+        try {
+            $ticket = Ticket::withoutGlobalScopes()
+                ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
+                ->findOrFail($id);
 
-        if (!$this->canOperateTicket($ticket)) {
-            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
+            if (!$this->canOperateTicket($ticket)) {
+                session()->flash('error', 'Tiket ini tidak ditugaskan kepada Anda.');
+                return;
+            }
+
+            $this->progressTicketId = $ticket->id;
+            $this->selectedTicketId = $ticket->id;
+            $this->selectedTicketCode = !empty($ticket->uuid)
+                ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6)))
+                : ('#' . $ticket->id);
+            $this->selectedTicketTitle = $ticket->title;
+            $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . ($ticket->customer_id ?? '-');
+            $this->selectedTicketCustomerId = $ticket->customer_id;
+            $this->progress_status = $ticket->status ?? 'in_progress';
+            $this->progress_notes = (string) ($ticket->description ?? '');
+            $this->progress_category = (string) ($ticket->category ?? '');
+            $this->ticket_upload_photos = [];
+            $this->showProgressTicketModal = true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[MyJobs] openProgressTicketModal error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal membuka detail progress: ' . $e->getMessage());
         }
-
-        $this->progressTicketId = $ticket->id;
-        $this->selectedTicketId = $ticket->id;
-        $this->selectedTicketCode = !empty($ticket->uuid)
-            ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6)))
-            : ('#' . $ticket->id);
-        $this->selectedTicketTitle = $ticket->title;
-        $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . ($ticket->customer_id ?? '-');
-        $this->selectedTicketCustomerId = $ticket->customer_id;
-        $this->progress_status = $ticket->status ?? 'in_progress';
-        $this->progress_notes = (string) ($ticket->description ?? '');
-        $this->progress_category = (string) ($ticket->category ?? '');
-        $this->ticket_upload_photos = [];
-        $this->showProgressTicketModal = true;
     }
 
     public function saveTicketProgress(): void
     {
         if (!$this->progressTicketId) return;
 
-        $ticket = Ticket::withoutGlobalScopes()->findOrFail($this->progressTicketId);
-        if (!$this->canOperateTicket($ticket)) {
-            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
-        }
+        try {
+            $ticket = Ticket::withoutGlobalScopes()->findOrFail($this->progressTicketId);
+            if (!$this->canOperateTicket($ticket)) {
+                session()->flash('error', 'Tiket ini tidak ditugaskan kepada Anda.');
+                return;
+            }
 
-        $payload = [
-            'status' => in_array($this->progress_status, ['open', 'in_progress', 'pending_customer', 'pending_material']) ? $this->progress_status : 'in_progress',
-            'description' => trim($this->progress_notes) !== '' ? trim($this->progress_notes) : $ticket->description,
-            'category' => trim($this->progress_category) !== '' ? trim($this->progress_category) : $ticket->category,
-        ];
+            $payload = [
+                'status' => in_array($this->progress_status, ['open', 'in_progress', 'pending_customer', 'pending_material']) ? $this->progress_status : 'in_progress',
+                'description' => trim($this->progress_notes) !== '' ? trim($this->progress_notes) : $ticket->description,
+                'category' => trim($this->progress_category) !== '' ? trim($this->progress_category) : $ticket->category,
+            ];
 
         // Upload dan simpan foto bukti jika teknisi mengunggah saat update progress
         $photos = is_array($ticket->photos) ? $ticket->photos : [];
@@ -308,37 +321,47 @@ class Index extends Component
         $this->showProgressTicketModal = false;
         $this->progressTicketId = null;
         session()->flash('success', "Progress pekerjaan tiket {$code} berhasil diperbarui.");
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[MyJobs] saveTicketProgress error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal memperbarui progress tiket: ' . $e->getMessage());
+        }
     }
 
     public function openResolveTicketModal($ticketId)
     {
-        $ticket = Ticket::withoutGlobalScopes()
-            ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
-            ->findOrFail($ticketId);
+        try {
+            $ticket = Ticket::withoutGlobalScopes()
+                ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
+                ->findOrFail($ticketId);
 
-        if (!$this->canOperateTicket($ticket)) {
-            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
+            if (!$this->canOperateTicket($ticket)) {
+                session()->flash('error', 'Tiket ini tidak ditugaskan kepada Anda.');
+                return;
+            }
+
+            $this->selectedTicketId = $ticket->id;
+            $this->selectedTicketCode = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('#' . $ticket->id);
+            $this->selectedTicketTitle = $ticket->title;
+            $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . $ticket->customer_id;
+            $this->selectedTicketCustomerId = $ticket->customer_id;
+            $this->ticket_resolution_notes = (string) ($ticket->resolution_notes ?? '');
+            $this->ticket_optical_power = (string) ($ticket->optical_power ?? '');
+            $this->ticket_digital_signature = (string) ($ticket->digital_signature ?? '');
+            $this->ticket_checklists = is_array($ticket->checklists) && !empty($ticket->checklists) ? $ticket->checklists : [
+                'odp_checked' => true,
+                'cable_installed' => true,
+                'onu_online' => true,
+                'speedtest_ok' => true,
+                'customer_informed' => true,
+            ];
+            $this->ticket_material_id = null;
+            $this->ticket_material_qty = 0;
+            $this->ticket_upload_photos = [];
+            $this->showResolveTicketModal = true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[MyJobs] openResolveTicketModal error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal membuka modal penyelesaian tiket: ' . $e->getMessage());
         }
-
-        $this->selectedTicketId = $ticket->id;
-        $this->selectedTicketCode = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('#' . $ticket->id);
-        $this->selectedTicketTitle = $ticket->title;
-        $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . $ticket->customer_id;
-        $this->selectedTicketCustomerId = $ticket->customer_id;
-        $this->ticket_resolution_notes = (string) ($ticket->resolution_notes ?? '');
-        $this->ticket_optical_power = (string) ($ticket->optical_power ?? '');
-        $this->ticket_digital_signature = (string) ($ticket->digital_signature ?? '');
-        $this->ticket_checklists = is_array($ticket->checklists) && !empty($ticket->checklists) ? $ticket->checklists : [
-            'odp_checked' => true,
-            'cable_installed' => true,
-            'onu_online' => true,
-            'speedtest_ok' => true,
-            'customer_informed' => true,
-        ];
-        $this->ticket_material_id = null;
-        $this->ticket_material_qty = 0;
-        $this->ticket_upload_photos = [];
-        $this->showResolveTicketModal = true;
     }
 
     public function confirmResolveTicket()
@@ -347,136 +370,152 @@ class Index extends Component
             return;
         }
 
-        $ticket = Ticket::withoutGlobalScopes()->findOrFail($this->selectedTicketId);
+        try {
+            $ticket = Ticket::withoutGlobalScopes()->findOrFail($this->selectedTicketId);
 
-        if (!$this->canOperateTicket($ticket)) {
-            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
-        }
+            if (!$this->canOperateTicket($ticket)) {
+                session()->flash('error', 'Tiket ini tidak ditugaskan kepada Anda.');
+                return;
+            }
 
-        // Proteksi Anti-Duplikasi Penyelesaian & Upload Foto oleh Tim
-        if (in_array($ticket->status, ['resolved', 'closed']) || !empty($ticket->resolved_by)) {
-            $completer = $ticket->resolvedBy?->name ?? 'teknisi lain';
-            session()->flash('warning', "Tiket ini telah diselesaikan oleh {$completer}. Tidak perlu mengupload atau menyelesaikan ulang.");
-            $this->showResolveTicketModal = false;
-            return;
-        }
+            // Proteksi Anti-Duplikasi Penyelesaian & Upload Foto oleh Tim
+            if (in_array($ticket->status, ['resolved', 'closed']) || !empty($ticket->resolved_by)) {
+                $completer = $ticket->resolvedBy?->name ?? 'teknisi lain';
+                session()->flash('warning', "Tiket ini telah diselesaikan oleh {$completer}. Tidak perlu mengupload atau menyelesaikan ulang.");
+                $this->showResolveTicketModal = false;
+                return;
+            }
 
-        $note = trim($this->ticket_resolution_notes) !== ''
-            ? trim($this->ticket_resolution_notes)
-            : 'Diselesaikan oleh teknisi melalui portal tugas';
+            $note = trim($this->ticket_resolution_notes) !== ''
+                ? trim($this->ticket_resolution_notes)
+                : 'Diselesaikan oleh teknisi melalui portal tugas';
 
-        $payload = [
-            'status' => 'resolved',
-            'resolved_at' => now(),
-            'resolved_by' => Auth::id(),
-        ];
-        if (Schema::hasColumn('tickets', 'resolution_notes')) {
-            $payload['resolution_notes'] = $note;
-        }
+            $payload = [
+                'status' => 'resolved',
+                'resolved_at' => now(),
+                'resolved_by' => Auth::id(),
+            ];
+            if (Schema::hasColumn('tickets', 'resolution_notes')) {
+                $payload['resolution_notes'] = $note;
+            }
 
-        // Upload dan simpan foto bukti pekerjaan jika ada
-        $photos = is_array($ticket->photos) ? $ticket->photos : [];
-        if (!empty($this->ticket_upload_photos)) {
-            $this->validate([
-                'ticket_upload_photos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
-            ], [
-                'ticket_upload_photos.*.image' => 'File bukti harus berupa gambar valid.',
-                'ticket_upload_photos.*.mimes' => 'Format file bukti hanya boleh JPEG, PNG, JPG, atau WEBP.',
-                'ticket_upload_photos.*.max' => 'Ukuran file bukti maksimal 5 MB per foto.',
-            ]);
+            // Upload dan simpan foto bukti pekerjaan jika ada
+            $photos = is_array($ticket->photos) ? $ticket->photos : [];
+            if (!empty($this->ticket_upload_photos)) {
+                $this->validate([
+                    'ticket_upload_photos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
+                ], [
+                    'ticket_upload_photos.*.image' => 'File bukti harus berupa gambar valid.',
+                    'ticket_upload_photos.*.mimes' => 'Format file bukti hanya boleh JPEG, PNG, JPG, atau WEBP.',
+                    'ticket_upload_photos.*.max' => 'Ukuran file bukti maksimal 5 MB per foto.',
+                ]);
 
-            $photosToProcess = is_array($this->ticket_upload_photos) ? $this->ticket_upload_photos : [$this->ticket_upload_photos];
-            foreach ($photosToProcess as $photo) {
-                if ($photo) {
-                    $ext = strtolower($photo->getClientOriginalExtension());
-                    if (!in_array($ext, ['jpeg', 'png', 'jpg', 'webp'], true)) {
-                        $ext = $photo->extension() ?: 'jpg';
+                $photosToProcess = is_array($this->ticket_upload_photos) ? $this->ticket_upload_photos : [$this->ticket_upload_photos];
+                foreach ($photosToProcess as $photo) {
+                    if ($photo) {
+                        $ext = strtolower($photo->getClientOriginalExtension());
+                        if (!in_array($ext, ['jpeg', 'png', 'jpg', 'webp'], true)) {
+                            $ext = $photo->extension() ?: 'jpg';
+                        }
+                        $filename = \Illuminate\Support\Str::random(40) . '.' . $ext;
+                        $path = $photo->storeAs('tickets/' . $ticket->id, $filename, 'local');
+                        $photos[] = route('technician.tickets.photo', ['ticket' => $ticket->id, 'filename' => $filename], false);
                     }
-                    $filename = \Illuminate\Support\Str::random(40) . '.' . $ext;
-                    $path = $photo->storeAs('tickets/' . $ticket->id, $filename, 'local');
-                    $photos[] = route('technician.tickets.photo', ['ticket' => $ticket->id, 'filename' => $filename], false);
                 }
             }
-        }
-        if (Schema::hasColumn('tickets', 'photos')) {
-            $payload['photos'] = $photos;
-        }
-        if (Schema::hasColumn('tickets', 'optical_power') && !empty(trim($this->ticket_optical_power))) {
-            $payload['optical_power'] = trim($this->ticket_optical_power);
-        }
-        if (Schema::hasColumn('tickets', 'digital_signature') && !empty($this->ticket_digital_signature)) {
-            $payload['digital_signature'] = $this->ticket_digital_signature;
-        }
-        if (Schema::hasColumn('tickets', 'checklists')) {
-            $payload['checklists'] = $this->ticket_checklists;
-        }
+            if (Schema::hasColumn('tickets', 'photos')) {
+                $payload['photos'] = $photos;
+            }
+            if (Schema::hasColumn('tickets', 'optical_power') && !empty(trim($this->ticket_optical_power))) {
+                $payload['optical_power'] = trim($this->ticket_optical_power);
+            }
+            if (Schema::hasColumn('tickets', 'digital_signature') && !empty($this->ticket_digital_signature)) {
+                $payload['digital_signature'] = $this->ticket_digital_signature;
+            }
+            if (Schema::hasColumn('tickets', 'checklists')) {
+                $payload['checklists'] = $this->ticket_checklists;
+            }
 
-        // Catat penggunaan material jika teknisi memilih material terpakai
-        if ($this->ticket_material_id && $this->ticket_material_qty > 0 && Schema::hasTable('support_maintenance_materials')) {
+            // Catat penggunaan material jika teknisi memilih material terpakai
+            if ($this->ticket_material_id && $this->ticket_material_qty > 0 && Schema::hasTable('support_maintenance_materials')) {
+                try {
+                    $mat = DB::table('support_maintenance_materials')->where('id', $this->ticket_material_id)->first();
+                    if ($mat) {
+                        DB::table('support_maintenance_materials')->where('id', $mat->id)->decrement('stock', $this->ticket_material_qty);
+                        DB::table('support_maintenance_usages')->insert([
+                            'ticket_id' => $ticket->id,
+                            'material_id' => $mat->id,
+                            'material_name' => $mat->name,
+                            'quantity' => $this->ticket_material_qty,
+                            'unit' => $mat->unit ?: 'pcs',
+                            'technician_id' => Auth::id(),
+                            'technician_name' => Auth::user()->name,
+                            'used_date' => now()->toDateString(),
+                            'notes' => 'Penyelesaian Tiket ' . ($this->selectedTicketCode ?? ('#' . $ticket->id)),
+                            'created_by' => Auth::id(),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                } catch (\Throwable) {}
+            }
+
+            $ticket->update($payload);
+
             try {
-                $mat = DB::table('support_maintenance_materials')->where('id', $this->ticket_material_id)->first();
-                if ($mat) {
-                    DB::table('support_maintenance_materials')->where('id', $mat->id)->decrement('stock', $this->ticket_material_qty);
-                    DB::table('support_maintenance_usages')->insert([
-                        'ticket_id' => $ticket->id,
-                        'material_id' => $mat->id,
-                        'material_name' => $mat->name,
-                        'quantity' => $this->ticket_material_qty,
-                        'unit' => $mat->unit ?: 'pcs',
-                        'technician_id' => Auth::id(),
-                        'technician_name' => Auth::user()->name,
-                        'used_date' => now()->toDateString(),
-                        'notes' => 'Penyelesaian Tiket ' . ($this->selectedTicketCode ?? ('#' . $ticket->id)),
-                        'created_by' => Auth::id(),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
-            } catch (\Throwable) {}
+                Event::dispatch(
+                    TicketResolvedEvent::create(
+                        (string) $ticket->id,
+                        (string) Auth::id(),
+                        $note
+                    )
+                );
+            } catch (\Throwable $evErr) {
+                \Illuminate\Support\Facades\Log::warning('[MyJobs] TicketResolvedEvent error: ' . $evErr->getMessage());
+            }
+
+            $code = $this->selectedTicketCode ?? ('#' . $ticket->id);
+            $this->showResolveTicketModal = false;
+            $this->selectedTicketId = null;
+            $this->ticket_resolution_notes = '';
+            $this->ticket_upload_photos = [];
+
+            session()->flash('success', "Tiket {$code} berhasil diselesaikan.");
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[MyJobs] confirmResolveTicket error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menyelesaikan tiket: ' . $e->getMessage());
         }
-
-        $ticket->update($payload);
-
-        Event::dispatch(
-            TicketResolvedEvent::create(
-                (string) $ticket->id,
-                (string) Auth::id(),
-                $note
-            )
-        );
-
-        $code = $this->selectedTicketCode ?? ('#' . $ticket->id);
-        $this->showResolveTicketModal = false;
-        $this->selectedTicketId = null;
-        $this->ticket_resolution_notes = '';
-        $this->ticket_upload_photos = [];
-
-        session()->flash('success', "Tiket {$code} berhasil diselesaikan.");
     }
 
     public function openEditTicketResolutionModal($ticketId)
     {
-        $ticket = Ticket::withoutGlobalScopes()
-            ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
-            ->findOrFail($ticketId);
+        try {
+            $ticket = Ticket::withoutGlobalScopes()
+                ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
+                ->findOrFail($ticketId);
 
-        if (!$this->canOperateTicket($ticket)) {
-            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
+            if (!$this->canOperateTicket($ticket)) {
+                session()->flash('error', 'Tiket ini tidak ditugaskan kepada Anda.');
+                return;
+            }
+
+            if ($ticket->status === 'closed') {
+                session()->flash('error', 'Tiket sudah ditutup permanen (Closed) oleh Admin dan tidak dapat diubah kembali.');
+                return;
+            }
+
+            $this->selectedTicketId = $ticket->id;
+            $this->selectedTicketCode = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('#' . $ticket->id);
+            $this->selectedTicketTitle = $ticket->title;
+            $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . $ticket->customer_id;
+            $this->selectedTicketCustomerId = $ticket->customer_id;
+            $this->ticket_resolution_notes = (string) ($ticket->resolution_notes ?? '');
+            $this->ticket_edit_status = 'resolved';
+            $this->showEditTicketResolutionModal = true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[MyJobs] openEditTicketResolutionModal error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal membuka modal edit tiket: ' . $e->getMessage());
         }
-
-        if ($ticket->status === 'closed') {
-            session()->flash('error', 'Tiket sudah ditutup permanen (Closed) oleh Admin dan tidak dapat diubah kembali.');
-            return;
-        }
-
-        $this->selectedTicketId = $ticket->id;
-        $this->selectedTicketCode = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('#' . $ticket->id);
-        $this->selectedTicketTitle = $ticket->title;
-        $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . $ticket->customer_id;
-        $this->selectedTicketCustomerId = $ticket->customer_id;
-        $this->ticket_resolution_notes = (string) ($ticket->resolution_notes ?? '');
-        $this->ticket_edit_status = 'resolved';
-        $this->showEditTicketResolutionModal = true;
     }
 
     public function saveTicketResolutionUpdate()
@@ -485,54 +524,60 @@ class Index extends Component
             return;
         }
 
-        $ticket = Ticket::withoutGlobalScopes()->findOrFail($this->selectedTicketId);
+        try {
+            $ticket = Ticket::withoutGlobalScopes()->findOrFail($this->selectedTicketId);
 
-        if (!$this->canOperateTicket($ticket)) {
-            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
-        }
+            if (!$this->canOperateTicket($ticket)) {
+                session()->flash('error', 'Tiket ini tidak ditugaskan kepada Anda.');
+                return;
+            }
 
-        if ($ticket->status === 'closed') {
-            $this->showEditTicketResolutionModal = false;
-            session()->flash('error', 'Tiket sudah ditutup permanen (Closed) oleh Admin.');
-            return;
-        }
+            if ($ticket->status === 'closed') {
+                $this->showEditTicketResolutionModal = false;
+                session()->flash('error', 'Tiket sudah ditutup permanen (Closed) oleh Admin.');
+                return;
+            }
 
-        $code = $this->selectedTicketCode ?? ('#' . $ticket->id);
-        $hasNotesCol = Schema::hasColumn('tickets', 'resolution_notes');
+            $code = $this->selectedTicketCode ?? ('#' . $ticket->id);
+            $hasNotesCol = Schema::hasColumn('tickets', 'resolution_notes');
 
-        if ($this->ticket_edit_status === 'in_progress') {
+            if ($this->ticket_edit_status === 'in_progress') {
+                $payload = [
+                    'status' => 'in_progress',
+                    'resolved_at' => null,
+                ];
+                if ($hasNotesCol) {
+                    $payload['resolution_notes'] = trim($this->ticket_resolution_notes) !== '' ? trim($this->ticket_resolution_notes) : null;
+                }
+                $ticket->update($payload);
+
+                $this->showEditTicketResolutionModal = false;
+                $this->selectedTicketId = null;
+                $this->activeTab = 'active';
+                session()->flash('success', "Tiket {$code} dibuka kembali ke Tugas Aktif.");
+                return;
+            }
+
+            $note = trim($this->ticket_resolution_notes) !== ''
+                ? trim($this->ticket_resolution_notes)
+                : 'Diselesaikan oleh teknisi melalui portal tugas';
+
             $payload = [
-                'status' => 'in_progress',
-                'resolved_at' => null,
+                'status' => 'resolved',
+                'resolved_at' => $ticket->resolved_at ?? now(),
             ];
             if ($hasNotesCol) {
-                $payload['resolution_notes'] = trim($this->ticket_resolution_notes) !== '' ? trim($this->ticket_resolution_notes) : null;
+                $payload['resolution_notes'] = $note;
             }
             $ticket->update($payload);
 
             $this->showEditTicketResolutionModal = false;
             $this->selectedTicketId = null;
-            $this->activeTab = 'active';
-            session()->flash('success', "Tiket {$code} dibuka kembali ke Tugas Aktif.");
-            return;
+            session()->flash('success', "Catatan penyelesaian tiket {$code} berhasil diperbarui.");
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[MyJobs] saveTicketResolutionUpdate error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menyimpan perubahan tiket: ' . $e->getMessage());
         }
-
-        $note = trim($this->ticket_resolution_notes) !== ''
-            ? trim($this->ticket_resolution_notes)
-            : 'Diselesaikan oleh teknisi melalui portal tugas';
-
-        $payload = [
-            'status' => 'resolved',
-            'resolved_at' => $ticket->resolved_at ?? now(),
-        ];
-        if ($hasNotesCol) {
-            $payload['resolution_notes'] = $note;
-        }
-        $ticket->update($payload);
-
-        $this->showEditTicketResolutionModal = false;
-        $this->selectedTicketId = null;
-        session()->flash('success', "Catatan penyelesaian tiket {$code} berhasil diperbarui.");
     }
 
     public function startMaintenance(int $maintId): void
@@ -541,22 +586,28 @@ class Index extends Component
             return;
         }
 
-        $row = DB::table('support_maintenances')->where('id', $maintId)->first();
-        if (!$row) {
-            return;
+        try {
+            $row = DB::table('support_maintenances')->where('id', $maintId)->first();
+            if (!$row) {
+                return;
+            }
+
+            if (!$this->isAdminOversight() && (int) ($row->assigned_to ?? 0) !== (int) Auth::id()) {
+                session()->flash('error', 'Jadwal maintenance ini tidak ditugaskan kepada Anda.');
+                return;
+            }
+
+            DB::table('support_maintenances')->where('id', $maintId)->update([
+                'status' => 'in_progress',
+                'updated_by' => Auth::id(),
+                'updated_at' => now(),
+            ]);
+
+            session()->flash('success', "Maintenance #MT-{$maintId} mulai dikerjakan.");
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[MyJobs] startMaintenance error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal memulai maintenance: ' . $e->getMessage());
         }
-
-        if (!$this->isAdminOversight() && (int) ($row->assigned_to ?? 0) !== (int) Auth::id()) {
-            abort(403, 'Jadwal maintenance ini tidak ditugaskan kepada Anda.');
-        }
-
-        DB::table('support_maintenances')->where('id', $maintId)->update([
-            'status' => 'in_progress',
-            'updated_by' => Auth::id(),
-            'updated_at' => now(),
-        ]);
-
-        session()->flash('success', "Maintenance #MT-{$maintId} mulai dikerjakan.");
     }
 
     public function openResolveMaintenanceModal(int $maintId, bool $isEdit = false): void
@@ -565,22 +616,28 @@ class Index extends Component
             return;
         }
 
-        $row = DB::table('support_maintenances')->where('id', $maintId)->first();
-        if (!$row) {
-            return;
-        }
+        try {
+            $row = DB::table('support_maintenances')->where('id', $maintId)->first();
+            if (!$row) {
+                return;
+            }
 
-        if (!$this->isAdminOversight() && (int) ($row->assigned_to ?? 0) !== (int) Auth::id()) {
-            abort(403, 'Jadwal maintenance ini tidak ditugaskan kepada Anda.');
-        }
+            if (!$this->isAdminOversight() && (int) ($row->assigned_to ?? 0) !== (int) Auth::id()) {
+                session()->flash('error', 'Jadwal maintenance ini tidak ditugaskan kepada Anda.');
+                return;
+            }
 
-        $this->selectedMaintId = (int) $row->id;
-        $this->selectedMaintTitle = (string) ($row->title ?? ('Maintenance #' . $row->id));
-        $this->selectedMaintDevice = trim(($row->device_name ?? '') . ' ' . ($row->location_name ? '(' . $row->location_name . ')' : ''));
-        $this->maint_resolution_notes = (string) ($row->resolution_notes ?? '');
-        $this->isEditingMaintResolution = $isEdit;
-        $this->maint_edit_status = 'completed';
-        $this->showResolveMaintModal = true;
+            $this->selectedMaintId = (int) $row->id;
+            $this->selectedMaintTitle = (string) ($row->title ?? ('Maintenance #' . $row->id));
+            $this->selectedMaintDevice = trim(($row->device_name ?? '') . ' ' . ($row->location_name ? '(' . $row->location_name . ')' : ''));
+            $this->maint_resolution_notes = (string) ($row->resolution_notes ?? '');
+            $this->isEditingMaintResolution = $isEdit;
+            $this->maint_edit_status = 'completed';
+            $this->showResolveMaintModal = true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[MyJobs] openResolveMaintenanceModal error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal membuka modal maintenance: ' . $e->getMessage());
+        }
     }
 
     public function confirmResolveMaintenance(): void
@@ -589,69 +646,81 @@ class Index extends Component
             return;
         }
 
-        $row = DB::table('support_maintenances')->where('id', $this->selectedMaintId)->first();
-        if (!$row) {
-            return;
-        }
+        try {
+            $row = DB::table('support_maintenances')->where('id', $this->selectedMaintId)->first();
+            if (!$row) {
+                return;
+            }
 
-        if (!$this->isAdminOversight() && (int) ($row->assigned_to ?? 0) !== (int) Auth::id()) {
-            abort(403, 'Jadwal maintenance ini tidak ditugaskan kepada Anda.');
-        }
+            if (!$this->isAdminOversight() && (int) ($row->assigned_to ?? 0) !== (int) Auth::id()) {
+                session()->flash('error', 'Jadwal maintenance ini tidak ditugaskan kepada Anda.');
+                return;
+            }
 
-        $id = (int) $row->id;
+            $id = (int) $row->id;
 
-        if ($this->isEditingMaintResolution && $this->maint_edit_status === 'in_progress') {
+            if ($this->isEditingMaintResolution && $this->maint_edit_status === 'in_progress') {
+                DB::table('support_maintenances')->where('id', $id)->update([
+                    'status' => 'in_progress',
+                    'completed_at' => null,
+                    'resolution_notes' => trim($this->maint_resolution_notes) !== '' ? trim($this->maint_resolution_notes) : null,
+                    'updated_by' => Auth::id(),
+                    'updated_at' => now(),
+                ]);
+
+                $this->showResolveMaintModal = false;
+                $this->selectedMaintId = null;
+                $this->activeTab = 'active';
+                session()->flash('success', "Maintenance #MT-{$id} dibuka kembali ke Tugas Aktif.");
+                return;
+            }
+
+            $note = trim($this->maint_resolution_notes) !== ''
+                ? trim($this->maint_resolution_notes)
+                : 'Pemeliharaan jaringan selesai dikerjakan oleh teknisi';
+
             DB::table('support_maintenances')->where('id', $id)->update([
-                'status' => 'in_progress',
-                'completed_at' => null,
-                'resolution_notes' => trim($this->maint_resolution_notes) !== '' ? trim($this->maint_resolution_notes) : null,
+                'status' => 'completed',
+                'completed_at' => $row->completed_at ?? now(),
+                'resolution_notes' => $note,
                 'updated_by' => Auth::id(),
                 'updated_at' => now(),
             ]);
 
+            $wasEdit = $this->isEditingMaintResolution;
             $this->showResolveMaintModal = false;
             $this->selectedMaintId = null;
-            $this->activeTab = 'active';
-            session()->flash('success', "Maintenance #MT-{$id} dibuka kembali ke Tugas Aktif.");
-            return;
+            $this->maint_resolution_notes = '';
+
+            session()->flash(
+                'success',
+                $wasEdit
+                    ? "Catatan penyelesaian Maintenance #MT-{$id} berhasil diperbarui."
+                    : "Maintenance #MT-{$id} berhasil diselesaikan."
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[MyJobs] confirmResolveMaintenance error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menyelesaikan maintenance: ' . $e->getMessage());
         }
-
-        $note = trim($this->maint_resolution_notes) !== ''
-            ? trim($this->maint_resolution_notes)
-            : 'Pemeliharaan jaringan selesai dikerjakan oleh teknisi';
-
-        DB::table('support_maintenances')->where('id', $id)->update([
-            'status' => 'completed',
-            'completed_at' => $row->completed_at ?? now(),
-            'resolution_notes' => $note,
-            'updated_by' => Auth::id(),
-            'updated_at' => now(),
-        ]);
-
-        $wasEdit = $this->isEditingMaintResolution;
-        $this->showResolveMaintModal = false;
-        $this->selectedMaintId = null;
-        $this->maint_resolution_notes = '';
-
-        session()->flash(
-            'success',
-            $wasEdit
-                ? "Catatan penyelesaian Maintenance #MT-{$id} berhasil diperbarui."
-                : "Maintenance #MT-{$id} berhasil diselesaikan."
-        );
     }
 
     public function startTicket(int $id): void
     {
-        $ticket = Ticket::withoutGlobalScopes()->findOrFail($id);
+        try {
+            $ticket = Ticket::withoutGlobalScopes()->findOrFail($id);
 
-        if (!$this->canOperateTicket($ticket)) {
-            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
-        }
+            if (!$this->canOperateTicket($ticket)) {
+                session()->flash('error', 'Tiket ini tidak ditugaskan kepada Anda.');
+                return;
+            }
 
-        if ($ticket->status === 'open') {
-            $ticket->update(['status' => 'in_progress']);
-            session()->flash('success', 'Status tiket diperbarui menjadi Sedang Diproses.');
+            if ($ticket->status === 'open') {
+                $ticket->update(['status' => 'in_progress']);
+                session()->flash('success', 'Status tiket diperbarui menjadi Sedang Diproses.');
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[MyJobs] startTicket error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal memulai pengerjaan tiket: ' . $e->getMessage());
         }
     }
 
@@ -662,23 +731,29 @@ class Index extends Component
 
     public function openInputResultModal($surveyId)
     {
-        $survey = Survey::withoutGlobalScopes()->findOrFail($surveyId);
+        try {
+            $survey = Survey::withoutGlobalScopes()->findOrFail($surveyId);
 
-        if (!$this->isAdminOversight() && (int) $survey->assigned_to !== (int) Auth::id()) {
-            abort(403, 'Tugas survey ini tidak ditugaskan kepada Anda.');
+            if (!$this->isAdminOversight() && (int) $survey->assigned_to !== (int) Auth::id()) {
+                session()->flash('error', 'Tugas survey ini tidak ditugaskan kepada Anda.');
+                return;
+            }
+
+            $this->selectedSurveyId = $survey->id;
+            $this->input_odp_id = $survey->odp_id;
+            $this->input_port = $survey->port;
+            $this->input_distance = $survey->distance;
+            $this->input_cable_estimation = $survey->cable_estimation;
+            $this->input_latitude = $survey->latitude;
+            $this->input_longitude = $survey->longitude;
+            $this->input_recommendation = $survey->recommendation ?? 'feasible';
+            $this->input_notes = $survey->notes;
+
+            $this->showInputResultModal = true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[MyJobs] openInputResultModal error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal membuka modal survey: ' . $e->getMessage());
         }
-
-        $this->selectedSurveyId = $survey->id;
-        $this->input_odp_id = $survey->odp_id;
-        $this->input_port = $survey->port;
-        $this->input_distance = $survey->distance;
-        $this->input_cable_estimation = $survey->cable_estimation;
-        $this->input_latitude = $survey->latitude;
-        $this->input_longitude = $survey->longitude;
-        $this->input_recommendation = $survey->recommendation ?? 'feasible';
-        $this->input_notes = $survey->notes;
-
-        $this->showInputResultModal = true;
     }
 
     public function saveSurveyResult()
@@ -687,28 +762,34 @@ class Index extends Component
             'input_recommendation' => 'required|in:feasible,not_feasible',
         ]);
 
-        $survey = Survey::withoutGlobalScopes()->findOrFail($this->selectedSurveyId);
+        try {
+            $survey = Survey::withoutGlobalScopes()->findOrFail($this->selectedSurveyId);
 
-        if (!$this->isAdminOversight() && (int) $survey->assigned_to !== (int) Auth::id()) {
-            abort(403, 'Tugas survey ini tidak ditugaskan kepada Anda.');
+            if (!$this->isAdminOversight() && (int) $survey->assigned_to !== (int) Auth::id()) {
+                session()->flash('error', 'Tugas survey ini tidak ditugaskan kepada Anda.');
+                return;
+            }
+
+            $survey->update([
+                'odp_id' => $this->input_odp_id ?: null,
+                'port' => $this->input_port,
+                'distance' => $this->input_distance !== '' ? (float) $this->input_distance : null,
+                'cable_estimation' => $this->input_cable_estimation !== '' ? (float) $this->input_cable_estimation : null,
+                'latitude' => $this->input_latitude !== '' ? (float) $this->input_latitude : null,
+                'longitude' => $this->input_longitude !== '' ? (float) $this->input_longitude : null,
+                'recommendation' => $this->input_recommendation,
+                'notes' => $this->input_notes,
+                'status' => 'completed',
+                'completed_at' => now(),
+            ]);
+
+            $this->showInputResultModal = false;
+            $this->activeTab = 'history';
+            session()->flash('success', 'Hasil survey berhasil disimpan dan ditandai selesai.');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[MyJobs] saveSurveyResult error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menyimpan hasil survey: ' . $e->getMessage());
         }
-
-        $survey->update([
-            'odp_id' => $this->input_odp_id ?: null,
-            'port' => $this->input_port,
-            'distance' => $this->input_distance !== '' ? (float) $this->input_distance : null,
-            'cable_estimation' => $this->input_cable_estimation !== '' ? (float) $this->input_cable_estimation : null,
-            'latitude' => $this->input_latitude !== '' ? (float) $this->input_latitude : null,
-            'longitude' => $this->input_longitude !== '' ? (float) $this->input_longitude : null,
-            'recommendation' => $this->input_recommendation,
-            'notes' => $this->input_notes,
-            'status' => 'completed',
-            'completed_at' => now(),
-        ]);
-
-        $this->showInputResultModal = false;
-        $this->activeTab = 'history';
-        session()->flash('success', 'Hasil survey berhasil disimpan dan ditandai selesai.');
     }
 
     public function getJobsProperty()
@@ -817,7 +898,11 @@ class Index extends Component
                     $q->where('technician_id', $userId)
                       ->orWhere('assigned_to', $userId);
                     if ($hasInstTechIds) {
-                        $q->orWhereJsonContains('technician_ids', $userId);
+                        $q->orWhere(function ($sub) use ($userId) {
+                            $sub->whereNotNull('technician_ids')
+                                ->where('technician_ids', '!=', '')
+                                ->whereJsonContains('technician_ids', $userId);
+                        });
                     }
                 });
             }
@@ -907,7 +992,11 @@ class Index extends Component
                 $ticketQuery->where(function ($q) use ($userId, $hasTicketTechIds) {
                     $q->where('assigned_to', $userId);
                     if ($hasTicketTechIds) {
-                        $q->orWhereJsonContains('technician_ids', $userId);
+                        $q->orWhere(function ($sub) use ($userId) {
+                            $sub->whereNotNull('technician_ids')
+                                ->where('technician_ids', '!=', '')
+                                ->whereJsonContains('technician_ids', $userId);
+                        });
                     }
                 });
             }
@@ -1153,7 +1242,11 @@ class Index extends Component
                 $q->where(function ($sub) use ($userId, $hasInstTechIds) {
                     $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId);
                     if ($hasInstTechIds) {
-                        $sub->orWhereJsonContains('technician_ids', $userId);
+                        $sub->orWhere(function ($jsonQ) use ($userId) {
+                            $jsonQ->whereNotNull('technician_ids')
+                                  ->where('technician_ids', '!=', '')
+                                  ->whereJsonContains('technician_ids', $userId);
+                        });
                     }
                 });
             })
@@ -1165,7 +1258,11 @@ class Index extends Component
                 $q->where(function ($sub) use ($userId, $hasInstTechIds) {
                     $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId);
                     if ($hasInstTechIds) {
-                        $sub->orWhereJsonContains('technician_ids', $userId);
+                        $sub->orWhere(function ($jsonQ) use ($userId) {
+                            $jsonQ->whereNotNull('technician_ids')
+                                  ->where('technician_ids', '!=', '')
+                                  ->whereJsonContains('technician_ids', $userId);
+                        });
                     }
                 });
             })
@@ -1189,7 +1286,11 @@ class Index extends Component
                 $q->where(function ($sub) use ($userId, $hasTicketTechIds) {
                     $sub->where('assigned_to', $userId);
                     if ($hasTicketTechIds) {
-                        $sub->orWhereJsonContains('technician_ids', $userId);
+                        $sub->orWhere(function ($jsonQ) use ($userId) {
+                            $jsonQ->whereNotNull('technician_ids')
+                                  ->where('technician_ids', '!=', '')
+                                  ->whereJsonContains('technician_ids', $userId);
+                        });
                     }
                 });
             })
@@ -1201,7 +1302,11 @@ class Index extends Component
                 $q->where(function ($sub) use ($userId, $hasTicketTechIds) {
                     $sub->where('assigned_to', $userId);
                     if ($hasTicketTechIds) {
-                        $sub->orWhereJsonContains('technician_ids', $userId);
+                        $sub->orWhere(function ($jsonQ) use ($userId) {
+                            $jsonQ->whereNotNull('technician_ids')
+                                  ->where('technician_ids', '!=', '')
+                                  ->whereJsonContains('technician_ids', $userId);
+                        });
                     }
                 });
             })

@@ -355,6 +355,7 @@
                         <th class="px-4 py-3">Tipe & Mode</th>
                         <th class="px-4 py-3 text-center">VLAN</th>
                         <th class="px-4 py-3 text-center">NAT</th>
+                        <th class="px-4 py-3 text-center">Status & Kesesuaian</th>
                         <th class="px-4 py-3">Kredensial & Service</th>
                         <th class="px-4 py-3">Port Binding</th>
                         <th class="px-4 py-3 text-right">Aksi</th>
@@ -401,6 +402,19 @@
                                 <span class="text-slate-300 dark:text-slate-600 material-symbols-outlined text-[18px]" title="NAT Nonaktif">cancel</span>
                             @endif
                         </td>
+                        <td class="px-4 py-3 text-center">
+                            @if(($wan['desired_status'] ?? '') === 'Mismatch')
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-800" title="{{ implode('; ', $wan['mismatch_details'] ?? []) }}">
+                                    <span class="material-symbols-outlined text-[13px]">warning</span>
+                                    <span>Mismatch</span>
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800">
+                                    <span class="material-symbols-outlined text-[13px]">check</span>
+                                    <span>Actual</span>
+                                </span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-[11px] space-y-0.5">
                             @if($wan['username'])
                                 <div><span class="text-slate-400 font-medium">User:</span> <span class="font-mono font-semibold text-slate-800 dark:text-slate-200">{{ $wan['username'] }}</span></div>
@@ -441,7 +455,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="px-4 py-8 text-center text-slate-400">
+                        <td colspan="8" class="px-4 py-8 text-center text-slate-400">
                             <span class="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-1">wifi_off</span>
                             <p class="font-medium text-slate-600 dark:text-slate-300">Tidak ada koneksi WAN pada tab ini.</p>
                             <p class="text-[11px] text-slate-400">Klik tombol <strong>+ Tambah WAN Baru</strong> untuk mengonfigurasi koneksi baru.</p>
@@ -451,6 +465,49 @@
                 </tbody>
             </table>
         </div>
+
+        {{-- LAN Port Binding Engine Status Card --}}
+        @if(!empty($portBindings['ports']))
+        <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm space-y-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-purple-600 text-[18px]">lan</span>
+                        Pemetaan Fisik Port Binding LAN (LAN1 - LAN4)
+                    </h4>
+                    <p class="text-[11px] text-slate-400">Hubungan binding aktual antara port fisik LAN dengan interface WAN modem.</p>
+                </div>
+                <span class="text-[11px] font-mono font-semibold px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                    Vendor: {{ strtoupper($portBindings['vendor'] ?? $detectedVendor) }}
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                @foreach($portBindings['ports'] as $portKey => $port)
+                <div class="p-3 rounded-lg border {{ $port['is_bound'] ? 'border-purple-200 bg-purple-50/20 dark:border-purple-900/40 dark:bg-purple-950/10' : 'border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-900/30' }}">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="font-bold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px] {{ $port['is_bound'] ? 'text-purple-600' : 'text-slate-400' }}">router</span>
+                            {{ $portKey }}
+                        </span>
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold {{ $port['is_bound'] ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' }}">
+                            {{ $port['is_bound'] ? 'Bound' : 'Unbound' }}
+                        </span>
+                    </div>
+                    <div class="text-[11px] text-slate-600 dark:text-slate-300 font-medium truncate" title="{{ $port['bound_wan_name'] }}">
+                        {{ $port['bound_wan_name'] }}
+                    </div>
+                    <div class="mt-1 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                        <span>Speed: {{ $port['speed'] }}</span>
+                        @if($port['vlan'])
+                            <span class="text-purple-600 dark:text-purple-400 font-bold">VLAN {{ $port['vlan'] }}</span>
+                        @endif
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
     </div>
     @endif
 
@@ -581,42 +638,129 @@
     {{-- TAB 4: OPTICAL DIAGNOSTICS --}}
     @if($activeTab === 'optical')
     <div class="space-y-6">
+        {{-- Status & Freshness Banner --}}
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center {{ ($opticalDiagnostics['is_los'] ?? false) ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400' }}">
+                    <span class="material-symbols-outlined text-[24px]">{{ ($opticalDiagnostics['is_los'] ?? false) ? 'link_off' : 'optical_audio' }}</span>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100">Status Tautan GPON & Diagnostik Laser</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                        Status LOS: <strong class="{{ ($opticalDiagnostics['is_los'] ?? false) ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400' }}">{{ $opticalDiagnostics['los_status'] ?? 'Normal' }}</strong>
+                        • Freshness: <span class="capitalize font-semibold text-slate-700 dark:text-slate-300">{{ $opticalDiagnostics['freshness_status'] ?? 'fresh' }}</span>
+                    </p>
+                </div>
+            </div>
+            <button wire:click="summonDevice" wire:loading.attr="disabled" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 transition-colors">
+                <span class="material-symbols-outlined text-[15px]">refresh</span>
+                <span>Refresh Optik Live</span>
+            </button>
+        </div>
+
+        {{-- Primary Optical Power Cards --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="p-4 rounded-xl border border-indigo-200 bg-indigo-50/30 dark:bg-slate-800 dark:border-indigo-900/50 shadow-sm space-y-1">
-                <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">ONU RX Power (TR-069)</span>
-                <div class="text-2xl font-black text-slate-900 dark:text-slate-100">{{ $deviceStatus['rx_power'] ?? '-' }}</div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">ONU RX Power (TR-069)</span>
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold {{ ($opticalDiagnostics['rx_status'] ?? '') === 'normal' ? 'bg-emerald-100 text-emerald-800' : (($opticalDiagnostics['rx_status'] ?? '') === 'warning' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800') }}">
+                        {{ strtoupper($opticalDiagnostics['rx_status'] ?? 'UNKNOWN') }}
+                    </span>
+                </div>
+                <div class="text-2xl font-black text-slate-900 dark:text-slate-100">{{ $opticalDiagnostics['rx_power_display'] ?? ($deviceStatus['rx_power'] ?? '-') }}</div>
                 <p class="text-[11px] text-slate-400">Standar optimal: -15.0 s/d -24.0 dBm</p>
+                @if(!empty($opticalDiagnostics['rx_raw']))
+                    <div class="pt-1 text-[10px] text-slate-500 font-mono border-t border-indigo-100 dark:border-indigo-950">
+                        Raw: {{ $opticalDiagnostics['rx_raw'] }} ({{ $opticalDiagnostics['rx_formula'] ?? 'direct' }})
+                    </div>
+                @endif
             </div>
+
             <div class="p-4 rounded-xl border border-sky-200 bg-sky-50/30 dark:bg-slate-800 dark:border-sky-900/50 shadow-sm space-y-1">
                 <span class="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">ONU TX Power</span>
-                <div class="text-2xl font-black text-slate-900 dark:text-slate-100">{{ $deviceStatus['tx_power'] ?? '-' }}</div>
+                <div class="text-2xl font-black text-slate-900 dark:text-slate-100">{{ $opticalDiagnostics['tx_power_display'] ?? ($deviceStatus['tx_power'] ?? '-') }}</div>
                 <p class="text-[11px] text-slate-400">Pancar laser upstream (+0.5 s/d +5.0 dBm)</p>
+                @if(!empty($opticalDiagnostics['tx_raw']))
+                    <div class="pt-1 text-[10px] text-slate-500 font-mono border-t border-sky-100 dark:border-sky-950">
+                        Raw: {{ $opticalDiagnostics['tx_raw'] }} ({{ $opticalDiagnostics['tx_formula'] ?? 'direct' }})
+                    </div>
+                @endif
             </div>
+
             <div class="p-4 rounded-xl border border-emerald-200 bg-emerald-50/30 dark:bg-slate-800 dark:border-emerald-900/50 shadow-sm space-y-1">
                 <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">OLT RX Power (DDM)</span>
                 <div class="text-2xl font-black text-slate-900 dark:text-slate-100">
                     {{ $device->onu?->rx_power_dbm !== null ? round((float)$device->onu->rx_power_dbm, 2) . ' dBm' : '-' }}
                 </div>
                 <p class="text-[11px] text-slate-400">Diterima port PON OLT</p>
+                <div class="pt-1 text-[10px] text-slate-500 font-mono border-t border-emerald-100 dark:border-emerald-950">
+                    SNMP OLT Telemetry
+                </div>
             </div>
+
             <div class="p-4 rounded-xl border border-purple-200 bg-purple-50/30 dark:bg-slate-800 dark:border-purple-900/50 shadow-sm space-y-1">
                 <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Jarak Optik / Distance</span>
                 <div class="text-2xl font-black text-slate-900 dark:text-slate-100">
                     {{ $device->onu?->distance_meters !== null ? round((float)$device->onu->distance_meters / 1000.0, 2) . ' km' : ($device->onu?->distance !== null ? $device->onu->distance . ' m' : '-') }}
                 </div>
                 <p class="text-[11px] text-slate-400">Estimasi bentangan kabel dari OLT</p>
+                <div class="pt-1 text-[10px] text-slate-500 font-mono border-t border-purple-100 dark:border-purple-950">
+                    Fiber Distance
+                </div>
+            </div>
+        </div>
+
+        {{-- Secondary Physical Diagnostics: Voltage, Bias Current, Temperature --}}
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="p-4 rounded-xl border border-amber-200 bg-amber-50/20 dark:bg-slate-800 dark:border-amber-900/50 shadow-sm space-y-1">
+                <span class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Tegangan Modul (Supply Voltage)</span>
+                <div class="text-xl font-black text-slate-900 dark:text-slate-100">{{ $opticalDiagnostics['voltage_display'] ?? 'Tidak Didukung' }}</div>
+                <p class="text-[11px] text-slate-400">Standar nominal GPON: 3.1 V s/d 3.5 V</p>
+                @if(!empty($opticalDiagnostics['voltage_raw']))
+                    <div class="pt-1 text-[10px] text-slate-500 font-mono border-t border-amber-100 dark:border-amber-950">
+                        Raw: {{ $opticalDiagnostics['voltage_raw'] }} ({{ $opticalDiagnostics['voltage_formula'] ?? 'direct' }})
+                    </div>
+                @endif
+            </div>
+
+            <div class="p-4 rounded-xl border border-teal-200 bg-teal-50/20 dark:bg-slate-800 dark:border-teal-900/50 shadow-sm space-y-1">
+                <span class="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">Arus Bias Laser (Bias Current)</span>
+                <div class="text-xl font-black text-slate-900 dark:text-slate-100">{{ $opticalDiagnostics['bias_display'] ?? 'Tidak Didukung' }}</div>
+                <p class="text-[11px] text-slate-400">Standar operasional: 5 mA s/d 40 mA</p>
+                @if(!empty($opticalDiagnostics['bias_raw']))
+                    <div class="pt-1 text-[10px] text-slate-500 font-mono border-t border-teal-100 dark:border-teal-950">
+                        Raw: {{ $opticalDiagnostics['bias_raw'] }} ({{ $opticalDiagnostics['bias_formula'] ?? 'direct' }})
+                    </div>
+                @endif
+            </div>
+
+            <div class="p-4 rounded-xl border border-rose-200 bg-rose-50/20 dark:bg-slate-800 dark:border-rose-900/50 shadow-sm space-y-1">
+                <span class="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Suhu Transceiver Optik</span>
+                <div class="text-xl font-black text-slate-900 dark:text-slate-100">{{ $opticalDiagnostics['temperature'] ?? ($deviceStatus['temperature'] ?? 'Tidak Didukung') }}</div>
+                <p class="text-[11px] text-slate-400">Suhu sensor internal optik ONU</p>
+                @if(!empty($opticalDiagnostics['temperature_raw']))
+                    <div class="pt-1 text-[10px] text-slate-500 font-mono border-t border-rose-100 dark:border-rose-950">
+                        Raw: {{ $opticalDiagnostics['temperature_raw'] }} ({{ $opticalDiagnostics['temperature_formula'] ?? 'direct' }})
+                    </div>
+                @endif
             </div>
         </div>
     </div>
     @endif
 
-    {{-- TAB 5: WIFI MANAGEMENT --}}
+    {{-- TAB 5: WIFI MANAGEMENT (Phase 2.2 Accurate Radio & Multi-SSID Mapping) --}}
     @if($activeTab === 'wifi')
     <div class="space-y-6">
-        <div class="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
             <div>
-                <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100">Manajemen Frekuensi Wi-Fi ONT</h3>
-                <p class="text-xs text-slate-400">Pita 2.4 GHz dan 5 GHz Dual-Band yang sedang aktif.</p>
+                <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-indigo-600 text-[20px]">wifi</span>
+                    Manajemen Frekuensi Wi-Fi ONT
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                    Total terdeteksi: <strong>{{ $wifiDetails['total_ssids'] ?? 0 }} SSID aktif</strong> pada pita
+                    <strong>{{ implode(', ', $wifiDetails['bands_supported'] ?? ['2.4GHz']) }}</strong>.
+                </p>
             </div>
             <button wire:click="openWifiModal" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm">
                 <span class="material-symbols-outlined text-[16px]">wifi_settings</span>
@@ -624,24 +768,113 @@
             </button>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="p-4 rounded-xl border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/20 dark:bg-slate-800 space-y-2">
-                <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-[18px]">wifi</span>
-                    Wi-Fi 2.4 GHz (SSID 1)
-                </span>
-                <div class="text-lg font-black text-slate-900 dark:text-slate-100">{{ $deviceStatus['ssid_1'] ?? '-' }}</div>
-                <div class="text-xs text-slate-500 font-mono">Keamanan: WPA2-Personal (AES)</div>
+        {{-- 1. Pita 2.4 GHz --}}
+        <div class="space-y-3">
+            <div class="flex items-center justify-between">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[16px]">wifi</span>
+                    Pita Frekuensi 2.4 GHz (Jangkauan Luas • 802.11b/g/n)
+                </h4>
+                <span class="text-[11px] text-slate-400">{{ count($wifiDetails['wifi_24ghz'] ?? []) }} SSID Terdeteksi</span>
             </div>
 
-            <div class="p-4 rounded-xl border border-purple-200 dark:border-purple-800/60 bg-purple-50/20 dark:bg-slate-800 space-y-2">
-                <span class="text-xs font-bold text-purple-600 uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-[18px]">wifi_tethering</span>
-                    Wi-Fi 5 GHz Dual-Band (SSID 5 / 2)
-                </span>
-                <div class="text-lg font-black text-slate-900 dark:text-slate-100">{{ $deviceStatus['ssid_2'] && $deviceStatus['ssid_2'] !== '-' ? $deviceStatus['ssid_2'] : 'Tidak Aktif' }}</div>
-                <div class="text-xs text-slate-500 font-mono">Kecepatan Tinggi (802.11ac)</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                @forelse($wifiDetails['wifi_24ghz'] ?? [] as $wlan)
+                <div class="p-4 rounded-xl border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/20 dark:bg-slate-800 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300">
+                                SSID #{{ $wlan['display_index'] }}
+                            </span>
+                            <span class="text-[10px] text-slate-400 font-mono">Instance {{ $wlan['instance'] }}</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $wlan['enabled'] ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-500' }}">
+                            {{ $wlan['enabled'] ? 'Aktif' : 'Nonaktif' }}
+                        </span>
+                    </div>
+
+                    <div>
+                        <div class="text-lg font-black text-slate-900 dark:text-slate-100 tracking-wide font-mono">{{ $wlan['ssid'] }}</div>
+                        <div class="text-xs text-slate-500 font-mono mt-0.5">BSSID: {{ $wlan['bssid'] ?? '-' }}</div>
+                    </div>
+
+                    <div class="pt-2 border-t border-indigo-100 dark:border-indigo-950/60 grid grid-cols-2 gap-2 text-[11px]">
+                        <div><span class="text-slate-400">Keamanan:</span> <strong class="text-slate-700 dark:text-slate-300">{{ $wlan['security_mode'] }}</strong></div>
+                        <div><span class="text-slate-400">Channel:</span> <strong class="text-slate-700 dark:text-slate-300 font-mono">{{ $wlan['channel'] }}</strong></div>
+                        <div><span class="text-slate-400">Visibilitas:</span> <strong class="text-slate-700 dark:text-slate-300">{{ $wlan['hidden'] ? 'Tersembunyi' : 'Terlihat' }}</strong></div>
+                        <div><span class="text-slate-400">Sandi:</span> <strong class="text-slate-700 dark:text-slate-300 font-mono">{{ $wlan['password_masked'] }}</strong></div>
+                    </div>
+
+                    <div class="pt-2 flex justify-end">
+                        <button wire:click="openEditSpecificWifiModal({{ $wlan['instance'] }})" class="px-3 py-1 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 rounded-lg transition-colors">
+                            Edit SSID Ini
+                        </button>
+                    </div>
+                </div>
+                @empty
+                <div class="col-span-2 p-6 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-slate-400 text-xs">
+                    Tidak ada SSID 2.4 GHz yang terkonfigurasi pada perangkat.
+                </div>
+                @endforelse
             </div>
+        </div>
+
+        {{-- 2. Pita 5 GHz Dual-Band --}}
+        <div class="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <div class="flex items-center justify-between">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[16px]">wifi_tethering</span>
+                    Pita Frekuensi 5 GHz (Kecepatan Tinggi • 802.11ac/ax)
+                </h4>
+                @if(!empty($wifiDetails['has_5ghz']))
+                    <span class="text-[11px] text-slate-400">{{ count($wifiDetails['wifi_5ghz'] ?? []) }} SSID Terdeteksi</span>
+                @else
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-500">Single-Band Only</span>
+                @endif
+            </div>
+
+            @if(!empty($wifiDetails['has_5ghz']) && !empty($wifiDetails['wifi_5ghz']))
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                @foreach($wifiDetails['wifi_5ghz'] as $wlan)
+                <div class="p-4 rounded-xl border border-purple-200 dark:border-purple-800/60 bg-purple-50/20 dark:bg-slate-800 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
+                                SSID #{{ $wlan['display_index'] }} (5G)
+                            </span>
+                            <span class="text-[10px] text-slate-400 font-mono">Instance {{ $wlan['instance'] }}</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $wlan['enabled'] ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-500' }}">
+                            {{ $wlan['enabled'] ? 'Aktif' : 'Nonaktif' }}
+                        </span>
+                    </div>
+
+                    <div>
+                        <div class="text-lg font-black text-slate-900 dark:text-slate-100 tracking-wide font-mono">{{ $wlan['ssid'] }}</div>
+                        <div class="text-xs text-slate-500 font-mono mt-0.5">BSSID: {{ $wlan['bssid'] ?? '-' }}</div>
+                    </div>
+
+                    <div class="pt-2 border-t border-purple-100 dark:border-purple-950/60 grid grid-cols-2 gap-2 text-[11px]">
+                        <div><span class="text-slate-400">Keamanan:</span> <strong class="text-slate-700 dark:text-slate-300">{{ $wlan['security_mode'] }}</strong></div>
+                        <div><span class="text-slate-400">Channel:</span> <strong class="text-slate-700 dark:text-slate-300 font-mono">{{ $wlan['channel'] }}</strong></div>
+                        <div><span class="text-slate-400">Visibilitas:</span> <strong class="text-slate-700 dark:text-slate-300">{{ $wlan['hidden'] ? 'Tersembunyi' : 'Terlihat' }}</strong></div>
+                        <div><span class="text-slate-400">Sandi:</span> <strong class="text-slate-700 dark:text-slate-300 font-mono">{{ $wlan['password_masked'] }}</strong></div>
+                    </div>
+
+                    <div class="pt-2 flex justify-end">
+                        <button wire:click="openEditSpecificWifiModal({{ $wlan['instance'] }})" class="px-3 py-1 text-xs font-semibold text-purple-600 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:text-purple-300 rounded-lg transition-colors">
+                            Edit SSID Ini
+                        </button>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            @else
+            <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-center text-slate-500 dark:text-slate-400 text-xs flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-slate-400">info</span>
+                <span>Perangkat ini adalah <strong>ONT Single-Band 2.4 GHz</strong> (Tidak memiliki modul radio frekuensi 5 GHz).</span>
+            </div>
+            @endif
         </div>
     </div>
     @endif

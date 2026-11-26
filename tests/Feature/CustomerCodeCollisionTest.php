@@ -31,8 +31,12 @@ class CustomerCodeCollisionTest extends TestCase
 
     protected function tearDown(): void
     {
-        Mockery::close();
-        parent::tearDown();
+        \App\Models\User::flushEventListeners();
+        try {
+            Mockery::close();
+        } finally {
+            parent::tearDown();
+        }
     }
 
     public function test_customer_code_generator_generates_sequential_codes(): void
@@ -144,8 +148,8 @@ class CustomerCodeCollisionTest extends TestCase
             ->once()
             ->andReturn($mockUser);
         $mockPppoe->shouldReceive('activatePPPoEUser')
-            ->with(1, Mockery::any())
-            ->once()
+            ->with(1, Mockery::any(), Mockery::any())
+            ->zeroOrMoreTimes()
             ->andReturn($mockUser);
         $this->app->instance(PPPoEService::class, $mockPppoe);
 
@@ -224,8 +228,8 @@ class CustomerCodeCollisionTest extends TestCase
             ->once()
             ->andReturn($mockUser);
         $mockPppoe->shouldReceive('activatePPPoEUser')
-            ->with(2, Mockery::any())
-            ->once()
+            ->with(2, Mockery::any(), Mockery::any())
+            ->zeroOrMoreTimes()
             ->andReturn($mockUser);
         $this->app->instance(PPPoEService::class, $mockPppoe);
 

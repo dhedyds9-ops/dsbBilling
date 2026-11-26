@@ -12,8 +12,14 @@ use Illuminate\Support\Str;
 class AcsWanManagerService
 {
     public function __construct(
-        protected GenieACSDriver $driver
+        protected GenieACSDriver $driver,
+        protected ?AcsVerificationEngine $verificationEngine = null
     ) {}
+
+    public function getVerificationEngine(): AcsVerificationEngine
+    {
+        return $this->verificationEngine ?? new AcsVerificationEngine($this->driver);
+    }
 
     /**
      * Detect vendor string from device record or parameter tree.
@@ -71,7 +77,7 @@ class AcsWanManagerService
     }
 
     /**
-     * Retrieve all configured WAN connections on the ONT.
+     * Retrieve all configured WAN connections and port bindings on the ONT.
      */
     public function getWanConnections(string $deviceId): array
     {
@@ -79,9 +85,31 @@ class AcsWanManagerService
         $params = $this->driver->getDeviceParameters($realDeviceId);
         $vendor = $this->detectVendor($realDeviceId, $params);
 
+        // Fetch desired state if device is linked to customerService or pppoeUser
+        $deviceModel = ACSDevice::withoutGlobalScopes()
+            ->with(['customerService.pppoeUser', 'onu.customerService.pppoeUser'])
+            ->where('uuid', $realDeviceId)
+            ->orWhere('serial_number', $realDeviceId)
+            ->first();
+
+        $desiredState = null;
+        if ($deviceModel) {
+            $cs = $deviceModel->customerService ?? $deviceModel->onu?->customerService;
+            if ($cs) {
+                $desiredState = [
+                    'username' => $cs->username ?? $cs->pppoeUser?->username,
+                    'vlan_id' => $cs->serviceProfile?->vlan_id,
+                ];
+            }
+        }
+
+        $connections = AcsTelemetryParser::parseWanTree($params, $vendor, $desiredState);
+        $portBindings = AcsPortBindingEngine::discover($params, $connections, $vendor);
+
         return [
             'vendor' => $vendor,
-            'connections' => AcsTelemetryParser::parseWanTree($params, $vendor),
+            'connections' => $connections,
+            'port_bindings' => $portBindings,
             'raw_parameters' => $params,
         ];
     }
@@ -270,31 +298,30 @@ JS;
         $cleanUuid = preg_replace('/[^a-zA-Z0-9_-]/', '_', $realDeviceId);
         $provName = "temp_add_wan_" . $cleanUuid;
         $this->driver->upsertProvision($provName, $script);
-        $dispatched = $this->driver->addProvisionTask($realDeviceId, $provName);
 
-        // Record Task in dsBilling database
-        $deviceModel = ACSDevice::withoutGlobalScopes()->where('uuid', $realDeviceId)->orWhere('serial_number', $realDeviceId)->first();
-        $task = DeviceTask::create([
-            'uuid' => (string) Str::uuid(),
-            'acs_device_id' => $deviceModel?->id,
-            'type' => 'wan_create',
-            'status' => $dispatched ? 'pending' : 'failed',
-            'parameters' => [
-                'mode' => $mode,
-                'vlan_id' => $vlanId,
-                'vlan_enabled' => $vlanEnabled,
-                'service_list' => $serviceList,
-                'username' => $username,
-                'vendor' => $vendor,
-            ],
-            'created_by' => $userId ?? auth()->id(),
-        ]);
+        $expected = [];
+        if (!empty($username)) {
+            $expected['username'] = $username;
+        }
+        if ($vlanEnabled && $vlanId > 0) {
+            $expected['vlan_id'] = $vlanId;
+        }
 
-        return [
-            'success' => $dispatched,
-            'task_id' => $task->uuid,
-            'message' => $dispatched ? 'Task pembuatan WAN berhasil dikirim ke GenieACS.' : 'Gagal mengirim task ke GenieACS.',
-        ];
+        return $this->getVerificationEngine()->executeWithVerification(
+            deviceId: $realDeviceId,
+            taskType: 'wan_create',
+            expectedChanges: $expected,
+            writeCallback: function () use ($realDeviceId, $provName) {
+                $dispatched = $this->driver->addProvisionTask($realDeviceId, $provName);
+                return [
+                    'success' => $dispatched,
+                    'message' => $dispatched ? 'Task pembuatan WAN berhasil dikirim ke GenieACS.' : 'Gagal mengirim task ke GenieACS.',
+                ];
+            },
+            userId: $userId,
+            refreshPath: 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice',
+            autoVerifyImmediately: false
+        );
     }
 
     /**
@@ -368,28 +395,26 @@ JS;
             $cleanUuid = preg_replace('/[^a-zA-Z0-9_-]/', '_', $realDeviceId);
             $provName = "temp_mig_wan_" . $cleanUuid;
             $this->driver->upsertProvision($provName, $script);
-            $dispatched = $this->driver->addProvisionTask($realDeviceId, $provName);
 
-            $deviceModel = ACSDevice::withoutGlobalScopes()->where('uuid', $realDeviceId)->orWhere('serial_number', $realDeviceId)->first();
-            $task = DeviceTask::create([
-                'uuid' => (string) Str::uuid(),
-                'acs_device_id' => $deviceModel?->id,
-                'type' => 'wan_migrate_pppoe',
-                'status' => $dispatched ? 'pending' : 'failed',
-                'parameters' => [
-                    'path' => $fullPath,
+            return $this->getVerificationEngine()->executeWithVerification(
+                deviceId: $realDeviceId,
+                taskType: 'wan_migrate_pppoe',
+                expectedChanges: [
                     'target_ppp' => $targetPppPath,
                     'username' => $username,
                     'vlan_id' => $vlanId,
                 ],
-                'created_by' => $userId ?? auth()->id(),
-            ]);
-
-            return [
-                'success' => $dispatched,
-                'task_id' => $task->uuid,
-                'message' => $dispatched ? 'Task migrasi ke PPPoE berhasil dikirim ke antrean GenieACS.' : 'Gagal mengirim migrasi ke GenieACS.',
-            ];
+                writeCallback: function () use ($realDeviceId, $provName) {
+                    $dispatched = $this->driver->addProvisionTask($realDeviceId, $provName);
+                    return [
+                        'success' => $dispatched,
+                        'message' => $dispatched ? 'Task migrasi ke PPPoE berhasil dikirim ke antrean GenieACS.' : 'Gagal mengirim migrasi ke GenieACS.',
+                    ];
+                },
+                userId: $userId,
+                refreshPath: $parentPath,
+                autoVerifyImmediately: false
+            );
         }
 
         // CASE 2: Parameter set via setParameterValues
@@ -471,33 +496,35 @@ JS;
             }
         }
 
-        $success = $this->driver->setParameterValues($realDeviceId, $parameters);
-
-        // Immediate refreshObject verification
-        if ($success) {
-            $this->driver->refreshObject($realDeviceId, $fullPath);
+        $expectedParams = [];
+        if (!empty($data['username'])) {
+            $expectedParams["{$fullPath}.Username"] = trim((string)$data['username']);
+        }
+        if ($vlanEnabled && $vlanId > 0) {
+            if ($isHuawei) {
+                $expectedParams["{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN"] = $vlanId;
+            } elseif ($isZte) {
+                $expectedParams["{$fullPath}.X_ZTE-COM_VLANID"] = $vlanId;
+            } elseif ($isFiberHome) {
+                $expectedParams["{$parentPath}.X_FH_WANGponLinkConfig.VLANID"] = $vlanId;
+            }
         }
 
-        $deviceModel = ACSDevice::withoutGlobalScopes()->where('uuid', $realDeviceId)->orWhere('serial_number', $realDeviceId)->first();
-        $task = DeviceTask::create([
-            'uuid' => (string) Str::uuid(),
-            'acs_device_id' => $deviceModel?->id,
-            'type' => 'wan_update',
-            'status' => $success ? 'completed' : 'failed',
-            'parameters' => [
-                'path' => $fullPath,
-                'vlan_id' => $vlanId,
-                'vlan_enabled' => $vlanEnabled,
-                'service_list' => $serviceVal,
-            ],
-            'created_by' => $userId ?? auth()->id(),
-        ]);
-
-        return [
-            'success' => $success,
-            'task_id' => $task->uuid,
-            'message' => $success ? 'Perubahan WAN berhasil dikirim ke perangkat.' : 'Gagal mengirim konfigurasi ke GenieACS.',
-        ];
+        return $this->getVerificationEngine()->executeWithVerification(
+            deviceId: $realDeviceId,
+            taskType: 'wan_update',
+            expectedChanges: $expectedParams,
+            writeCallback: function () use ($realDeviceId, $parameters) {
+                $success = $this->driver->setParameterValues($realDeviceId, $parameters);
+                return [
+                    'success' => $success,
+                    'message' => $success ? 'Perubahan WAN berhasil dikirim ke perangkat.' : 'Gagal mengirim konfigurasi ke GenieACS.',
+                ];
+            },
+            userId: $userId,
+            refreshPath: $fullPath,
+            autoVerifyImmediately: true
+        );
     }
 
     /**
@@ -507,36 +534,34 @@ JS;
     {
         $realDeviceId = $this->driver->resolveDeviceId($deviceId);
 
-        $script = <<<JS
+        return $this->getVerificationEngine()->executeWithVerification(
+            deviceId: $realDeviceId,
+            taskType: 'wan_delete',
+            expectedChanges: [],
+            writeCallback: function () use ($realDeviceId, $fullPath) {
+                $cleanUuid = preg_replace('/[^a-zA-Z0-9_-]/', '_', $realDeviceId);
+                $provName = "temp_del_wan_" . $cleanUuid;
+                $script = <<<JS
 const now = Date.now();
 declare("{$fullPath}.Enable", {value: now}, {value: false});
 declare("{$fullPath}", null, {path: 0});
 JS;
+                $this->driver->upsertProvision($provName, $script);
+                $dispatched = $this->driver->addProvisionTask($realDeviceId, $provName);
 
-        $cleanUuid = preg_replace('/[^a-zA-Z0-9_-]/', '_', $realDeviceId);
-        $provName = "temp_del_wan_" . $cleanUuid;
-        $this->driver->upsertProvision($provName, $script);
-        $dispatched = $this->driver->addProvisionTask($realDeviceId, $provName);
+                try {
+                    $this->driver->deleteObject($realDeviceId, $fullPath);
+                } catch (\Throwable) {}
 
-        try {
-            $this->driver->deleteObject($realDeviceId, $fullPath);
-        } catch (\Throwable) {}
-
-        $deviceModel = ACSDevice::withoutGlobalScopes()->where('uuid', $realDeviceId)->orWhere('serial_number', $realDeviceId)->first();
-        $task = DeviceTask::create([
-            'uuid' => (string) Str::uuid(),
-            'acs_device_id' => $deviceModel?->id,
-            'type' => 'wan_delete',
-            'status' => $dispatched ? 'pending' : 'failed',
-            'parameters' => ['path' => $fullPath],
-            'created_by' => $userId ?? auth()->id(),
-        ]);
-
-        return [
-            'success' => $dispatched,
-            'task_id' => $task->uuid,
-            'message' => $dispatched ? 'Perintah hapus WAN berhasil dikirim ke GenieACS.' : 'Gagal mengirim perintah hapus ke GenieACS.',
-        ];
+                return [
+                    'success' => $dispatched,
+                    'message' => $dispatched ? 'Perintah hapus WAN berhasil dikirim ke GenieACS.' : 'Gagal mengirim perintah hapus ke GenieACS.',
+                ];
+            },
+            userId: $userId,
+            refreshPath: 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice',
+            autoVerifyImmediately: false
+        );
     }
 
     /**

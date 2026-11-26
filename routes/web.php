@@ -169,8 +169,11 @@ Route::middleware(['auth'])->group(function () use ($cs) {
 
     // Alias redirect for underscore URL variants (/technician_portal/* -> /technician-portal/*)
     Route::get('/technician_portal/{path?}', function ($path = null) {
-        return redirect('/technician-portal/' . ($path ? ltrim($path, '/') : 'dashboard'));
+        $sanitized = $path ? str_replace('_', '-', ltrim($path, '/')) : 'dashboard';
+        return redirect('/technician-portal/' . $sanitized);
     })->where('path', '.*');
+
+    Route::get('/technician-portal/my_jobs', fn() => redirect()->route('technician.my-jobs.index'));
 
     // ==================== SHARED FINANCIAL REPORTS (ADMIN, MANAGER, RESELLER) ====================
     Route::middleware(['role:administrator,manager,reseller'])->prefix('keuangan')->name('keuangan.')->group(function () {

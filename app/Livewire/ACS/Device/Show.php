@@ -25,6 +25,8 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
     public $topologyData = [];
     public $recentTasks = [];
     public $detectedVendor = 'generic';
+    public $wifiDetails = [];
+    public $portBindings = [];
 
     // WAN Management Form Modal State
     public $showWanModal = false;
@@ -409,8 +411,21 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
             $this->opticalDiagnostics = $optical;
             $this->detectedVendor = $this->hardwareMetrics['vendor'] ?? 'generic';
 
-            // 8. Dynamic WAN Connections (TR-098 & TR-181)
-            $this->wanConnections = AcsTelemetryParser::parseWanTree($params, $this->detectedVendor);
+            // 8. Dynamic WAN Connections (TR-098 & TR-181) with Desired vs Actual State
+            $cs = $this->device->customerService ?? $this->device->onu?->customerService;
+            $desiredState = null;
+            if ($cs) {
+                $desiredState = [
+                    'username' => $cs->username ?? $cs->pppoeUser?->username,
+                    'vlan_id' => $cs->serviceProfile?->vlan_id,
+                ];
+            }
+            $this->wanConnections = AcsTelemetryParser::parseWanTree($params, $this->detectedVendor, $desiredState);
+            $this->portBindings = \App\Services\ACS\AcsPortBindingEngine::discover($params, $this->wanConnections, $this->detectedVendor);
+
+            // 8b. Dynamic Wi-Fi Multi-SSID Discovery (Phase 2.2)
+            $this->wifiDetails = AcsTelemetryParser::parseWifiDetailed($params, $flat);
+            $this->cachedDeviceParams = $params;
 
             // 9. Network Topology Data
             $oltObj = $this->device->olt ?? $this->device->onu?->olt;
@@ -555,46 +570,29 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
     public $wifiSaving = false;
     public $cachedDeviceParams = null;
 
-        private function getAvailableWlans()
+    private function getAvailableWlans()
     {
         $wlans = [];
-        $params = $this->cachedDeviceParams;
-        if (!$params) return [];
-
-        // Check TR-098
-        $wlanNode = $params['InternetGatewayDevice']['LANDevice']['1']['WLANConfiguration'] ?? [];
-        if (is_array($wlanNode)) {
-            foreach ($wlanNode as $key => $node) {
-                if (is_numeric($key) && is_array($node)) {
-                    $ssid = $node['SSID']['_value'] ?? '';
-                    $name = $ssid ? "WLAN $key ($ssid)" : "WLAN $key";
-                    $wlans[$key] = $name;
-                }
-            }
+        if (empty($this->wifiDetails) && $this->cachedDeviceParams) {
+            $this->wifiDetails = AcsTelemetryParser::parseWifiDetailed($this->cachedDeviceParams);
         }
 
-        // Check TR-181 if empty
-        if (empty($wlans)) {
-            $wlanNode = $params['Device']['WiFi']['SSID'] ?? [];
-            if (is_array($wlanNode)) {
-                foreach ($wlanNode as $key => $node) {
-                    if (is_numeric($key) && is_array($node)) {
-                        $ssid = $node['SSID']['_value'] ?? '';
-                        $name = $ssid ? "WLAN $key ($ssid)" : "WLAN $key";
-                        $wlans[$key] = $name;
-                    }
-                }
+        if (!empty($this->wifiDetails['all_ssids'])) {
+            foreach ($this->wifiDetails['all_ssids'] as $item) {
+                $inst = (string)$item['instance'];
+                $band = $item['band'];
+                $ssid = $item['ssid'] ?: 'Tanpa SSID';
+                $wlans[$inst] = "WLAN {$inst} [{$band}] - {$ssid}";
             }
-        }
-
-        if (empty($wlans)) {
-            $wlans = [
-                '1' => 'WLAN 1 (Utama - 2.4GHz)',
-                '5' => 'WLAN 5 (Utama - 5GHz)'
-            ];
         }
 
         return $wlans;
+    }
+
+    public function openEditSpecificWifiModal($instance)
+    {
+        $this->wlanTarget = (string)$instance;
+        $this->openWifiModal();
     }
 
     public function openWifiModal()

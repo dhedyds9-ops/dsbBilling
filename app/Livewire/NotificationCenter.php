@@ -55,7 +55,23 @@ class NotificationCenter extends Component
             ->limit(20)
             ->get()
             ->map(function ($notif) {
-                $data = is_array($notif->data) ? $notif->data : [];
+                $data = is_array($notif->data) ? $notif->data : (is_string($notif->data) ? json_decode($notif->data, true) ?? [] : []);
+                
+                $time = '-';
+                if (!empty($notif->created_at)) {
+                    try {
+                        $time = $notif->created_at->diffForHumans();
+                    } catch (\Throwable) {
+                        $time = '-';
+                    }
+                } elseif (!empty($notif->sent_at)) {
+                    try {
+                        $time = $notif->sent_at->diffForHumans();
+                    } catch (\Throwable) {
+                        $time = '-';
+                    }
+                }
+
                 return [
                     'id' => $notif->id, // it's integer here
                     'type' => $notif->type ?? 'in_app',
@@ -65,7 +81,7 @@ class NotificationCenter extends Component
                     'icon' => $data['icon'] ?? 'notifications',
                     'color' => $data['color'] ?? 'blue',
                     'read' => $notif->status === 'read',
-                    'time' => $notif->created_at->diffForHumans(),
+                    'time' => $time,
                 ];
             })
             ->toArray();

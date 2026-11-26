@@ -53,12 +53,12 @@
                 <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';"
                    class="py-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
                     <span class="material-symbols-outlined" style="font-size:18px">lock</span>
-                    Stok
+                    Stok Tangan
                 </button>
                 <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';"
                    class="py-2 bg-emerald-500/80 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
                     <span class="material-symbols-outlined" style="font-size:18px">lock</span>
-                    Sensus
+                    Sensus Area
                 </button>
             @else
                 <a href="{{ route('technician.my-jobs.index') }}"
@@ -84,12 +84,12 @@
                 <a href="{{ route('technician.material.index') }}"
                    class="py-2 bg-sky-500 hover:bg-sky-400 text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
                     <span class="material-symbols-outlined" style="font-size:18px">inventory_2</span>
-                    Stok
+                    Stok Tangan
                 </a>
                 <a href="{{ route('technician.audit.form') }}"
                    class="py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
                     <span class="material-symbols-outlined" style="font-size:18px">radar</span>
-                    Sensus
+                    Sensus Area
                 </a>
             @endif
         </div>
@@ -245,7 +245,7 @@
                 <a href="{{ route('technician.material.index') }}"
                    class="bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-sky-200 dark:border-sky-800/60 text-center shadow-xs">
                     <span class="material-symbols-outlined text-sky-600 dark:text-sky-400 notranslate shrink-0" translate="no" style="font-size:22px">inventory_2</span>
-                    <span class="text-[11px] font-bold">Stok</span>
+                    <span class="text-[11px] font-bold">Stok Tangan</span>
                 </a>
                 <a href="{{ route('technician.installation.scan') }}"
                    class="bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-blue-200 dark:border-blue-800/60 text-center shadow-xs">

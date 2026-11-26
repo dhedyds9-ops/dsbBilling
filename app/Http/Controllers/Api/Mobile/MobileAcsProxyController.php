@@ -15,7 +15,8 @@ class MobileAcsProxyController extends Controller
 {
     public function __construct(
         protected GenieACSDriver $driver,
-        protected \App\Services\ACS\AcsWanManagerService $wanService
+        protected \App\Services\ACS\AcsWanManagerService $wanService,
+        protected \App\Services\ACS\AcsVerificationEngine $verificationEngine
     ) {}
 
     /**
@@ -849,82 +850,10 @@ class MobileAcsProxyController extends Controller
             $ramUsage = $hw['ram_usage_display'] !== 'Tidak Didukung' ? $hw['ram_usage_display'] : null;
             $temperature = $hw['temperature_display'] !== 'Tidak Didukung' ? $hw['temperature_display'] : null;
 
-            // Redaman Optik (RX & TX) Normalization
-            $rxPower = null;
-            $rawRx = $flat['VirtualParameters.RXPower']
-                ?? $flat['VirtualParameters.rxPower']
-                ?? $flat['VirtualParameters.redaman']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower']
-                ?? $flat['Device.Optical.1.Transceiver.RxPower']
-                ?? null;
-
-            $rawTx = $flat['VirtualParameters.TXPower']
-                ?? $flat['VirtualParameters.txPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower']
-                ?? $flat['InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TxPower']
-                ?? $flat['Device.Optical.1.Transceiver.TxPower']
-                ?? null;
-
-            // Deteksi swap anomali ZTE TR-069 (Rx dilaporkan sebagai Tx dan sebaliknya)
-            if ($rawRx !== null && $rawTx !== null && is_numeric($rawRx) && is_numeric($rawTx) && (float)$rawRx > 0.0 && (float)$rawRx <= 5.0 && abs((float)$rawTx) >= 8.0) {
-                $tempRawRx = $rawTx;
-                $rawTx = $rawRx;
-                $rawRx = $tempRawRx;
-            }
-
-            if ($rawRx !== null && trim((string)$rawRx) !== '' && is_numeric($rawRx)) {
-                $numRx = (float) $rawRx;
-                if ($numRx !== 0.0) {
-                    $absRx = abs($numRx);
-                    if ($absRx >= 7000.0) {
-                        $rxPower = -round($absRx / 1000.0, 2);
-                    } elseif ($absRx >= 60.0) {
-                        $rxPower = -round($absRx / 100.0, 2);
-                    } elseif ($numRx < -5.0 && $numRx > -38.0) {
-                        $rxPower = round($numRx, 2);
-                    } elseif ($numRx > 0.0 && $numRx <= 5.0 && $onu?->rx_power_dbm !== null && (float)$onu->rx_power_dbm <= -8.0) {
-                        // TR-069 bogus/miscalibrated positive value (e.g. 1.09 dBm), fallback ke kalibrasi DDM OLT
-                        $rxPower = round((float)$onu->rx_power_dbm, 2);
-                    } else {
-                        $rxPower = -round($absRx, 2);
-                    }
-                }
-            } elseif ($onu?->rx_power_dbm !== null) {
-                $rxPower = round((float)$onu->rx_power_dbm, 2);
-            }
-
-            if ($rxPower !== null && $rxPower > 0) {
-                $rxPower = -abs($rxPower);
-            }
-            if (($rxPower === null || $rxPower > -8.0 || $rxPower < -38.0) && $onu?->rx_power_dbm !== null && (float)$onu->rx_power_dbm <= -8.0 && (float)$onu->rx_power_dbm >= -35.0) {
-                $rxPower = round((float)$onu->rx_power_dbm, 2);
-            }
-
-            // TX Power Normalization
-            $txPower = null;
-
-            if ($rawTx !== null && trim((string)$rawTx) !== '' && is_numeric($rawTx)) {
-                $numTx = (float) $rawTx;
-                if ($numTx !== 0.0) {
-                    if ($numTx < -500.0 || $numTx > 500.0) {
-                        $txPower = round($numTx / 1000.0, 2);
-                    } elseif ($numTx > 10.0 && $numTx < 50.0) {
-                        // Skala tanpa koma desimal, e.g. 17.21 atau 16.82 -> 1.72 dBm atau 1.68 dBm
-                        $txPower = round($numTx / 10.0, 2);
-                    } elseif ($numTx >= 50.0) {
-                        $txPower = round($numTx / 100.0, 2);
-                    } else {
-                        $txPower = round($numTx, 2);
-                    }
-                }
-            } elseif ($onu?->tx_power_dbm !== null) {
-                $txPower = round((float)$onu->tx_power_dbm, 2);
-            }
+            // Standardized Optical Diagnostics (Phase 2 SSOT)
+            $optical = \App\Services\ACS\AcsTelemetryParser::parseOptical($params, $onu, $ad);
+            $rxPower = $optical['rx_power'];
+            $txPower = $optical['tx_power'];
 
             // Extract connected devices directly in-memory from $params
             $connectedDevices = $this->driver->extractConnectedDevicesFromParams($params);
@@ -934,8 +863,11 @@ class MobileAcsProxyController extends Controller
                 } catch (\Throwable) {}
             }
 
-            // Extract accurate WLAN instances directly in-memory from $params (Supports Dual-Band 2.4G & 5G)
-            $wlans = $this->driver->extractAllWlansFromParams($params, $onu);
+            // Accurate Multi-Vendor Multi-Band Wi-Fi Engine (Phase 2 SSOT)
+            $wifiDetailed = \App\Services\ACS\AcsTelemetryParser::parseWifiDetailed($params, $onu);
+            $wlans = !empty($wifiDetailed['all_ssids'])
+                ? $wifiDetailed['all_ssids']
+                : $this->driver->extractAllWlansFromParams($params, $onu);
 
             // Populate normalized values into params payload
             $params['cpu_usage'] = $cpuUsage;
@@ -956,9 +888,24 @@ class MobileAcsProxyController extends Controller
             $params['uptime_status'] = $hw['uptime_status'];
             $params['hardware_metrics'] = $hw;
 
+            // WAN Connections with Desired vs Actual Mismatch Tracking
             $detectedVendor = $hw['vendor'] ?? 'generic';
-            $wanConnections = \App\Services\ACS\AcsTelemetryParser::parseWanTree($params, $detectedVendor);
+            $desiredState = null;
+            if ($cs || $onu) {
+                $desiredState = [
+                    'username' => $cs?->username ?: ($ad?->customerService?->username),
+                    'vlan_id' => $onu?->vlan_id ?: ($cs?->vlan_id ?? null),
+                    'connection_type' => 'PPPoE_Routed',
+                    'service_list' => 'INTERNET',
+                ];
+            }
+            $wanConnections = \App\Services\ACS\AcsTelemetryParser::parseWanTree($params, $detectedVendor, $desiredState);
+            $portBindings = \App\Services\ACS\AcsPortBindingEngine::discover($params, $wanConnections);
+
             $params['wan_connections'] = $wanConnections;
+            $params['port_bindings'] = $portBindings;
+            $params['optical_diagnostics'] = $optical;
+            $params['wifi_details'] = $wifiDetailed;
             $params['rx_power'] = $rxPower;
             $params['tx_power'] = $txPower;
             if (!isset($params['VirtualParameters']) || !is_array($params['VirtualParameters'])) {
@@ -980,6 +927,10 @@ class MobileAcsProxyController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $params,
+                'optical_diagnostics' => $optical,
+                'wifi_details' => $wifiDetailed,
+                'port_bindings' => $portBindings,
+                'wan_connections' => $wanConnections,
                 'connected_devices' => $connectedDevices,
                 'connected_clients' => $connectedDevices,
             ]);
@@ -1144,12 +1095,41 @@ class MobileAcsProxyController extends Controller
         $user = $request->user();
 
         try {
+            $realDeviceId = $this->driver->resolveDeviceId($cleanId);
+            $params = $this->driver->getDeviceParameters($realDeviceId);
+
+            $ad = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where('uuid', $realDeviceId)->orWhere('serial_number', $realDeviceId)->first();
+            $onu = $ad && $ad->onu_id ? \App\Models\ISP\Onu::withoutGlobalScopes()->find($ad->onu_id) : null;
+            if (!$onu) {
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $cleanId)->first();
+            }
+
+            // Discover actual WLANs using AcsTelemetryParser
+            $wifiDetailed = \App\Services\ACS\AcsTelemetryParser::parseWifiDetailed($params, $onu);
+            $targetWlan = null;
+
+            // Search by instance number, or by display_index
+            foreach ($wifiDetailed['all_ssids'] as $slot) {
+                if ($slot['instance'] === $wlanIndex || $slot['display_index'] === $wlanIndex) {
+                    $targetWlan = $slot;
+                    break;
+                }
+            }
+
+            // Determine prefix and parameter paths
+            $prefix = $targetWlan['prefix'] ?? "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}";
+            $ssidPath = $targetWlan['ssid_path'] ?? "{$prefix}.SSID";
+            $passPath = $targetWlan['password_path'] ?? "{$prefix}.PreSharedKey.1.KeyPassphrase";
+            $enablePath = $targetWlan['enable_path'] ?? "{$prefix}.Enable";
+            $hidePath = $targetWlan['hide_path'] ?? "{$prefix}.SSIDAdvertisementEnabled";
+
             $kv = [];
-            $prefix = "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}";
+            $expected = [];
 
             if ($request->has('ssid')) {
                 $ssid = trim($request->input('ssid'));
-                $kv["{$prefix}.SSID"] = $ssid;
+                $kv[$ssidPath] = $ssid;
+                $expected[$ssidPath] = $ssid;
                 if ($wlanIndex === 1) {
                     $kv["VirtualParameters.WlanSsid"] = $ssid;
                     $kv["VirtualParameters.WlanSSID"] = $ssid;
@@ -1160,28 +1140,34 @@ class MobileAcsProxyController extends Controller
 
             if ($request->has('password') && $secUpper !== 'OPEN') {
                 $pass = $request->input('password');
-                $kv["{$prefix}.PreSharedKey.1.KeyPassphrase"] = $pass;
-                $kv["{$prefix}.KeyPassphrase"] = $pass;
+                $kv[$passPath] = $pass;
+                if ($passPath !== "{$prefix}.KeyPassphrase" && !str_starts_with($prefix, 'Device.')) {
+                    $kv["{$prefix}.KeyPassphrase"] = $pass;
+                }
+                $expected[$passPath] = $pass;
                 if ($wlanIndex === 1) {
                     $kv["VirtualParameters.WlanPassword"] = $pass;
                 }
             }
 
             if ($request->has('enabled')) {
-                $kv["{$prefix}.Enable"] = $request->boolean('enabled');
+                $val = $request->boolean('enabled');
+                $kv[$enablePath] = $val;
+                $expected[$enablePath] = $val;
             }
 
             if ($request->has('hide_ssid')) {
-                $kv["{$prefix}.SSIDAdvertisementEnabled"] = !$request->boolean('hide_ssid');
+                $val = !$request->boolean('hide_ssid');
+                $kv[$hidePath] = $val;
+                $expected[$hidePath] = $val;
             }
 
-            if ($request->has('security_mode')) {
+            if ($request->has('security_mode') && !str_starts_with($prefix, 'Device.')) {
                 $sec = strtoupper((string) $request->input('security_mode'));
                 if ($sec === 'OPEN') {
                     $openBeacon = $this->driver->resolveOpenBeaconValue('default', $cleanId);
                     $kv["{$prefix}.BeaconType"] = $openBeacon;
                     if ($openBeacon === 'Basic') {
-                        // Huawei/FiberHome: Open = Basic tanpa enkripsi WEP.
                         $kv["{$prefix}.BasicEncryptionModes"] = 'None';
                     }
                 } elseif ($sec === 'WPA2') {
@@ -1196,24 +1182,39 @@ class MobileAcsProxyController extends Controller
                 return response()->json(['success' => false, 'message' => 'Tidak ada parameter Wi-Fi yang diubah.'], 400);
             }
 
-            $success = $this->driver->setParameterValues($cleanId, $kv);
+            // Execute through AcsVerificationEngine with read-after-write verification
+            $verifyResult = $this->verificationEngine->executeWithVerification(
+                deviceId: $realDeviceId,
+                taskType: 'wifi_update',
+                expectedChanges: $expected,
+                writeCallback: function () use ($realDeviceId, $kv) {
+                    $ok = $this->driver->setParameterValues($realDeviceId, $kv);
+                    return [
+                        'success' => $ok,
+                        'message' => $ok ? 'Task setParameterValues Wi-Fi terkirim ke GenieACS.' : 'Gagal mengirim task ke GenieACS.',
+                    ];
+                },
+                userId: $user?->id,
+                refreshPath: $prefix,
+                autoVerifyImmediately: true
+            );
 
-            Log::info("ACS SetWifi: User #{$user->id} ({$user->name}) updated WiFi index {$wlanIndex} on {$cleanId}.");
-
-            try {
-                AuditLog::create([
-                    'user_id' => $user?->id,
-                    'action' => 'acs_set_wifi',
-                    'description' => "Ubah konfigurasi Wi-Fi device {$cleanId} (wlan {$wlanIndex}) via Mobile ACS Proxy.",
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                    'created_at' => now(),
-                ]);
-            } catch (\Throwable $e) {}
+            // Sync with local ONU record if primary SSID
+            if ($onu && ($wlanIndex === 1 || ($targetWlan && $targetWlan['display_index'] === 1))) {
+                if (isset($kv[$ssidPath])) {
+                    $onu->wifi_ssid = $kv[$ssidPath];
+                }
+                if (isset($kv[$passPath])) {
+                    $onu->wifi_password = $kv[$passPath];
+                }
+                $onu->saveQuietly();
+            }
 
             return response()->json([
-                'success' => $success,
-                'message' => $success ? "Pengaturan Wi-Fi berhasil diterapkan." : "Gagal menerapkan pengaturan Wi-Fi ke perangkat.",
+                'success' => $verifyResult['success'],
+                'status' => $verifyResult['status'],
+                'task_id' => $verifyResult['task_id'] ?? null,
+                'message' => $verifyResult['message'],
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -1264,65 +1265,62 @@ class MobileAcsProxyController extends Controller
         $isBridge = str_contains(strtolower($connType), 'bridge');
         $isPppoe = str_contains(strtolower($connType), 'pppoe') || !str_contains(strtolower($connType), 'ip');
 
-        try {
-            $kv = [];
-            $slotName = ($isPppoe) ? "WANPPPConnection" : "WANIPConnection";
-            $prefix = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.{$slotName}.{$wanIndex}";
+        // Map mode
+        $mode = 'pppoe_route';
+        if ($isBridge) {
+            $mode = $isPppoe ? 'bridge_ppp' : 'bridge_ip';
+        } elseif (!$isPppoe) {
+            $mode = ($request->input('addressing_type') === 'Static' || $request->has('ip_address')) ? 'static_route' : 'dhcp_route';
+        }
 
-            // Enable connection
-            $kv["{$prefix}.Enable"] = true;
-            $kv["{$prefix}.ConnectionType"] = $connType;
+        // Map payload
+        $payload = array_merge($request->all(), [
+            'mode' => $mode,
+            'vlan_id' => $request->input('vlan_id', 0),
+            'vlan_enabled' => $request->boolean('vlan_enabled', $request->input('vlan_id', 0) > 0),
+            'username' => $request->input('username'),
+            'password' => $request->input('password'),
+            'service_list' => $request->input('service_list') ?: $request->input('service_type', 'INTERNET'),
+        ]);
 
-            // Name
-            $vlanId = (int) $request->input('vlan_id', 0);
-            $vlanEnabled = $request->boolean('vlan_enabled', $vlanId > 0);
-            $typeCode = $isBridge ? 'B' : 'R';
-            $connName = ($vlanEnabled && $vlanId > 0)
-                ? "{$wanIndex}_INTERNET_{$typeCode}_VID_{$vlanId}"
-                : "{$wanIndex}_INTERNET_{$typeCode}_VID_";
-            $kv["{$prefix}.Name"] = $connName;
-
-            // PPPoE Credentials
-            if ($isPppoe) {
-                if ($request->has('username')) {
-                    $kv["{$prefix}.Username"] = trim((string) $request->input('username'));
-                }
-                if ($request->has('password') && $request->input('password') !== null) {
-                    $kv["{$prefix}.Password"] = (string) $request->input('password');
-                }
-                $kv["{$prefix}.NATEnabled"] = true;
-            }
-
-            // VLAN Tagging
-            if ($vlanEnabled && $vlanId > 0) {
-                $linkPrefix = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANEthernetLinkConfig";
-                $kv["{$linkPrefix}.X_BROADCOM_COM_VLANID"] = $vlanId;
-                $kv["{$linkPrefix}.X_CT-COM_VLAN"] = $vlanId;
-                $kv["{$prefix}.X_BROADCOM_COM_VLANID"] = $vlanId;
-            }
-
-            if (empty($kv)) {
-                return response()->json(['success' => false, 'message' => 'Tidak ada parameter WAN yang diubah.'], 400);
-            }
-
-            $success = $this->driver->setParameterValues($cleanId, $kv);
-
-            Log::info("ACS SetWan: User #{$user->id} ({$user->name}) updated WAN on {$cleanId}.");
-
-            try {
-                AuditLog::create([
-                    'user_id' => $user?->id,
-                    'action' => 'acs_set_wan',
-                    'description' => "Ubah konfigurasi WAN device {$cleanId} (index {$wanIndex}, type {$connType}) via Mobile ACS Proxy.",
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                    'created_at' => now(),
-                ]);
-            } catch (\Throwable $e) {}
-
+        if ($request->boolean('is_new_instance')) {
+            $res = $this->wanService->addWanConnection($cleanId, $payload, $user->id);
             return response()->json([
-                'success' => $success,
-                'message' => $success ? "Konfigurasi WAN berhasil diterapkan." : "Gagal menerapkan konfigurasi WAN.",
+                'success' => $res['success'],
+                'status' => $res['status'] ?? null,
+                'task_id' => $res['task_id'] ?? null,
+                'message' => $res['message'],
+            ]);
+        }
+
+        // Search existing WAN by wan_index or matching slot
+        try {
+            $wanData = $this->wanService->getWanConnections($cleanId);
+            $targetConn = null;
+            foreach ($wanData['connections'] as $conn) {
+                if (($conn['instance_number'] ?? null) === $wanIndex || ($conn['index'] ?? null) === $wanIndex) {
+                    $targetConn = $conn;
+                    break;
+                }
+            }
+
+            if ($targetConn && !empty($targetConn['full_path'])) {
+                $res = $this->wanService->updateWanConnection($cleanId, $targetConn['full_path'], $payload, $user->id);
+                return response()->json([
+                    'success' => $res['success'],
+                    'status' => $res['status'] ?? null,
+                    'task_id' => $res['task_id'] ?? null,
+                    'message' => $res['message'],
+                ]);
+            }
+
+            // Fallback: create as new connection if not found
+            $res = $this->wanService->addWanConnection($cleanId, $payload, $user->id);
+            return response()->json([
+                'success' => $res['success'],
+                'status' => $res['status'] ?? null,
+                'task_id' => $res['task_id'] ?? null,
+                'message' => $res['message'],
             ]);
         } catch (Exception $e) {
             return response()->json([
