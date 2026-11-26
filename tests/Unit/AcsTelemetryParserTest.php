@@ -322,5 +322,28 @@ class AcsTelemetryParserTest extends TestCase
         $this->assertEquals('tr181_user', $wan['username']);
         $this->assertEquals('100.64.1.20', $wan['ip_address']);
     }
+
+    /** Test Huawei optical telemetry parsing across various firmware paths */
+    public function test_huawei_optical_telemetry_resolution(): void
+    {
+        $flat = [
+            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.RxPower' => '-21.34',
+            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.TxPower' => '2.15',
+            'InternetGatewayDevice.DeviceInfo.X_HW_Temperature' => '49',
+            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.Voltage' => '3280',
+            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.BiasCurrent' => '15200',
+        ];
+
+        $optical = AcsTelemetryParser::parseOptical($flat);
+
+        $this->assertEquals(-21.34, $optical['rx_power']);
+        $this->assertEquals(2.15, $optical['tx_power']);
+        $this->assertEquals('49 °C', $optical['temperature']);
+        $this->assertEquals(3.28, $optical['voltage']);
+        $this->assertEquals(15.2, $optical['bias_current']);
+        $this->assertEquals('-21.34 dBm', $optical['rx_power_display']);
+        $this->assertEquals('2.15 dBm', $optical['tx_power_display']);
+        $this->assertEquals('normal', $optical['rx_status']);
+    }
 }
 

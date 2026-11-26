@@ -139,79 +139,139 @@ class AcsTelemetryParser
         $rxCandidates = [
             'VirtualParameters.RXPower',
             'VirtualParameters.rxPower',
+            'VirtualParameters.opticalRxPower',
+            'VirtualParameters.optical_rx',
+            'VirtualParameters.rx_power',
+            'VirtualParameters.RxPower',
             'VirtualParameters.redaman',
+            'VirtualParameters.OpticalInfo.RxPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RxPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.RxPower',
+            'InternetGatewayDevice.X_HW_DEBUG.AMP.OpticalInfo.RxPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.RxPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.RxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_OpticalRxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RXPower',
             'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower',
             'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower',
-            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower',
             'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
             'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_RxPower',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.OpticalAttenuation',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxAttenuation',
             'InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.1.RxPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_HW_RxPower',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_HW_RxPower',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_HW_RXPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_ALG-COM_RxPower',
             'Device.Optical.1.Transceiver.RxPower',
             'Device.Optical.1.Transceiver.RxAttenuation',
             'Device.Optical.Interface.1.RxPower',
+            'Device.Optical.Interface.1.RXPower',
         ];
 
         $txCandidates = [
             'VirtualParameters.TXPower',
             'VirtualParameters.txPower',
+            'VirtualParameters.opticalTxPower',
+            'VirtualParameters.optical_tx',
+            'VirtualParameters.tx_power',
+            'VirtualParameters.TxPower',
+            'VirtualParameters.OpticalInfo.TxPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TxPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.TxPower',
+            'InternetGatewayDevice.X_HW_DEBUG.AMP.OpticalInfo.TxPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.TXPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.TxPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.TXPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.TxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_OpticalTxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TXPower',
             'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower',
             'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower',
-            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower',
             'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TxPower',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_TxPower',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxPower',
             'InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.1.TxPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_HW_TxPower',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_HW_TxPower',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_HW_TXPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_ALG-COM_TxPower',
             'Device.Optical.1.Transceiver.TxPower',
             'Device.Optical.Interface.1.TxPower',
+            'Device.Optical.Interface.1.TXPower',
         ];
 
         $tempCandidates = [
+            'InternetGatewayDevice.DeviceInfo.X_HW_Temperature',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.Temperature',
+            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.Temperature',
+            'InternetGatewayDevice.X_HW_DEBUG.AMP.OpticalInfo.Temperature',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.Temperature',
+            'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.Temperature',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverTemperature',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.Temperature',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TransceiverTemperature',
             'InternetGatewayDevice.DeviceInfo.X_ZTE-COM_Temperature',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TransceiverTemperature',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverTemperature',
-            'InternetGatewayDevice.DeviceInfo.X_HW_Temperature',
             'InternetGatewayDevice.DeviceInfo.X_FH_Temperature',
             'Device.Optical.1.Transceiver.Temperature',
             'VirtualParameters.opticalTemperature',
+            'VirtualParameters.optical_temp',
+            'VirtualParameters.OpticalInfo.Temperature',
         ];
 
         $voltageCandidates = [
+            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.Voltage',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.SupplyVoltage',
+            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.Voltage',
+            'InternetGatewayDevice.X_HW_DEBUG.AMP.OpticalInfo.Voltage',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.Voltage',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.SupplyVoltage',
+            'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.Voltage',
+            'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.SupplyVoltage',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_SupplyVoltage',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverVoltage',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.Voltage',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.SupplyVoltage',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TransceiverVoltage',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_SupplyVoltage',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.SupplyVoltage',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_SupplyVoltage',
-            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.Voltage',
             'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.SupplyVoltage',
             'Device.Optical.1.Transceiver.SupplyVoltage',
             'Device.Optical.Interface.1.SupplyVoltage',
             'VirtualParameters.supplyVoltage',
             'VirtualParameters.opticalVoltage',
+            'VirtualParameters.optical_voltage',
+            'VirtualParameters.OpticalInfo.Voltage',
         ];
 
         $biasCandidates = [
+            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.BiasCurrent',
+            'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.BiasCurrent',
+            'InternetGatewayDevice.X_HW_DEBUG.AMP.OpticalInfo.BiasCurrent',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.BiasCurrent',
+            'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.BiasCurrent',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_BiasCurrent',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverBiasCurrent',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.BiasCurrent',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TransceiverBiasCurrent',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_BiasCurrent',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.BiasCurrent',
-            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_BiasCurrent',
-            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.BiasCurrent',
             'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.BiasCurrent',
             'Device.Optical.1.Transceiver.LaserBiasCurrent',
             'Device.Optical.Interface.1.LaserBiasCurrent',
             'VirtualParameters.biasCurrent',
             'VirtualParameters.opticalBias',
+            'VirtualParameters.optical_bias',
+            'VirtualParameters.OpticalInfo.BiasCurrent',
         ];
 
         $losCandidates = [
@@ -248,12 +308,12 @@ class AcsTelemetryParser
             return [null, null];
         };
 
-        [$rxPath, $rawRx] = $findWithKey($rxCandidates, '/(RXPower|RxPower|OpticalRxPower|OpticalAttenuation|RxAttenuation|Attenuation)$/i');
-        [$txPath, $rawTx] = $findWithKey($txCandidates, '/(TXPower|TxPower|OpticalTxPower)$/i');
-        [$tempPath, $rawTemp] = $findWithKey($tempCandidates, '/(TransceiverTemperature|opticalTemperature)$/i');
-        [$voltagePath, $rawVoltage] = $findWithKey($voltageCandidates, '/(SupplyVoltage|TransceiverVoltage|opticalVoltage)$/i');
-        [$biasPath, $rawBias] = $findWithKey($biasCandidates, '/(BiasCurrent|LaserBiasCurrent|TransceiverBiasCurrent)$/i');
-        [$losPath, $rawLos] = $findWithKey($losCandidates, '/(LOSStatus|LOS)$/i');
+        [$rxPath, $rawRx] = $findWithKey($rxCandidates, '/(\b|_)(RXPower|RxPower|OpticalRxPower|OpticalAttenuation|RxAttenuation|Attenuation)$/i');
+        [$txPath, $rawTx] = $findWithKey($txCandidates, '/(\b|_)(TXPower|TxPower|OpticalTxPower)$/i');
+        [$tempPath, $rawTemp] = $findWithKey($tempCandidates, '/(\b|_)(TransceiverTemperature|opticalTemperature|Temperature)$/i');
+        [$voltagePath, $rawVoltage] = $findWithKey($voltageCandidates, '/(\b|_)(SupplyVoltage|TransceiverVoltage|opticalVoltage|Voltage)$/i');
+        [$biasPath, $rawBias] = $findWithKey($biasCandidates, '/(\b|_)(BiasCurrent|LaserBiasCurrent|TransceiverBiasCurrent|Bias)$/i');
+        [$losPath, $rawLos] = $findWithKey($losCandidates, '/(\b|_)(LOSStatus|LOS|LinkStatus)$/i');
 
         $vendor = self::detectVendor($flat);
         $model = self::parseModelName($flat);
