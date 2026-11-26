@@ -842,11 +842,15 @@ class GenieACSDriver
             $opticalObjects = [
                 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig',
                 'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig',
                 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig',
                 'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig',
                 'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig',
+                'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig',
                 'InternetGatewayDevice.DeviceInfo',
                 'Device.Optical',
+                'Device.Optical.Interface',
             ];
             foreach ($opticalObjects as $obj) {
                 $this->refreshObject($realDeviceId, $obj);
@@ -1028,12 +1032,16 @@ JS;
                 'InternetGatewayDevice.LANDevice.1.WLANConfiguration',
                 'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig',
                 'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig',
                 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig',
                 'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig',
                 'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig',
+                'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig',
                 'Device.Hosts',
                 'Device.WiFi',
                 'Device.Optical',
+                'Device.Optical.Interface',
             ];
             foreach ($refreshObjects as $obj) {
                 try {

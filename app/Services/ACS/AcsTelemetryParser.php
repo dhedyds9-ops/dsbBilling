@@ -148,36 +148,58 @@ class AcsTelemetryParser
             'VirtualParameters.rx_power',
             'VirtualParameters.RxPower',
             'VirtualParameters.redaman',
+            'VirtualParameters.Redaman',
             'VirtualParameters.OpticalInfo.RxPower',
+            'VirtualParameters.OpticalInfo.RxOpticalPower',
+            'VirtualParameters.OpticalInfo.OpticalRxPower',
             'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower',
             'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RxPower',
             'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.RxPower',
             'InternetGatewayDevice.X_HW_DEBUG.AMP.OpticalInfo.RxPower',
             'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.RXPower',
             'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.RxPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.RxPower',
             'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.RXPower',
             'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.RxPower',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.RxPower',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.1.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RxPower',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.1.RXPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_OpticalRxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverRxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RXPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.RxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.RXPower',
             'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RxPower',
+            'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.RxPower',
             'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower',
-            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
             'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_RxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_TransceiverRxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.OpticalAttenuation',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxAttenuation',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.OpticalAttenuation',
             'InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.1.RxPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_HW_RxPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_HW_RxPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_HW_RXPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_ALG-COM_RxPower',
+            'InternetGatewayDevice.X_ALU_OntOpticalParam.RXPower',
+            'InternetGatewayDevice.X_ALU_OntOpticalParam.RxPower',
             'Device.Optical.1.Transceiver.RxPower',
             'Device.Optical.1.Transceiver.RxAttenuation',
             'Device.Optical.Interface.1.RxPower',
             'Device.Optical.Interface.1.RXPower',
+            'Device.Optical.Interface.1.OpticalRxPower',
         ];
 
         $txCandidates = [
@@ -188,31 +210,52 @@ class AcsTelemetryParser
             'VirtualParameters.tx_power',
             'VirtualParameters.TxPower',
             'VirtualParameters.OpticalInfo.TxPower',
+            'VirtualParameters.OpticalInfo.TxOpticalPower',
+            'VirtualParameters.OpticalInfo.OpticalTxPower',
             'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower',
             'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TxPower',
             'InternetGatewayDevice.WANDevice.1.X_HW_DEBUG.AMP.OpticalInfo.TxPower',
             'InternetGatewayDevice.X_HW_DEBUG.AMP.OpticalInfo.TxPower',
             'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.TXPower',
             'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.1.TxPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.TXPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PonInterfaceConfig.TxPower',
             'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.TXPower',
             'InternetGatewayDevice.WANDevice.1.X_HW_GponInterfaceConfig.TxPower',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.TXPower',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.TxPower',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.1.TXPower',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TxPower',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.1.TXPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_OpticalTxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverTxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TXPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.TxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.TXPower',
             'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower',
+            'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TxPower',
+            'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.TXPower',
+            'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.TxPower',
             'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower',
-            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.TXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.TxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_TxPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_TransceiverTxPower',
             'InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.1.TxPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_HW_TxPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_HW_TxPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_HW_TXPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_ALG-COM_TxPower',
+            'InternetGatewayDevice.X_ALU_OntOpticalParam.TXPower',
+            'InternetGatewayDevice.X_ALU_OntOpticalParam.TxPower',
             'Device.Optical.1.Transceiver.TxPower',
             'Device.Optical.Interface.1.TxPower',
             'Device.Optical.Interface.1.TXPower',
+            'Device.Optical.Interface.1.OpticalTxPower',
         ];
 
         $tempCandidates = [
@@ -312,18 +355,23 @@ class AcsTelemetryParser
             return [null, null];
         };
 
-        [$rxPath, $rawRx] = $findWithKey($rxCandidates, '/(\b|_)(RXPower|RxPower|OpticalRxPower|OpticalAttenuation|RxAttenuation|Attenuation)$/i');
-        [$txPath, $rawTx] = $findWithKey($txCandidates, '/(\b|_)(TXPower|TxPower|OpticalTxPower)$/i');
-        [$tempPath, $rawTemp] = $findWithKey($tempCandidates, '/(\b|_)(TransceiverTemperature|opticalTemperature|Temperature)$/i');
-        [$voltagePath, $rawVoltage] = $findWithKey($voltageCandidates, '/(\b|_)(SupplyVoltage|TransceiverVoltage|opticalVoltage|Voltage)$/i');
-        [$biasPath, $rawBias] = $findWithKey($biasCandidates, '/(\b|_)(BiasCurrent|LaserBiasCurrent|TransceiverBiasCurrent|Bias)$/i');
-        [$losPath, $rawLos] = $findWithKey($losCandidates, '/(\b|_)(LOSStatus|LOS|LinkStatus)$/i');
+        [$rxPath, $rawRx] = $findWithKey($rxCandidates, '/(?:[\._]|^)(?:X_.*_)?(?:RXPower|RxPower|OpticalRxPower|RxOpticalPower|OpticalPowerRx|Rx_Power|Redaman|RxAttenuation|Attenuation)(?:\._value)?$/i');
+        [$txPath, $rawTx] = $findWithKey($txCandidates, '/(?:[\._]|^)(?:X_.*_)?(?:TXPower|TxPower|OpticalTxPower|TxOpticalPower|OpticalPowerTx|Tx_Power)(?:\._value)?$/i');
+        [$tempPath, $rawTemp] = $findWithKey($tempCandidates, '/(\b|_)(TransceiverTemperature|opticalTemperature|Temperature)(?:\._value)?$/i');
+        [$voltagePath, $rawVoltage] = $findWithKey($voltageCandidates, '/(\b|_)(SupplyVoltage|TransceiverVoltage|opticalVoltage|Voltage)(?:\._value)?$/i');
+        [$biasPath, $rawBias] = $findWithKey($biasCandidates, '/(\b|_)(BiasCurrent|LaserBiasCurrent|TransceiverBiasCurrent|Bias)(?:\._value)?$/i');
+        [$losPath, $rawLos] = $findWithKey($losCandidates, '/(\b|_)(LOSStatus|LOS|LinkStatus)(?:\._value)?$/i');
 
         $vendor = self::detectVendor($flat);
         $model = self::parseModelName($flat);
-        $sn = self::parseSerialNumber($flat);
+        $sn = self::parseSerialNumber($flat, $ad?->serial_number ?? $onu?->serial_number ?? '');
         $profile = VendorCapabilityCatalog::resolveProfile($vendor, $model, $sn);
-        $shouldSwap = !empty($profile['optical']['swap_rx_tx']);
+        $shouldSwap = !empty($profile['optical']['swap_rx_tx'])
+            || strtolower($vendor) === 'zte'
+            || str_starts_with(strtoupper($sn), 'ZTEG')
+            || str_starts_with(strtoupper($sn), '5A544547')
+            || ($rxPath && stripos($rxPath, 'X_ZTE-COM') !== false)
+            || ($txPath && stripos($txPath, 'X_ZTE-COM') !== false);
 
         $rx = self::normalizePowerValue($rawRx);
         $tx = self::normalizePowerValue($rawTx);
@@ -385,43 +433,57 @@ class AcsTelemetryParser
             $rxFormula .= ' (optical attenuation in dB)';
         }
 
-        // SWAP RULE: Swap ONLY based on verified vendor profile (e.g. ZTE F609/F670L where swap_rx_tx === true)
-        // Never swap based on blind guessing!
+        // SWAP RULE:
+        // In GPON, laser diode TX power is strictly in the range +0.5 to +6.5 dBm.
+        // Received signal RX power is strictly in the range -8.0 to -35.0 dBm (or reported as positive magnitude).
+        // On ZTE firmware (F609, F670L, etc.), the TX laser is reported under the RX parameter (e.g. 2.23 dBm)
+        // and the RX received power is reported under the TX parameter (e.g. 17.60 dBm or -17.60 dBm).
         if ($shouldSwap && $rx !== null && $tx !== null) {
-            if ($rx > 0.0 && $rx <= 6.0 && $tx <= -6.0) {
-                // Swapped according to tested vendor capability profile
-                $temp = $rx;
-                $rx = $tx;
-                $tx = $temp;
-                $rxFormula = 'Verified Vendor Profile Swap: Inverted from TX Parameter';
+            if ($rx > 0.0 && $rx <= 6.5 && abs($tx) >= 6.0) {
+                // Swapped according to tested vendor capability profile:
+                // Parameter in RX is actually TX laser, parameter in TX is actually RX power!
+                $actualRx = -abs($tx);
+                $actualTx = abs($rx);
+                $rx = $actualRx;
+                $tx = $actualTx;
+                $rxFormula = 'Verified Vendor Profile Swap: Inverted from TX Parameter (applied negative sign)';
                 $txFormula = 'Verified Vendor Profile Swap: Inverted from RX Parameter';
+            } elseif (abs($rx) >= 6.0 && $tx > 0.0 && $tx <= 6.5) {
+                // Values are in correct positions; ensure standard negative sign for RX and positive for TX
+                $rx = -abs($rx);
+                $tx = abs($tx);
             }
-        } elseif ($shouldSwap && $rx !== null && $rx > 0.0 && $rx <= 6.0 && $tx === null) {
-            $tx = $rx;
+        } elseif ($shouldSwap && $rx !== null && $rx > 0.0 && $rx <= 6.5 && $tx === null) {
+            $tx = abs($rx);
             $rx = null;
             $txFormula = 'Verified Vendor Profile Anomaly: Single positive value detected as TX laser';
+        } elseif ($shouldSwap && $tx !== null && $tx < 0 && $rx === null) {
+            $rx = $tx;
+            $tx = null;
+            $rxFormula = 'Verified Vendor Profile Anomaly: Single negative value detected as RX power';
         }
 
         // Anomaly: Positive attenuation reported on optical power parameter without minus sign
-        if (!$isAttenuation && $rx !== null && $rx >= 7.0 && $rx <= 45.0) {
+        if (!$isAttenuation && $rx !== null && $rx >= 6.0 && $rx <= 45.0) {
             $rx = -abs($rx);
             $rxFormula .= ' (applied negative sign for optical power)';
         }
 
         // EXPLICIT SEPARATION: ONU Optical readings vs OLT DDM readings
         // NEVER overwrite ONU TR-069 values with OLT values!
+        $resolvedOnu = $onu ?? $ad?->resolved_onu ?? $ad?->onu;
         $oltRx = null;
         $oltRxDisplay = 'Tidak Tersedia';
-        if ($onu && !empty($onu->rx_power_dbm) && is_numeric($onu->rx_power_dbm)) {
-            $val = (float) $onu->rx_power_dbm;
+        if ($resolvedOnu && !empty($resolvedOnu->rx_power_dbm) && is_numeric($resolvedOnu->rx_power_dbm)) {
+            $val = (float) $resolvedOnu->rx_power_dbm;
             $oltRx = round($val > 0 ? -$val : $val, 2);
             $oltRxDisplay = number_format($oltRx, 2) . ' dBm';
         }
 
         $oltTx = null;
         $oltTxDisplay = 'Tidak Tersedia';
-        if ($onu && !empty($onu->tx_power_dbm) && is_numeric($onu->tx_power_dbm)) {
-            $oltTx = round((float) $onu->tx_power_dbm, 2);
+        if ($resolvedOnu && !empty($resolvedOnu->tx_power_dbm) && is_numeric($resolvedOnu->tx_power_dbm)) {
+            $oltTx = round((float) $resolvedOnu->tx_power_dbm, 2);
             $oltTxDisplay = number_format($oltTx, 2) . ' dBm';
         }
 
@@ -583,7 +645,13 @@ class AcsTelemetryParser
             'olt_tx_power' => $oltTx,
             'olt_tx_display' => $oltTxDisplay,
 
-            // Backwards compatibility aliases (falls back to OLT only if ONU TR-069 is absent)
+            // Composite values (falls back to OLT only if ONU TR-069 is absent)
+            'composite_rx_power' => $compositeRx,
+            'composite_rx_display' => $compositeRxDisplay,
+            'composite_tx_power' => $compositeTx,
+            'composite_tx_display' => $compositeTxDisplay,
+
+            // Backwards compatibility aliases
             'rx_power' => $compositeRx,
             'rx_power_display' => $compositeRxDisplay,
             'rx_status' => $status,
@@ -805,6 +873,9 @@ class AcsTelemetryParser
         ]);
 
         // Vendor heuristic detection
+        if (empty($serialNumber)) {
+            $serialNumber = self::parseSerialNumber($flat, $deviceData['_deviceId']['_SerialNumber'] ?? '');
+        }
         $vendor = 'Generic';
         $snUpper = strtoupper($serialNumber);
         $manUpper = strtoupper((string)$rawManufacturer);

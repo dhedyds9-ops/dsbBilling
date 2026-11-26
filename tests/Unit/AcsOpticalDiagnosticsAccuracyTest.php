@@ -185,4 +185,63 @@ class AcsOpticalDiagnosticsAccuracyTest extends TestCase
         $this->assertEquals('-19.50 dBm', $optical['olt_rx_display']);
         $this->assertEquals('3.40 dBm', $optical['olt_tx_display']);
     }
+
+    /** Test ZTE positive TX magnitude swap (e.g. ZTEGCC408F02 with raw Rx: 2.23, Tx: 17.60) */
+    public function test_zte_swapped_with_positive_tx_magnitude(): void
+    {
+        $flat = [
+            'InternetGatewayDevice.DeviceInfo.SerialNumber' => 'ZTEGCC408F02',
+            'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower' => '223', // val / 100 = 2.23 dBm
+            'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower' => '17600', // val / 1000 = 17.60 dBm
+        ];
+
+        $optical = AcsTelemetryParser::parseOptical($flat);
+
+        $this->assertEquals(-17.60, $optical['onu_rx_power'], 'ZTE with positive TX magnitude must swap and negate to -17.60 dBm');
+        $this->assertEquals(2.23, $optical['onu_tx_power'], 'ZTE with positive TX magnitude must swap laser diode to +2.23 dBm');
+        $this->assertEquals('-17.60 dBm', $optical['onu_rx_display']);
+        $this->assertEquals('2.23 dBm', $optical['onu_tx_display']);
+        $this->assertEquals('normal', $optical['rx_status']);
+        $this->assertFalse($optical['is_anomalous']);
+    }
+
+    /** Test Huawei optical reading via X_GponInterafceConfig typo path */
+    public function test_huawei_optical_reading_via_typo_interafce_path(): void
+    {
+        $flat = [
+            'InternetGatewayDevice.DeviceInfo.Manufacturer' => 'Huawei',
+            'InternetGatewayDevice.DeviceInfo.ModelName' => 'EG8141H5',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.RXPower' => '-2280', // milli-dBm = -22.80
+            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.TXPower' => '245',   // 0.01 dBm = 2.45
+        ];
+
+        $optical = AcsTelemetryParser::parseOptical($flat);
+
+        $this->assertEquals(-22.80, $optical['onu_rx_power']);
+        $this->assertEquals(2.45, $optical['onu_tx_power']);
+        $this->assertEquals('-22.80 dBm', $optical['onu_rx_display']);
+        $this->assertEquals('2.45 dBm', $optical['onu_tx_display']);
+    }
+
+    /** Test composite fallback to OLT DDM when TR-069 is completely absent */
+    public function test_composite_fallback_to_olt_when_tr069_absent(): void
+    {
+        $flat = [
+            'InternetGatewayDevice.DeviceInfo.SerialNumber' => 'HWTC2E1E1C9F',
+        ];
+
+        $onu = new Onu();
+        $onu->rx_power_dbm = -15.78;
+        $onu->tx_power_dbm = 2.50;
+
+        $optical = AcsTelemetryParser::parseOptical($flat, $onu);
+
+        $this->assertNull($optical['onu_rx_power']);
+        $this->assertNull($optical['onu_tx_power']);
+        $this->assertEquals('Tidak Didukung', $optical['onu_rx_display']);
+        $this->assertEquals(-15.78, $optical['olt_rx_power']);
+        $this->assertEquals('-15.78 dBm', $optical['olt_rx_display']);
+        $this->assertEquals(-15.78, $optical['composite_rx_power']);
+        $this->assertEquals('-15.78 dBm', $optical['composite_rx_display']);
+    }
 }

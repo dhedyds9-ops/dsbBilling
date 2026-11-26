@@ -230,8 +230,11 @@
                                 @php
                                     $sigVal = ($device->signal !== null && $device->signal !== '') ? (float) $device->signal : null;
                                     // Fallback ke ONU jika signal di ACS device kosong atau anomali positif
-                                    if (($sigVal === null || $sigVal > 0) && !empty($device->onu?->rx_power_dbm)) {
-                                        $sigVal = (float) $device->onu->rx_power_dbm;
+                                    if ($sigVal === null || $sigVal > 0) {
+                                        $onuRecord = $device->resolved_onu ?? $device->onu;
+                                        if (!empty($onuRecord?->rx_power_dbm)) {
+                                            $sigVal = (float) $onuRecord->rx_power_dbm;
+                                        }
                                     }
                                 @endphp
                                 @if($sigVal !== null)

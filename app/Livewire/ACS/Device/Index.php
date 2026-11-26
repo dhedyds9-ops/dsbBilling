@@ -319,7 +319,7 @@ class Index extends BaseACSComponent
         $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) <= 20) ? 'online' : 'offline';
 
         $acsDeviceParams = [
-            'signal' => $rxPower,
+            'signal' => ($rxPower !== null && $rxPower < 0) ? $rxPower : ($matchedOnu?->rx_power_dbm ?? null),
             'serial_number' => $serialNumber,
             'mac_address' => $mac,
             'model' => $identity['model'],
@@ -333,6 +333,9 @@ class Index extends BaseACSComponent
             'hardware_version' => $identity['hardware_version'],
             'manufacturer' => $identity['manufacturer'],
             'oui' => $identity['oui'],
+            'onu_id' => $matchedOnu?->id,
+            'olt_id' => $matchedOnu?->olt_id,
+            'odp_id' => $matchedOnu?->odp_id,
         ];
 
         // AUTO BINDING LOGIC

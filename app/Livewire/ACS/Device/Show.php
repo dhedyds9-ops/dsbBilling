@@ -208,8 +208,16 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
             // Flatten all parameters using unified AcsTelemetryParser
             $flat = \App\Services\ACS\AcsTelemetryParser::flatten($params);
 
-            // 1. RX & TX Optical Power (Multi-Vendor + ZTE Swap Detection + OLT DDM Fallback)
-            $optical = \App\Services\ACS\AcsTelemetryParser::parseOptical($flat, $this->device->onu);
+            // 1. Resolve ONU with hex/ascii conversion and missing onu_id handling
+            $resolvedOnu = $this->device->resolved_onu ?? $this->device->onu;
+            if (empty($this->device->onu_id) && $resolvedOnu) {
+                try {
+                    $this->device->update(['onu_id' => $resolvedOnu->id]);
+                } catch (\Throwable) {}
+            }
+
+            // RX & TX Optical Power (Multi-Vendor + ZTE Swap Detection + OLT DDM Fallback)
+            $optical = \App\Services\ACS\AcsTelemetryParser::parseOptical($flat, $resolvedOnu, $this->device);
             $rxPower = $optical['rx_power'];
             $txPower = $optical['tx_power'];
 
@@ -404,9 +412,17 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                 ?? collect($flat)->first(fn($v, $k) => (str_contains($k, 'WLANConfiguration.5.SSID') || str_contains($k, 'WLANConfiguration.2.SSID')) && !empty($v))
                 ?? '-';
 
+            $displayRx = $rxPower !== null 
+                ? round((float)$rxPower, 2) . ' dBm' 
+                : ($optical['olt_rx_power'] !== null ? round((float)$optical['olt_rx_power'], 2) . ' dBm (OLT)' : '-');
+
+            $displayTx = $txPower !== null 
+                ? round((float)$txPower, 2) . ' dBm' 
+                : ($optical['olt_tx_power'] !== null ? round((float)$optical['olt_tx_power'], 2) . ' dBm (OLT)' : '-');
+
             $this->deviceStatus = [
-                'rx_power' => $rxPower !== null ? round((float)$rxPower, 2) . ' dBm' : '-',
-                'tx_power' => $txPower !== null ? round((float)$txPower, 2) . ' dBm' : '-',
+                'rx_power' => $displayRx,
+                'tx_power' => $displayTx,
                 'pppoe_username' => (string) $pppoeUser,
                 'pppoe_password' => (string) $pppoePass,
                 'superadmin_user' => (string) $adminUser,

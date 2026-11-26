@@ -668,7 +668,14 @@
                         {{ strtoupper($opticalDiagnostics['rx_status'] ?? 'UNKNOWN') }}
                     </span>
                 </div>
-                <div class="text-2xl font-black text-slate-900 dark:text-slate-100">{{ $opticalDiagnostics['rx_power_display'] ?? ($deviceStatus['rx_power'] ?? '-') }}</div>
+                @php
+                    $displayOnuRx = ($opticalDiagnostics['rx_power_display'] ?? 'Tidak Didukung');
+                    if ($displayOnuRx === 'Tidak Didukung' && !empty($opticalDiagnostics['olt_rx_power'])) {
+                        $displayOnuRx = $opticalDiagnostics['olt_rx_display'] . ' (via OLT)';
+                    }
+                    $resolvedOnuInstance = $device->resolved_onu ?? $device->onu;
+                @endphp
+                <div class="text-2xl font-black text-slate-900 dark:text-slate-100">{{ $displayOnuRx !== 'Tidak Didukung' ? $displayOnuRx : ($deviceStatus['rx_power'] ?? '-') }}</div>
                 <p class="text-[11px] text-slate-400">Standar optimal: -15.0 s/d -24.0 dBm</p>
                 @if(!empty($opticalDiagnostics['rx_raw']))
                     <div class="pt-1 text-[10px] text-slate-500 font-mono border-t border-indigo-100 dark:border-indigo-950">
@@ -691,7 +698,7 @@
             <div class="p-4 rounded-xl border border-emerald-200 bg-emerald-50/30 dark:bg-slate-800 dark:border-emerald-900/50 shadow-sm space-y-1">
                 <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">OLT RX Power (DDM)</span>
                 <div class="text-2xl font-black text-slate-900 dark:text-slate-100">
-                    {{ $device->onu?->rx_power_dbm !== null ? round((float)$device->onu->rx_power_dbm, 2) . ' dBm' : '-' }}
+                    {{ $resolvedOnuInstance?->rx_power_dbm !== null ? round((float)$resolvedOnuInstance->rx_power_dbm, 2) . ' dBm' : '-' }}
                 </div>
                 <p class="text-[11px] text-slate-400">Diterima port PON OLT</p>
                 <div class="pt-1 text-[10px] text-slate-500 font-mono border-t border-emerald-100 dark:border-emerald-950">
@@ -702,7 +709,7 @@
             <div class="p-4 rounded-xl border border-purple-200 bg-purple-50/30 dark:bg-slate-800 dark:border-purple-900/50 shadow-sm space-y-1">
                 <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Jarak Optik / Distance</span>
                 <div class="text-2xl font-black text-slate-900 dark:text-slate-100">
-                    {{ $device->onu?->distance_meters !== null ? round((float)$device->onu->distance_meters / 1000.0, 2) . ' km' : ($device->onu?->distance !== null ? $device->onu->distance . ' m' : '-') }}
+                    {{ $resolvedOnuInstance?->distance_meters !== null ? round((float)$resolvedOnuInstance->distance_meters / 1000.0, 2) . ' km' : ($resolvedOnuInstance?->distance !== null ? $resolvedOnuInstance->distance . ' m' : '-') }}
                 </div>
                 <p class="text-[11px] text-slate-400">Estimasi bentangan kabel dari OLT</p>
                 <div class="pt-1 text-[10px] text-slate-500 font-mono border-t border-purple-100 dark:border-purple-950">
