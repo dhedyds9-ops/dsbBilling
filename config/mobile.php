@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10130,
-        'latest_version_name' => '1.1.30',
+        'latest_version_code' => 10131,
+        'latest_version_name' => '1.1.31',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'https://winets.mstore.id') . '/downloads/dsbilling-technician.apk',
-        'release_notes' => "dsBilling Staff & Reseller v1.1.30:\n- Optimalisasi Dasbor Reseller: 4 Kartu KPI resmi (Pelanggan Aktif, Omzet Layanan, Komisi Reseller, Tagihan Belum Lunas), 8 Akses Cepat Grid 2x4 responsif tanpa teks terpotong, dan isolasi ketat menu teknisi.\n- Penyelarasan Penuh Komisi Reseller Web-Mobile: Integrasi SSOT IncomeReportService, pemisahan Omzet Kotor, Komisi Bersih, Setoran Modal Pusat, Rasio Margin, filter periode & kategori, serta rincian struk per transaksi.\n- Discovery Lengkap Multi-SSID ONT: Penemuan seluruh SSID (1..4 pada 2.4GHz dan 5..8 pada 5GHz) pada ZTE, Huawei, FiberHome TR-098 & TR-181 dengan proteksi tabrakan indeks dan verifikasi Read-After-Write.",
+        'release_notes' => "dsBilling Staff & Reseller v1.1.31:\n- Paritas Menu Reseller Lengkap (12 Akses Cepat): Menghadirkan kembali User Online, Peta Jaringan, SpeedTest, dan 1-Klik Web Portal untuk akun Reseller.\n- Eliminasi Redundansi Menu: Tombol duplikat Komisi diganti dengan User Online karena Komisi sudah terpampang jelas pada kartu KPI utama.\n- Katalog Material Gudang Lengkap: Menampilkan seluruh stok barang di gudang cabang tanpa batas 20 item.\n- Perapian Tampilan Detail ONT: Nilai CPU & RAM yang tidak didukung ditampilkan sebagai 0% dengan tata letak ringkas, proporsional, dan tanpa overflow.\n- Monitoring Koneksi WAN Aktif: Menampilkan daftar koneksi WAN aktif (PPPoE/IPoE, IP WAN, status terhubung, dan VLAN) di dalam panel Pengaturan WAN.",
     ],
     'customer' => [
         'latest_version_code' => 10112,

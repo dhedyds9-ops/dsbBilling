@@ -247,14 +247,15 @@ class MobileInventoryApiController extends Controller
             $query->where('category', $request->input('category'));
         }
 
-        $perPage = strtolower((string)$request->input('per_page', '20'));
+        $perPage = strtolower((string)$request->input('per_page', 'all'));
         if ($perPage === 'all' || (int)$perPage <= 0) {
             $items = $query->get();
         } else {
             $limit = match ($perPage) {
+                '20' => 20,
                 '50' => 50,
                 '100' => 100,
-                default => 20,
+                default => (int)$perPage,
             };
             $items = $query->limit($limit)->get();
         }

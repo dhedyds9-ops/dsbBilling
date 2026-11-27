@@ -84,14 +84,31 @@ class OnuParameterResolver
                 $pppIdx = $pppInstances[0];
                 if ($prop === 'vlan_id') {
                     return $this->findFirstExistingPath($params, [
-                        "{$basePath}.WANPPPConnection.{$pppIdx}.VLANID", // FiberHome & standard
                         "{$basePath}.WANPPPConnection.{$pppIdx}.X_ZTE-COM_VLANID", // ZTE
-                        "{$basePath}.X_ZTE-COM_VLANID" // Older ZTE
+                        "{$basePath}.WANPPPConnection.{$pppIdx}.VLANID", // FiberHome & standard
+                        "{$basePath}.X_ZTE-COM_VLANID", // Older ZTE
+                        "{$basePath}.WANEthernetLinkConfig.X_HW_VLAN", // Huawei
+                        "{$basePath}.X_FH_WANGponLinkConfig.VLANIDMark", // FiberHome
                     ]);
                 }
                 if ($prop === 'mode') return "{$basePath}.WANPPPConnection.{$pppIdx}.ConnectionType";
                 if ($prop === 'pppoe.username') return "{$basePath}.WANPPPConnection.{$pppIdx}.Username";
                 if ($prop === 'pppoe.password') return "{$basePath}.WANPPPConnection.{$pppIdx}.Password";
+            }
+
+            $ipInstances = $this->extractInstances($params, "{$basePath}.WANIPConnection");
+            if (!empty($ipInstances)) {
+                $ipIdx = $ipInstances[0];
+                if ($prop === 'vlan_id') {
+                    return $this->findFirstExistingPath($params, [
+                        "{$basePath}.WANIPConnection.{$ipIdx}.X_ZTE-COM_VLANID", // ZTE
+                        "{$basePath}.WANIPConnection.{$ipIdx}.VLANID", // Standard
+                        "{$basePath}.X_ZTE-COM_VLANID",
+                        "{$basePath}.WANEthernetLinkConfig.X_HW_VLAN",
+                        "{$basePath}.X_FH_WANGponLinkConfig.VLANIDMark",
+                    ]);
+                }
+                if ($prop === 'mode') return "{$basePath}.WANIPConnection.{$ipIdx}.ConnectionType";
             }
         }
 

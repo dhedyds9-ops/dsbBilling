@@ -26,7 +26,7 @@ class VendorCapabilityCatalog
     protected static array $catalog = [
         'zte' => [
             'vendor_name' => 'ZTE',
-            'oui' => ['00259E', '0019C6', '002293', 'ZTEG', '5A544547'],
+            'oui' => ['00259E', '0019C6', '002293', 'ZTEG', '5A544547', '28C01B', 'ZICG'],
             'models' => [
                 'F670L' => [
                     'product_class' => 'F670L',
@@ -69,6 +69,42 @@ class VendorCapabilityCatalog
                     'data_model' => 'TR-098',
                     'hardware_versions' => ['V3.0', 'V4.0', 'V5.3', 'V9.0'],
                     'software_versions' => ['V5.3.0P1T2', 'V7.0.10P1N1', 'V9.0.10P1N1'],
+                    'bands' => ['2.4GHz'],
+                    'max_ssids_24' => 4,
+                    'max_ssids_5' => 0,
+                    'lan_ports' => 4,
+                    'optical' => [
+                        'rx_path' => 'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower',
+                        'tx_path' => 'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower',
+                        'temp_path' => 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TransceiverTemperature',
+                        'voltage_path' => 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TransceiverVoltage',
+                        'bias_path' => 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TransceiverBiasCurrent',
+                        'swap_rx_tx' => true,
+                        'rx_unit' => '0.01 dBm / dBm',
+                        'formula' => 'val > 0 && val <= 6.0 ? tx_swapped : (val >= 60 ? val / 100 : val)',
+                    ],
+                    'wifi' => [
+                        'base_path_24' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration',
+                        'instances_24' => [1, 2, 3, 4],
+                        'base_path_5' => null,
+                        'instances_5' => [],
+                        'rf_band_param' => 'X_ZTE-COM_RFBand',
+                        'channel_param' => 'Channel',
+                    ],
+                    'wan' => [
+                        'vlan_param' => 'X_ZTE-COM_VLANID',
+                        'vlan_enable_param' => 'X_ZTE-COM_VLANEnable',
+                        'service_list_param' => 'X_ZTE-COM_ServiceList',
+                        'port_bind_param' => 'X_ZTE-COM_PortBind',
+                    ],
+                    'status' => self::STATUS_VERIFIED_WRITE,
+                    'physical_verification' => self::STATUS_PHYSICALLY_VERIFIED,
+                ],
+                'F663NV3A' => [
+                    'product_class' => 'F663NV3A',
+                    'data_model' => 'TR-098',
+                    'hardware_versions' => ['V3.0', 'V1.0', 'V2.0'],
+                    'software_versions' => ['V3.0.10P1T1', 'V3.0.10P1N1'],
                     'bands' => ['2.4GHz'],
                     'max_ssids_24' => 4,
                     'max_ssids_5' => 0,

@@ -1097,14 +1097,19 @@ class AcsTelemetryParser
         $rawManufacturer = self::extractValue($flat, [
             'InternetGatewayDevice.DeviceInfo.Manufacturer',
             'Device.DeviceInfo.Manufacturer',
-        ], $deviceData['_deviceId']['_Manufacturer'] ?? null);
+            'DeviceID.Manufacturer',
+            '_deviceId._Manufacturer',
+        ], $deviceData['_deviceId']['_Manufacturer'] ?? ($deviceData['DeviceID']['Manufacturer']['_value'] ?? null));
 
         $rawModel = self::extractValue($flat, [
             'InternetGatewayDevice.DeviceInfo.ModelName',
             'Device.DeviceInfo.ModelName',
             'InternetGatewayDevice.DeviceInfo.ProductClass',
             'Device.DeviceInfo.ProductClass',
-        ], $deviceData['_deviceId']['_ProductClass'] ?? null);
+            'DeviceID.ProductClass',
+            'DeviceID.ModelName',
+            '_deviceId._ProductClass',
+        ], $deviceData['_deviceId']['_ProductClass'] ?? ($deviceData['DeviceID']['ProductClass']['_value'] ?? null));
 
         $softwareVersion = self::extractValue($flat, [
             'InternetGatewayDevice.DeviceInfo.SoftwareVersion',
@@ -1116,10 +1121,12 @@ class AcsTelemetryParser
             'Device.DeviceInfo.HardwareVersion',
         ]);
 
-        $oui = $deviceData['_deviceId']['_OUI'] ?? self::extractValue($flat, [
+        $oui = $deviceData['_deviceId']['_OUI'] ?? ($deviceData['DeviceID']['OUI']['_value'] ?? self::extractValue($flat, [
             'InternetGatewayDevice.DeviceInfo.ManufacturerOUI',
             'Device.DeviceInfo.ManufacturerOUI',
-        ]);
+            'DeviceID.OUI',
+            '_deviceId._OUI',
+        ]));
 
         // Vendor heuristic detection
         if (empty($serialNumber)) {
@@ -1130,7 +1137,20 @@ class AcsTelemetryParser
         $manUpper = strtoupper((string)$rawManufacturer);
         $modelUpper = strtoupper((string)$rawModel);
 
-        if (str_starts_with($snUpper, 'ZTEG') || str_contains($manUpper, 'ZTE') || str_contains($modelUpper, 'F609') || str_contains($modelUpper, 'F660') || str_contains($modelUpper, 'F670')) {
+        if (
+            str_starts_with($snUpper, 'ZTEG') || 
+            str_starts_with($snUpper, 'ZICG') || 
+            str_starts_with($snUpper, '5A544547') || 
+            str_contains($manUpper, 'ZTE') || 
+            str_contains($manUpper, 'ZICG') || 
+            str_contains($modelUpper, 'F609') || 
+            str_contains($modelUpper, 'F660') || 
+            str_contains($modelUpper, 'F663') || 
+            str_contains($modelUpper, 'F670') || 
+            str_contains($modelUpper, 'F680') || 
+            str_contains($modelUpper, 'ZXHN') || 
+            str_starts_with(strtoupper((string)$oui), '28C01B')
+        ) {
             $vendor = 'ZTE';
         } elseif (str_starts_with($snUpper, 'HWTC') || str_contains($manUpper, 'HUAWEI') || str_contains($modelUpper, 'HG8') || str_contains($modelUpper, 'EG8')) {
             $vendor = 'Huawei';
@@ -1201,7 +1221,7 @@ class AcsTelemetryParser
     public static function detectVendor(array $params): string
     {
         $flat = self::flatten($params);
-        $identity = self::parseDeviceIdentity($flat);
+        $identity = self::parseDeviceIdentity($flat, $params);
         return strtolower($identity['vendor'] ?? 'generic');
     }
 
@@ -1944,6 +1964,9 @@ class AcsTelemetryParser
                                   $cdNode['X_FH_WANGponLinkConfig']['VLANID']['_value'] ??
                                   $cdNode['WANEthernetLinkConfig']['X_HW_VLAN']['_value'] ??
                                   $cdNode['WANEthernetLinkConfig']['VLANIDMark']['_value'] ??
+                                  $cdNode['X_ZTE-COM_VLANID']['_value'] ??
+                                  $cdNode['X_CT-COM_VLANIDMark']['_value'] ??
+                                  $cdNode['X_CT-COM_WANGponLinkConfig']['VLANIDMark']['_value'] ??
                                   $cdNode['VLANID']['_value'] ??
                                   null;
 
@@ -2011,13 +2034,23 @@ class AcsTelemetryParser
                 $node['X_BROADCOM_COM_VLANID']['_value'] ??
                 $node['X_ZTE-COM_VLANID']['_value'] ??
                 $node['X_HW_VLAN']['_value'] ??
+                $node['X_CT-COM_VLANIDMark']['_value'] ??
+                $node['X_CT-COM_VLAN']['_value'] ??
                 $parentVlan;
+
+        // Fallback: extract VLAN ID encoded in ZTE connection names (e.g. "3_Other_B_VID_111" -> 111, "1_TR069_R_VID_901" -> 901)
+        if (($vlan === null || (int)$vlan === 0) && preg_match('/_VID_(\d+)/i', $name, $matches)) {
+            $vlan = (int) $matches[1];
+        }
 
         $vlanInt = ($vlan !== null && is_numeric($vlan)) ? (int)$vlan : null;
         $vlanEnabled = ($vlanInt !== null && $vlanInt > 0);
 
         if (isset($node['X_ZTE-COM_VLANEnable']['_value'])) {
             $vlanEnabled = (bool) $node['X_ZTE-COM_VLANEnable']['_value'];
+            if ($vlanInt !== null && $vlanInt > 0 && !$node['X_ZTE-COM_VLANEnable']['_value']) {
+                $vlanEnabled = false;
+            }
         }
 
         $serviceList = $node['X_FH_ServiceList']['_value'] ??

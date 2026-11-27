@@ -938,6 +938,15 @@ class GenieACSDriver
 const now = Date.now();
 let brandDecl = declare("DeviceID.Manufacturer", {value: 1});
 let brand = (brandDecl.value !== undefined) ? brandDecl.value[0] : "";
+let modelDecl = declare("DeviceID.ProductClass", {value: 1});
+let model = (modelDecl.value !== undefined) ? modelDecl.value[0] : "";
+let snDecl = declare("DeviceID.SerialNumber", {value: 1});
+let sn = (snDecl.value !== undefined) ? snDecl.value[0] : "";
+
+let isZte = (brand.indexOf("ZTE") !== -1 || brand.indexOf("ZICG") !== -1 || sn.indexOf("ZTEG") !== -1 || sn.indexOf("ZICG") !== -1 || model.indexOf("F6") !== -1 || model.indexOf("ZXHN") !== -1);
+let isHuawei = (brand.indexOf("Huawei") !== -1 || brand.indexOf("EchoLife") !== -1 || brand.indexOf("EcomTech") !== -1 || sn.indexOf("HWTC") !== -1 || model.indexOf("HG8") !== -1 || model.indexOf("EG8") !== -1);
+let isFiberHome = (brand.indexOf("FiberHome") !== -1 || sn.indexOf("FHTT") !== -1 || model.indexOf("AN5506") !== -1 || model.indexOf("HG6") !== -1);
+
 let pppPath = "";
 
 let wanConns = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*.Username", {path: 1});
@@ -971,7 +980,7 @@ if (!pppPath) {
     declare(pppPath, {path: 1}, {path: 1});
 }
 
-let connType = (brand.indexOf("FiberHome") !== -1 ? "PPPoE_Routed" : "IP_Routed");
+let connType = (isFiberHome ? "PPPoE_Routed" : "IP_Routed");
 declare(pppPath + ".Enable", {value: now}, {value: true});
 declare(pppPath + ".ConnectionType", {value: now}, {value: connType});
 declare(pppPath + ".NATEnabled", {value: now}, {value: true});
@@ -984,14 +993,15 @@ if ({$vlanVal} > 0) {
     let wanIdx = match ? match[1] : "1";
     let basePath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx;
     
-    if (brand.indexOf("ZTE") !== -1) {
+    if (isZte) {
         declare(pppPath + ".X_ZTE-COM_VLANID", {value: now}, {value: {$vlanVal}});
         declare(pppPath + ".X_ZTE-COM_VLANEnable", {value: now}, {value: 1});
-    } else if (brand.indexOf("Huawei") !== -1 || brand.indexOf("EchoLife") !== -1) {
+        declare(basePath + ".X_ZTE-COM_VLANID", {value: now}, {value: {$vlanVal}});
+    } else if (isHuawei) {
         declare(basePath + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: {$vlanVal}});
         declare(basePath + ".WANEthernetLinkConfig.Mode", {value: now}, {value: 2});
         declare(pppPath + ".X_HW_VLAN", {value: now}, {value: {$vlanVal}});
-    } else if (brand.indexOf("FiberHome") !== -1) {
+    } else if (isFiberHome) {
         declare(basePath + ".X_FH_WANGponLinkConfig.VLANIDMark", {value: now}, {value: {$vlanVal}});
         declare(basePath + ".X_FH_WANGponLinkConfig.VLANID", {value: now}, {value: {$vlanVal}});
         declare(basePath + ".X_FH_WANGponLinkConfig.Mode", {value: now}, {value: 1});

@@ -30,14 +30,19 @@ class AcsWanManagerService
         $cuParts = explode('-', $cleanId);
         $candidateSn = end($cuParts);
 
-        $device = ACSDevice::withoutGlobalScopes()
-            ->with(['vendor', 'onu.vendor'])
-            ->where(function ($q) use ($cleanId, $candidateSn) {
-                $q->where('uuid', $cleanId)
-                  ->orWhere('serial_number', $cleanId)
-                  ->orWhere('serial_number', $candidateSn)
-                  ->orWhere('mac_address', $cleanId);
-            })->first();
+        $device = null;
+        try {
+            $device = ACSDevice::withoutGlobalScopes()
+                ->with(['vendor', 'onu.vendor'])
+                ->where(function ($q) use ($cleanId, $candidateSn) {
+                    $q->where('uuid', $cleanId)
+                      ->orWhere('serial_number', $cleanId)
+                      ->orWhere('serial_number', $candidateSn)
+                      ->orWhere('mac_address', $cleanId);
+                })->first();
+        } catch (\Throwable) {
+            $device = null;
+        }
 
         $candidates = [
             $cleanId,
@@ -57,10 +62,29 @@ class AcsWanManagerService
 
         $combined = strtolower(implode(' ', array_filter($candidates)));
 
+        if (!empty($params)) {
+            $parsedVendor = strtolower(AcsTelemetryParser::detectVendor($params));
+            if ($parsedVendor !== 'generic') {
+                return $parsedVendor;
+            }
+        }
+
         if (str_contains($combined, 'huawei') || str_contains($combined, 'hwtc') || str_contains($combined, 'eg8') || str_contains($combined, 'hg8') || str_contains($combined, 'ws70')) {
             return 'huawei';
         }
-        if (str_contains($combined, 'zte') || str_contains($combined, 'zteg') || str_contains($combined, 'f609') || str_contains($combined, 'f670') || str_contains($combined, 'f660')) {
+        if (
+            str_contains($combined, 'zte') || 
+            str_contains($combined, 'zteg') || 
+            str_contains($combined, 'zicg') || 
+            str_contains($combined, 'zic') || 
+            str_contains($combined, 'zxhn') || 
+            str_contains($combined, 'f609') || 
+            str_contains($combined, 'f670') || 
+            str_contains($combined, 'f660') || 
+            str_contains($combined, 'f663') || 
+            str_contains($combined, 'f680') || 
+            str_contains($combined, '28c01b')
+        ) {
             return 'zte';
         }
         if (str_contains($combined, 'fiberhome') || str_contains($combined, 'fhtt') || str_contains($combined, 'an5506') || str_contains($combined, 'hg6')) {
@@ -74,6 +98,19 @@ class AcsWanManagerService
         }
 
         return 'generic';
+    }
+
+    public function pathExistsInTree(array $tree, string $path): bool
+    {
+        $keys = explode('.', $path);
+        $curr = $tree;
+        foreach ($keys as $k) {
+            if (!is_array($curr) || !array_key_exists($k, $curr)) {
+                return false;
+            }
+            $curr = $curr[$k];
+        }
+        return true;
     }
 
     /**
@@ -233,38 +270,51 @@ if ("{$connObj}" === "WANIPConnection" && "{$connType}" === "IP_Routed" && "{$mo
 }
 
 // Vendor VLAN configuration
+let brandDecl = declare("DeviceID.Manufacturer", {value: 1});
+let brand = (brandDecl.value !== undefined) ? brandDecl.value[0] : "";
+let modelDecl = declare("DeviceID.ProductClass", {value: 1});
+let model = (modelDecl.value !== undefined) ? modelDecl.value[0] : "";
+let snDecl = declare("DeviceID.SerialNumber", {value: 1});
+let sn = (snDecl.value !== undefined) ? snDecl.value[0] : "";
+
+let isZte = ("{$vendor}".includes("zte") || brand.indexOf("ZTE") !== -1 || brand.indexOf("ZICG") !== -1 || sn.indexOf("ZTEG") !== -1 || sn.indexOf("ZICG") !== -1 || model.indexOf("F6") !== -1 || model.indexOf("ZXHN") !== -1);
+let isHuawei = ("{$vendor}".includes("huawei") || brand.indexOf("Huawei") !== -1 || brand.indexOf("EchoLife") !== -1 || brand.indexOf("EcomTech") !== -1 || sn.indexOf("HWTC") !== -1 || model.indexOf("HG8") !== -1 || model.indexOf("EG8") !== -1);
+let isFiberHome = ("{$vendor}".includes("fiberhome") || brand.indexOf("FiberHome") !== -1 || sn.indexOf("FHTT") !== -1 || model.indexOf("AN5506") !== -1 || model.indexOf("HG6") !== -1);
+
 if ({$vlanEnabledStr} && {$vlanId} > 0) {
-    if ("{$vendor}".includes("fiberhome")) {
+    if (isFiberHome) {
         declare(basePath + ".X_FH_WANGponLinkConfig.VLANIDMark", {value: now}, {value: {$vlanId}});
         declare(basePath + ".X_FH_WANGponLinkConfig.VLANID", {value: now}, {value: {$vlanId}});
         declare(basePath + ".X_FH_WANGponLinkConfig.Mode", {value: now}, {value: 1});
-    } else if ("{$vendor}".includes("huawei")) {
+    } else if (isHuawei) {
         declare(basePath + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: {$vlanId}});
         declare(basePath + ".WANEthernetLinkConfig.Mode", {value: now}, {value: 2});
         declare(pppPath + ".X_HW_VLAN", {value: now}, {value: {$vlanId}});
-    } else if ("{$vendor}".includes("zte")) {
+    } else if (isZte) {
         declare(pppPath + ".X_ZTE-COM_VLANID", {value: now}, {value: {$vlanId}});
         declare(pppPath + ".X_ZTE-COM_VLANEnable", {value: now}, {value: 1});
+        declare(basePath + ".X_ZTE-COM_VLANID", {value: now}, {value: {$vlanId}});
     } else {
         declare(basePath + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: {$vlanId}});
         declare(basePath + ".VLANID", {value: now}, {value: {$vlanId}});
     }
 } else {
-    if ("{$vendor}".includes("huawei")) {
+    if (isHuawei) {
         declare(basePath + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: 0});
         declare(basePath + ".WANEthernetLinkConfig.Mode", {value: now}, {value: 1});
-    } else if ("{$vendor}".includes("zte")) {
+    } else if (isZte) {
         declare(pppPath + ".X_ZTE-COM_VLANEnable", {value: now}, {value: 0});
         declare(pppPath + ".X_ZTE-COM_VLANID", {value: now}, {value: 0});
+        declare(basePath + ".X_ZTE-COM_VLANID", {value: now}, {value: 0});
     }
 }
 
 // Service List
-if ("{$vendor}".includes("fiberhome")) {
+if (isFiberHome) {
     declare(pppPath + ".X_FH_ServiceList", {value: now}, {value: "{$serviceList}"});
-} else if ("{$vendor}".includes("huawei")) {
+} else if (isHuawei) {
     declare(pppPath + ".X_HW_SERVICELIST", {value: now}, {value: "{$serviceList}"});
-} else if ("{$vendor}".includes("zte")) {
+} else if (isZte) {
     declare(pppPath + ".X_ZTE-COM_ServiceList", {value: now}, {value: "{$serviceList}"});
 }
 
@@ -376,18 +426,30 @@ if ("{$password}" !== "") {
     declare(pppPath + ".Password", {value: now}, {value: "{$password}"});
 }
 
+let brandDecl = declare("DeviceID.Manufacturer", {value: 1});
+let brand = (brandDecl.value !== undefined) ? brandDecl.value[0] : "";
+let modelDecl = declare("DeviceID.ProductClass", {value: 1});
+let model = (modelDecl.value !== undefined) ? modelDecl.value[0] : "";
+let snDecl = declare("DeviceID.SerialNumber", {value: 1});
+let sn = (snDecl.value !== undefined) ? snDecl.value[0] : "";
+
+let isZte = ("{$vendor}".includes("zte") || brand.indexOf("ZTE") !== -1 || brand.indexOf("ZICG") !== -1 || sn.indexOf("ZTEG") !== -1 || sn.indexOf("ZICG") !== -1 || model.indexOf("F6") !== -1 || model.indexOf("ZXHN") !== -1);
+let isHuawei = ("{$vendor}".includes("huawei") || brand.indexOf("Huawei") !== -1 || brand.indexOf("EchoLife") !== -1 || brand.indexOf("EcomTech") !== -1 || sn.indexOf("HWTC") !== -1 || model.indexOf("HG8") !== -1 || model.indexOf("EG8") !== -1);
+let isFiberHome = ("{$vendor}".includes("fiberhome") || brand.indexOf("FiberHome") !== -1 || sn.indexOf("FHTT") !== -1 || model.indexOf("AN5506") !== -1 || model.indexOf("HG6") !== -1);
+
 if ({$vlanEnabledStr} && {$vlanId} > 0) {
-    if ("{$vendor}".includes("fiberhome")) {
+    if (isFiberHome) {
         declare("{$parentPath}.X_FH_WANGponLinkConfig.VLANIDMark", {value: now}, {value: {$vlanId}});
         declare("{$parentPath}.X_FH_WANGponLinkConfig.VLANID", {value: now}, {value: {$vlanId}});
         declare("{$parentPath}.X_FH_WANGponLinkConfig.Mode", {value: now}, {value: 1});
-    } else if ("{$vendor}".includes("huawei")) {
+    } else if (isHuawei) {
         declare("{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: {$vlanId}});
         declare("{$parentPath}.WANEthernetLinkConfig.Mode", {value: now}, {value: 2});
         declare(pppPath + ".X_HW_VLAN", {value: now}, {value: {$vlanId}});
-    } else if ("{$vendor}".includes("zte")) {
+    } else if (isZte) {
         declare(pppPath + ".X_ZTE-COM_VLANID", {value: now}, {value: {$vlanId}});
         declare(pppPath + ".X_ZTE-COM_VLANEnable", {value: now}, {value: 1});
+        declare("{$parentPath}.X_ZTE-COM_VLANID", {value: now}, {value: {$vlanId}});
     }
 }
 JS;
@@ -473,14 +535,27 @@ JS;
             } elseif ($isZte) {
                 $parameters["{$fullPath}.X_ZTE-COM_VLANID"] = $vlanId;
                 $parameters["{$fullPath}.X_ZTE-COM_VLANEnable"] = 1;
+                if ($this->pathExistsInTree($params, "{$parentPath}.X_ZTE-COM_VLANID")) {
+                    $parameters["{$parentPath}.X_ZTE-COM_VLANID"] = $vlanId;
+                }
             } elseif ($isFiberHome) {
                 $parameters["{$parentPath}.X_FH_WANGponLinkConfig.VLANIDMark"] = $vlanId;
                 $parameters["{$parentPath}.X_FH_WANGponLinkConfig.VLANID"] = $vlanId;
                 $parameters["{$parentPath}.X_FH_WANGponLinkConfig.Mode"] = 1;
             } else {
-                $parameters["{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN"] = $vlanId;
-                $parameters["{$parentPath}.WANEthernetLinkConfig.Mode"] = 2;
-                $parameters["{$parentPath}.VLANID"] = $vlanId;
+                if ($this->pathExistsInTree($params, "{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN")) {
+                    $parameters["{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN"] = $vlanId;
+                    $parameters["{$parentPath}.WANEthernetLinkConfig.Mode"] = 2;
+                } elseif ($this->pathExistsInTree($params, "{$fullPath}.X_ZTE-COM_VLANID")) {
+                    $parameters["{$fullPath}.X_ZTE-COM_VLANID"] = $vlanId;
+                    $parameters["{$fullPath}.X_ZTE-COM_VLANEnable"] = 1;
+                } elseif ($this->pathExistsInTree($params, "{$parentPath}.X_FH_WANGponLinkConfig.VLANIDMark")) {
+                    $parameters["{$parentPath}.X_FH_WANGponLinkConfig.VLANIDMark"] = $vlanId;
+                } elseif ($this->pathExistsInTree($params, "{$fullPath}.VLANID")) {
+                    $parameters["{$fullPath}.VLANID"] = $vlanId;
+                } elseif ($this->pathExistsInTree($params, "{$parentPath}.VLANID")) {
+                    $parameters["{$parentPath}.VLANID"] = $vlanId;
+                }
             }
         } else {
             if ($isHuawei) {
@@ -490,6 +565,9 @@ JS;
             } elseif ($isZte) {
                 $parameters["{$fullPath}.X_ZTE-COM_VLANEnable"] = 0;
                 $parameters["{$fullPath}.X_ZTE-COM_VLANID"] = 0;
+                if ($this->pathExistsInTree($params, "{$parentPath}.X_ZTE-COM_VLANID")) {
+                    $parameters["{$parentPath}.X_ZTE-COM_VLANID"] = 0;
+                }
             } elseif ($isFiberHome) {
                 $parameters["{$parentPath}.X_FH_WANGponLinkConfig.VLANIDMark"] = 0;
                 $parameters["{$parentPath}.X_FH_WANGponLinkConfig.VLANID"] = 0;

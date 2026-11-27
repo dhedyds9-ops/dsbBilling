@@ -108,6 +108,15 @@ if (!pppoeUser || !pppoePass) {
 
 let brandDecl = declare("DeviceID.Manufacturer", {value: 1});
 let brand = (brandDecl.value !== undefined) ? brandDecl.value[0] : "";
+let modelDecl = declare("DeviceID.ProductClass", {value: 1});
+let model = (modelDecl.value !== undefined) ? modelDecl.value[0] : "";
+let snDecl = declare("DeviceID.SerialNumber", {value: 1});
+let sn = (snDecl.value !== undefined) ? snDecl.value[0] : "";
+
+let isZte = (brand.indexOf("ZTE") !== -1 || brand.indexOf("ZICG") !== -1 || sn.indexOf("ZTEG") !== -1 || sn.indexOf("ZICG") !== -1 || model.indexOf("F6") !== -1 || model.indexOf("ZXHN") !== -1);
+let isHuawei = (brand.indexOf("Huawei") !== -1 || brand.indexOf("EcomTech") !== -1 || brand.indexOf("EchoLife") !== -1 || sn.indexOf("HWTC") !== -1 || model.indexOf("HG8") !== -1 || model.indexOf("EG8") !== -1);
+let isFiberHome = (brand.indexOf("FiberHome") !== -1 || sn.indexOf("FHTT") !== -1 || model.indexOf("AN5506") !== -1 || model.indexOf("HG6") !== -1);
+
 let pppPath = "";
 let wanDevices = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*.Username", {path: 1});
 
@@ -124,7 +133,7 @@ if (wanDevices.size) {
 
 if (pppPath !== "") {
     declare(pppPath + ".Enable", {value: Date.now()}, {value: true});
-    declare(pppPath + ".ConnectionType", {value: Date.now()}, {value: (brand.indexOf("FiberHome") !== -1 ? "PPPoE_Routed" : "IP_Routed")});
+    declare(pppPath + ".ConnectionType", {value: Date.now()}, {value: (isFiberHome ? "PPPoE_Routed" : "IP_Routed")});
     declare(pppPath + ".NATEnabled", {value: Date.now()}, {value: true});
     declare(pppPath + ".Username", {value: Date.now()}, {value: pppoeUser});
     declare(pppPath + ".Password", {value: Date.now()}, {value: pppoePass});
@@ -137,13 +146,13 @@ if (vlanId && pppPath !== "") {
         let wanIdx = match[1];
         let vlanPath = "";
         
-        if (brand.indexOf("ZTE") !== -1) {
+        if (isZte) {
             declare(pppPath + ".X_ZTE-COM_VLANID", {value: Date.now()}, {value: parseInt(vlanId)});
             declare(pppPath + ".X_ZTE-COM_VLANEnable", {value: Date.now()}, {value: 1});
             vlanPath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx + ".X_ZTE-COM_VLANID";
-        } else if (brand.indexOf("Huawei") !== -1 || brand.indexOf("EcomTech") !== -1) {
+        } else if (isHuawei) {
             vlanPath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx + ".WANEthernetLinkConfig.X_HW_VLAN";
-        } else if (brand.indexOf("FiberHome") !== -1) {
+        } else if (isFiberHome) {
             vlanPath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx + ".X_FH_WANGponLinkConfig.VLANIDMark";
         }
         
@@ -166,6 +175,15 @@ let bindString = (customBind && customBind !== "") ? customBind : defaultBind;
 
 let brandDecl = declare("DeviceID.Manufacturer", {value: 1});
 let brand = (brandDecl.value !== undefined) ? brandDecl.value[0] : "";
+let modelDecl = declare("DeviceID.ProductClass", {value: 1});
+let model = (modelDecl.value !== undefined) ? modelDecl.value[0] : "";
+let snDecl = declare("DeviceID.SerialNumber", {value: 1});
+let sn = (snDecl.value !== undefined) ? snDecl.value[0] : "";
+
+let isZte = (brand.indexOf("ZTE") !== -1 || brand.indexOf("ZICG") !== -1 || sn.indexOf("ZTEG") !== -1 || sn.indexOf("ZICG") !== -1 || model.indexOf("F6") !== -1 || model.indexOf("ZXHN") !== -1);
+let isHuawei = (brand.indexOf("Huawei") !== -1 || brand.indexOf("EcomTech") !== -1 || brand.indexOf("EchoLife") !== -1 || sn.indexOf("HWTC") !== -1 || model.indexOf("HG8") !== -1 || model.indexOf("EG8") !== -1);
+let isFiberHome = (brand.indexOf("FiberHome") !== -1 || sn.indexOf("FHTT") !== -1 || model.indexOf("AN5506") !== -1 || model.indexOf("HG6") !== -1);
+
 let pppPath = "";
 
 let wanDevices = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*", {path: 1});
@@ -189,15 +207,18 @@ if (pppPath !== "") {
     declare(pppPath + ".Name", {value: now}, {value: "Bridged"});
     declare(pppPath + ".ConnectionTrigger", {value: now}, {value: "AlwaysOn"});
     
-    if (brand.indexOf("ZTE") !== -1) {
+    if (isZte) {
         if (vlanId && parseInt(vlanId) > 0) {
             declare(pppPath + ".X_ZTE-COM_VLANID", {value: now}, {value: parseInt(vlanId)});
             declare(pppPath + ".X_ZTE-COM_VLANEnable", {value: now}, {value: 1});
+            let match = pppPath.match(/WANConnectionDevice\.(\d+)\./);
+            let wanIdx = match ? match[1] : "1";
+            declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx + ".X_ZTE-COM_VLANID", {value: now}, {value: parseInt(vlanId)});
         }
-        declare(pppPath + ".X_ZTE-COM_ServiceList", {value: now}, {value: "INTERNET"});
+        declare(pppPath + ".X_ZTE-COM_ServiceList", {value: now}, {value: "OTHER"});
         declare(pppPath + ".X_ZTE-COM_LanInterface", {value: now}, {value: bindString});
         declare(pppPath + ".X_ZTE-COM_PortBind", {value: now}, {value: bindString});
-    } else if (brand.indexOf("Huawei") !== -1 || brand.indexOf("EcomTech") !== -1) {
+    } else if (isHuawei) {
         let match = pppPath.match(/WANConnectionDevice\.(\d+)\./);
         let wanIdx = match ? match[1] : "1";
         if (vlanId && parseInt(vlanId) > 0) {
@@ -207,7 +228,7 @@ if (pppPath !== "") {
         declare(pppPath + ".X_HW_SERVICELIST", {value: now}, {value: "INTERNET"});
         declare(pppPath + ".X_HW_LANBIND", {value: now}, {value: bindString});
         declare(pppPath + ".X_HW_LANBinding", {value: now}, {value: bindString});
-    } else if (brand.indexOf("FiberHome") !== -1) {
+    } else if (isFiberHome) {
         let match = pppPath.match(/WANConnectionDevice\.(\d+)\./);
         let wanIdx = match ? match[1] : "1";
         if (vlanId && parseInt(vlanId) > 0) {

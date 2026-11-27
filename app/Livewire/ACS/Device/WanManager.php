@@ -78,7 +78,19 @@ class WanManager extends Component
         if (str_contains($combined, 'huawei') || str_contains($combined, 'hwtc') || str_contains($combined, 'eg8') || str_contains($combined, 'hg8') || str_contains($combined, 'ws70')) {
             return 'huawei';
         }
-        if (str_contains($combined, 'zte') || str_contains($combined, 'zteg') || str_contains($combined, 'f609') || str_contains($combined, 'f670') || str_contains($combined, 'f660')) {
+        if (
+            str_contains($combined, 'zte') || 
+            str_contains($combined, 'zteg') || 
+            str_contains($combined, 'zicg') || 
+            str_contains($combined, 'zic') || 
+            str_contains($combined, 'zxhn') || 
+            str_contains($combined, 'f609') || 
+            str_contains($combined, 'f670') || 
+            str_contains($combined, 'f660') || 
+            str_contains($combined, 'f663') || 
+            str_contains($combined, 'f680') || 
+            str_contains($combined, '28c01b')
+        ) {
             return 'zte';
         }
         if (str_contains($combined, 'fiberhome') || str_contains($combined, 'fhtt') || str_contains($combined, 'an5506') || str_contains($combined, 'hg6')) {
@@ -897,6 +909,9 @@ JS;
             } elseif ($isZte) {
                 $parameters["{$this->editFullPath}.X_ZTE-COM_VLANID"] = $vlanId;
                 $parameters["{$this->editFullPath}.X_ZTE-COM_VLANEnable"] = 1;
+                if ($this->pathExistsInTree($this->rawParams, "{$parentPath}.X_ZTE-COM_VLANID")) {
+                    $parameters["{$parentPath}.X_ZTE-COM_VLANID"] = $vlanId;
+                }
             } elseif ($isFiberHome) {
                 $parameters["{$parentPath}.X_FH_WANGponLinkConfig.VLANIDMark"] = $vlanId;
                 $parameters["{$parentPath}.X_FH_WANGponLinkConfig.VLANID"] = $vlanId;
@@ -932,6 +947,9 @@ JS;
             } elseif ($isZte) {
                 $parameters["{$this->editFullPath}.X_ZTE-COM_VLANEnable"] = 0;
                 $parameters["{$this->editFullPath}.X_ZTE-COM_VLANID"] = 0;
+                if ($this->pathExistsInTree($this->rawParams, "{$parentPath}.X_ZTE-COM_VLANID")) {
+                    $parameters["{$parentPath}.X_ZTE-COM_VLANID"] = 0;
+                }
             } elseif ($isFiberHome) {
                 $parameters["{$parentPath}.X_FH_WANGponLinkConfig.VLANIDMark"] = 0;
                 $parameters["{$parentPath}.X_FH_WANGponLinkConfig.VLANID"] = 0;
