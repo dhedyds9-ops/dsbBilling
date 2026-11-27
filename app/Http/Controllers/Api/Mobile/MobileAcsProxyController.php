@@ -395,6 +395,39 @@ class MobileAcsProxyController extends Controller
             $devices = [];
         }
 
+        // SSOT Parity with Web: Filter out all soft-deleted (trashed) and dismantled/replaced devices
+        // This prevents zombie devices whose physical ONT is still sending Informs from appearing online in Android
+        $trashedSns = \App\Models\ACS\ACSDevice::onlyTrashed()->pluck('serial_number')
+            ->merge(\App\Models\ACS\ACSDevice::onlyTrashed()->pluck('uuid'))
+            ->merge(\App\Models\ISP\Onu::onlyTrashed()->pluck('serial_number'))
+            ->merge(\App\Models\ISP\Onu::whereIn('status', ['dismantled', 'replaced'])->pluck('serial_number'))
+            ->filter()
+            ->map(fn($s) => strtoupper(trim((string) $s)))
+            ->unique()
+            ->toArray();
+
+        if (!empty($devices) && !empty($trashedSns)) {
+            $devices = array_values(array_filter($devices, function ($dev) use ($trashedSns) {
+                $devSn = strtoupper(trim((string) ($dev['serial_number'] ?? '')));
+                $devId = strtoupper(trim((string) ($dev['_id'] ?? '')));
+                $prodSn = strtoupper(trim((string) ($dev['_deviceId']['_SerialNumber'] ?? '')));
+
+                $candidates = array_filter([$devSn, $devId, $prodSn]);
+                foreach ($candidates as $cand) {
+                    if (in_array($cand, $trashedSns, true)) {
+                        return false;
+                    }
+                    if (str_contains($cand, '-')) {
+                        $parts = explode('-', $cand);
+                        if (in_array(end($parts), $trashedSns, true)) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }));
+        }
+
         // Reseller filtering on driver devices:
         // Option A: Reseller dapat melihat semua perangkat GenieACS (termasuk unassigned/baru colok),
         // kecuali perangkat yang sudah terdaftar pada pelanggan Mitra Reseller lain.
@@ -1990,6 +2023,13 @@ class MobileAcsProxyController extends Controller
                 ->where(function ($q) use ($cleanUpper, $actualGenieId, $candidateSn) {
                     $q->where('uuid', $actualGenieId)
                       ->orWhere('serial_number', $cleanUpper)
+                      ->orWhere('serial_number', $candidateSn);
+                })
+                ->delete();
+
+            \App\Models\ISP\Onu::withoutGlobalScopes()
+                ->where(function ($q) use ($cleanUpper, $candidateSn) {
+                    $q->where('serial_number', $cleanUpper)
                       ->orWhere('serial_number', $candidateSn);
                 })
                 ->delete();

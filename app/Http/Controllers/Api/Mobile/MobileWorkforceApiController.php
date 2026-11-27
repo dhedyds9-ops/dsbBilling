@@ -339,7 +339,7 @@ class MobileWorkforceApiController extends Controller
             }
         }
 
-        // State Machine validation
+        // State Machine validation & Documentation Gate
         if (!$isManager) {
             // Technician rules
             if ($targetStatus === 'completed') {
@@ -352,6 +352,46 @@ class MobileWorkforceApiController extends Controller
                     'message' => 'Teknisi tidak dapat membatalkan SPK secara sepihak. Hubungi Manager/Admin.',
                 ], 403);
             }
+
+            // Quality & Documentation Gate (Phase 12 Integrity Gate)
+            if (in_array($targetStatus, ['completed', 'pending_approval'])) {
+                $isForce = (bool) $request->input('force', false);
+                if (!$isForce) {
+                    $woPhotos = (array) ($workOrder->evidence_photos ?? []);
+                    $photoCount = count($woPhotos);
+                    $isInstallation = in_array(strtolower((string)$workOrder->type), ['installation', 'psb', 'install']);
+
+                    if ($isInstallation && $photoCount < 2) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Dokumentasi PSB belum lengkap: Harap unggah foto bukti pekerjaan (sebelum, ODP/ONT, dan sesudah) sebelum menyelesaikan SPK.',
+                            'required_evidence' => true,
+                            'current_photos_count' => $photoCount,
+                        ], 422);
+                    } elseif (!$isInstallation && $photoCount < 1) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Dokumentasi tiket belum lengkap: Harap unggah minimal foto titik kendala atau hasil perbaikan sebelum menyelesaikan penanganan.',
+                            'required_evidence' => true,
+                            'current_photos_count' => $photoCount,
+                        ], 422);
+                    }
+                }
+            }
+        }
+
+        // Auto log GPS if provided during status transition
+        if ($request->filled('latitude') && $request->filled('longitude')) {
+            try {
+                GPSLog::create([
+                    'uuid' => (string) Str::uuid(),
+                    'user_id' => $user->id,
+                    'latitude' => (float) $request->input('latitude'),
+                    'longitude' => (float) $request->input('longitude'),
+                    'accuracy' => (float) $request->input('accuracy', 0),
+                    'logged_at' => now(),
+                ]);
+            } catch (\Throwable $e) {}
         }
 
         $updates = [
@@ -689,7 +729,8 @@ class MobileWorkforceApiController extends Controller
     }
 
     /**
-     * Upload work evidence photo (Phase 2C).
+     * Upload work evidence photo (Phase 2C & Phase 12 Addendum).
+     * Accepts photo file, categories, GPS location, and idempotency key.
      */
     public function uploadEvidence(Request $request, int $id): JsonResponse
     {
@@ -702,37 +743,193 @@ class MobileWorkforceApiController extends Controller
 
         $request->validate([
             'photo' => 'required|file|mimes:jpeg,png,jpg,webp|max:10240',
-            'type' => 'nullable|string|in:before,after,odp,ont,modem,speedtest,general',
+            'type' => 'nullable|string|max:50',
             'caption' => 'nullable|string|max:255',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'accuracy' => 'nullable|numeric|min:0',
+            'captured_at' => 'nullable|string|max:50',
+            'uuid' => 'nullable|string|max:64',
         ]);
 
         $file = $request->file('photo');
-        $photoType = $request->input('type', 'general');
-        $caption = $request->input('caption', '');
+        $photoType = strtolower(trim((string)$request->input('type', 'general')));
+        $caption = trim((string)$request->input('caption', ''));
+        $lat = $request->filled('latitude') ? (float)$request->input('latitude') : null;
+        $lng = $request->filled('longitude') ? (float)$request->input('longitude') : null;
+        $acc = $request->filled('accuracy') ? (float)$request->input('accuracy') : null;
+        $capturedAt = $request->input('captured_at') ?: now()->toIso8601String();
+        $uuid = (string)($request->input('uuid') ?: Str::uuid());
 
         $filename = 'evidence_' . time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
         $path = $file->storeAs('public/evidence/' . $id, $filename);
         $publicUrl = '/storage/evidence/' . $id . '/' . $filename;
 
-        $photos = $workOrder->evidence_photos ?? [];
-        $photos[] = [
-            'uuid' => (string) Str::uuid(),
+        $photos = is_array($workOrder->evidence_photos) ? $workOrder->evidence_photos : [];
+
+        // Idempotency check: if photo with uuid exists, update entry
+        $existingIndex = null;
+        foreach ($photos as $i => $p) {
+            if (is_array($p) && isset($p['uuid']) && $p['uuid'] === $uuid) {
+                $existingIndex = $i;
+                break;
+            }
+        }
+
+        $photoData = [
+            'uuid' => $uuid,
             'type' => $photoType,
+            'category' => $photoType,
             'caption' => $caption,
             'url' => $publicUrl,
             'path' => $path,
+            'latitude' => $lat,
+            'longitude' => $lng,
+            'accuracy' => $acc,
+            'captured_at' => $capturedAt,
             'uploaded_by' => $user->id,
+            'technician_name' => $user->name,
             'uploaded_at' => now()->toIso8601String(),
         ];
 
+        if ($existingIndex !== null) {
+            $photos[$existingIndex] = $photoData;
+        } else {
+            $photos[] = $photoData;
+        }
+
         $workOrder->update(['evidence_photos' => $photos]);
+
+        // Auto log GPS if technician provided coordinates
+        if ($lat !== null && $lng !== null) {
+            try {
+                GPSLog::create([
+                    'uuid' => (string) Str::uuid(),
+                    'user_id' => $user->id,
+                    'latitude' => $lat,
+                    'longitude' => $lng,
+                    'accuracy' => $acc ?: 0,
+                    'logged_at' => now(),
+                ]);
+            } catch (\Throwable $e) {}
+        }
+
+        // Two-way sync to CRM Installation or Support Ticket
+        if ($workOrder->installation_id) {
+            try {
+                $inst = Installation::withoutGlobalScopes()->find($workOrder->installation_id);
+                if ($inst) {
+                    $instPhotos = is_array($inst->photos) ? $inst->photos : [];
+                    $instPhotos[] = $photoData;
+                    $inst->update(['photos' => $instPhotos]);
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        if ($workOrder->ticket_id) {
+            try {
+                $ticket = Ticket::withoutGlobalScopes()->find($workOrder->ticket_id);
+                if ($ticket) {
+                    $ticketPhotos = is_array($ticket->photos) ? $ticket->photos : [];
+                    $ticketPhotos[] = $photoData;
+                    $ticket->update(['photos' => $ticketPhotos]);
+                }
+            } catch (\Throwable $e) {}
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Foto bukti pekerjaan berhasil diunggah.',
+            'message' => 'Foto bukti pekerjaan berhasil diunggah dan diverifikasi.',
             'data' => [
+                'photo' => $photoData,
                 'photos' => $photos,
                 'count' => count($photos),
+            ],
+        ]);
+    }
+
+    /**
+     * Direct upload work evidence for Ticket (Phase 12 Addendum).
+     */
+    public function uploadTicketEvidence(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $ticket = Ticket::withoutGlobalScopes()->findOrFail($id);
+
+        $request->validate([
+            'photo' => 'required|file|mimes:jpeg,png,jpg,webp|max:10240',
+            'type' => 'nullable|string|max:50',
+            'caption' => 'nullable|string|max:255',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'accuracy' => 'nullable|numeric|min:0',
+            'captured_at' => 'nullable|string|max:50',
+            'uuid' => 'nullable|string|max:64',
+        ]);
+
+        $file = $request->file('photo');
+        $photoType = strtolower(trim((string)$request->input('type', 'inspection')));
+        $caption = trim((string)$request->input('caption', ''));
+        $lat = $request->filled('latitude') ? (float)$request->input('latitude') : null;
+        $lng = $request->filled('longitude') ? (float)$request->input('longitude') : null;
+        $acc = $request->filled('accuracy') ? (float)$request->input('accuracy') : null;
+        $capturedAt = $request->input('captured_at') ?: now()->toIso8601String();
+        $uuid = (string)($request->input('uuid') ?: Str::uuid());
+
+        $filename = 'ticket_evidence_' . time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('public/evidence/tickets/' . $id, $filename);
+        $publicUrl = '/storage/evidence/tickets/' . $id . '/' . $filename;
+
+        $photoData = [
+            'uuid' => $uuid,
+            'ticket_id' => $id,
+            'type' => $photoType,
+            'category' => $photoType,
+            'caption' => $caption,
+            'url' => $publicUrl,
+            'path' => $path,
+            'latitude' => $lat,
+            'longitude' => $lng,
+            'accuracy' => $acc,
+            'captured_at' => $capturedAt,
+            'uploaded_by' => $user->id,
+            'technician_name' => $user->name,
+            'uploaded_at' => now()->toIso8601String(),
+        ];
+
+        $existingPhotos = is_array($ticket->photos) ? $ticket->photos : [];
+        $existingPhotos[] = $photoData;
+        $ticket->update(['photos' => $existingPhotos]);
+
+        // Auto log GPS
+        if ($lat !== null && $lng !== null) {
+            try {
+                GPSLog::create([
+                    'uuid' => (string) Str::uuid(),
+                    'user_id' => $user->id,
+                    'latitude' => $lat,
+                    'longitude' => $lng,
+                    'accuracy' => $acc ?: 0,
+                    'logged_at' => now(),
+                ]);
+            } catch (\Throwable $e) {}
+        }
+
+        // Sync to corresponding WorkOrder if exists
+        $linkedWo = WorkOrder::where('ticket_id', $id)->first();
+        if ($linkedWo) {
+            $woPhotos = is_array($linkedWo->evidence_photos) ? $linkedWo->evidence_photos : [];
+            $woPhotos[] = $photoData;
+            $linkedWo->update(['evidence_photos' => $woPhotos]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Foto bukti kendala tiket berhasil disimpan.',
+            'data' => [
+                'photo' => $photoData,
+                'photos' => $existingPhotos,
+                'count' => count($existingPhotos),
             ],
         ]);
     }
@@ -1281,7 +1478,7 @@ class MobileWorkforceApiController extends Controller
 
         $photos = is_array($wo->evidence_photos) && !empty($wo->evidence_photos) 
             ? $wo->evidence_photos 
-            : ($ticket?->photos ?? []);
+            : ($ticket?->photos ?? ($wo->installation?->photos ?? []));
 
         $evidencePhotosList = [];
         $plainPhotos = [];
@@ -1291,8 +1488,15 @@ class MobileWorkforceApiController extends Controller
                     $evidencePhotosList[] = [
                         'uuid' => null,
                         'type' => 'evidence',
+                        'category' => 'evidence',
                         'caption' => null,
                         'url' => trim($p),
+                        'latitude' => null,
+                        'longitude' => null,
+                        'accuracy' => null,
+                        'captured_at' => null,
+                        'uploaded_by' => null,
+                        'technician_name' => null,
                         'uploaded_at' => null,
                     ];
                     $plainPhotos[] = trim($p);
@@ -1300,9 +1504,16 @@ class MobileWorkforceApiController extends Controller
                     $url = $p['url'] ?? ($p['path'] ?? '');
                     $evidencePhotosList[] = [
                         'uuid' => $p['uuid'] ?? null,
-                        'type' => $p['type'] ?? 'evidence',
+                        'type' => $p['type'] ?? ($p['category'] ?? 'evidence'),
+                        'category' => $p['category'] ?? ($p['type'] ?? 'evidence'),
                         'caption' => $p['caption'] ?? null,
                         'url' => $url,
+                        'latitude' => isset($p['latitude']) ? (float)$p['latitude'] : null,
+                        'longitude' => isset($p['longitude']) ? (float)$p['longitude'] : null,
+                        'accuracy' => isset($p['accuracy']) ? (float)$p['accuracy'] : null,
+                        'captured_at' => $p['captured_at'] ?? null,
+                        'uploaded_by' => $p['uploaded_by'] ?? null,
+                        'technician_name' => $p['technician_name'] ?? null,
                         'uploaded_at' => $p['uploaded_at'] ?? null,
                     ];
                     if ($url) {

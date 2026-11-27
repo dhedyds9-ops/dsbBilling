@@ -485,25 +485,90 @@
                         @endif
                     </div>
 
-                    {{-- 3. Galeri Foto Eviden --}}
+                    {{-- 3. Galeri Foto Eviden & Integritas Lokasi GPS --}}
                     <div>
-                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-                            <span class="material-symbols-outlined notranslate text-xs text-primary-500" translate="no">photo_camera</span>
-                            Dokumentasi & Foto Eviden Lapangan
-                        </h4>
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined notranslate text-xs text-primary-500" translate="no">photo_camera</span>
+                                Dokumentasi Foto Lapangan &amp; Validasi GPS
+                            </h4>
+                            @if($selectedWo->latitude && $selectedWo->longitude)
+                                <a href="https://www.google.com/maps?q={{ $selectedWo->latitude }},{{ $selectedWo->longitude }}" target="_blank" class="inline-flex items-center gap-1 text-[11px] text-primary-600 hover:text-primary-700 font-semibold">
+                                    <span class="material-symbols-outlined notranslate text-xs" translate="no">location_on</span>
+                                    Titik SPK: {{ number_format($selectedWo->latitude, 5) }}, {{ number_format($selectedWo->longitude, 5) }}
+                                </a>
+                            @endif
+                        </div>
                         @php
                             $photos = is_array($selectedWo->evidence_photos) ? $selectedWo->evidence_photos : (is_array($selectedWo->installation?->photos) ? $selectedWo->installation->photos : []);
                         @endphp
                         @if(count($photos) > 0)
-                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                                 @foreach($photos as $idx => $photo)
-                                    <a href="{{ asset('storage/' . $photo) }}" target="_blank" class="group relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video bg-slate-100 dark:bg-slate-900 block hover:shadow-md transition-all">
-                                        <img src="{{ asset('storage/' . $photo) }}" alt="Eviden {{ $idx+1 }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.src='https://placehold.co/400x300?text=Eviden+Foto';">
-                                        <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
-                                            <span class="material-symbols-outlined notranslate text-sm" translate="no">zoom_in</span>
-                                            Lihat Foto
+                                    @php
+                                        $isArr = is_array($photo);
+                                        $photoUrl = $isArr ? ($photo['url'] ?? ($photo['path'] ?? '')) : (string)$photo;
+                                        $fullUrl = str_starts_with($photoUrl, 'http') ? $photoUrl : (str_starts_with($photoUrl, '/storage') ? asset(ltrim($photoUrl, '/')) : asset('storage/' . ltrim($photoUrl, '/')));
+                                        $category = $isArr ? strtolower((string)($photo['type'] ?? ($photo['category'] ?? 'evidence'))) : 'evidence';
+                                        $caption = $isArr ? ($photo['caption'] ?? '') : '';
+                                        $lat = $isArr ? ($photo['latitude'] ?? null) : null;
+                                        $lng = $isArr ? ($photo['longitude'] ?? null) : null;
+                                        $acc = $isArr ? ($photo['accuracy'] ?? null) : null;
+                                        $techName = $isArr ? ($photo['technician_name'] ?? null) : null;
+                                        $uploadedAt = $isArr ? ($photo['captured_at'] ?? ($photo['uploaded_at'] ?? null)) : null;
+
+                                        $categoryLabel = match($category) {
+                                            'before', 'location_before', 'initial_condition' => 'Sebelum / Awal',
+                                            'cable_route', 'wiring' => 'Jalur Kabel',
+                                            'odp', 'odc_odp' => 'ODC / ODP & Port',
+                                            'ont', 'ont_sn', 'modem' => 'Label & SN ONT',
+                                            'after', 'final_result', 'post_installation' => 'Hasil Akhir',
+                                            'inspection' => 'Pemeriksaan',
+                                            'fault_point', 'damage' => 'Titik Kerusakan',
+                                            'repair_process', 'action' => 'Proses Perbaikan',
+                                            'speedtest' => 'Uji Kecepatan',
+                                            default => 'Dokumentasi',
+                                        };
+
+                                        $badgeColor = match($category) {
+                                            'before', 'initial_condition' => 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300',
+                                            'after', 'final_result' => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300',
+                                            'odp', 'ont', 'modem' => 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300',
+                                            'fault_point', 'damage' => 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300',
+                                            default => 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300',
+                                        };
+                                    @endphp
+                                    <div class="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex flex-col shadow-xs hover:shadow transition-all">
+                                        <a href="{{ $fullUrl }}" target="_blank" class="group relative aspect-video bg-slate-100 dark:bg-slate-800 block overflow-hidden">
+                                            <img src="{{ $fullUrl }}" alt="Eviden {{ $categoryLabel }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.src='https://placehold.co/400x300?text=Eviden+Foto';">
+                                            <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
+                                                <span class="material-symbols-outlined notranslate text-sm" translate="no">zoom_in</span>
+                                                Buka Penuh
+                                            </div>
+                                            <span class="absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-bold shadow-xs {{ $badgeColor }}">
+                                                {{ $categoryLabel }}
+                                            </span>
+                                        </a>
+                                        <div class="p-2.5 space-y-1.5 flex-1 flex flex-col justify-between text-[11px]">
+                                            @if($caption)
+                                                <p class="text-slate-700 dark:text-slate-300 font-medium line-clamp-2">{{ $caption }}</p>
+                                            @endif
+                                            <div class="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400">
+                                                @if($lat && $lng)
+                                                    <a href="https://www.google.com/maps?q={{ $lat }},{{ $lng }}" target="_blank" class="flex items-center gap-1 text-primary-600 hover:underline">
+                                                        <span class="material-symbols-outlined notranslate text-[12px]" translate="no">pin_drop</span>
+                                                        <span>{{ number_format((float)$lat, 5) }}, {{ number_format((float)$lng, 5) }} @if($acc)(±{{ round((float)$acc) }}m)@endif</span>
+                                                    </a>
+                                                @endif
+                                                <div class="flex items-center justify-between">
+                                                    <span>{{ $techName ? 'Teknisi: ' . $techName : 'Foto #' . ($idx + 1) }}</span>
+                                                    @if($uploadedAt)
+                                                        <span>{{ \Carbon\Carbon::parse($uploadedAt)->format('d/m H:i') }}</span>
+                                                    @endif
+                                                </div>
+                                            </div>
                                         </div>
-                                    </a>
+                                    </div>
                                 @endforeach
                             </div>
                         @else

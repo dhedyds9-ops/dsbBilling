@@ -338,11 +338,26 @@ class Index extends AdminComponent
             ])
             ->when($this->oltFilter, fn ($q) => $q->where('olt_id', $this->oltFilter))
             ->when($this->ponFilter, fn ($q) => $q->where('pon_port_id', $this->ponFilter))
-            ->when($this->statusFilter === 'online', fn ($q) => $q->where('status', 'active')->whereNotNull('last_seen_at')->where('last_seen_at', '>=', now()->subMinutes(10)))
+            ->when($this->statusFilter === 'online', fn ($q) => $q->where('status', 'active')->where(function ($sub) {
+                $sub->where(function ($oltSub) {
+                    $oltSub->whereNotNull('last_seen_at')->where('last_seen_at', '>=', now()->subMinutes(15));
+                })->orWhereHas('acsDevice', function ($aq) {
+                    $aq->where('status', 'online')->where(function ($iq) {
+                        $iq->whereNull('last_inform')->orWhere('last_inform', '>=', now()->subMinutes(15));
+                    });
+                });
+            }))
             ->when($this->statusFilter === 'offline', fn ($q) => $q->where(function ($sq) {
                 $sq->where('status', 'inactive')
-                   ->orWhereNull('last_seen_at')
-                   ->orWhere('last_seen_at', '<', now()->subMinutes(10));
+                   ->orWhere(function ($sub) {
+                       $sub->where(function ($oltSub) {
+                           $oltSub->whereNull('last_seen_at')->orWhere('last_seen_at', '<', now()->subMinutes(15));
+                       })->whereDoesntHave('acsDevice', function ($aq) {
+                           $aq->where('status', 'online')->where(function ($iq) {
+                               $iq->whereNull('last_inform')->orWhere('last_inform', '>=', now()->subMinutes(15));
+                           });
+                       });
+                   });
             }))
             ->when($this->statusFilter === 'los', fn ($q) => $q->where(function ($q) use ($rxCrit) {
                 $q->where('status', 'los')->orWhere('rx_power_dbm', '<', $rxCrit);
@@ -424,8 +439,15 @@ class Index extends AdminComponent
 
         $total = (clone $baseQuery)->count();
         $online = (clone $baseQuery)->where('status', 'active')
-            ->whereNotNull('last_seen_at')
-            ->where('last_seen_at', '>=', now()->subMinutes(10))
+            ->where(function ($sub) {
+                $sub->where(function ($oltSub) {
+                    $oltSub->whereNotNull('last_seen_at')->where('last_seen_at', '>=', now()->subMinutes(15));
+                })->orWhereHas('acsDevice', function ($aq) {
+                    $aq->where('status', 'online')->where(function ($iq) {
+                        $iq->whereNull('last_inform')->orWhere('last_inform', '>=', now()->subMinutes(15));
+                    });
+                });
+            })
             ->count();
 
         $los = (clone $baseQuery)->where(function ($q) {
@@ -446,30 +468,37 @@ class Index extends AdminComponent
 
     public function getOnuStatus(Onu $onu): string
     {
-        if ($onu->status === 'los' || ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -30.0)) return 'LOS';
-        if ($onu->status === 'inactive') return 'OFFLINE';
-
-        // Cek apakah ada status online dari TR-069 GenieACS atau redaman optik valid dari OLT
-        $hasRecentAcs = $onu->relationLoaded('acsDevice') && $onu->acsDevice?->status === 'online';
-        $hasValidRx = $onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm >= -38.0 && (float)$onu->rx_power_dbm <= -6.0;
-
-        if ($onu->status === 'active' && ($hasValidRx || $hasRecentAcs)) {
-            if ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -27.0) return 'LOW_RX';
-            return 'ONLINE';
-        }
-
-        // Toleransi last_seen_at hingga 60 menit (mencegah status ONU tiba-tiba offline di sela waktu polling OLT)
-        if (!empty($onu->last_seen_at) && $onu->last_seen_at->diffInMinutes(now()) <= 60) {
-            if ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -27.0) return 'LOW_RX';
-            return 'ONLINE';
-        }
-
-        if (empty($onu->last_seen_at) && !$hasRecentAcs && !$hasValidRx) {
+        if ($onu->status === 'inactive') {
             return 'OFFLINE';
         }
 
-        if ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -27.0) return 'LOW_RX';
-        return $onu->status === 'active' ? 'ONLINE' : 'OFFLINE';
+        // Cek live TR-069 GenieACS (maksimal inform 15 menit)
+        $hasRecentAcs = $onu->relationLoaded('acsDevice')
+            && $onu->acsDevice?->status === 'online'
+            && (
+                empty($onu->acsDevice?->last_inform)
+                || abs($onu->acsDevice->last_inform->diffInMinutes(now())) <= 15
+            );
+
+        // Cek apakah ONU baru saja terlihat aktif oleh OLT (toleransi 15 menit)
+        $isRecentlySeen = !empty($onu->last_seen_at) && $onu->last_seen_at->diffInMinutes(now()) <= 15;
+
+        // Jika tidak ada data live baik dari OLT maupun ACS dalam batas waktu 15 menit, ONU pasti OFFLINE
+        if (!$isRecentlySeen && !$hasRecentAcs) {
+            return 'OFFLINE';
+        }
+
+        // Jika live, periksa apakah terjadi Loss of Signal (LOS)
+        if ($onu->status === 'los' || ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -30.0)) {
+            return 'LOS';
+        }
+
+        // Jika redaman lemah (-27 dBm s.d -30 dBm)
+        if ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -27.0) {
+            return 'LOW_RX';
+        }
+
+        return 'ONLINE';
     }
 
     #[Computed]

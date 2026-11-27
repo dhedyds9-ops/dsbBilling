@@ -63,8 +63,17 @@ class Olt extends Model
             }
         });
 
-        static::deleted(function () {
+        static::deleted(function ($model) {
             GisMap::flushCache();
+            try {
+                Onu::withoutGlobalScopes()
+                    ->where('olt_id', $model->id)
+                    ->update([
+                        'status' => 'inactive',
+                        'rx_power_dbm' => null,
+                        'tx_power_dbm' => null,
+                    ]);
+            } catch (\Throwable) {}
         });
 
         static::restored(function () {

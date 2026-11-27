@@ -1120,6 +1120,41 @@ class Wizard extends Component
                     $this->provisioning_status = 'pending';
                     $this->provisioning_message = 'Data pelanggan & layanan PPPoE berhasil disimpan. Status hardware: ' . ($executionResult['hardware_error'] ?? 'Router belum terjangkau.');
                 }
+
+                // Push Konfigurasi Wi-Fi SSID & Password via TR-069 GenieACS untuk PPPoE
+                $wifiSsid = $onu->wifi_ssid ?: trim((string)($this->wifi_ssid ?? ''));
+                $wifiPass = $onu->wifi_password ?: trim((string)($this->wifi_password ?? ''));
+
+                if (!empty($wifiSsid)) {
+                    try {
+                        $wifiService = app(\App\Services\Provisioning\WifiConfigurationService::class);
+                        $wifiService->configureWifi($onu, [
+                            1 => [
+                                'ssid' => $wifiSsid,
+                                'security' => !empty($wifiPass) ? 'WPA2-PSK' : 'None',
+                                'password' => $wifiPass ?: '',
+                                'enable' => true,
+                            ],
+                        ], $cs->id, $user->id);
+                    } catch (\Throwable $we) {
+                        \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal dispatch OnuConfigurationJobEngine untuk WiFi: ' . $we->getMessage());
+                    }
+
+                    try {
+                        $acsProv = app(\App\Services\ISP\GenieAcsProvisioningService::class);
+                        $acsProv->updateSsidAndPassword(
+                            $onu,
+                            $wifiSsid,
+                            $wifiPass ?: null,
+                            1,
+                            !empty($wifiPass) ? 'WPA_WPA2' : 'None',
+                            false,
+                            true
+                        );
+                    } catch (\Throwable $ae) {
+                        \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal push WiFi TR-069 ke GenieACS: ' . $ae->getMessage());
+                    }
+                }
             } else {
                 $this->completed_pipeline_id = null;
                 try {
@@ -1132,7 +1167,7 @@ class Wizard extends Component
                     ];
                     $jobEngine->dispatchProvisioningJob($onu, $bridgeDesiredState, 'BRIDGE', null, $user->id);
 
-                    $ssidName = strtoupper(\App\Models\Setting::getValue('company.name', 'WINETS.ID'));
+                    $ssidName = trim((string)($this->wifi_ssid ?? '')) ?: strtoupper(\App\Models\Setting::getValue('company.name', 'WINETS.ID'));
                     $wifiService = app(\App\Services\Provisioning\WifiConfigurationService::class);
                     $wifiService->configureWifi($onu, [
                         1 => [
@@ -1150,6 +1185,16 @@ class Wizard extends Component
                         'vlan_id' => $npVlan,
                         'wifi_ssid' => $ssidName,
                     ]);
+
+                    $acsProv->updateSsidAndPassword(
+                        $onu,
+                        $ssidName,
+                        null,
+                        1,
+                        'None',
+                        false,
+                        true
+                    );
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::error('[Wizard] Gagal push konfigurasi WiFi/Bridge ke ONU: ' . $e->getMessage());
                 }

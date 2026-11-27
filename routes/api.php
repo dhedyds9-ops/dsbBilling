@@ -213,12 +213,14 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::get('/technicians', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'technicians'])->name('technicians');
             Route::get('/tickets', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'tickets'])->name('tickets');
             Route::post('/tickets', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'createTicket'])->name('tickets.create');
+            Route::post('/tickets/{id}/evidence', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'uploadTicketEvidence'])->where('id', '\d+')->name('tickets.evidence');
             Route::post('/gps/log', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'logGPS'])->name('gps.log');
         });
 
         // Direct aliases for /api/mobile/tickets & /api/mobile/vouchers
         Route::get('/tickets', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'tickets']);
         Route::post('/tickets', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'createTicket']);
+        Route::post('/tickets/{id}/evidence', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'uploadTicketEvidence'])->where('id', '\d+');
         Route::get('/vouchers', [\App\Http\Controllers\Api\Mobile\MobileVoucherApiController::class, 'index']);
         Route::get('/vouchers/packages', [\App\Http\Controllers\Api\Mobile\MobileVoucherApiController::class, 'packages']);
         Route::get('/vouchers/requests', [\App\Http\Controllers\Api\Mobile\MobileVoucherApiController::class, 'requests']);

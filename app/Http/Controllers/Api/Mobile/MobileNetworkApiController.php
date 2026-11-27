@@ -1755,6 +1755,42 @@ class MobileNetworkApiController extends Controller
                 }
             }
 
+            // 6. Push Konfigurasi Wi-Fi SSID & Password via TR-069 GenieACS (ZTP / Wizard Wi-Fi Push)
+            $wifiSsid = $onu->wifi_ssid ?: trim((string)($validated['wifi_ssid'] ?? ''));
+            $wifiPass = $onu->wifi_password ?: trim((string)($validated['wifi_password'] ?? ''));
+            $wifiSecMode = $validated['wifi_security_mode'] ?? (!empty($wifiPass) ? 'wpa2' : 'open');
+
+            if (!empty($wifiSsid)) {
+                try {
+                    $wifiService = app(\App\Services\Provisioning\WifiConfigurationService::class);
+                    $wifiService->configureWifi($onu, [
+                        1 => [
+                            'ssid' => $wifiSsid,
+                            'security' => $wifiSecMode === 'open' ? 'None' : 'WPA2-PSK',
+                            'password' => $wifiSecMode === 'open' ? '' : ($wifiPass ?: ''),
+                            'enable' => true,
+                        ],
+                    ], $cs?->id ?? null, $user->id);
+                } catch (\Throwable $we) {
+                    \Log::warning("[provisionOnt] Gagal dispatch OnuConfigurationJobEngine untuk WiFi: " . $we->getMessage());
+                }
+
+                try {
+                    $acsProv = app(\App\Services\ISP\GenieAcsProvisioningService::class);
+                    $acsProv->updateSsidAndPassword(
+                        $onu,
+                        $wifiSsid,
+                        $wifiSecMode === 'open' ? null : ($wifiPass ?: null),
+                        1,
+                        $wifiSecMode === 'open' ? 'None' : 'WPA_WPA2',
+                        false,
+                        true
+                    );
+                } catch (\Throwable $ae) {
+                    \Log::warning("[provisionOnt] Gagal push WiFi TR-069 ke GenieACS: " . $ae->getMessage());
+                }
+            }
+
             $responseData = [
                 'success' => true,
                 'message' => "ONT SN {$sn} berhasil dipasangkan dan diprovisioning!",

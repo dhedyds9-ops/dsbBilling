@@ -106,10 +106,19 @@ class Index extends BaseIndex
         try {
             $offlineOnus = \App\Models\ISP\Onu::with('olt')->where(function ($q) {
                 $q->where('status', 'inactive')
+                  ->orWhereNull('last_seen_at')
+                  ->orWhere('last_seen_at', '<', now()->subMinutes(15))
+                  ->orWhereDoesntHave('olt')
                   ->orWhere(function ($sq) {
                       $sq->whereNull('rx_power_dbm')->whereNull('pon_port');
                   });
-            })->get();
+            })
+            ->whereDoesntHave('acsDevice', function ($aq) {
+                $aq->where('status', 'online')->where(function ($iq) {
+                    $iq->whereNull('last_inform')->orWhere('last_inform', '>=', now()->subMinutes(15));
+                });
+            })
+            ->get();
 
             $count = $offlineOnus->count();
             if ($count === 0) {

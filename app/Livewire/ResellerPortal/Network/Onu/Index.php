@@ -400,7 +400,22 @@ class Index extends AdminComponent
     public function deleteAllOfflineOnu(): void
     {
         try {
-            $offlineOnus = Onu::forReseller()->where('status', 'inactive')->with('olt')->get();
+            $offlineOnus = Onu::forReseller()->where(function ($q) {
+                $q->where('status', 'inactive')
+                  ->orWhereNull('last_seen_at')
+                  ->orWhere('last_seen_at', '<', now()->subMinutes(15))
+                  ->orWhereDoesntHave('olt')
+                  ->orWhere(function ($sq) {
+                      $sq->whereNull('rx_power_dbm')->whereNull('pon_port');
+                  });
+            })
+            ->whereDoesntHave('acsDevice', function ($aq) {
+                $aq->where('status', 'online')->where(function ($iq) {
+                    $iq->whereNull('last_inform')->orWhere('last_inform', '>=', now()->subMinutes(15));
+                });
+            })
+            ->with('olt')->get();
+
             $count = $offlineOnus->count();
             if ($count === 0) {
                 session()->flash('error', 'Tidak ada ONU offline yang dapat dihapus.');
@@ -439,42 +454,32 @@ class Index extends AdminComponent
 
     public function getOnuStatus(Onu $onu): string
     {
-        if ($onu->status === 'los' || ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -30.0)) {
-            return 'LOS';
-        }
         if ($onu->status === 'inactive') {
             return 'OFFLINE';
         }
 
-        // Cek apakah ada status online dari TR-069 GenieACS atau redaman optik valid dari OLT
-        $hasRecentAcs = $onu->relationLoaded('acsDevice') && $onu->acsDevice?->status === 'online';
-        $hasValidRx = $onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm >= -38.0 && (float)$onu->rx_power_dbm <= -6.0;
+        $hasRecentAcs = $onu->relationLoaded('acsDevice')
+            && $onu->acsDevice?->status === 'online'
+            && (
+                empty($onu->acsDevice?->last_inform)
+                || abs($onu->acsDevice->last_inform->diffInMinutes(now())) <= 15
+            );
 
-        // Jika ONU aktif di database dan memiliki redaman optik valid atau TR-069 online
-        if ($onu->status === 'active' && ($hasValidRx || $hasRecentAcs)) {
-            if ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -27.0) {
-                return 'LOW_RX';
-            }
-            return 'ONLINE';
-        }
+        $isRecentlySeen = !empty($onu->last_seen_at) && $onu->last_seen_at->diffInMinutes(now()) <= 15;
 
-        // Toleransi last_seen_at hingga 60 menit (mencegah status ONU tiba-tiba offline di sela waktu polling OLT)
-        if (!empty($onu->last_seen_at) && $onu->last_seen_at->diffInMinutes(now()) <= 60) {
-            if ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -27.0) {
-                return 'LOW_RX';
-            }
-            return 'ONLINE';
-        }
-
-        if (empty($onu->last_seen_at) && !$hasRecentAcs && !$hasValidRx) {
+        if (!$isRecentlySeen && !$hasRecentAcs) {
             return 'OFFLINE';
+        }
+
+        if ($onu->status === 'los' || ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -30.0)) {
+            return 'LOS';
         }
 
         if ($onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm < -27.0) {
             return 'LOW_RX';
         }
 
-        return $onu->status === 'active' ? 'ONLINE' : 'OFFLINE';
+        return 'ONLINE';
     }
 
     public function render()

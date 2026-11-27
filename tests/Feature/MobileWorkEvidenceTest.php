@@ -230,4 +230,107 @@ class MobileWorkEvidenceTest extends TestCase
 
         $response->assertStatus(403);
     }
+
+    public function test_technician_uploads_evidence_with_gps_metadata_and_idempotency(): void
+    {
+        Storage::fake('public');
+        $token = $this->technician1->createToken('test-mobile-token')->plainTextToken;
+
+        $wo = WorkOrder::create([
+            'uuid' => (string) Str::uuid(),
+            'branch_id' => $this->branch->id,
+            'title' => 'PSB Dropcore dan Splicing',
+            'type' => 'installation',
+            'customer_id' => $this->customer->id,
+            'assigned_to' => $this->technician1->id,
+            'status' => 'in_progress',
+        ]);
+
+        $file = UploadedFile::fake()->image('jalur_kabel.jpg', 800, 600);
+        $customUuid = (string) Str::uuid();
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->postJson("/api/mobile/workforce/work-orders/{$wo->id}/evidence", [
+                'photo' => $file,
+                'type' => 'cable_route',
+                'caption' => 'Penarikan kabel dropcore tiang 3 ke 4',
+                'latitude' => -6.2088,
+                'longitude' => 106.8456,
+                'accuracy' => 7.5,
+                'uuid' => $customUuid,
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson(['success' => true])
+            ->assertJsonPath('data.photo.category', 'cable_route')
+            ->assertJsonPath('data.photo.latitude', -6.2088)
+            ->assertJsonPath('data.photo.longitude', 106.8456)
+            ->assertJsonPath('data.photo.accuracy', 7.5);
+
+        $fresh = $wo->fresh();
+        $this->assertCount(1, $fresh->evidence_photos);
+        $this->assertEquals($customUuid, $fresh->evidence_photos[0]['uuid']);
+        $this->assertEquals(-6.2088, $fresh->evidence_photos[0]['latitude']);
+        $this->assertEquals('Hadi Teknisi 1', $fresh->evidence_photos[0]['technician_name']);
+
+        // Check GPS log was automatically recorded
+        $this->assertDatabaseHas('gps_logs', [
+            'user_id' => $this->technician1->id,
+            'latitude' => -6.2088,
+            'longitude' => 106.8456,
+        ]);
+    }
+
+    public function test_completion_gate_blocks_when_evidence_photos_are_missing(): void
+    {
+        $token = $this->technician1->createToken('test-mobile-token')->plainTextToken;
+
+        $wo = WorkOrder::create([
+            'uuid' => (string) Str::uuid(),
+            'branch_id' => $this->branch->id,
+            'title' => 'PSB Tanpa Foto',
+            'type' => 'installation',
+            'customer_id' => $this->customer->id,
+            'assigned_to' => $this->technician1->id,
+            'status' => 'in_progress',
+            'evidence_photos' => [],
+        ]);
+
+        // Attempting to complete without required photos should be blocked (422)
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->postJson("/api/mobile/workforce/work-orders/{$wo->id}/complete");
+
+        $response->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'required_evidence' => true,
+            ]);
+    }
+
+    public function test_completion_gate_passes_when_evidence_photos_exist(): void
+    {
+        $token = $this->technician1->createToken('test-mobile-token')->plainTextToken;
+
+        $wo = WorkOrder::create([
+            'uuid' => (string) Str::uuid(),
+            'branch_id' => $this->branch->id,
+            'title' => 'PSB Lengkap Dokumentasi',
+            'type' => 'installation',
+            'customer_id' => $this->customer->id,
+            'assigned_to' => $this->technician1->id,
+            'status' => 'in_progress',
+            'evidence_photos' => [
+                ['uuid' => 'u1', 'type' => 'before', 'url' => '/storage/1.jpg'],
+                ['uuid' => 'u2', 'type' => 'after', 'url' => '/storage/2.jpg'],
+            ],
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->postJson("/api/mobile/workforce/work-orders/{$wo->id}/complete");
+
+        $response->assertStatus(200)
+            ->assertJson(['success' => true]);
+
+        $this->assertEquals('pending_approval', $wo->fresh()->status);
+    }
 }
