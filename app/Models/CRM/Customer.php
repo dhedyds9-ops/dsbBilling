@@ -246,6 +246,11 @@ class Customer extends Model
         return null;
     }
 
+    public function getWhatsappAttribute(): ?string
+    {
+        return \App\Services\Support\CustomerFieldSanitizer::cleanPhone($this->phone);
+    }
+
     public function scopeWithoutGuests($query)
     {
         return $query->where(function ($q) {

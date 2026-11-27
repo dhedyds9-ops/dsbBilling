@@ -110,16 +110,8 @@ class Index extends BaseEnterpriseList
                     $this->newTicket['longitude'] = (string) $odp->longitude;
                 }
 
-                $addressParts = [];
-                if (!empty(trim((string) $odp->address))) {
-                    $addressParts[] = trim((string) $odp->address);
-                }
-                if (!empty($this->newTicket['latitude']) && !empty($this->newTicket['longitude'])) {
-                    $addressParts[] = "Koordinat: {$this->newTicket['latitude']}, {$this->newTicket['longitude']}";
-                }
-
-                if (!empty($addressParts) && (empty($this->newTicket['manual_customer_address']) || str_contains($this->newTicket['manual_customer_address'], 'Koordinat:'))) {
-                    $this->newTicket['manual_customer_address'] = implode(' | ', $addressParts);
+                if (!empty(trim((string) $odp->address)) && (empty($this->newTicket['manual_customer_address']) || str_starts_with($this->newTicket['manual_customer_address'], 'ODP:'))) {
+                    $this->newTicket['manual_customer_address'] = trim((string) $odp->address);
                 }
 
                 if (!empty($odp->reseller_id) && empty($this->newTicket['reseller_id'])) {
@@ -503,29 +495,28 @@ class Index extends BaseEnterpriseList
                     return;
                 }
 
-                $rawPhone = trim((string) ($data['manual_customer_phone'] ?? ''));
-                $cleanPhone = preg_replace('/[^0-9]/', '', $rawPhone);
-                if (empty($cleanPhone)) {
-                    $cleanPhone = $rawPhone !== '' ? $rawPhone : '-';
-                }
-                $rawAddress = trim((string) ($data['manual_customer_address'] ?? ''));
-                $cleanAddress = $rawAddress !== '' ? $rawAddress : '-';
-                $manualType = $data['manual_type'] ?? 'customer';
+                $sanitized = \App\Services\Support\CustomerFieldSanitizer::sanitize(
+                    name: $data['manual_customer_name'] ?? '',
+                    phone: $data['manual_customer_phone'] ?? null,
+                    address: $data['manual_customer_address'] ?? null,
+                    notesOrDesc: $data['description'] ?? null,
+                    latitude: !empty($data['latitude']) ? (float) $data['latitude'] : null,
+                    longitude: !empty($data['longitude']) ? (float) $data['longitude'] : null
+                );
 
-                // Resolve Lat / Lng from inputs or regex from address
-                $lat = !empty($data['latitude']) ? (float) $data['latitude'] : null;
-                $lng = !empty($data['longitude']) ? (float) $data['longitude'] : null;
-                if (($lat === null || $lng === null) && preg_match('/(?:Koordinat|Titik|GPS)?[:\s]*([+-]?\d+\.\d+)[,\s]+([+-]?\d+\.\d+)/i', $rawAddress, $km)) {
-                    $lat = (float) $km[1];
-                    $lng = (float) $km[2];
-                }
+                $manualName = $sanitized['name'];
+                $cleanPhone = $sanitized['phone'] ?? '';
+                $cleanAddress = $sanitized['address'] ?: '-';
+                $lat = $sanitized['latitude'];
+                $lng = $sanitized['longitude'];
+                $manualType = $data['manual_type'] ?? 'customer';
 
                 if ($manualType === 'network') {
                     // Objek jaringan (ODP/Jalur/ODC): tiket tanpa customer_id
                     $data['customer_id'] = null;
                     $objInfo = '[Objek Jaringan: ' . $manualName . ']'
                         . ($cleanAddress !== '-' ? ' Lokasi: ' . $cleanAddress . '.' : '')
-                        . ($cleanPhone !== '-' ? ' PIC: ' . $cleanPhone . '.' : '')
+                        . ($cleanPhone !== '' ? ' PIC: ' . $cleanPhone . '.' : '')
                         . ($lat !== null && $lng !== null ? " Titik GPS: {$lat}, {$lng}." : '');
                     $data['description'] = trim($objInfo . "\n" . ($data['description'] ?? ''));
                 } elseif ($isPsb) {
@@ -533,14 +524,14 @@ class Index extends BaseEnterpriseList
                     $data['customer_id'] = null;
                     $psbInfo = [
                         'name' => $manualName,
-                        'phone' => $cleanPhone,
-                        'address' => $cleanAddress,
+                        'phone' => $cleanPhone ?: null,
+                        'address' => $cleanAddress !== '-' ? $cleanAddress : null,
                         'latitude' => $lat,
                         'longitude' => $lng,
                         'odp_id' => !empty($data['manual_network_odp_id']) ? (int) $data['manual_network_odp_id'] : null,
                     ];
                     $data['description'] = trim(
-                        '[Calon Pelanggan: ' . $manualName . ' | Telp: ' . $cleanPhone . ' | Alamat: ' . $cleanAddress . ($lat ? " | GPS: {$lat}, {$lng}" : '') . "]\n"
+                        '[Calon Pelanggan: ' . $manualName . ($cleanPhone ? ' | Telp: ' . $cleanPhone : '') . ($cleanAddress !== '-' ? ' | Alamat: ' . $cleanAddress : '') . ($lat ? " | GPS: {$lat}, {$lng}" : '') . "]\n"
                         . ($data['description'] ?? '')
                     );
                 } else {
@@ -644,6 +635,9 @@ class Index extends BaseEnterpriseList
             $wo = new \App\Models\CRM\Installation();
             $wo->customer_id = $customer?->id;
             $wo->customer_name = $customer?->name ?? ($psbInfo['name'] ?? 'Calon Pelanggan');
+            $wo->customer_phone = $customer?->phone ?? ($psbInfo['phone'] ?? null);
+            $wo->installation_address = $customer?->address ?? ($psbInfo['address'] ?? null);
+            $wo->reseller_id = $ticket->reseller_id ?? $customer?->reseller_id;
             $wo->technician_id = $ticket->assigned_to ?: null;
             $wo->assigned_to = $ticket->assigned_to ?: null;
             if (\Illuminate\Support\Facades\Schema::hasColumn('installations', 'technician_ids')) {
@@ -656,23 +650,22 @@ class Index extends BaseEnterpriseList
 
             $lat = $customer?->latitude ?: ($psbInfo['latitude'] ?? null);
             $lng = $customer?->longitude ?: ($psbInfo['longitude'] ?? null);
-            if (($lat === null || $lng === null) && !empty($psbInfo['address'])) {
-                if (preg_match('/(?:Koordinat|Titik|GPS)?[:\s]*([+-]?\d+\.\d+)[,\s]+([+-]?\d+\.\d+)/i', $psbInfo['address'], $km)) {
-                    $lat = (float) $km[1];
-                    $lng = (float) $km[2];
+            if ($lat === null || $lng === null) {
+                $coords = \App\Services\Support\CustomerFieldSanitizer::extractCoordinates($psbInfo['address'] ?? '');
+                if ($coords['latitude'] === null && !empty($ticket->description)) {
+                    $coords = \App\Services\Support\CustomerFieldSanitizer::extractCoordinates($ticket->description);
                 }
-            }
-            if (($lat === null || $lng === null) && !empty($ticket->description)) {
-                if (preg_match('/(?:Koordinat|Titik|GPS)?[:\s]*([+-]?\d+\.\d+)[,\s]+([+-]?\d+\.\d+)/i', $ticket->description, $km)) {
-                    $lat = (float) $km[1];
-                    $lng = (float) $km[2];
+                if ($coords['latitude'] !== null) {
+                    $lat = $coords['latitude'];
+                    $lng = $coords['longitude'];
                 }
             }
             $wo->latitude = $lat;
             $wo->longitude = $lng;
 
             $wo->notes = trim('Dari Tiket #' . $ticket->id . ': ' . $ticket->title
-                . ($psbInfo ? "\nTelp: " . $psbInfo['phone'] . ' | Alamat: ' . $psbInfo['address'] : '')
+                . ($wo->customer_phone ? "\nTelp: " . $wo->customer_phone : '')
+                . ($wo->installation_address ? ' | Alamat: ' . $wo->installation_address : '')
                 . ($lat !== null && $lng !== null ? " | GPS: {$lat}, {$lng}" : '')
                 . ($ticket->description ? "\n" . $ticket->description : ''));
             $wo->created_by = $userId ?: 0;

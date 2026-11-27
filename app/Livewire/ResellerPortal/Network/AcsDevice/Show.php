@@ -112,9 +112,24 @@ class Show extends AdminComponent
 
             // PON RX/TX Power using unified AcsTelemetryParser (ZTE swap anomaly detection & OLT fallback)
             $flat = \App\Services\ACS\AcsTelemetryParser::flatten($params);
-            $optical = \App\Services\ACS\AcsTelemetryParser::parseOptical($flat, $this->device->onu);
+            $resolvedOnu = $this->device->resolved_onu ?? $this->device->onu;
+            $optical = \App\Services\ACS\AcsTelemetryParser::parseOptical($flat, $resolvedOnu, $this->device);
             $rxPower = $optical['rx_power'];
             $txPower = $optical['tx_power'];
+
+            if ($rxPower !== null && (float)$rxPower < 0) {
+                try {
+                    $this->device->update(['signal' => $rxPower]);
+                    if ($resolvedOnu) {
+                        $resolvedOnu->update(['rx_power_dbm' => $rxPower]);
+                    }
+                } catch (\Throwable) {}
+            }
+            if ($txPower !== null && (float)$txPower > 0 && $resolvedOnu) {
+                try {
+                    $resolvedOnu->update(['tx_power_dbm' => $txPower]);
+                } catch (\Throwable) {}
+            }
 
             // Find WAN IP, MAC, PPPoE, and PON stats dynamically
             $wanDevices = $params['InternetGatewayDevice']['WANDevice'] ?? $params['Device']['WANDevice'] ?? [];

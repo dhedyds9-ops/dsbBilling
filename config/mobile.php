@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10127,
-        'latest_version_name' => '1.1.27',
+        'latest_version_code' => 10130,
+        'latest_version_name' => '1.1.30',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'https://winets.mstore.id') . '/downloads/dsbilling-technician.apk',
-        'release_notes' => "dsBilling Staff & Reseller v1.1.27:\n- Operational Control Center: Monitoring pekerjaan lapangan real-time untuk Admin & NOC langsung dari aplikasi (Tiket, SPK, QC, SLA Breached, dan Teknisi aktif).\n- PSB Mandiri Reseller: Registrasi ONT mandiri untuk Reseller tanpa kewajiban SPK/presensi, sedangkan Teknisi tetap terjaga integritas SPK dan presensi aktif.\n- Pencarian Pelanggan Tiket Gangguan: Pemilih pelanggan interaktif dengan pencarian instan pada pembuatan tiket gangguan oleh Reseller & Admin.\n- Eliminasi Redundansi Menu: Penataan grid 12 menu presisi untuk setiap role (Reseller, Teknisi, Admin) bebas duplikasi aksi.\n- Tombol Pintas SPK: Akses langsung pengerjaan SPK lapangan dari detail tiket gangguan.\n- Push Notification FCM HTTP v1: Notifikasi real-time penugasan SPK, verifikasi QC, dan eskalasi SLA.",
+        'release_notes' => "dsBilling Staff & Reseller v1.1.30:\n- Optimalisasi Dasbor Reseller: 4 Kartu KPI resmi (Pelanggan Aktif, Omzet Layanan, Komisi Reseller, Tagihan Belum Lunas), 8 Akses Cepat Grid 2x4 responsif tanpa teks terpotong, dan isolasi ketat menu teknisi.\n- Penyelarasan Penuh Komisi Reseller Web-Mobile: Integrasi SSOT IncomeReportService, pemisahan Omzet Kotor, Komisi Bersih, Setoran Modal Pusat, Rasio Margin, filter periode & kategori, serta rincian struk per transaksi.\n- Discovery Lengkap Multi-SSID ONT: Penemuan seluruh SSID (1..4 pada 2.4GHz dan 5..8 pada 5GHz) pada ZTE, Huawei, FiberHome TR-098 & TR-181 dengan proteksi tabrakan indeks dan verifikasi Read-After-Write.",
     ],
     'customer' => [
         'latest_version_code' => 10112,

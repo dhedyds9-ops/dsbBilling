@@ -229,10 +229,10 @@
                             <td class="px-4 py-3 font-mono text-xs">
                                 @php
                                     $sigVal = ($device->signal !== null && $device->signal !== '') ? (float) $device->signal : null;
-                                    // Fallback ke ONU jika signal di ACS device kosong atau anomali positif
-                                    if ($sigVal === null || $sigVal > 0) {
-                                        $onuRecord = $device->resolved_onu ?? $device->onu;
-                                        if (!empty($onuRecord?->rx_power_dbm)) {
+                                    // Fallback ke ONU jika signal di ACS device kosong, bernilai 0.0, atau anomali positif
+                                    if ($sigVal === null || $sigVal == 0.0 || $sigVal > 0) {
+                                        $onuRecord = $device->resolved_onu ?? $device->onu ?? $device->customerService?->onu;
+                                        if (!empty($onuRecord?->rx_power_dbm) && (float)$onuRecord->rx_power_dbm < 0) {
                                             $sigVal = (float) $onuRecord->rx_power_dbm;
                                         }
                                     }

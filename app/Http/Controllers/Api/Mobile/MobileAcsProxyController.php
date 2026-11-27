@@ -855,6 +855,18 @@ class MobileAcsProxyController extends Controller
             $rxPower = $optical['rx_power'];
             $txPower = $optical['tx_power'];
 
+            if ($rxPower !== null && (float)$rxPower < 0) {
+                try {
+                    $ad?->update(['signal' => $rxPower]);
+                    $onu?->update(['rx_power_dbm' => $rxPower]);
+                } catch (\Throwable) {}
+            }
+            if ($txPower !== null && (float)$txPower > 0) {
+                try {
+                    $onu?->update(['tx_power_dbm' => $txPower]);
+                } catch (\Throwable) {}
+            }
+
             // Extract connected devices directly in-memory from $params
             $connectedDevices = $this->driver->extractConnectedDevicesFromParams($params);
             if (empty($connectedDevices)) {
@@ -1117,7 +1129,17 @@ class MobileAcsProxyController extends Controller
             }
 
             // Determine prefix and parameter paths
-            $prefix = $targetWlan['prefix'] ?? "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}";
+            if (!$targetWlan && $wlanIndex >= 5) {
+                $hasLan2 = isset($params['InternetGatewayDevice']['LANDevice']['2']);
+                if ($hasLan2) {
+                    $rawSlot = $wlanIndex - 4;
+                    $prefix = "InternetGatewayDevice.LANDevice.2.WLANConfiguration.{$rawSlot}";
+                } else {
+                    $prefix = "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}";
+                }
+            } else {
+                $prefix = $targetWlan['prefix'] ?? $targetWlan['full_path'] ?? "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}";
+            }
             $ssidPath = $targetWlan['ssid_path'] ?? "{$prefix}.SSID";
             $passPath = $targetWlan['password_path'] ?? "{$prefix}.PreSharedKey.1.KeyPassphrase";
             $enablePath = $targetWlan['enable_path'] ?? "{$prefix}.Enable";

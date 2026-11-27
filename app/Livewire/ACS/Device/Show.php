@@ -221,6 +221,20 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
             $rxPower = $optical['rx_power'];
             $txPower = $optical['tx_power'];
 
+            if ($rxPower !== null && (float)$rxPower < 0) {
+                try {
+                    $this->device->update(['signal' => $rxPower]);
+                    if ($resolvedOnu) {
+                        $resolvedOnu->update(['rx_power_dbm' => $rxPower]);
+                    }
+                } catch (\Throwable) {}
+            }
+            if ($txPower !== null && (float)$txPower > 0 && $resolvedOnu) {
+                try {
+                    $resolvedOnu->update(['tx_power_dbm' => $txPower]);
+                } catch (\Throwable) {}
+            }
+
             // Helper untuk mengambil nilai string pertama yang tidak kosong
             $firstNonEmpty = function (...$candidates) {
                 foreach ($candidates as $cand) {

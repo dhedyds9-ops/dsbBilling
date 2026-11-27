@@ -115,7 +115,9 @@
                             $uname = $device->customerService?->username ?? $device->onu?->customerService?->username;
                             $rawVendor = $device->getRawOriginal('vendor') ?? null;
                             $vendorName = $device->vendor?->name ?? (is_string($rawVendor) && $rawVendor !== '' ? $rawVendor : null) ?? $device->manufacturer ?? '-';
-                            $signalRaw = ($device->signal !== null && $device->signal !== '') ? $device->signal : $device->onu?->rx_power_dbm;
+                            $signalRaw = ($device->signal !== null && $device->signal !== '' && (float)$device->signal < 0)
+                                ? $device->signal 
+                                : ($device->resolved_onu?->rx_power_dbm ?? $device->onu?->rx_power_dbm ?? $device->customerService?->onu?->rx_power_dbm);
                         @endphp
                         <tr wire:key="acs-dev-{{ $device->id }}" class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                             <td class="px-4 py-3 whitespace-nowrap text-center">

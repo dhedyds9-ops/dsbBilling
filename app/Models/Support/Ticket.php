@@ -172,12 +172,24 @@ class Ticket extends Model
                 $isNetwork = true;
                 $objectName = trim($m[1]);
                 $cleanDesc = trim(str_replace($m[0], '', $cleanDesc));
-            } elseif (preg_match('/\[Calon Pelanggan:\s*(.+?)\s*\|\s*Telp:\s*(.+?)\s*\|\s*Alamat:\s*(.+?)\]/i', $this->description, $mPsb)) {
+            } elseif ($isPsb || preg_match('/\[Calon Pelanggan:\s*(.+?)\]/is', (string) $this->description)) {
+                $sanitized = \App\Services\Support\CustomerFieldSanitizer::sanitize(
+                    name: null,
+                    phone: null,
+                    address: null,
+                    notesOrDesc: $this->description
+                );
                 $isPsb = true;
-                $customerName = trim($mPsb[1]);
-                $contactPhone = trim($mPsb[2]);
-                $address = trim($mPsb[3]);
-                $cleanDesc = trim(str_replace($mPsb[0], '', $cleanDesc));
+                $customerName = $sanitized['name'] !== 'Pelanggan Baru' ? $sanitized['name'] : ($this->title ?: 'Calon Pelanggan');
+                $contactPhone = $sanitized['phone'] ?: '-';
+                $address = $sanitized['address'] !== 'Alamat belum tercatat' ? $sanitized['address'] : '-';
+                if ($sanitized['latitude'] !== null) {
+                    $lat = $sanitized['latitude'];
+                    $lng = $sanitized['longitude'];
+                }
+                if (preg_match('/\[Calon Pelanggan:.*?\]/is', (string) $this->description, $mPsb)) {
+                    $cleanDesc = trim(str_replace($mPsb[0], '', $cleanDesc));
+                }
             } else {
                 // Customer ID kosong dan bukan PSB -> Dianggap Objek Jaringan / Gangguan Massal
                 $isNetwork = true;

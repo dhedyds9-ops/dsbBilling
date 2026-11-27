@@ -76,6 +76,30 @@ class Index extends AdminComponent
                 '_ip',
                 '_lastInform',
                 'VirtualParameters',
+                'VirtualParameters.rxPower',
+                'VirtualParameters.RXPower',
+                'VirtualParameters.redaman',
+                'VirtualParameters.Redaman',
+                'VirtualParameters.opticalRxPower',
+                'VirtualParameters.optical_rx',
+                'VirtualParameters.rx_power',
+                'VirtualParameters.RxPower',
+                'VirtualParameters.txPower',
+                'VirtualParameters.TXPower',
+                'VirtualParameters.opticalTxPower',
+                'VirtualParameters.optical_tx',
+                'VirtualParameters.tx_power',
+                'VirtualParameters.TxPower',
+                'VirtualParameters.OpticalInfo',
+                'VirtualParameters.PonMac',
+                'VirtualParameters.ponMac',
+                'VirtualParameters.pppoeUsername',
+                'VirtualParameters.pppoePassword',
+                'VirtualParameters.pppoeIP',
+                'VirtualParameters.WlanSSID',
+                'VirtualParameters.WlanPassword',
+                'VirtualParameters.superAdmin',
+                'VirtualParameters.superPassword',
                 'InternetGatewayDevice.DeviceInfo',
                 'Device.DeviceInfo',
                 'InternetGatewayDevice.ManagementServer.ConnectionRequestURL',
@@ -98,7 +122,7 @@ class Index extends AdminComponent
             $adminAcs = app(\App\Livewire\ACS\Device\Index::class);
             $syncStartTime = now()->subMinutes(1);
             $count = 0;
-            $batchSize = 250;
+            $batchSize = 50;
             $skip = 0;
             $maxLimit = 10000;
 

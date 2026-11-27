@@ -939,6 +939,8 @@ class MobileNetworkApiController extends Controller
             'customer_name' => 'nullable|string|max:150',
             'customer_phone' => 'nullable|string|max:50',
             'customer_address' => 'nullable|string|max:255',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
             'service_profile_id' => 'nullable|integer',
             'odp_id' => 'nullable|integer',
             'odp_port' => 'nullable|integer|min:1|max:64',
@@ -1320,29 +1322,26 @@ class MobileNetworkApiController extends Controller
 
             // Jika Customer belum ada (misal SPK dibuat untuk calon pelanggan/lead baru), auto-create Customer
             if (!$customer) {
-                $candName = trim((string) ($validated['customer_name'] ?? ''));
-                $candPhone = trim((string) ($validated['customer_phone'] ?? ''));
-                $candAddress = trim((string) ($validated['customer_address'] ?? ''));
+                $sanitized = \App\Services\Support\CustomerFieldSanitizer::sanitize(
+                    name: $validated['customer_name'] ?? null,
+                    phone: $validated['customer_phone'] ?? null,
+                    address: $validated['customer_address'] ?? null,
+                    notesOrDesc: ($wo ? ($wo->description . ' ' . $wo->notes) : null),
+                    latitude: isset($validated['latitude']) ? (float)$validated['latitude'] : ($wo?->latitude),
+                    longitude: isset($validated['longitude']) ? (float)$validated['longitude'] : ($wo?->longitude)
+                );
 
-                // Jika nama belum dikirim langsung, ekstrak dari judul SPK (misal "PSB: Badru" -> "Badru")
-                if (empty($candName) && $wo) {
-                    $rawTitle = $wo->title ?? '';
-                    if (preg_match('/(?:PSB|Instalasi|Pasang Baru)[:\s-]+(.+)/i', $rawTitle, $matches)) {
-                        $candName = trim($matches[1]);
-                    } elseif (!empty($rawTitle)) {
-                        $candName = trim($rawTitle);
-                    }
-                }
-
-                if (empty($candAddress) && $wo) {
-                    $candAddress = $wo->description ?: $wo->notes;
-                }
+                $candName = $sanitized['name'];
+                $candPhone = $sanitized['phone'];
+                $candAddress = $sanitized['address'] !== 'Alamat belum tercatat' ? $sanitized['address'] : 'Alamat pemasangan lapangan';
+                $lat = $sanitized['latitude'];
+                $lng = $sanitized['longitude'];
 
                 // Cek apakah sudah pernah terdaftar berdasarkan nomor telepon atau nama
-                if (!empty($candPhone) && $candPhone !== '-') {
+                if (!empty($candPhone)) {
                     $customer = Customer::withoutGlobalScopes()->where('phone', $candPhone)->first();
                 }
-                if (!$customer && !empty($candName)) {
+                if (!$customer && !empty($candName) && $candName !== 'Pelanggan Baru') {
                     $customer = Customer::withoutGlobalScopes()->where('name', $candName)->first();
                 }
 
@@ -1353,8 +1352,10 @@ class MobileNetworkApiController extends Controller
                         $customer = Customer::create([
                             'code' => $customerCode,
                             'name' => $candName ?: ('Pelanggan ' . substr($sn, -6)),
-                            'phone' => $candPhone ?: '-',
-                            'address' => $candAddress ?: 'Alamat pemasangan lapangan',
+                            'phone' => $candPhone,
+                            'address' => $candAddress,
+                            'latitude' => $lat,
+                            'longitude' => $lng,
                             'status' => 'active',
                             'branch_id' => $user->branch_id,
                             'reseller_id' => $wo->reseller_id ?? $user->getEffectiveResellerId(),
@@ -1377,11 +1378,19 @@ class MobileNetworkApiController extends Controller
 
                 // Perbarui kontak/alamat jika teknisi melakukan update di lapangan
                 $customerContactUpdates = [];
-                if (!empty($validated['customer_phone']) && $validated['customer_phone'] !== '-' && $customer->phone !== $validated['customer_phone']) {
-                    $customerContactUpdates['phone'] = trim($validated['customer_phone']);
+                $cleanInputPhone = \App\Services\Support\CustomerFieldSanitizer::cleanPhone($validated['customer_phone'] ?? null);
+                if ($cleanInputPhone && $customer->phone !== $cleanInputPhone) {
+                    $customerContactUpdates['phone'] = $cleanInputPhone;
                 }
-                if (!empty($validated['customer_address']) && $customer->address !== $validated['customer_address']) {
-                    $customerContactUpdates['address'] = trim($validated['customer_address']);
+                $cleanInputAddr = \App\Services\Support\CustomerFieldSanitizer::cleanAddress($validated['customer_address'] ?? null);
+                if ($cleanInputAddr && $customer->address !== $cleanInputAddr) {
+                    $customerContactUpdates['address'] = $cleanInputAddr;
+                }
+                if (isset($validated['latitude']) && (float)$validated['latitude'] != (float)$customer->latitude) {
+                    $customerContactUpdates['latitude'] = (float)$validated['latitude'];
+                }
+                if (isset($validated['longitude']) && (float)$validated['longitude'] != (float)$customer->longitude) {
+                    $customerContactUpdates['longitude'] = (float)$validated['longitude'];
                 }
                 if (!empty($customerContactUpdates)) {
                     $customer->update($customerContactUpdates);

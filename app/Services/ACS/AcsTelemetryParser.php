@@ -185,10 +185,33 @@ class AcsTelemetryParser
         $profile = VendorCapabilityCatalog::resolveProfile($vendor, $model, $sn);
 
         // Prioritized optical candidates based on detected vendor & verified catalog profile
-        $rxCandidates = [];
-        $txCandidates = [];
+        // 1. VirtualParameters (ISP-configured custom scripts in GenieACS take top precedence)
+        $rxCandidates = [
+            'VirtualParameters.RXPower',
+            'VirtualParameters.rxPower',
+            'VirtualParameters.redaman',
+            'VirtualParameters.Redaman',
+            'VirtualParameters.opticalRxPower',
+            'VirtualParameters.optical_rx',
+            'VirtualParameters.rx_power',
+            'VirtualParameters.RxPower',
+            'VirtualParameters.OpticalInfo.RxPower',
+            'VirtualParameters.OpticalInfo.RxOpticalPower',
+            'VirtualParameters.OpticalInfo.OpticalRxPower',
+        ];
+        $txCandidates = [
+            'VirtualParameters.TXPower',
+            'VirtualParameters.txPower',
+            'VirtualParameters.opticalTxPower',
+            'VirtualParameters.optical_tx',
+            'VirtualParameters.tx_power',
+            'VirtualParameters.TxPower',
+            'VirtualParameters.OpticalInfo.TxPower',
+            'VirtualParameters.OpticalInfo.TxOpticalPower',
+            'VirtualParameters.OpticalInfo.OpticalTxPower',
+        ];
 
-        // 1. Profile-defined verified paths
+        // 2. Profile-defined verified paths
         if (!empty($profile['optical']['rx_path'])) {
             $rxCandidates[] = $profile['optical']['rx_path'];
         }
@@ -201,20 +224,26 @@ class AcsTelemetryParser
             $txCandidates[] = $profile['optical']['tx_path'];
         }
 
-        // 2. Vendor-targeted paths
+        // 3. Vendor-targeted paths
         $vendorLower = strtolower($vendor);
         if ($vendorLower === 'zte' || str_starts_with(strtoupper($sn), 'ZTEG') || str_starts_with(strtoupper($sn), '5A544547')) {
             $rxCandidates = array_merge($rxCandidates, [
                 'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower',
                 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.OpticalRxPower',
+                'InternetGatewayDevice.DeviceInfo.X_ZTE-COM_OpticalInfo.RxPower',
                 'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower',
                 'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RxPower',
+                'InternetGatewayDevice.DeviceInfo.X_CT-COM_GponInterfaceConfig.RXPower',
             ]);
             $txCandidates = array_merge($txCandidates, [
                 'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower',
                 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TxPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.OpticalTxPower',
+                'InternetGatewayDevice.DeviceInfo.X_ZTE-COM_OpticalInfo.TxPower',
                 'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.TXPower',
                 'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.TxPower',
+                'InternetGatewayDevice.DeviceInfo.X_CT-COM_GponInterfaceConfig.TXPower',
             ]);
         } elseif ($vendorLower === 'huawei' || str_starts_with(strtoupper($sn), 'HWTC') || str_starts_with(strtoupper($sn), '48575443')) {
             $rxCandidates = array_merge($rxCandidates, [
@@ -237,6 +266,9 @@ class AcsTelemetryParser
                 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower',
                 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_OpticalRxPower',
                 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverRxPower',
+                'InternetGatewayDevice.DeviceInfo.X_HW_OpticalRxPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxOpticalPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.OpticalRxPower',
             ]);
             $txCandidates = array_merge($txCandidates, [
                 'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
@@ -258,6 +290,9 @@ class AcsTelemetryParser
                 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower',
                 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_OpticalTxPower',
                 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TransceiverTxPower',
+                'InternetGatewayDevice.DeviceInfo.X_HW_OpticalTxPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxOpticalPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.OpticalTxPower',
             ]);
         } elseif ($vendorLower === 'fiberhome' || str_starts_with(strtoupper($sn), 'FHTT') || str_starts_with(strtoupper($sn), '46485454')) {
             $rxCandidates = array_merge($rxCandidates, [
@@ -269,6 +304,8 @@ class AcsTelemetryParser
                 'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.1.RXPower',
                 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_RxPower',
                 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_TransceiverRxPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.OpticalRxPower',
+                'InternetGatewayDevice.DeviceInfo.X_FH_OpticalInfo.RxPower',
             ]);
             $txCandidates = array_merge($txCandidates, [
                 'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower',
@@ -279,10 +316,12 @@ class AcsTelemetryParser
                 'InternetGatewayDevice.WANDevice.1.X_FH_PONInterfaceConfig.1.TXPower',
                 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_TxPower',
                 'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_FH_TransceiverTxPower',
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.OpticalTxPower',
+                'InternetGatewayDevice.DeviceInfo.X_FH_OpticalInfo.TxPower',
             ]);
         }
 
-        // 3. VirtualParameters and Universal TR-098 / TR-181 Paths
+        // 4. Universal TR-098 / TR-181 Fallback Paths
         $rxCandidates = array_values(array_unique(array_merge($rxCandidates, [
             'VirtualParameters.RXPower',
             'VirtualParameters.rxPower',
@@ -535,6 +574,10 @@ class AcsTelemetryParser
             || ($rxPath && stripos($rxPath, 'X_ZTE-COM') !== false)
             || ($txPath && stripos($txPath, 'X_ZTE-COM') !== false);
 
+        $isSwapped = false;
+        $swapNoteRx = null;
+        $swapNoteTx = null;
+
         if ($shouldSwap) {
             // ZTE inverted parameters: candidate in RX path might be TX laser, candidate in TX path might be RX power
             $rxInvert = self::normalizePowerValue($rawTx, true);   // TX parameter as RX power
@@ -556,34 +599,36 @@ class AcsTelemetryParser
                 // Swapped by ZTE firmware:
                 $rx = -abs($rxInvert);
                 $tx = abs($txInvert);
-                $rxFormula = 'Verified Vendor Profile Swap: Inverted from TX Parameter (applied negative sign)';
-                $txFormula = 'Verified Vendor Profile Swap: Inverted from RX Parameter';
+                $isSwapped = true;
+                $swapNoteRx = 'Verified Vendor Profile Swap: Inverted from TX Parameter';
+                $swapNoteTx = 'Verified Vendor Profile Swap: Inverted from RX Parameter';
             } elseif ($absRxNormal !== null && $absRxNormal >= 6.5 && $absTxNormal !== null && $absTxNormal > 0.0 && $absTxNormal <= 6.5) {
                 // Standard non-inverted ZTE firmware:
                 $rx = -abs($rxNormal);
                 $tx = abs($txNormal);
-                $rxFormula = 'Verified Vendor Profile: Standard RX Parameter';
-                $txFormula = 'Verified Vendor Profile: Standard TX Parameter';
+                $swapNoteRx = 'Standard RX Parameter';
+                $swapNoteTx = 'Standard TX Parameter';
             } elseif ($absTxInvert !== null && $absTxInvert > 0.0 && $absTxInvert <= 6.5 && $isRawTxEmptyOrZero) {
                 // Single reading in RX parameter is actually TX laser (+0.5 to +6.5 dBm)
                 $tx = abs($txInvert);
                 $rx = (is_numeric($rawTx) && (float)$rawTx == 0.0) ? 0.0 : null;
-                $txFormula = 'Verified Vendor Profile Anomaly: Single positive value in RX parameter detected as TX laser';
+                $swapNoteTx = 'Single positive value in RX parameter detected as TX laser';
             } elseif ($absRxInvert !== null && $absRxInvert >= 6.5 && $isRawRxEmptyOrZero) {
                 // Single reading in TX parameter is actually RX power (magnitude >= 6.5 dBm)
                 $rx = -abs($rxInvert);
                 $tx = (is_numeric($rawRx) && (float)$rawRx == 0.0) ? 0.0 : null;
-                $rxFormula = 'Verified Vendor Profile Anomaly: Value in TX parameter detected as RX power (applied negative sign)';
-            } elseif ($absRxNormal !== null && $absRxNormal >= 6.5 && $isRawTxEmptyOrZero) {
+                $isSwapped = true;
+                $swapNoteRx = 'Verified Vendor Profile Swap: Value in TX parameter detected as RX power';
+            } elseif ($absRxNormal !== null && $absRxNormal >= 6.5 && $isRawRxEmptyOrZero) {
                 // Single reading in RX parameter is standard RX power (magnitude >= 6.5 dBm)
                 $rx = -abs($rxNormal);
-                $tx = (is_numeric($rawTx) && (float)$rawTx == 0.0) ? 0.0 : null;
-                $rxFormula = 'Verified Vendor Profile: Value in RX parameter detected as RX power (applied negative sign)';
+                $tx = (is_numeric($rawRx) && (float)$rawRx == 0.0) ? 0.0 : null;
+                $swapNoteRx = 'Value in RX parameter detected as RX power';
             } elseif ($absTxNormal !== null && $absTxNormal > 0.0 && $absTxNormal <= 6.5 && $isRawRxEmptyOrZero) {
                 // Single reading in TX parameter is standard TX laser (+0.5 to +6.5 dBm)
                 $tx = abs($txNormal);
                 $rx = (is_numeric($rawRx) && (float)$rawRx == 0.0) ? 0.0 : null;
-                $txFormula = 'Verified Vendor Profile: Value in TX parameter detected as TX laser';
+                $swapNoteTx = 'Value in TX parameter detected as TX laser';
             } else {
                 $rx = self::normalizePowerValue($rawRx, true);
                 $tx = self::normalizePowerValue($rawTx, false);
@@ -594,63 +639,83 @@ class AcsTelemetryParser
 
             if ($rx !== null && !$isAttenuation && $rx >= 6.0 && $rx <= 45.0) {
                 $rx = -abs($rx);
-                $rxFormula = ($rxFormula ? $rxFormula . ' ' : '') . '(applied negative sign for optical power)';
+                $swapNoteRx = '(applied negative sign for optical power)';
             }
         }
 
-        // Track formulas and units
-        $rxFormula = $rxFormula ?? 'direct';
-        $rxUnit = 'dBm';
-        $txFormula = $txFormula ?? 'direct';
-        $txUnit = 'dBm';
-
+        // Determine raw units and scaling formulas before potential swap
+        $rawRxScalingFormula = 'direct';
+        $rxRawUnit = 'dBm';
         if ($rawRx !== null) {
             $rawRxStr = (string)$rawRx;
             if (preg_match('/(?:uW|µW|uw)/i', $rawRxStr)) {
-                $rxUnit = 'uW';
-                $rxFormula = '10 * log10(val / 1000)';
+                $rxRawUnit = 'uW';
+                $rawRxScalingFormula = '10 * log10(val / 1000)';
             } elseif (preg_match('/(?:mW|mw)/i', $rawRxStr)) {
-                $rxUnit = 'mW';
-                $rxFormula = '10 * log10(val)';
+                $rxRawUnit = 'mW';
+                $rawRxScalingFormula = '10 * log10(val)';
             } else {
                 $numRx = abs((float)$rawRx);
                 if ($numRx == 0.0) {
-                    $rxFormula = 'zero_power_or_laser_off';
+                    $rawRxScalingFormula = 'zero_power_or_laser_off';
                 } elseif ($numRx >= 6000.0) {
-                    $rxUnit = 'milli-dBm';
-                    $rxFormula = 'val / 1000';
+                    $rxRawUnit = 'milli-dBm';
+                    $rawRxScalingFormula = 'val / 1000';
                 } elseif ($numRx >= 60.0) {
-                    $rxUnit = '0.01 dBm';
-                    $rxFormula = 'val / 100';
+                    $rxRawUnit = '0.01 dBm';
+                    $rawRxScalingFormula = 'val / 100';
                 }
             }
         }
 
+        $rawTxScalingFormula = 'direct';
+        $txRawUnit = 'dBm';
         if ($rawTx !== null) {
             $rawTxStr = (string)$rawTx;
             if (preg_match('/(?:uW|µW|uw)/i', $rawTxStr)) {
-                $txUnit = 'uW';
-                $txFormula = '10 * log10(val / 1000)';
+                $txRawUnit = 'uW';
+                $rawTxScalingFormula = '10 * log10(val / 1000)';
             } elseif (preg_match('/(?:mW|mw)/i', $rawTxStr)) {
-                $txUnit = 'mW';
-                $txFormula = '10 * log10(val)';
+                $txRawUnit = 'mW';
+                $rawTxScalingFormula = '10 * log10(val)';
             } else {
                 $numTx = abs((float)$rawTx);
                 if ($numTx == 0.0) {
-                    $txFormula = 'zero_power_or_laser_off';
+                    $rawTxScalingFormula = 'zero_power_or_laser_off';
                 } elseif ($numTx >= 500.0) {
-                    $txUnit = 'milli-dBm';
-                    $txFormula = 'val / 1000';
+                    $txRawUnit = 'milli-dBm';
+                    $rawTxScalingFormula = 'val / 1000';
                 } elseif ($numTx >= 40.0) {
-                    $txUnit = '0.01 dBm';
-                    $txFormula = 'val / 100';
+                    $txRawUnit = '0.01 dBm';
+                    $rawTxScalingFormula = 'val / 100';
                 }
             }
         }
 
-        // Attenuation Parameter Semantics Check
+        if ($isSwapped) {
+            $finalRxPath = $txPath;
+            $finalRxRaw = $rawTx;
+            $finalRxUnit = $txRawUnit;
+            $finalRxFormula = $swapNoteRx ? ($rawTxScalingFormula . ' (' . $swapNoteRx . ')') : $rawTxScalingFormula;
+
+            $finalTxPath = $rxPath;
+            $finalTxRaw = $rawRx;
+            $finalTxUnit = $rxRawUnit;
+            $finalTxFormula = $swapNoteTx ? ($rawRxScalingFormula . ' (' . $swapNoteTx . ')') : $rawRxScalingFormula;
+        } else {
+            $finalRxPath = $rxPath;
+            $finalRxRaw = $rawRx;
+            $finalRxUnit = $rxRawUnit;
+            $finalRxFormula = $swapNoteRx ? ($rawRxScalingFormula . ' ' . $swapNoteRx) : $rawRxScalingFormula;
+
+            $finalTxPath = $txPath;
+            $finalTxRaw = $rawTx;
+            $finalTxUnit = $txRawUnit;
+            $finalTxFormula = $swapNoteTx ? ($rawTxScalingFormula . ' ' . $swapNoteTx) : $rawTxScalingFormula;
+        }
+
         if ($isAttenuation) {
-            $rxFormula = ($rxFormula ? $rxFormula . ' ' : '') . '(optical attenuation in dB)';
+            $finalRxFormula .= ' (optical attenuation in dB)';
         }
 
         // EXPLICIT SEPARATION: ONU Optical readings vs OLT DDM readings
@@ -839,17 +904,17 @@ class AcsTelemetryParser
             'rx_power' => $compositeRx,
             'rx_power_display' => $compositeRxDisplay,
             'rx_status' => $status,
-            'rx_path' => $rxPath,
-            'rx_raw' => $rawRx,
-            'rx_unit' => $rxUnit,
-            'rx_formula' => $rxFormula,
+            'rx_path' => $finalRxPath,
+            'rx_raw' => $finalRxRaw,
+            'rx_unit' => $finalRxUnit,
+            'rx_formula' => $finalRxFormula,
 
             'tx_power' => $compositeTx,
             'tx_power_display' => $compositeTxDisplay,
-            'tx_path' => $txPath,
-            'tx_raw' => $rawTx,
-            'tx_unit' => $txUnit,
-            'tx_formula' => $txFormula,
+            'tx_path' => $finalTxPath,
+            'tx_raw' => $finalTxRaw,
+            'tx_unit' => $finalTxUnit,
+            'tx_formula' => $finalTxFormula,
 
             'temperature' => $tempDisplay,
             'temperature_value' => $tempVal,
@@ -1314,11 +1379,7 @@ class AcsTelemetryParser
                         ?? (is_scalar($wNode['Enable'] ?? null) ? $wNode['Enable'] : ($flat["{$prefix}.Enable"] ?? true));
                     $enable = (bool) $rawEnable;
 
-                    // Skip empty / inactive placeholder nodes if no SSID and no BSSID
-                    if (empty($ssid) && empty($bssid)) {
-                        continue;
-                    }
-
+                    // Retain all physical/virtual WLAN instances reported by hardware
                     $ssidAdv = $wNode['SSIDAdvertisementEnabled']['_value'] 
                         ?? $wNode['SSIDAdvertisementEnabled'] 
                         ?? ($flat["{$prefix}.SSIDAdvertisementEnabled"] ?? true);
@@ -1401,13 +1462,24 @@ class AcsTelemetryParser
 
                     $cleanPass = (is_scalar($rawPass) && $rawPass !== '******' && $rawPass !== '') ? (string)$rawPass : null;
 
+                    $is5GLan = (int)$ldIdx > 1 || (int)$wIdx >= 5 || str_contains($band, '5');
+                    $globalIndex = ($is5GLan && (int)$wIdx < 5) ? (int)$wIdx + 4 : (int)$wIdx;
+                    $bandLabel = $band !== 'Unknown' ? $band : ($is5GLan ? '5GHz' : '2.4GHz');
+
                     $allWlans[] = [
-                        'instance' => (int)$wIdx,
-                        'band' => $band,
+                        'index' => $globalIndex,
+                        'instance' => $globalIndex,
+                        'display_index' => $globalIndex,
+                        'raw_index' => (int)$wIdx,
+                        'lan_device_index' => (int)$ldIdx,
+                        'label' => "SSID {$globalIndex} ({$bandLabel})",
+                        'band' => $bandLabel,
                         'ssid' => (string)$ssid,
                         'bssid' => $bssid,
                         'enabled' => $enable,
+                        'is_enabled' => $enable,
                         'hidden' => $hidden,
+                        'is_hidden' => $hidden,
                         'channel' => $channelInt ?: ($channel ?: 'Auto'),
                         'standard' => $standard ?: 'Auto',
                         'security_mode' => $secMode,
@@ -1415,6 +1487,7 @@ class AcsTelemetryParser
                         'has_password' => !empty($cleanPass),
                         'password_masked' => !empty($cleanPass) ? '••••••••' : '-',
                         'full_path' => $prefix,
+                        'prefix' => $prefix,
                         'ssid_path' => "{$prefix}.SSID",
                         'password_path' => $passPath,
                         'enable_path' => "{$prefix}.Enable",
@@ -1433,9 +1506,9 @@ class AcsTelemetryParser
             if (is_array($tr181Ssids)) {
                 foreach ($tr181Ssids as $sIdx => $sNode) {
                     if (!is_numeric($sIdx) || !is_array($sNode)) continue;
+                    $prefix = "Device.WiFi.SSID.{$sIdx}";
                     $rawSsid = $sNode['SSID']['_value'] ?? (is_scalar($sNode['SSID'] ?? null) ? $sNode['SSID'] : ($flat["{$prefix}.SSID"] ?? null));
                     $ssid = is_scalar($rawSsid) ? trim((string)$rawSsid) : '';
-                    if (empty($ssid)) continue;
 
                     $rawBssid = $sNode['BSSID']['_value'] ?? (is_scalar($sNode['BSSID'] ?? null) ? $sNode['BSSID'] : ($flat["{$prefix}.BSSID"] ?? null));
                     $bssid = self::normalizeMac($rawBssid);
@@ -1457,12 +1530,17 @@ class AcsTelemetryParser
                     $cleanPass = (is_scalar($rawPass) && $rawPass !== '******' && $rawPass !== '') ? (string)$rawPass : null;
 
                     $allWlans[] = [
+                        'index' => (int)$sIdx,
                         'instance' => (int)$sIdx,
+                        'display_index' => (int)$sIdx,
+                        'label' => "SSID {$sIdx} ({$band})",
                         'band' => $band,
                         'ssid' => (string)$ssid,
                         'bssid' => $bssid,
                         'enabled' => $enable,
+                        'is_enabled' => $enable,
                         'hidden' => false,
+                        'is_hidden' => false,
                         'channel' => 'Auto',
                         'standard' => 'Auto',
                         'security_mode' => 'WPA2-PSK',
@@ -1470,6 +1548,7 @@ class AcsTelemetryParser
                         'has_password' => !empty($cleanPass),
                         'password_masked' => !empty($cleanPass) ? '••••••••' : '-',
                         'full_path' => $prefix,
+                        'prefix' => $prefix,
                         'ssid_path' => "{$prefix}.SSID",
                         'password_path' => $passPath,
                         'enable_path' => "{$prefix}.Enable",
@@ -1485,12 +1564,16 @@ class AcsTelemetryParser
         // Fallback to local ONU record if device parameters not yet fetched or empty
         if (empty($allWlans) && $onu && !empty($onu->wifi_ssid)) {
             $allWlans[] = [
+                'index' => 1,
                 'instance' => 1,
+                'label' => 'SSID 1 (2.4GHz)',
                 'band' => '2.4GHz',
                 'ssid' => (string) $onu->wifi_ssid,
                 'bssid' => self::normalizeMac($onu->mac_address),
                 'enabled' => true,
+                'is_enabled' => true,
                 'hidden' => false,
+                'is_hidden' => false,
                 'channel' => 'Auto',
                 'standard' => '802.11b/g/n',
                 'security_mode' => !empty($onu->wifi_password) ? 'WPA2-PSK' : 'OPEN',

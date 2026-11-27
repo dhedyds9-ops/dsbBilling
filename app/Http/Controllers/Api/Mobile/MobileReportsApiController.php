@@ -180,9 +180,16 @@ class MobileReportsApiController extends Controller
 
         $feed = collect();
 
+        $isReseller = $user->hasRole('reseller') || $user->role === 'reseller' || !empty($user->reseller_id);
+        $ownerId = $user->getEffectiveResellerId() ?? ($isReseller ? ($user->reseller_id ?: $user->id) : null);
+
         // 1. Work Orders activity (status changes & completions)
         $workOrdersQuery = WorkOrder::query()->withoutGlobalScopes();
-        if ($user->isTechnician()) {
+        if ($isReseller && $ownerId) {
+            $workOrdersQuery->whereHas('customer', function ($cq) use ($ownerId) {
+                $cq->withoutGlobalScopes()->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+            });
+        } elseif ($user->isTechnician()) {
             $workOrdersQuery->where(function ($q) use ($user) {
                 $q->where('assigned_to', $user->id);
                 if (!empty($user->branch_id)) {
@@ -215,9 +222,13 @@ class MobileReportsApiController extends Controller
             ]);
         }
 
-        // 2. Material usage activity
+        // 2. Material usage activity (hanya jika ada relasi / bukan pure reseller internal)
         $usagesQuery = MaterialUsage::query()->with(['workOrder']);
-        if ($user->hasRole('technician')) {
+        if ($isReseller && $ownerId) {
+            $usagesQuery->whereHas('workOrder.customer', function ($cq) use ($ownerId) {
+                $cq->withoutGlobalScopes()->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+            });
+        } elseif ($user->hasRole('technician')) {
             $usagesQuery->whereHas('workOrder', function ($q) use ($user) {
                 $q->where('assigned_to', $user->id);
             });
@@ -242,8 +253,7 @@ class MobileReportsApiController extends Controller
         $paymentQuery = Payment::withoutGlobalScopes()
             ->with(['customer'])
             ->whereIn('status', ['paid', 'success', 'approved']);
-        if ($user->hasRole('reseller')) {
-            $ownerId = $user->getEffectiveResellerId() ?? $user->id;
+        if ($isReseller && $ownerId) {
             $paymentQuery->where(function ($q) use ($ownerId) {
                 $q->where('reseller_id', $ownerId)
                   ->orWhere('created_by', $ownerId)
@@ -274,8 +284,7 @@ class MobileReportsApiController extends Controller
 
         // 4. New Customer registration activity
         $custQuery = \App\Models\CRM\Customer::withoutGlobalScopes();
-        if ($user->hasRole('reseller')) {
-            $ownerId = $user->getEffectiveResellerId() ?? $user->id;
+        if ($isReseller && $ownerId) {
             $custQuery->where('reseller_id', $ownerId);
         } elseif (!empty($user->branch_id)) {
             $custQuery->where('branch_id', $user->branch_id);
@@ -295,6 +304,66 @@ class MobileReportsApiController extends Controller
                 'raw_time' => $c->created_at ?: now(),
             ]);
         }
+
+        // 5. Penjualan / Aktivasi Voucher WiFi Hotspot
+        try {
+            $vQuery = \App\Models\ISP\Voucher::withoutGlobalScopes()->with(['serviceProfile']);
+            if ($isReseller && $ownerId) {
+                $vQuery->where(function ($q) use ($ownerId) {
+                    $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+                });
+            } elseif (!empty($user->branch_id)) {
+                $vQuery->where('branch_id', $user->branch_id);
+            }
+            $vQuery->where(function ($q) {
+                $q->whereIn('status', ['used', 'active'])->orWhereNotNull('activated_at');
+            });
+            $recentVouchers = $vQuery->orderByDesc(DB::raw('COALESCE(activated_at, created_at)'))->limit($limit)->get();
+            foreach ($recentVouchers as $vcr) {
+                $spName = $vcr->serviceProfile?->name ?: 'Voucher WiFi';
+                $vPrice = 'Rp ' . number_format((float) ($vcr->price ?: $vcr->serviceProfile?->price ?: 0), 0, ',', '.');
+                $vTime = $vcr->activated_at ?: $vcr->created_at ?: now();
+                $feed->push([
+                    'id' => "vcr-{$vcr->id}",
+                    'category' => 'voucher',
+                    'title' => "Voucher Aktif: {$vcr->code}",
+                    'description' => "Paket: {$spName} • Nominal: {$vPrice}",
+                    'actor_name' => $vcr->code,
+                    'badge' => 'VOUCHER',
+                    'badge_color' => '#8B5CF6',
+                    'timestamp' => $vTime->format('Y-m-d H:i'),
+                    'raw_time' => $vTime,
+                ]);
+            }
+        } catch (\Throwable) {}
+
+        // 6. Tiket Gangguan Pelanggan
+        try {
+            $ticketQuery = \App\Models\Workforce\Ticket::withoutGlobalScopes()->with(['customer']);
+            if ($isReseller && $ownerId) {
+                $ticketQuery->where(function ($q) use ($ownerId) {
+                    $q->where('reseller_id', $ownerId)
+                      ->orWhereHas('customer', fn ($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId));
+                });
+            } elseif (!empty($user->branch_id)) {
+                $ticketQuery->where('branch_id', $user->branch_id);
+            }
+            $recentTickets = $ticketQuery->orderByDesc('created_at')->limit($limit)->get();
+            foreach ($recentTickets as $t) {
+                $custName = $t->customer?->name ?: 'Pelanggan';
+                $feed->push([
+                    'id' => "tkt-{$t->id}",
+                    'category' => 'ticket',
+                    'title' => "Tiket: " . ($t->subject ?: "Laporan Gangguan"),
+                    'description' => "Pelanggan: {$custName} • Status: " . strtoupper($t->status ?: 'OPEN'),
+                    'actor_name' => $custName,
+                    'badge' => strtoupper($t->status ?: 'OPEN'),
+                    'badge_color' => $this->resolveStatusColor($t->status ?: 'open'),
+                    'timestamp' => $t->created_at?->format('Y-m-d H:i') ?: now()->format('Y-m-d H:i'),
+                    'raw_time' => $t->created_at ?: now(),
+                ]);
+            }
+        } catch (\Throwable) {}
 
         // Sort all by time descending
         $sorted = $feed->sortByDesc('raw_time')->values()->take($limit);
@@ -318,7 +387,21 @@ class MobileReportsApiController extends Controller
     {
         $user = $request->user();
         $period = $request->input('period', 'this_month');
-        $startDate = $this->resolveStartDate($period);
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $startDate = \Carbon\Carbon::parse($request->input('start_date'))->startOfDay();
+            $endDate = \Carbon\Carbon::parse($request->input('end_date'))->endOfDay();
+            $period = 'custom';
+        } else {
+            $startDate = $this->resolveStartDate($period);
+            $endDate = match ($period) {
+                'today' => now()->endOfDay(),
+                'this_week' => now()->endOfWeek(),
+                'this_month' => now()->endOfMonth(),
+                'all_time' => null,
+                default => now()->endOfMonth(),
+            };
+        }
 
         $ownerId = $user->getEffectiveResellerId() ?? (
             ($user->hasRole('reseller') || $user->role === 'reseller' || !empty($user->reseller_id))
@@ -348,6 +431,13 @@ class MobileReportsApiController extends Controller
                     $q->whereDate('paid_at', today())
                       ->orWhere(function($sq) {
                           $sq->whereNull('paid_at')->whereDate('created_at', today());
+                      });
+                });
+            } elseif ($endDate) {
+                $paymentQuery->where(function($q) use ($startDate, $endDate) {
+                    $q->whereBetween('paid_at', [$startDate, $endDate])
+                      ->orWhere(function($sq) use ($startDate, $endDate) {
+                          $sq->whereNull('paid_at')->whereBetween('created_at', [$startDate, $endDate]);
                       });
                 });
             } else {
@@ -395,37 +485,67 @@ class MobileReportsApiController extends Controller
 
         $resellerCommission = 0.0;
         $setorPusat = 0.0;
+        $grossRevenue = 0.0;
+        $pelangganRevenue = 0.0;
+        $voucherRevenue = 0.0;
+        $pelangganCommission = 0.0;
+        $voucherCommission = 0.0;
+        $marginPercentage = 0.0;
         $recent = collect();
+        $transactions = collect();
 
         if ($ownerId) {
             try {
+                $filterType = $request->input('filter_type', 'all');
                 $incomeService = app(\App\Services\Keuangan\IncomeReportService::class);
                 $reportData = $incomeService->getTransactions([
                     'reseller_id' => $ownerId,
-                    'start_date' => $startDate ? $startDate->format('Y-m-d') : now()->startOfMonth()->format('Y-m-d'),
-                    'end_date' => $period === 'today' ? now()->format('Y-m-d') : now()->endOfMonth()->format('Y-m-d'),
-                    'user_type' => 'all',
+                    'start_date' => $startDate ? $startDate->format('Y-m-d') : null,
+                    'end_date' => $endDate ? $endDate->format('Y-m-d') : null,
+                    'user_type' => $filterType,
                 ]);
+
+                $allRows = collect($reportData['rows'] ?? []);
+                $customerRows = $allRows->filter(fn($r) => !str_starts_with((string) ($r['id'] ?? ''), 'VCR-'));
+                $voucherRows = $allRows->filter(fn($r) => str_starts_with((string) ($r['id'] ?? ''), 'VCR-'));
+
+                $pelangganRevenue = (float) $customerRows->sum('harga_ppn');
+                $voucherRevenue = (float) $voucherRows->sum('harga_ppn');
+                $pelangganCommission = (float) $customerRows->sum('fee_seller');
+                $voucherCommission = (float) $voucherRows->sum('fee_seller');
+
                 $resellerCommission = (float) ($reportData['summary']['fee_seller'] ?? 0);
                 $setorPusat = (float) ($reportData['summary']['profit'] ?? 0);
-                $serviceTotal = (float) ($reportData['summary']['total_ppn'] ?? 0);
-                if ($serviceTotal > 0) {
-                    $paidTotal = $serviceTotal;
-                    $paidCount = count($reportData['rows'] ?? []);
+                $grossRevenue = (float) ($reportData['summary']['total_ppn'] ?? ($pelangganRevenue + $voucherRevenue));
+                $marginPercentage = $grossRevenue > 0 ? round(($resellerCommission / $grossRevenue) * 100, 1) : 0.0;
+
+                if ($grossRevenue > 0) {
+                    $paidTotal = $grossRevenue;
+                    $paidCount = $allRows->count();
                 }
 
-                if (!empty($reportData['rows'])) {
-                    $recent = collect($reportData['rows'])->take(10)->map(function ($r) {
-                        return [
-                            'id' => $r['id'] ?? 0,
-                            'reference_number' => $r['invoice_number'] ?? '-',
-                            'customer_name' => $r['customer_name'] ?? 'Pelanggan',
-                            'amount' => (float) ($r['harga_ppn'] ?? 0),
-                            'method' => 'cash',
-                            'paid_at' => $r['paid_at'] ?? now()->format('Y-m-d H:i'),
-                        ];
-                    });
-                }
+                $transactions = $allRows->map(function ($r) {
+                    $isVcr = str_starts_with((string)($r['id'] ?? ''), 'VCR-');
+                    return [
+                        'id' => (string) ($r['id'] ?? '0'),
+                        'reference_number' => (string) ($r['invoice_number'] ?? '-'),
+                        'customer_id' => (string) ($r['customer_id'] ?? '-'),
+                        'customer_name' => (string) ($r['customer_name'] ?? 'Pelanggan'),
+                        'service_type' => (string) ($r['service_type'] ?? ($isVcr ? 'VOUCHER' : 'PELANGGAN')),
+                        'package_name' => (string) ($r['package_name'] ?? '-'),
+                        'amount' => (float) ($r['harga_ppn'] ?? 0),
+                        'harga_ppn' => (float) ($r['harga_ppn'] ?? 0),
+                        'fee_seller' => (float) ($r['fee_seller'] ?? 0),
+                        'profit' => (float) ($r['profit'] ?? 0),
+                        'method' => 'cash',
+                        'type' => 'income',
+                        'title' => $isVcr ? 'Voucher Hotspot' : 'Tagihan Pelanggan',
+                        'subtitle' => (string) ($r['customer_name'] ?? 'Pelanggan'),
+                        'paid_at' => (string) ($r['paid_at'] ?? now()->format('Y-m-d H:i')),
+                    ];
+                })->values();
+
+                $recent = $transactions;
             } catch (\Throwable $e) {
                 // Fallback gracefully
             }
@@ -631,8 +751,16 @@ class MobileReportsApiController extends Controller
                 'month_income' => $monthIncome,
                 'balance' => $balance,
                 'growth_percentage' => $growthPercentage,
+                'gross_revenue' => $grossRevenue > 0 ? $grossRevenue : $paidTotal,
+                'net_margin' => $resellerCommission,
                 'reseller_commission' => $resellerCommission,
+                'total_cost' => $setorPusat,
                 'setor_pusat' => $setorPusat,
+                'margin_percentage' => $marginPercentage,
+                'pelanggan_revenue' => $pelangganRevenue,
+                'voucher_revenue' => $voucherRevenue,
+                'pelanggan_commission' => $pelangganCommission,
+                'voucher_commission' => $voucherCommission,
                 'pending_count' => $pendingCount,
                 'failed_count' => $failedCount,
                 'unpaid_total' => $unpaidTotal,
@@ -644,6 +772,7 @@ class MobileReportsApiController extends Controller
                 'pppoe_hotspot_total' => $pppoeIncome + $hotspotIncome,
                 'voucher_income' => $voucherIncome,
                 'recent_payments' => $recent,
+                'transactions' => $transactions,
             ],
         ]);
     }

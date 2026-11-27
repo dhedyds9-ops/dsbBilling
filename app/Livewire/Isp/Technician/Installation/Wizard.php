@@ -30,6 +30,8 @@ class Wizard extends Component
     public $new_customer_phone;
     public $new_customer_address;
     public $new_customer_reseller_id;
+    public $latitude = null;
+    public $longitude = null;
 
     public $customer_id;
     public string $customer_search = '';
@@ -243,15 +245,26 @@ class Wizard extends Component
 
                 $this->ticket_id = $ticket->id;
                 $existingTicketCust = $ticket->customer_id ? Customer::withoutGlobalScopes()->find($ticket->customer_id) : null;
+                $ticketPayload = method_exists($ticket, 'getNotificationPayload') ? $ticket->getNotificationPayload() : [];
+                $rawTicketPhone = $ticket->customer?->phone ?: ($ticketPayload['contact_phone'] ?? null);
+                $rawTicketAddr = $ticket->customer?->address ?: ($ticketPayload['address'] ?? null);
+
+                $sanitized = \App\Services\Support\CustomerFieldSanitizer::sanitize(
+                    name: $ticket->customer?->name ?? ($ticketPayload['customer_name'] ?? null),
+                    phone: $rawTicketPhone,
+                    address: $rawTicketAddr,
+                    notesOrDesc: $ticket->description
+                );
+
                 if ($existingTicketCust) {
                     $this->customer_id = (string) $existingTicketCust->id;
                     $this->is_new_customer = false;
                 } else {
                     $this->customer_id = null;
                     $this->is_new_customer = true;
-                    $this->new_customer_name = $ticket->customer?->name ?? 'Pelanggan Baru';
-                    $this->new_customer_phone = $ticket->customer?->phone ?? '-';
-                    $this->new_customer_address = $ticket->customer?->address ?? '-';
+                    $this->new_customer_name = $sanitized['name'] !== 'Pelanggan Baru' ? $sanitized['name'] : ($ticket->title ?: 'Pelanggan Baru');
+                    $this->new_customer_phone = $sanitized['phone'] ?? '';
+                    $this->new_customer_address = $sanitized['address'] !== 'Alamat belum tercatat' ? $sanitized['address'] : '';
                 }
 
                 $ticketResellerId = $ticket->reseller_id ?? $ticket->customer?->reseller_id;
@@ -259,13 +272,18 @@ class Wizard extends Component
                     $this->new_customer_reseller_id = (string) $ticketResellerId;
                 }
 
+                $this->latitude = $sanitized['latitude'] ?? ($ticketPayload['latitude'] ?? null);
+                $this->longitude = $sanitized['longitude'] ?? ($ticketPayload['longitude'] ?? null);
+
                 $this->activeWorkOrder = [
                     'type' => 'ticket',
                     'id' => $ticket->id,
                     'number' => $ticket->uuid ?? ('TIKET-PSB-' . $ticket->id),
-                    'customer_name' => $ticket->customer?->name ?? 'Pelanggan #' . $ticket->customer_id,
-                    'customer_phone' => $ticket->customer?->phone ?? '-',
-                    'address' => $ticket->customer?->address ?? $ticket->description,
+                    'customer_name' => $ticket->customer?->name ?? $sanitized['name'],
+                    'customer_phone' => $sanitized['phone'] ?? '-',
+                    'address' => $sanitized['address'],
+                    'latitude' => $sanitized['latitude'] ?? ($ticketPayload['latitude'] ?? null),
+                    'longitude' => $sanitized['longitude'] ?? ($ticketPayload['longitude'] ?? null),
                     'reseller_name' => $ticket->reseller?->name ?? $ticket->customer?->reseller?->name ?? null,
                     'reseller_id' => $ticketResellerId,
                     'notes' => $ticket->description,
@@ -324,16 +342,28 @@ class Wizard extends Component
                     $this->new_customer_reseller_id = (string) $instResellerId;
                 }
 
-                $resolvedPhone = $inst->customer?->phone 
+                $rawInstPhone = $inst->customer?->phone 
                     ?: ($inst->customer_phone 
                     ?: ($inst->survey?->prospect?->phone 
                     ?: ($notesPhone ?? '')));
 
-                $resolvedAddress = $inst->installation_address 
+                $rawInstAddress = $inst->installation_address 
                     ?: ($inst->customer?->address 
                     ?: ($inst->survey?->address 
                     ?: ($inst->survey?->prospect?->address 
                     ?: ($notesAddress ?? ''))));
+
+                $sanitized = \App\Services\Support\CustomerFieldSanitizer::sanitize(
+                    name: $inst->customer?->name ?? ($inst->survey?->prospect?->name ?? ($inst->customer_name ?: 'Pelanggan Baru')),
+                    phone: $rawInstPhone,
+                    address: $rawInstAddress,
+                    notesOrDesc: $inst->notes,
+                    latitude: $inst->latitude,
+                    longitude: $inst->longitude
+                );
+
+                $cleanPhone = $sanitized['phone'];
+                $cleanAddress = $sanitized['address'] !== 'Alamat belum tercatat' ? $sanitized['address'] : '';
 
                 $existingCust = $inst->customer_id ? Customer::withoutGlobalScopes()->find($inst->customer_id) : null;
                 if ($existingCust) {
@@ -343,23 +373,28 @@ class Wizard extends Component
                     $this->customer_id = null;
                     $this->is_new_customer = true;
                     $this->new_customer_name = $inst->survey->prospect->name;
-                    $this->new_customer_phone = $resolvedPhone;
-                    $this->new_customer_address = $resolvedAddress;
+                    $this->new_customer_phone = $cleanPhone ?? '';
+                    $this->new_customer_address = $cleanAddress;
                 } else {
                     $this->customer_id = null;
                     $this->is_new_customer = true;
-                    $this->new_customer_name = $inst->customer_name ?: 'Pelanggan Baru';
-                    $this->new_customer_phone = $resolvedPhone;
-                    $this->new_customer_address = $resolvedAddress;
+                    $this->new_customer_name = $sanitized['name'] !== 'Pelanggan Baru' ? $sanitized['name'] : ($inst->customer_name ?: 'Pelanggan Baru');
+                    $this->new_customer_phone = $cleanPhone ?? '';
+                    $this->new_customer_address = $cleanAddress;
                 }
+
+                $this->latitude = $sanitized['latitude'];
+                $this->longitude = $sanitized['longitude'];
 
                 $this->activeWorkOrder = [
                     'type' => 'installation',
                     'id' => $inst->id,
                     'number' => $inst->uuid ?? ('SPK-INST-' . $inst->id),
                     'customer_name' => $inst->customer?->name ?? ($inst->survey?->prospect?->name ?? ($inst->customer_name ?: 'Pelanggan Baru')),
-                    'customer_phone' => $resolvedPhone ?: '-',
-                    'address' => $resolvedAddress ?: 'Alamat belum diatur',
+                    'customer_phone' => $cleanPhone ?: '-',
+                    'address' => $cleanAddress ?: 'Alamat belum diatur',
+                    'latitude' => $sanitized['latitude'],
+                    'longitude' => $sanitized['longitude'],
                     'reseller_name' => $resellerName,
                     'reseller_id' => $instResellerId,
                     'notes' => $inst->notes,
@@ -874,15 +909,26 @@ class Wizard extends Component
 
                 // C. Simpan atau Perbarui Data Pelanggan
                 if ($this->is_new_customer) {
-                    $existing = Customer::withoutGlobalScopes()
-                        ->where('phone', $this->new_customer_phone)
-                        ->first();
+                    $cleanCustPhone = \App\Services\Support\CustomerFieldSanitizer::cleanPhone($this->new_customer_phone);
+                    $cleanCustAddr = \App\Services\Support\CustomerFieldSanitizer::cleanAddress($this->new_customer_address) ?: 'Alamat pemasangan';
+                    $lat = $this->latitude ?? ($this->activeWorkOrder['latitude'] ?? null);
+                    $lng = $this->longitude ?? ($this->activeWorkOrder['longitude'] ?? null);
+
+                    $existing = null;
+                    if ($cleanCustPhone) {
+                        $existing = Customer::withoutGlobalScopes()
+                            ->where('phone', $cleanCustPhone)
+                            ->first();
+                    }
 
                     if ($existing) {
                         $customer = $existing;
                         $customer->update([
                             'name' => $this->new_customer_name ?: $customer->name,
-                            'address' => $this->new_customer_address ?: $customer->address,
+                            'phone' => $cleanCustPhone ?: $customer->phone,
+                            'address' => $cleanCustAddr ?: $customer->address,
+                            'latitude' => $lat ?: $customer->latitude,
+                            'longitude' => $lng ?: $customer->longitude,
                             'reseller_id' => $this->new_customer_reseller_id ?: $customer->reseller_id,
                             'branch_id' => $branchId,
                         ]);
@@ -891,9 +937,11 @@ class Wizard extends Component
                         $customerCode = \App\Services\CRM\CustomerCodeGenerator::generate();
                         $customer = Customer::create([
                             'code' => $customerCode,
-                            'name' => $this->new_customer_name,
-                            'phone' => $this->new_customer_phone,
-                            'address' => $this->new_customer_address,
+                            'name' => $this->new_customer_name ?: 'Pelanggan Baru',
+                            'phone' => $cleanCustPhone,
+                            'address' => $cleanCustAddr,
+                            'latitude' => $lat,
+                            'longitude' => $lng,
                             'reseller_id' => $this->new_customer_reseller_id ?: null,
                             'branch_id' => $branchId,
                             'status' => 'active',
@@ -909,11 +957,15 @@ class Wizard extends Component
                         $custName = $this->activeWorkOrder['customer_name'] ?? ($this->new_customer_name ?: 'Pelanggan Baru');
                         $custPhone = $this->activeWorkOrder['customer_phone'] ?? ($this->new_customer_phone ?: null);
                         $custAddr = $this->activeWorkOrder['address'] ?? ($this->new_customer_address ?: '-');
+                        $cleanCustPhone = \App\Services\Support\CustomerFieldSanitizer::cleanPhone($custPhone);
+                        $cleanCustAddr = \App\Services\Support\CustomerFieldSanitizer::cleanAddress($custAddr) ?: 'Alamat pemasangan';
                         $customer = Customer::create([
                             'code' => $customerCode,
                             'name' => $custName,
-                            'phone' => $custPhone,
-                            'address' => $custAddr,
+                            'phone' => $cleanCustPhone,
+                            'address' => $cleanCustAddr,
+                            'latitude' => $this->activeWorkOrder['latitude'] ?? null,
+                            'longitude' => $this->activeWorkOrder['longitude'] ?? null,
                             'reseller_id' => $this->new_customer_reseller_id ?: null,
                             'branch_id' => $branchId,
                             'status' => 'active',

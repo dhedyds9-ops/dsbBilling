@@ -235,4 +235,16 @@ class Installation extends Model
         }
         return '-';
     }
+
+    public function getWhatsappAttribute(): ?string
+    {
+        $raw = $this->customer_phone ?: ($this->customer?->phone ?: $this->survey?->prospect?->phone);
+        return \App\Services\Support\CustomerFieldSanitizer::cleanPhone($raw);
+    }
+
+    public function getCleanAddressAttribute(): ?string
+    {
+        $raw = $this->installation_address ?: ($this->customer?->address ?: $this->survey?->address ?: $this->survey?->prospect?->address);
+        return \App\Services\Support\CustomerFieldSanitizer::cleanAddress($raw);
+    }
 }

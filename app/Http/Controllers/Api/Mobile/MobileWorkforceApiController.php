@@ -154,6 +154,12 @@ class MobileWorkforceApiController extends Controller
             $query->whereIn('status', $statuses);
         }
 
+        // Filter by type (installation, troubleshooting, maintenance, survey)
+        if ($request->filled('type')) {
+            $types = array_map('trim', explode(',', strtolower((string)$request->input('type'))));
+            $query->whereIn('type', $types);
+        }
+
         // Filter by priority
         if ($request->filled('priority')) {
             $query->where('priority', strtolower((string)$request->input('priority')));
@@ -428,6 +434,28 @@ class MobileWorkforceApiController extends Controller
                     ->where('id', $workOrder->installation_id)
                     ->update(['status' => 'cancelled']);
             }
+        }
+
+        if ($workOrder->source_type === 'maintenance' && $workOrder->source_id && \Illuminate\Support\Facades\Schema::hasTable('support_maintenances')) {
+            \Illuminate\Support\Facades\DB::table('support_maintenances')
+                ->where('id', $workOrder->source_id)
+                ->update([
+                    'status' => $targetStatus === 'completed' ? 'completed' : ($targetStatus === 'in_progress' ? 'in_progress' : ($targetStatus === 'cancelled' ? 'cancelled' : 'scheduled')),
+                    'resolution_notes' => $notes ?: null,
+                    'completed_at' => $targetStatus === 'completed' ? now() : null,
+                    'updated_at' => now(),
+                ]);
+        }
+
+        if ($workOrder->source_type === 'survey' && $workOrder->source_id && \Illuminate\Support\Facades\Schema::hasTable('surveys')) {
+            \Illuminate\Support\Facades\DB::table('surveys')
+                ->where('id', $workOrder->source_id)
+                ->update([
+                    'status' => $targetStatus === 'completed' ? 'completed' : ($targetStatus === 'in_progress' ? 'in_progress' : ($targetStatus === 'cancelled' ? 'canceled' : 'scheduled')),
+                    'notes' => $notes ?: null,
+                    'completed_at' => $targetStatus === 'completed' ? now() : null,
+                    'updated_at' => now(),
+                ]);
         }
 
         $workOrder->update($updates);
@@ -927,6 +955,98 @@ class MobileWorkforceApiController extends Controller
                     array_merge(['uuid' => (string) Str::uuid()], $ticketWoData)
                 );
             }
+
+            // 3. Sync Pemeliharaan Jaringan (Network Maintenance Schedules)
+            if (\Illuminate\Support\Facades\Schema::hasTable('support_maintenances')) {
+                $maintQuery = \Illuminate\Support\Facades\DB::table('support_maintenances');
+                if ($user->isTechnician() && !$this->isManagerOrAdmin($user)) {
+                    $maintQuery->where(function ($q) use ($user) {
+                        $q->where('assigned_to', $user->id)
+                          ->orWhereNull('assigned_to');
+                    });
+                }
+                $maintenances = $maintQuery->whereIn('status', ['scheduled', 'in_progress', 'completed'])
+                    ->latest('updated_at')
+                    ->limit(50)
+                    ->get();
+
+                foreach ($maintenances as $mt) {
+                    $isCompleted = $mt->status === 'completed';
+                    $status = $isCompleted ? 'completed' : ($mt->status === 'in_progress' ? 'in_progress' : ($mt->assigned_to ? 'assigned' : 'pending'));
+                    $schedStr = trim(($mt->scheduled_date ?? '') . ' ' . ($mt->scheduled_time ?? '09:00'));
+                    $schedAt = null;
+                    try {
+                        $schedAt = !empty($mt->scheduled_date) ? \Carbon\Carbon::parse($schedStr) : now();
+                    } catch (\Throwable) {
+                        $schedAt = now();
+                    }
+
+                    $maintWoData = [
+                        'company_id' => $user->company_id,
+                        'branch_id' => $user->branch_id,
+                        'type' => 'maintenance',
+                        'source_type' => 'maintenance',
+                        'source_id' => $mt->id,
+                        'assigned_to' => $mt->assigned_to ?: $user->id,
+                        'status' => $status,
+                        'title' => 'Pemeliharaan: ' . ($mt->title ?: ($mt->device_name ?: 'Jaringan')),
+                        'description' => $mt->notes ?: 'Jadwal pemeliharaan berkala jaringan ISP.',
+                        'notes' => $mt->resolution_notes ?? null,
+                        'priority' => $mt->priority ?? 'medium',
+                        'scheduled_at' => $schedAt,
+                        'completed_at' => $isCompleted ? ($mt->completed_at ? \Carbon\Carbon::parse($mt->completed_at) : now()) : null,
+                    ];
+
+                    WorkOrder::updateOrCreate(
+                        ['source_type' => 'maintenance', 'source_id' => $mt->id],
+                        array_merge(['uuid' => (string) Str::uuid()], $maintWoData)
+                    );
+                }
+            }
+
+            // 4. Sync Survey Coveran (CRM Surveys)
+            if (\Illuminate\Support\Facades\Schema::hasTable('surveys')) {
+                $surveyQuery = \App\Models\CRM\Survey::with(['prospect', 'odp']);
+                if ($user->isTechnician() && !$this->isManagerOrAdmin($user)) {
+                    $surveyQuery->where(function ($q) use ($user) {
+                        $q->where('assigned_to', $user->id)
+                          ->orWhereNull('assigned_to');
+                    });
+                }
+                $surveys = $surveyQuery->whereIn('status', ['scheduled', 'in_progress', 'completed'])
+                    ->latest('updated_at')
+                    ->limit(50)
+                    ->get();
+
+                foreach ($surveys as $sv) {
+                    $isCompleted = $sv->status === 'completed';
+                    $status = $isCompleted ? 'completed' : ($sv->status === 'in_progress' ? 'in_progress' : ($sv->assigned_to ? 'assigned' : 'pending'));
+
+                    $prospectName = $sv->prospect?->name ?: 'Calon Pelanggan';
+                    $prospectAddress = $sv->prospect?->address ?: 'Alamat survey';
+
+                    $surveyWoData = [
+                        'company_id' => $user->company_id,
+                        'branch_id' => $user->branch_id,
+                        'type' => 'survey',
+                        'source_type' => 'survey',
+                        'source_id' => $sv->id,
+                        'assigned_to' => $sv->assigned_to ?: $user->id,
+                        'status' => $status,
+                        'title' => 'Survey: ' . $prospectName,
+                        'description' => 'Survey kelayakan jaringan dan jarak ODP untuk ' . $prospectName . ' (' . $prospectAddress . ')',
+                        'notes' => $sv->notes ?? null,
+                        'priority' => 'medium',
+                        'scheduled_at' => $sv->scheduled_at ?: now(),
+                        'completed_at' => $isCompleted ? ($sv->completed_at ?: now()) : null,
+                    ];
+
+                    WorkOrder::updateOrCreate(
+                        ['source_type' => 'survey', 'source_id' => $sv->id],
+                        array_merge(['uuid' => (string) Str::uuid()], $surveyWoData)
+                    );
+                }
+            }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('[WorkforceApi] Gagal sync active tasks ke WorkOrders: ' . $e->getMessage());
         }
@@ -944,8 +1064,8 @@ class MobileWorkforceApiController extends Controller
         }
         $customerData = null;
         $packageName = null;
-        $latitude = null;
-        $longitude = null;
+        $latitude = $wo->latitude;
+        $longitude = $wo->longitude;
 
         if ($customer) {
             $activeService = null;
@@ -1047,13 +1167,25 @@ class MobileWorkforceApiController extends Controller
                     ?? $inst->survey?->longitude 
                     ?? null;
 
+                $sanitized = \App\Services\Support\CustomerFieldSanitizer::sanitize(
+                    name: $instCust?->name ?? ($inst->survey?->prospect?->name ?? ($inst->customer_name ?: 'Pelanggan Baru')),
+                    phone: $phone,
+                    address: $address,
+                    notesOrDesc: $inst->notes,
+                    latitude: $latitude,
+                    longitude: $longitude
+                );
+
+                $latitude = $sanitized['latitude'];
+                $longitude = $sanitized['longitude'];
+
                 $customerData = [
                     'id' => $instCust?->id ?? null,
-                    'name' => $instCust?->name ?? ($inst->survey?->prospect?->name ?? ($inst->customer_name ?: 'Pelanggan Baru')),
+                    'name' => $sanitized['name'],
                     'email' => $instCust?->email ?? null,
-                    'phone' => $phone,
-                    'whatsapp' => $phone,
-                    'address' => $address,
+                    'phone' => $sanitized['phone'],
+                    'whatsapp' => $sanitized['whatsapp'],
+                    'address' => $sanitized['address'],
                     'customer_code' => $instCust?->code ?? null,
                     'reseller_id' => $resellerId,
                     'reseller_name' => $resellerName,
@@ -1102,13 +1234,28 @@ class MobileWorkforceApiController extends Controller
                 ? $ticketPayload['customer_name']
                 : ($ticketPayload['object_name'] ?? ($ticket->title ?: 'Pelanggan Lapangan'));
 
+            $rawTicketPhone = (($ticketPayload['contact_phone'] ?? null) !== '-') ? ($ticketPayload['contact_phone'] ?? null) : ($ticket->customer?->phone ?? null);
+            $rawTicketAddress = (($ticketPayload['address'] ?? null) !== '-') ? ($ticketPayload['address'] ?? null) : ($ticket->customer?->address ?? null);
+
+            $sanitized = \App\Services\Support\CustomerFieldSanitizer::sanitize(
+                name: $custName,
+                phone: $rawTicketPhone,
+                address: $rawTicketAddress,
+                notesOrDesc: $ticket->description,
+                latitude: $latitude,
+                longitude: $longitude
+            );
+
+            $latitude = $sanitized['latitude'];
+            $longitude = $sanitized['longitude'];
+
             $customerData = [
                 'id' => $ticket->customer_id ?? null,
-                'name' => $custName,
+                'name' => $sanitized['name'],
                 'email' => $ticket->customer?->email ?? null,
-                'phone' => (($ticketPayload['contact_phone'] ?? null) !== '-') ? ($ticketPayload['contact_phone'] ?? null) : ($ticket->customer?->phone ?? null),
-                'whatsapp' => (($ticketPayload['contact_phone'] ?? null) !== '-') ? ($ticketPayload['contact_phone'] ?? null) : ($ticket->customer?->whatsapp ?? null),
-                'address' => (($ticketPayload['address'] ?? null) !== '-') ? ($ticketPayload['address'] ?? null) : ($ticket->customer?->address ?? null),
+                'phone' => $sanitized['phone'],
+                'whatsapp' => $sanitized['whatsapp'],
+                'address' => $sanitized['address'],
                 'customer_code' => $ticketCode,
                 'reseller_id' => $resellerId,
                 'reseller_name' => $resellerName,
@@ -1136,6 +1283,35 @@ class MobileWorkforceApiController extends Controller
             ? $wo->evidence_photos 
             : ($ticket?->photos ?? []);
 
+        $evidencePhotosList = [];
+        $plainPhotos = [];
+        if (is_array($photos)) {
+            foreach ($photos as $p) {
+                if (is_string($p) && trim($p) !== '') {
+                    $evidencePhotosList[] = [
+                        'uuid' => null,
+                        'type' => 'evidence',
+                        'caption' => null,
+                        'url' => trim($p),
+                        'uploaded_at' => null,
+                    ];
+                    $plainPhotos[] = trim($p);
+                } elseif (is_array($p)) {
+                    $url = $p['url'] ?? ($p['path'] ?? '');
+                    $evidencePhotosList[] = [
+                        'uuid' => $p['uuid'] ?? null,
+                        'type' => $p['type'] ?? 'evidence',
+                        'caption' => $p['caption'] ?? null,
+                        'url' => $url,
+                        'uploaded_at' => $p['uploaded_at'] ?? null,
+                    ];
+                    if ($url) {
+                        $plainPhotos[] = $url;
+                    }
+                }
+            }
+        }
+
         $technician = $wo->technician;
         $isManager = $this->isManagerOrAdmin($user);
         $isAssignedTech = $wo->assigned_to && (int)$wo->assigned_to === (int)$user->id;
@@ -1159,8 +1335,8 @@ class MobileWorkforceApiController extends Controller
             'started_at' => $wo->started_at?->toIso8601String(),
             'completed_at' => $wo->completed_at?->toIso8601String(),
             'approved_at' => $wo->approved_at?->toIso8601String(),
-            'customer_id' => $wo->customer_id,
-            'customer' => $customerData,
+            'customer_id' => $wo->customer_id ?: ($customerData['id'] ?? null),
+            'customer' => !empty($customerData) ? $customerData : null,
             'assigned_to' => $wo->assigned_to,
             'assigned_technician' => $technician ? [
                 'id' => $technician->id,
@@ -1192,15 +1368,15 @@ class MobileWorkforceApiController extends Controller
                 'latitude' => $latitude,
                 'longitude' => $longitude,
             ] : null,
-            'evidence_photos' => $photos,
-            'photos' => $photos,
+            'evidence_photos' => $evidencePhotosList,
+            'photos' => $plainPhotos,
             'checklists_count' => $wo->checklists->count(),
             'checklists_completed_count' => $wo->checklists->where('completed', true)->count(),
             'materials_count' => $wo->materialUsages->count(),
             'optical_rx_power' => $wo->optical_rx_power ? (float)$wo->optical_rx_power : null,
             'optical_tx_power' => $wo->optical_tx_power ? (float)$wo->optical_tx_power : null,
             'has_signature' => !empty($wo->customer_signature),
-            'evidence_photos_count' => count($photos),
+            'evidence_photos_count' => count($evidencePhotosList),
             'sla_status' => $wo->sla_status,
             'sla_due_at' => $wo->sla_due_at?->toIso8601String(),
             'sla_target_minutes' => $wo->sla_target_minutes,
@@ -1215,7 +1391,7 @@ class MobileWorkforceApiController extends Controller
         ];
 
         if ($includeDetails) {
-            $payload['evidence_photos'] = $wo->evidence_photos ?? [];
+            $payload['evidence_photos'] = $evidencePhotosList;
             $payload['customer_signature'] = $wo->customer_signature;
             $payload['checklists'] = $wo->checklists->map(fn($c) => [
                 'id' => $c->id,

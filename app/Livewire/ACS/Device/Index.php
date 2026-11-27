@@ -188,6 +188,30 @@ class Index extends BaseACSComponent
                 '_ip',
                 '_lastInform',
                 'VirtualParameters',
+                'VirtualParameters.rxPower',
+                'VirtualParameters.RXPower',
+                'VirtualParameters.redaman',
+                'VirtualParameters.Redaman',
+                'VirtualParameters.opticalRxPower',
+                'VirtualParameters.optical_rx',
+                'VirtualParameters.rx_power',
+                'VirtualParameters.RxPower',
+                'VirtualParameters.txPower',
+                'VirtualParameters.TXPower',
+                'VirtualParameters.opticalTxPower',
+                'VirtualParameters.optical_tx',
+                'VirtualParameters.tx_power',
+                'VirtualParameters.TxPower',
+                'VirtualParameters.OpticalInfo',
+                'VirtualParameters.PonMac',
+                'VirtualParameters.ponMac',
+                'VirtualParameters.pppoeUsername',
+                'VirtualParameters.pppoePassword',
+                'VirtualParameters.pppoeIP',
+                'VirtualParameters.WlanSSID',
+                'VirtualParameters.WlanPassword',
+                'VirtualParameters.superAdmin',
+                'VirtualParameters.superPassword',
                 'InternetGatewayDevice.DeviceInfo',
                 'Device.DeviceInfo',
                 'InternetGatewayDevice.ManagementServer.ConnectionRequestURL',
@@ -209,7 +233,7 @@ class Index extends BaseACSComponent
 
             $syncStartTime = now()->subMinutes(1);
             $count = 0;
-            $batchSize = 250;
+            $batchSize = 50;
             $skip = 0;
             $maxLimit = 10000;
 
@@ -370,13 +394,33 @@ class Index extends BaseACSComponent
             $compositeSignal = $val > 0 ? -$val : $val;
         }
 
+        // Cek existing record di database dsBilling untuk mencegah penimpaan sinyal valid dengan null
+        $existingRecord = \App\Models\ACS\ACSDevice::forUserArea(auth()->user())
+            ->withTrashed()
+            ->where(function ($q) use ($deviceId, $serialNumber, $mac) {
+                $q->where('uuid', $deviceId);
+                if (!empty($serialNumber)) {
+                    $q->orWhere('serial_number', $serialNumber);
+                }
+                if (!empty($mac)) {
+                    $q->orWhere('mac_address', $mac);
+                }
+            })
+            ->first();
+
+        if ($compositeSignal === null && $existingRecord && $existingRecord->signal !== null && (float)$existingRecord->signal < 0) {
+            $compositeSignal = (float)$existingRecord->signal;
+        } elseif ($compositeSignal === null && $existingRecord && $existingRecord->customerService?->onu?->rx_power_dbm !== null && (float)$existingRecord->customerService->onu->rx_power_dbm < 0) {
+            $compositeSignal = (float)$existingRecord->customerService->onu->rx_power_dbm;
+        }
+
         $identity = \App\Services\ACS\AcsTelemetryParser::parseDeviceIdentity($flat, $deviceData, $serialNumber);
 
         $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
         $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) <= 20) ? 'online' : 'offline';
 
-        // Auto-queue refresh task for online devices lacking TR-069 optical power telemetry (only if requested)
-        if ($autoRefreshOptical && $status === 'online' && $optical['onu_rx_power'] === null) {
+        // Auto-queue refresh task for online devices lacking TR-069 optical power telemetry
+        if ($status === 'online' && $optical['onu_rx_power'] === null) {
             try {
                 $acsService = new \App\Services\Adapters\Monitoring\GenieACSDriver();
                 $acsService->refreshOpticalTask($deviceId);
@@ -538,7 +582,7 @@ class Index extends BaseACSComponent
         }
 
         // Penanganan SoftDeletes + Unique Constraint
-        $deviceRecord = \App\Models\ACS\ACSDevice::forUserArea(auth()->user())->withTrashed()->where('uuid', $deviceId)->first();
+        $deviceRecord = $existingRecord ?? \App\Models\ACS\ACSDevice::forUserArea(auth()->user())->withTrashed()->where('uuid', $deviceId)->first();
         if ($deviceRecord) {
             // Restore jika sempat terhapus
             if ($deviceRecord->trashed()) {

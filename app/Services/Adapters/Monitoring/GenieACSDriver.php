@@ -92,7 +92,39 @@ class GenieACSDriver
                 '$or' => $orConditions
             ];
             $query = urlencode(json_encode($queryObj));
-            $projection = urlencode('_id,_deviceId,_lastInform,VirtualParameters,InternetGatewayDevice,Device');
+            $projectionFields = [
+                '_id',
+                '_deviceId',
+                '_lastInform',
+                'VirtualParameters',
+                'VirtualParameters.rxPower',
+                'VirtualParameters.RXPower',
+                'VirtualParameters.redaman',
+                'VirtualParameters.Redaman',
+                'VirtualParameters.opticalRxPower',
+                'VirtualParameters.optical_rx',
+                'VirtualParameters.rx_power',
+                'VirtualParameters.RxPower',
+                'VirtualParameters.txPower',
+                'VirtualParameters.TXPower',
+                'VirtualParameters.opticalTxPower',
+                'VirtualParameters.optical_tx',
+                'VirtualParameters.tx_power',
+                'VirtualParameters.TxPower',
+                'VirtualParameters.OpticalInfo',
+                'VirtualParameters.PonMac',
+                'VirtualParameters.ponMac',
+                'VirtualParameters.pppoeUsername',
+                'VirtualParameters.pppoePassword',
+                'VirtualParameters.pppoeIP',
+                'VirtualParameters.WlanSSID',
+                'VirtualParameters.WlanPassword',
+                'VirtualParameters.superAdmin',
+                'VirtualParameters.superPassword',
+                'InternetGatewayDevice',
+                'Device'
+            ];
+            $projection = urlencode(implode(',', $projectionFields));
 
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($this->timeout)
