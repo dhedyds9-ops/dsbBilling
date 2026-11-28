@@ -10,4 +10,8 @@ enum AttendanceStatus: string
     case ABSENT = 'absent';
     case PERMISSION = 'permission';
     case SICK = 'sick';
+    case PRESENT = 'present';
+    case HADIR = 'hadir';
+    case ACTIVE = 'active';
+    case PENDING = 'pending';
 }

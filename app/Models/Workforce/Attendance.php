@@ -29,7 +29,6 @@ class Attendance extends Model
 
     protected $casts = [
         'date' => 'date',
-        'status' => AttendanceStatus::class,
         'check_in_latitude' => 'float',
         'check_in_longitude' => 'float',
         'check_out_latitude' => 'float',
@@ -37,6 +36,22 @@ class Attendance extends Model
         'checked_in_at' => 'datetime',
         'checked_out_at' => 'datetime',
     ];
+
+    protected function status(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: function ($value) {
+                if ($value instanceof AttendanceStatus) {
+                    return $value;
+                }
+                if ($value === null || $value === '') {
+                    return AttendanceStatus::CHECKED_IN;
+                }
+                return AttendanceStatus::tryFrom((string) $value) ?? AttendanceStatus::CHECKED_IN;
+            },
+            set: fn ($value) => $value instanceof AttendanceStatus ? $value->value : $value
+        );
+    }
 
     public function technician(): BelongsTo
     {
