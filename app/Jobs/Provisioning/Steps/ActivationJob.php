@@ -2,6 +2,8 @@
 
 namespace App\Jobs\Provisioning\Steps;
 
+use App\Services\Provisioning\ProvisioningOrchestrator;
+
 class ActivationJob extends BasePipelineStepJob
 {
     protected function executeStep(): ?array
@@ -9,7 +11,7 @@ class ActivationJob extends BasePipelineStepJob
         $serviceInstance = $this->step->provisionPipeline->serviceInstance;
         $cs = $serviceInstance->customerService;
         $pipeline = $this->step->provisionPipeline;
-        
+
         // Final sanity check: P4 - ALL_REQUIRED_STEPS_COMPLETED && VERIFICATION_PASSED
         $verificationStep = $pipeline->steps()->where('step_type', 'service_verification')->first();
         if (!$verificationStep || $verificationStep->status !== 'completed') {
@@ -24,20 +26,13 @@ class ActivationJob extends BasePipelineStepJob
         // Must have completed all previous steps
         $requiredSteps = $pipeline->total_steps - 1; // Assuming activation is the last step
         $completedSteps = $pipeline->steps()->where('status', 'completed')->where('order', '<', $this->step->order)->count();
-        
+
         if ($completedSteps < $requiredSteps) {
             throw new \Exception("Cannot activate: Not all required steps are completed ({$completedSteps} / {$requiredSteps}).");
         }
 
-        $cs->update(['status' => 'active']);
-        
-        $pppoeUser = \App\Models\ISP\PPPoEUser::where('customer_service_id', $cs->id)->first();
-        if ($pppoeUser) {
-            $pppoeUser->update(['status' => 'active']);
-        }
-
-        // Fire event
-        \Illuminate\Support\Facades\Event::dispatch(new \Src\Domain\Customer\Events\ServiceActivatedEvent($cs->uuid));
+        // SSOT aktivasi: set status aktif + aktifkan PPPoE + publikasikan ServiceActivatedEvent.
+        app(ProvisioningOrchestrator::class)->activate($cs);
 
         return [
             'activated_at' => now()->toDateTimeString(),

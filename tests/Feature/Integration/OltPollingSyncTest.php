@@ -214,4 +214,56 @@ class OltPollingSyncTest extends TestCase
         $count = Onu::withoutGlobalScopes()->where('serial_number', 'LIKE', '%C85E2D31%')->count();
         $this->assertEquals(1, $count);
     }
+
+    public function test_olt_sync_preserves_active_status_when_driver_reports_unknown(): void
+    {
+        $onu = Onu::create([
+            'name' => 'ONU Aktif',
+            'serial_number' => 'ZTEGC85E2D31',
+            'mac_address' => 'AA:BB:CC:85:E2:31',
+            'branch_id' => $this->branch1->id,
+            'olt_id' => $this->olt->id,
+            'pon_port' => 1,
+            'pon_port_id' => $this->ponPort->id,
+            'status' => 'active',
+            'rx_power_dbm' => -20.5,
+        ]);
+
+        $this->actingAs($this->managerBranch1);
+
+        $mockDriver = Mockery::mock(OltDriverInterface::class);
+        $mockDriver->shouldReceive('getSystemInfo')->andReturn(['status' => 'online']);
+        $mockDriver->shouldReceive('getPonPortsStatus')->andReturn([
+            [
+                'port_name' => 'EPON0/1',
+                'port_number' => 1,
+                'port_index' => 1,
+                'status' => 'up',
+            ],
+        ]);
+        // Driver tidak dapat memastikan status (data status absen) -> 'unknown'
+        $mockDriver->shouldReceive('getOnuRxPower')->with(1)->andReturn([
+            [
+                'onu_index' => 1,
+                'serial_number' => 'ZTEGC85E2D31',
+                'mac_address' => 'AA:BB:CC:85:E2:31',
+                'rx_power_dbm' => null,
+                'status' => 'unknown',
+            ],
+        ]);
+
+        $mockRegistry = Mockery::mock(OltRegistry::class);
+        $mockRegistry->shouldReceive('forOlt')->andReturn($mockDriver);
+
+        $service = new OltPollingService($mockRegistry);
+        $result = $service->pollOlt($this->olt);
+
+        $this->assertTrue($result['success']);
+
+        $onu->refresh();
+        // Status 'unknown' TIDAK boleh memaksa ONU offline; status terakhir dipertahankan.
+        $this->assertEquals('active', $onu->status, 'Status unknown tidak boleh memaksa ONU offline');
+        // Redaman terakhir dipertahankan (tidak ditimpa null).
+        $this->assertEquals(-20.5, $onu->rx_power_dbm);
+    }
 }

@@ -314,6 +314,9 @@ class OltPollingService
                     $rxWarn = $thresholds['onu_rx_power_warning_low'] ?? -25.0;
                     $rxCrit = $thresholds['onu_rx_power_critical_low'] ?? -28.0;
                     $polledSns = [];
+                    // True bila ada ONU pada port ini yang statusnya tidak dapat dipastikan
+                    // (data status absen/parsial dari driver). Dipakai sebagai guard sweep.
+                    $hasUnverified = false;
 
                     foreach ($onus as $item) {
                         $sn = $item['serial_number'] ?? null;
@@ -410,6 +413,10 @@ class OltPollingService
                             }
                         }
 
+                        // Tandai bila status ONU tidak dapat dipastikan (driver OLT tidak
+                        // mengekspos data status). 'unknown' TIDAK boleh dipaksa offline.
+                        $hasUnverified = ($status === 'unknown');
+
                         if ($onu && $onu->trashed()) {
                             // Pulihkan ONU jika terdeteksi online atau masih terdaftar secara sah pada perangkat OLT
                             $onu->restore();
@@ -495,8 +502,16 @@ class OltPollingService
                             $alerts[] = ['level' => 'warning', 'scope' => 'onu', 'onu' => $onu->name, 'msg' => "RX rendah: {$rxDbm}dBm"];
                         }
 
-                        $newStatusEnum = $status === 'online' ? 'active' : 'inactive';
                         $oldStatusEnum = $onu->status;
+                        if ($status === 'online') {
+                            $newStatusEnum = 'active';
+                        } elseif ($status === 'unknown') {
+                            // Data status tidak tersedia dari OLT: JANGAN paksa offline.
+                            // Pertahankan status terakhir agar tidak terjadi false mass outage.
+                            $newStatusEnum = $oldStatusEnum;
+                        } else {
+                            $newStatusEnum = 'inactive';
+                        }
                         
                         $resolvedPortNum = ($dbPort && $dbPort->port_number) ? $dbPort->port_number : ($idx > 1000000 ? ($idx & 0xFF ?: (($idx >> 8) & 0xFF)) : $idx);
 
@@ -505,9 +520,9 @@ class OltPollingService
                             'pon_port' => $resolvedPortNum,
                             'pon_port_id' => $dbPort ? $dbPort->id : null,
                             'onu_id_on_olt' => (int)($item['onu_index'] ?? $onu->onu_id_on_olt),
-                            'rx_power_dbm' => $rxDbm,
-                            'tx_power_dbm' => $txDbm,
-                            'snr_db' => $snrDb,
+                            'rx_power_dbm' => ($status === 'unknown' && $rxDbm === null) ? $onu->rx_power_dbm : $rxDbm,
+                            'tx_power_dbm' => ($status === 'unknown' && $txDbm === null) ? $onu->tx_power_dbm : $txDbm,
+                            'snr_db' => ($status === 'unknown' && $snrDb === null) ? $onu->snr_db : $snrDb,
                             'temperature' => $temperature,
                             'distance_meters' => !empty($item['distance_meters']) ? (int)$item['distance_meters'] : $onu->distance_meters,
                             'last_seen_at' => $status === 'online' ? now() : $onu->last_seen_at,
@@ -622,7 +637,7 @@ class OltPollingService
                     // Mark ONUs as offline if they exist in DB for this port but were missing from OLT output
                     // SAFETY PROTOCOL: Jika OLT polling mengembalikan 0 ONU (misal CLI/SNMP timeout atau adapter parse mismatch),
                     // DILARANG KERAS menyapu offline massal (mencegah false mass outage seperti 326 ONU offline di CDATA-KANTOR)!
-                    if (!empty($polledSns) && ($dbPort || $idx)) {
+                    if (!empty($polledSns) && !$hasUnverified && ($dbPort || $idx)) {
                         $missingOnus = \App\Models\ISP\Onu::withoutGlobalScopes()->where('olt_id', $olt->id)
                             ->where(function ($q) use ($dbPort, $idx) {
                                 if ($dbPort) {
@@ -655,6 +670,8 @@ class OltPollingService
                         }
                     } elseif (empty($polledSns)) {
                         \Illuminate\Support\Facades\Log::warning("OLT Polling {$olt->name} Port {$port['port_name']} (idx {$idx}): 0 ONU parsed. Skipping offline sweep to protect legitimate active ONUs.");
+                    } elseif ($hasUnverified) {
+                        \Illuminate\Support\Facades\Log::warning("OLT Polling {$olt->name} Port {$port['port_name']} (idx {$idx}): status ONU tidak lengkap (unknown). Skipping offline sweep untuk melindungi ONU aktif.");
                     }
                     
                 });

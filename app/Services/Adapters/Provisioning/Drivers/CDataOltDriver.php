@@ -1025,6 +1025,77 @@ class CDataOltDriver extends BaseOltDriver
 
     protected function scrapeSnmpOnus(int $ponPort, int $portNum): array
     {
+        // Helper pembersih Serial Number / MAC.
+        // Wajib didefinisikan di awal method karena dipakai pada validasi
+        // $gponSerials di bawah (sebelumnya dipakai sebelum didefinisikan).
+        $cleanSnString = function($raw) {
+            $raw = trim((string)$raw);
+            $lower = strtolower($raw);
+            if ($raw === ''
+                || str_contains($lower, 'no such')
+                || str_contains($lower, 'nosuch')
+                || str_contains($lower, 'error')
+                || str_contains($lower, 'not found')
+                || str_contains($lower, 'end of mib')
+                || str_contains($lower, 'null')
+                || str_contains($lower, 'undefined')) {
+                return ['sn' => null, 'mac' => null];
+            }
+
+            $raw = preg_replace('/^(STRING|Hex-STRING|OctetString|Hex)\s*:?\s*/i', '', $raw);
+            $raw = trim($raw, '" \r\n\t');
+
+            // 1. Plain text string like "CDTE12345678" or "HWTC12345678"
+            if (preg_match('/^[A-Z0-9]{4}[A-Z0-9]{8,12}$/i', $raw)) {
+                return ['sn' => strtoupper($raw), 'mac' => null];
+            }
+
+            // 1b. Text with hyphens / spaces like "HWTC-12345678"
+            $noSep = preg_replace('/[\s\-_:]/', '', $raw);
+            if (preg_match('/^[A-Z0-9]{4}[A-Z0-9]{8,12}$/i', $noSep) && !preg_match('/^[0-9A-Fa-f]{12}$/', $noSep)) {
+                return ['sn' => strtoupper($noSep), 'mac' => null];
+            }
+
+            // 2. Colon / hyphen formatted MAC address (EPON)
+            if (preg_match('/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/', $raw)) {
+                $mac = strtoupper(str_replace('-', ':', $raw));
+                return ['sn' => $mac, 'mac' => $mac];
+            }
+
+            // Clean hex characters
+            $hex = strtoupper(preg_replace('/[^0-9A-Fa-f]/', '', $raw));
+
+            // 3. 16 hex chars -> GPON Serial Number (4 bytes ASCII vendor + 4 bytes Hex)
+            if (strlen($hex) === 16) {
+                $vendorAscii = @hex2bin(substr($hex, 0, 8));
+                $restHex = substr($hex, 8, 8);
+                if ($vendorAscii !== false && preg_match('/^[A-Za-z0-9]{4}$/', $vendorAscii)) {
+                    return ['sn' => strtoupper($vendorAscii) . $restHex, 'mac' => null];
+                }
+                return ['sn' => $hex, 'mac' => null];
+            }
+
+            // 4. 12 hex chars -> EPON MAC address (6 bytes)
+            if (strlen($hex) === 12) {
+                $mac = implode(':', str_split($hex, 2));
+                return ['sn' => $mac, 'mac' => $mac];
+            }
+
+            // 5. Binary to ASCII printable text fallback
+            if (strlen($hex) >= 8 && strlen($hex) <= 32) {
+                $bin = @hex2bin($hex);
+                if ($bin !== false && preg_match('/^[A-Za-z0-9\-_:]{4,16}$/', $bin)) {
+                    return ['sn' => strtoupper($bin), 'mac' => null];
+                }
+            }
+
+            $final = strtoupper(preg_replace('/[^A-Za-z0-9:\-]/', '', $raw));
+            if (strlen($final) < 4 || strlen($final) > 20) {
+                return ['sn' => null, 'mac' => null];
+            }
+            return ['sn' => $final, 'mac' => str_contains($final, ':') ? $final : null];
+        };
+
         // Cache all SNMP walk tables once per polling cycle
         if ($this->cachedOnuSerials === null) {
             $configuredPonType = strtolower(trim((string)($this->olt->pon_type ?? 'auto')));
@@ -1378,74 +1449,6 @@ class CDataOltDriver extends BaseOltDriver
             return null;
         };
 
-        $cleanSnString = function($raw) {
-            $raw = trim((string)$raw);
-            $lower = strtolower($raw);
-            if ($raw === '' 
-                || str_contains($lower, 'no such')
-                || str_contains($lower, 'nosuch')
-                || str_contains($lower, 'error')
-                || str_contains($lower, 'not found')
-                || str_contains($lower, 'end of mib')
-                || str_contains($lower, 'null')
-                || str_contains($lower, 'undefined')) {
-                return ['sn' => null, 'mac' => null];
-            }
-
-            $raw = preg_replace('/^(STRING|Hex-STRING|OctetString|Hex)\s*:?\s*/i', '', $raw);
-            $raw = trim($raw, '" \r\n\t');
-
-            // 1. Plain text string like "CDTE12345678" or "HWTC12345678"
-            if (preg_match('/^[A-Z0-9]{4}[A-Z0-9]{8,12}$/i', $raw)) {
-                return ['sn' => strtoupper($raw), 'mac' => null];
-            }
-
-            // 1b. Text with hyphens / spaces like "HWTC-12345678"
-            $noSep = preg_replace('/[\s\-_:]/', '', $raw);
-            if (preg_match('/^[A-Z0-9]{4}[A-Z0-9]{8,12}$/i', $noSep) && !preg_match('/^[0-9A-Fa-f]{12}$/', $noSep)) {
-                return ['sn' => strtoupper($noSep), 'mac' => null];
-            }
-
-            // 2. Colon / hyphen formatted MAC address (EPON)
-            if (preg_match('/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/', $raw)) {
-                $mac = strtoupper(str_replace('-', ':', $raw));
-                return ['sn' => $mac, 'mac' => $mac];
-            }
-
-            // Clean hex characters
-            $hex = strtoupper(preg_replace('/[^0-9A-Fa-f]/', '', $raw));
-
-            // 3. 16 hex chars -> GPON Serial Number (4 bytes ASCII vendor + 4 bytes Hex)
-            if (strlen($hex) === 16) {
-                $vendorAscii = @hex2bin(substr($hex, 0, 8));
-                $restHex = substr($hex, 8, 8);
-                if ($vendorAscii !== false && preg_match('/^[A-Za-z0-9]{4}$/', $vendorAscii)) {
-                    return ['sn' => strtoupper($vendorAscii) . $restHex, 'mac' => null];
-                }
-                return ['sn' => $hex, 'mac' => null];
-            }
-
-            // 4. 12 hex chars -> EPON MAC address (6 bytes)
-            if (strlen($hex) === 12) {
-                $mac = implode(':', str_split($hex, 2));
-                return ['sn' => $mac, 'mac' => $mac];
-            }
-
-            // 5. Binary to ASCII printable text fallback
-            if (strlen($hex) >= 8 && strlen($hex) <= 32) {
-                $bin = @hex2bin($hex);
-                if ($bin !== false && preg_match('/^[A-Za-z0-9\-_:]{4,16}$/', $bin)) {
-                    return ['sn' => strtoupper($bin), 'mac' => null];
-                }
-            }
-
-            $final = strtoupper(preg_replace('/[^A-Za-z0-9:\-]/', '', $raw));
-            if (strlen($final) < 4 || strlen($final) > 20) {
-                return ['sn' => null, 'mac' => null];
-            }
-            return ['sn' => $final, 'mac' => str_contains($final, ':') ? $final : null];
-        };
-
         $parsePower = function($val, bool $isTx = false) {
             if ($val === null || $val === '' || $val === '--' || $val === 'N/A') return null;
             if (is_string($val) && preg_match('/[-+]?[0-9]*\.?[0-9]+/', $val, $nm)) {
@@ -1624,6 +1627,11 @@ class CDataOltDriver extends BaseOltDriver
                     $snmpOnline = ($activeVal === 1);
                 }
 
+                // Apakah ada bukti status eksplisit dari CLI/SNMP?
+                // Jika seluruh tabel status absen, status TIDAK BOLEH disimpulkan 'offline'
+                // (menyebabkan false mass outage); kembalikan 'unknown' agar polling mempertahankan status terakhir.
+                $hasStatusEvidence = ($cliStatus !== null) || ($rawAct !== '' || $rawSt !== '' || $rawBind !== '');
+
                 // Tentukan status dasar dari CLI dan SNMP
                 if ($cliStatus === 'online' || $snmpOnline) {
                     $isOnline = true;
@@ -1651,10 +1659,12 @@ class CDataOltDriver extends BaseOltDriver
                 // Jika OLT mendeteksi redaman optik RX valid (-38 s.d -6 dBm), modem PASTI 100% ONLINE!
                 if ($rxVal !== null && $rxVal >= -38.0 && $rxVal <= -6.0) {
                     $isOnline = true;
+                    $hasStatusEvidence = true;
                 }
 
-                // Jika ONU benar-benar offline, bersihkan redaman lama agar tidak menampilkan redaman semu
-                if (!$isOnline) {
+                // Jika ONU dipastikan offline, bersihkan redaman lama agar tidak menampilkan redaman semu.
+                // Saat status 'unknown' (data status absen), JANGAN buang data redaman terakhir.
+                if (!$isOnline && $hasStatusEvidence) {
                     $rxVal = null;
                     $txVal = null;
                 }
@@ -1674,6 +1684,12 @@ class CDataOltDriver extends BaseOltDriver
                     if ($tFloat > 0 && $tFloat < 120) $cleanTemp = $tFloat;
                 }
 
+                $statusStr = 'online';
+                if (!$isOnline) {
+                    // Tanpa bukti status apa pun -> 'unknown' (pertahankan status terakhir di polling).
+                    $statusStr = $hasStatusEvidence ? 'offline' : 'unknown';
+                }
+
                 $results[] = [
                     'pon_port'         => $ponPort,
                     'onu_index'        => $onuId > 0 ? $onuId : 1,
@@ -1685,7 +1701,7 @@ class CDataOltDriver extends BaseOltDriver
                     'temperature'      => $cleanTemp,
                     'firmware_version' => null,
                     'model'            => null,
-                    'status'           => $isOnline ? 'online' : 'offline',
+                    'status'           => $statusStr,
                 ];
             }
         }

@@ -5,22 +5,21 @@ namespace App\Services\Provisioning;
 use App\Models\Customer\CustomerService;
 use App\Models\ISP\Onu;
 use Illuminate\Support\Facades\Log;
-use App\Services\Adapters\Monitoring\GenieACSDriver;
 
 class ServiceProvisioningEngine
 {
     protected CapabilityDiscoveryService $discoveryService;
     protected RemediationEngineService $remediationEngine;
-    protected GenieACSDriver $acsDriver;
+    protected ProvisioningOrchestrator $orchestrator;
 
     public function __construct(
         CapabilityDiscoveryService $discoveryService,
         RemediationEngineService $remediationEngine,
-        GenieACSDriver $acsDriver
+        ProvisioningOrchestrator $orchestrator
     ) {
         $this->discoveryService = $discoveryService;
         $this->remediationEngine = $remediationEngine;
-        $this->acsDriver = $acsDriver;
+        $this->orchestrator = $orchestrator;
     }
 
     /**
@@ -39,8 +38,8 @@ class ServiceProvisioningEngine
         // For standard internet service, we need either PPPOE or BRIDGE or DHCP capability
         // Let's assume standard is PPPOE for router mode, BRIDGE for bridge mode.
         // We look at network profile or attributes. For simplicity, we require PPPOE.
-        
-        $targetCapability = 'PPPOE'; 
+
+        $targetCapability = 'PPPOE';
         if (($customerService->attributes['connection_type'] ?? '') === 'BRIDGE') {
             $targetCapability = 'BRIDGE';
         }
@@ -80,7 +79,9 @@ class ServiceProvisioningEngine
     }
 
     /**
-     * The actual creation of WAN / Bridge via TR-069
+     * The actual creation of WAN / Bridge via TR-069.
+     *
+     * Pemuatan konfigurasi ke ONT didelegasikan ke ProvisioningOrchestrator (SSOT ACS/TR-069).
      */
     protected function executeProvisioning(CustomerService $customerService, Onu $onu, string $targetCapability): array
     {
@@ -98,30 +99,17 @@ class ServiceProvisioningEngine
             // Update to PROVISIONING
             $customerService->update(['service_status' => 'PROVISIONING']);
 
-            // Get credentials from the database
-            $username = $customerService->username;
-            $password = $customerService->password;
-            $vlanId = $customerService->attributes['vlan_id'] ?? null;
+            // Trigger the smart Multi-Vendor WAN setup via GenieACS (SSOT orkestrator).
+            $acs = $this->orchestrator->provisionAcs($customerService);
 
-            // Trigger the smart Multi-Vendor WAN setup via GenieACS!
-            if ($username && $password && $onu->genieacs_device_id) {
-                try {
-                    $this->acsDriver->provisionPppoe(
-                        $onu->genieacs_device_id, 
-                        $username, 
-                        $password, 
-                        $vlanId
-                    );
-                    Log::info("Successfully sent PPPoE auto-config for {$username} to GenieACS.");
-                } catch (\Exception $e) {
-                    Log::error("Failed to provision PPPoE: " . $e->getMessage());
-                    return [
-                        'status' => 'ERROR',
-                        'message' => 'Gagal mengirim konfigurasi PPPoE ke ONT via TR-069: ' . $e->getMessage()
-                    ];
-                }
-            } else {
-                Log::warning("Skipping ACS PPPoE provision: Missing username/password or device_id.");
+            if (($acs['status'] ?? null) === 'failed') {
+                Log::error("Failed to provision via ACS: " . ($acs['error'] ?? 'unknown error'));
+                $customerService->update(['service_status' => 'FAILED']);
+
+                return [
+                    'status' => 'ERROR',
+                    'message' => 'Gagal mengirim konfigurasi PPPoE ke ONT via TR-069: ' . ($acs['error'] ?? 'unknown error')
+                ];
             }
 
             // Crucial: Set to PENDING_VERIFICATION, not ACTIVE immediately
@@ -130,12 +118,12 @@ class ServiceProvisioningEngine
             ]);
 
             // Usually, here we'd trigger a verify job or webhook from ACS
-            
+
             return [
                 'status' => 'SUCCESS',
                 'message' => "Service successfully provisioned via {$targetCapability}. Awaiting verification."
             ];
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("Provisioning execution failed: " . $e->getMessage());
             $customerService->update(['service_status' => 'FAILED']);
             return ['status' => 'ERROR', 'message' => 'TR-069 Provisioning failed: ' . $e->getMessage()];

@@ -42,4 +42,13 @@ class OltPolicy
     {
         return $user->hasPermission('olt.export');
     }
+
+    /**
+     * Menjalankan perintah CLI mentah pada perangkat OLT.
+     * Dibatasi pada pemegang hak modifikasi OLT (olt.update).
+     */
+    public function execute(User $user, Olt $olt): bool
+    {
+        return $user->hasPermission('olt.update');
+    }
 }

@@ -9,6 +9,7 @@ use App\Services\Adapters\Provisioning\OltRegistry;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
 class OltApiController extends Controller
@@ -113,11 +114,61 @@ class OltApiController extends Controller
     {
         $request->validate(['command' => 'required|string|max:500', 'mode' => 'nullable|in:telnet,ssh']);
         $olt = Olt::findOrFail($id);
+
+        // Otorisasi: hanya pemegang hak modifikasi OLT yang boleh menjalankan CLI mentah.
+        // Aturan otorisasi bersumber dari SSOT OltPolicy::execute() (di-resolve otomatis oleh Gate).
+        if (Gate::forUser($request->user())->denies('execute', $olt)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak berhak menjalankan perintah CLI pada OLT ini.',
+            ], 403);
+        }
+
+        $command = $request->string('command')->toString();
+
+        // Tolak karakter kontrol yang memungkinkan injeksi perintah berantai
+        if (preg_match('/[\r\n\t\0]/', $command)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Perintah mengandung karakter yang tidak diizinkan.',
+            ], 422);
+        }
+
+        // Whitelist prefix perintah (Super Admin dikecualikan)
+        if (!$request->user()?->isSuperAdmin()) {
+            $allowed = (array) config('olt-drivers.cli.allowed_command_prefixes', []);
+            $normalized = strtolower(ltrim($command));
+            $isAllowed = collect($allowed)->contains(
+                fn ($prefix) => str_starts_with($normalized, strtolower((string) $prefix))
+            );
+            if (!$isAllowed) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Perintah tidak termasuk dalam daftar perintah yang diizinkan.',
+                ], 422);
+            }
+        }
+
         try {
             $result = $this->registry->forOlt($olt)->executeCommand(
-                $request->string('command')->toString(),
+                $command,
                 $request->input('mode', 'telnet')
             );
+
+            try {
+                \App\Models\AuditLog::create([
+                    'auditable_type' => Olt::class,
+                    'auditable_id' => $olt->id,
+                    'event' => 'olt.execute_command',
+                    'new_values' => ['command' => $command, 'mode' => $request->input('mode', 'telnet')],
+                    'user_id' => $request->user()?->id,
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('Audit log OLT execute-command gagal: ' . $e->getMessage());
+            }
+
             return response()->json(['success' => $result !== false, 'output' => $result]);
         } catch (Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);

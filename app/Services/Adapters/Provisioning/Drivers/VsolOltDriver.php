@@ -134,7 +134,7 @@ class VsolOltDriver extends BaseOltDriver
                 'firmware_version' => $fw,
                 'hardware_version' => $hw,
                 'model'            => $modelVal,
-                'status'           => match ((int)($statuses[$idx] ?? 0)) {
+                'status'           => !array_key_exists($idx, $statuses) ? 'unknown' : match ((int)$statuses[$idx]) {
                     1, 10 => 'online',
                     2, 0  => 'offline',
                     3     => 'dying_gasp',
@@ -175,9 +175,9 @@ class VsolOltDriver extends BaseOltDriver
             $this->cli->execute('enable');
             $this->cli->execute('configure terminal');
             $this->cli->execute("gpon-olt 0/$ponPort");
-            $this->cli->execute("onu add $onuId sn $serialNumber");
-            $this->cli->execute("onu profile line $profile");
-            $this->cli->execute("onu description \"" . ($onu->name ?? 'CUST-' . $onuId) . "\"");
+            $this->cli->execute("onu add $onuId sn " . $this->sanitizeCliValue($serialNumber));
+            $this->cli->execute("onu profile line " . $this->sanitizeCliValue($profile));
+            $this->cli->execute("onu description \"" . $this->sanitizeCliValue($onu->name ?? 'CUST-' . $onuId) . "\"");
             $this->cli->execute('exit');
             $this->cli->execute('write');
             return true;

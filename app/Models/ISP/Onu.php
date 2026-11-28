@@ -86,6 +86,26 @@ class Onu extends Model
                     $model->branch_id = Odp::withoutGlobalScopes()->where('id', $model->odp_id)->value('branch_id');
                 }
             }
+
+            // SSOT PON Port: pon_port_id (FK) adalah sumber kebenaran; kolom numerik
+            // pon_port dijaga tetap sinkron agar kedua representasi tidak divergen.
+            // Hanya diproses saat atribut terkait berubah (menghindari query berlebih saat polling massal).
+            if ($model->isDirty('pon_port_id') && !empty($model->pon_port_id)) {
+                $portNumber = PonPort::withoutGlobalScopes()->whereKey($model->pon_port_id)->value('port_number');
+                if ($portNumber !== null) {
+                    $model->pon_port = (int) $portNumber;
+                }
+            } elseif ($model->isDirty('pon_port') && !empty($model->pon_port) && !empty($model->olt_id)) {
+                // Jika hanya nomor port yang diketahui (mis. hasil provisioning/SNMP),
+                // resolusi otomatis ke FK agar query berbasis pon_port_id tetap konsisten.
+                $resolvedId = PonPort::withoutGlobalScopes()
+                    ->where('olt_id', $model->olt_id)
+                    ->where('port_number', (int) $model->pon_port)
+                    ->value('id');
+                if ($resolvedId !== null) {
+                    $model->pon_port_id = $resolvedId;
+                }
+            }
             if (empty($model->code)) {
                 $prefix = 'ONU-' . strtoupper(substr(preg_replace('/[^A-Z0-9]/i', '', $model->serial_number ?? Str::random(6)), -6));
                 $base = $prefix;

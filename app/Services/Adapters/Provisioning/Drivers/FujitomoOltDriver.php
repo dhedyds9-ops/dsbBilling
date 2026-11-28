@@ -216,8 +216,8 @@ class FujitomoOltDriver extends BaseOltDriver
             $onuId = $onu->getKey();
             $this->cli->execute('configure terminal');
             $this->cli->execute("interface gpon 0/$ponPort");
-            $this->cli->execute("onu add $onuId sn $serialNumber desc \"" . ($onu->name ?? 'CUST-' . $onuId) . "\"");
-            $this->cli->execute("onu $onuId bind-profile line $profile srv-profile $profile");
+            $this->cli->execute("onu add $onuId sn " . $this->sanitizeCliValue($serialNumber) . " desc \"" . $this->sanitizeCliValue($onu->name ?? 'CUST-' . $onuId) . "\"");
+            $this->cli->execute("onu $onuId bind-profile line " . $this->sanitizeCliValue($profile) . " srv-profile " . $this->sanitizeCliValue($profile));
             $this->cli->execute('exit');
             $this->cli->execute('write memory');
             return true;

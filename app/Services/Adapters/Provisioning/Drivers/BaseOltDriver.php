@@ -83,6 +83,21 @@ abstract class BaseOltDriver implements OltDriverInterface
         );
     }
 
+    /**
+     * Membersihkan nilai dinamis (nama ONU, username, password, VLAN, dsb) sebelum
+     * disisipkan ke command CLI OLT. Karakter kontrol (CR/LF/TAB) dan
+     * separator/quote dihapus agar nilai tidak dapat memutus perintah atau
+     * keluar dari konteks argumen (mencegah command injection ke perangkat).
+     */
+    protected function sanitizeCliValue(?string $value): string
+    {
+        return trim(str_replace(
+            ["\r", "\n", "\t", "\0", ';', '"', "'", '`', '|'],
+            '',
+            (string) $value
+        ));
+    }
+
     public function getSystemInfo(): array
     {
         try {

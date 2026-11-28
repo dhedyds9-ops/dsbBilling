@@ -266,6 +266,11 @@ class HisfocusOltDriver extends BaseOltDriver
         $matched = $this->filterOnusByPort($this->cachedSnmpOnus, $ponPort);
 
         if (!empty($matched)) {
+            // Untuk GP210/GBN: tabel CLI (display ont info) otoritatif untuk status online/offline
+            // karena OLT ini tidak mengekspos OID status yang andal. Vendor lain tetap murni SNMP.
+            if ($this->isGbnOlt()) {
+                return $this->applyCliStatusAuthority($matched);
+            }
             return $matched;
         }
 
@@ -293,6 +298,55 @@ class HisfocusOltDriver extends BaseOltDriver
         }
 
         return [];
+    }
+
+    /**
+     * Menentukan apakah OLT ini keluarga GP210/GBN (tanpa OID status ONU yang andal).
+     */
+    protected function isGbnOlt(): bool
+    {
+        return str_contains(strtolower($this->olt->model ?? ''), 'gp210')
+            || str_contains(strtolower($this->olt->name ?? ''), 'gp210')
+            || $this->systemOids['sysTemperature'] === '.1.3.6.1.4.1.8888.1.2.1.1.2.26.0';
+    }
+
+    /**
+     * Menjadikan tabel CLI otoritatif untuk status online/offline.
+     * Hanya menimpa status bila CLI memberi status konkret (online/offline);
+     * status 'unknown' dari CLI tidak menimpa data SNMP.
+     */
+    protected function applyCliStatusAuthority(array $onus): array
+    {
+        try {
+            if ($this->cachedCliOnus === null) {
+                $this->cachedCliOnus = $this->collectAllOnusFromCli();
+            }
+        } catch (\Throwable $e) {
+            Log::debug("Hisfocus CLI status authority skipped: " . $e->getMessage());
+            return $onus;
+        }
+
+        $statusMap = [];
+        foreach ($this->cachedCliOnus as $c) {
+            $sn = strtoupper(str_replace([':', '-', ' '], '', (string)($c['serial_number'] ?? '')));
+            $st = $c['status'] ?? 'unknown';
+            if ($sn !== '' && in_array($st, ['online', 'offline'], true)) {
+                $statusMap[$sn] = $st;
+            }
+        }
+
+        if (empty($statusMap)) {
+            return $onus;
+        }
+
+        foreach ($onus as $i => $o) {
+            $sn = strtoupper(str_replace([':', '-', ' '], '', (string)($o['serial_number'] ?? '')));
+            if (isset($statusMap[$sn])) {
+                $onus[$i]['status'] = $statusMap[$sn];
+            }
+        }
+
+        return $onus;
     }
 
     /**
@@ -344,9 +398,7 @@ class HisfocusOltDriver extends BaseOltDriver
             Log::debug("Hisfocus GBN 8888 SNMP error: " . $e->getMessage());
         }
 
-        $isGbn = str_contains(strtolower($this->olt->model ?? ''), 'gp210') ||
-                 str_contains(strtolower($this->olt->name ?? ''), 'gp210') ||
-                 $this->systemOids['sysTemperature'] === '.1.3.6.1.4.1.8888.1.2.1.1.2.26.0';
+        $isGbn = $this->isGbnOlt();
 
         if ($isGbn) {
             // Pada GBN GP210, SNMP walk tidak menyediakan tabel ONU.
@@ -406,6 +458,7 @@ class HisfocusOltDriver extends BaseOltDriver
                         $tempVal = $t > 1000 ? round($t / 100, 1) : $t;
                     }
 
+                    $hasStatusEvidence = array_key_exists($idx, $vsolStatuses);
                     $st = (int)($vsolStatuses[$idx] ?? 0);
                     $isOnline = in_array($st, [1, 3, 10], true) || ($rxVal !== null && $rxVal >= -38.0 && $rxVal <= -6.0);
 
@@ -424,7 +477,7 @@ class HisfocusOltDriver extends BaseOltDriver
                         'firmware_version' => isset($vsolFws[$idx]) ? trim((string)$vsolFws[$idx], '" ') : null,
                         'model'            => isset($vsolModels[$idx]) ? trim((string)$vsolModels[$idx], '" ') : null,
                         'name'             => isset($vsolNames[$idx]) ? trim((string)$vsolNames[$idx], '" ') : null,
-                        'status'           => $isOnline ? 'online' : 'offline',
+                        'status'           => $isOnline ? 'online' : ($hasStatusEvidence ? 'offline' : 'unknown'),
                     ];
                 }
 
@@ -459,6 +512,7 @@ class HisfocusOltDriver extends BaseOltDriver
                     $txVal = (float)($cdTx[$idx] ?? 0);
                     if ($txVal > 100 || $txVal < -100) $txVal = round($txVal / 100, 2);
 
+                    $hasStatusEvidence = array_key_exists($idx, $cdStatuses);
                     $st = (int)($cdStatuses[$idx] ?? 0);
                     $isOnline = in_array($st, [1, 2, 8], true) || ($rxVal >= -38.0 && $rxVal <= -6.0);
 
@@ -475,7 +529,7 @@ class HisfocusOltDriver extends BaseOltDriver
                         'firmware_version' => null,
                         'model'            => null,
                         'name'             => null,
-                        'status'           => $isOnline ? 'online' : 'offline',
+                        'status'           => $isOnline ? 'online' : ($hasStatusEvidence ? 'offline' : 'unknown'),
                     ];
                 }
 
@@ -508,6 +562,7 @@ class HisfocusOltDriver extends BaseOltDriver
                     $txVal = (float)($rlTx[$idx] ?? 0);
                     if ($txVal > 100 || $txVal < -100) $txVal = round($txVal / 100, 2);
 
+                    $hasStatusEvidence = array_key_exists($idx, $rlStatuses);
                     $st = (int)($rlStatuses[$idx] ?? 0);
                     $isOnline = ($st === 1 || ($rxVal >= -38.0 && $rxVal <= -6.0));
 
@@ -524,7 +579,7 @@ class HisfocusOltDriver extends BaseOltDriver
                         'firmware_version' => null,
                         'model'            => null,
                         'name'             => null,
-                        'status'           => $isOnline ? 'online' : 'offline',
+                        'status'           => $isOnline ? 'online' : ($hasStatusEvidence ? 'offline' : 'unknown'),
                     ];
                 }
 
@@ -560,6 +615,7 @@ class HisfocusOltDriver extends BaseOltDriver
                     $txVal = (float)($rawTx[$idx] ?? 0);
                     if ($txVal > 100 || $txVal < -100) $txVal = round($txVal / 100, 2);
 
+                    $hasStatusEvidence = array_key_exists($idx, $rawStatuses);
                     $st = (int)($rawStatuses[$idx] ?? 0);
                     $isOnline = ($st === 1 || $st === 2 || $st === 3 || ($rxVal >= -38.0 && $rxVal <= -6.0));
 
@@ -576,7 +632,7 @@ class HisfocusOltDriver extends BaseOltDriver
                         'firmware_version' => isset($rawFws[$idx]) ? trim((string)$rawFws[$idx], '" ') : null,
                         'model'            => isset($rawModels[$idx]) ? trim((string)$rawModels[$idx], '" ') : null,
                         'name'             => isset($rawNames[$idx]) ? trim((string)$rawNames[$idx], '" ') : null,
-                        'status'           => $isOnline ? 'online' : 'offline',
+                        'status'           => $isOnline ? 'online' : ($hasStatusEvidence ? 'offline' : 'unknown'),
                     ];
                 }
 
@@ -601,6 +657,7 @@ class HisfocusOltDriver extends BaseOltDriver
                     $mac = $this->cleanSnmpSerialOrMac($rawMac);
                     if (empty($mac)) continue;
 
+                    $hasStatusEvidence = array_key_exists($idx, $ctcStatuses);
                     $st = (int)($ctcStatuses[$idx] ?? 0);
                     $rxVal = (float)($ctcRx[$idx] ?? 0);
                     if ($rxVal > 100 || $rxVal < -100) $rxVal = round($rxVal / 100, 2);
@@ -624,7 +681,7 @@ class HisfocusOltDriver extends BaseOltDriver
                         'firmware_version' => null,
                         'model'            => null,
                         'name'             => null,
-                        'status'           => $isOnline ? 'online' : 'offline',
+                        'status'           => $isOnline ? 'online' : ($hasStatusEvidence ? 'offline' : 'unknown'),
                     ];
                 }
 
@@ -652,6 +709,7 @@ class HisfocusOltDriver extends BaseOltDriver
                     if ($rxVal > 100 || $rxVal < -100) $rxVal = round($rxVal / 100, 2);
                     if ($rxVal > 0) $rxVal = -abs($rxVal);
 
+                    $hasStatusEvidence = array_key_exists($idx, $legStatuses);
                     $st = (int)($legStatuses[$idx] ?? 0);
                     $isOnline = ($st === 1 || ($rxVal >= -38.0 && $rxVal <= -6.0));
 
@@ -668,7 +726,7 @@ class HisfocusOltDriver extends BaseOltDriver
                         'firmware_version' => null,
                         'model'            => null,
                         'name'             => null,
-                        'status'           => $isOnline ? 'online' : 'offline',
+                        'status'           => $isOnline ? 'online' : ($hasStatusEvidence ? 'offline' : 'unknown'),
                     ];
                 }
 
@@ -714,7 +772,8 @@ class HisfocusOltDriver extends BaseOltDriver
     }
 
     /**
-     * Inisialisasi koneksi CLI dengan auto-fallback kredensial umum admin/admin atau root/admin.
+     * Inisialisasi koneksi CLI menggunakan kredensial OLT dari database.
+     * Gagal cepat (fail-fast) bila kredensial belum dikonfigurasi.
      */
     protected function initializeCli(): void
     {
@@ -722,43 +781,28 @@ class HisfocusOltDriver extends BaseOltDriver
             return;
         }
 
-        $username = !empty($this->olt->username) ? $this->olt->username : 'admin';
-        $password = !empty($this->olt->password) ? $this->olt->password : 'admin';
+        if (empty($this->olt->username) || empty($this->olt->password)) {
+            throw new \RuntimeException(
+                "Kredensial CLI OLT #{$this->olt->id} belum dikonfigurasi. " .
+                "Isi username/password pada data OLT sebelum menjalankan operasi CLI."
+            );
+        }
+
         $port = (int)($this->olt->cli_port ?? 0);
         if ($port <= 0) {
             $port = $this->cliMode === 'ssh' ? 22 : 23;
         }
 
         $this->cli = new TelnetSshClient();
-        try {
-            $this->cli->connect(
-                $this->olt->ip_address,
-                $username,
-                $password,
-                $this->cliMode,
-                $port,
-                $this->olt->enable_secret ?? '',
-                4
-            );
-        } catch (\Throwable $e) {
-            // Coba alternatif default root/admin jika kredensial admin gagal
-            if ($username === 'admin') {
-                try {
-                    $this->cli = new TelnetSshClient();
-                    $this->cli->connect(
-                        $this->olt->ip_address,
-                        'root',
-                        'admin',
-                        $this->cliMode,
-                        $port,
-                        $this->olt->enable_secret ?? '',
-                        4
-                    );
-                    return;
-                } catch (\Throwable) {}
-            }
-            throw $e;
-        }
+        $this->cli->connect(
+            $this->olt->ip_address,
+            $this->olt->username,
+            $this->olt->password,
+            $this->cliMode,
+            $port,
+            $this->olt->enable_secret ?? '',
+            4
+        );
     }
 
     /**
@@ -770,9 +814,7 @@ class HisfocusOltDriver extends BaseOltDriver
         try {
             $this->initializeCli();
 
-            $isGbn = str_contains(strtolower($this->olt->model ?? ''), 'gp210') ||
-                     str_contains(strtolower($this->olt->name ?? ''), 'gp210') ||
-                     $this->systemOids['sysTemperature'] === '.1.3.6.1.4.1.8888.1.2.1.1.2.26.0';
+            $isGbn = $this->isGbnOlt();
 
             if ($isGbn) {
                 // Untuk GP210 / GBN VRP OLT: display current-config adalah SSOT utama yang memuat seluruh rule-profile sn-auth ONT
@@ -860,15 +902,23 @@ class HisfocusOltDriver extends BaseOltDriver
                             'firmware_version' => null,
                             'model'            => null,
                             'name'             => $name,
-                            'status'           => 'online',
+                            // Entri dari rule-profile = data konfigurasi (registrasi), bukan status live.
+                            // Status otoritatif ditentukan oleh tabel CLI (lihat bagian 2 di bawah).
+                            'status'           => 'unknown',
                         ];
                     }
                 }
 
-                // 2. Parsing baris-per-baris untuk format tabel info / optical-info
+                // 2. Parsing baris-per-bar tabel info / optical-info (OTORITATIF untuk status online/offline)
+                $tableStatus = []; // cleanSn => bool online (gabungan OR antar baris tabel)
                 foreach (explode("\n", $clean) as $line) {
                     $line = trim($line);
                     if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, '=') || str_starts_with($line, 'F/S') || str_starts_with($line, 'Slot') || str_starts_with($line, 'Port') || str_starts_with($line, 'show') || str_starts_with($line, 'display') || str_starts_with($line, 'Total:') || str_contains($line, '#')) {
+                        continue;
+                    }
+
+                    // Lewati baris konfigurasi (rule-profile/sn-auth) — bukan baris status live.
+                    if (str_contains($line, 'sn-auth') || str_contains($line, 'rule-profile') || str_contains($line, 'line-profile')) {
                         continue;
                     }
 
@@ -879,7 +929,11 @@ class HisfocusOltDriver extends BaseOltDriver
                         if (empty($sn)) continue;
 
                         $cleanSn = str_replace([':', '-', ' '], '', $sn);
-                        $isOnline = preg_match('/\b(online|working|operation|operational|up|ok|enable|active)\b/i', $line);
+                        $isOnline = (bool) preg_match('/\b(online|working|operation|operational|up|ok|enable|active)\b/i', $line);
+
+                        // Baris tabel = bukti status otoritatif. OR antar baris: online bila ada
+                        // satu baris yang menyatakan online (mis. tabel info vs optical-info).
+                        $tableStatus[$cleanSn] = ($tableStatus[$cleanSn] ?? false) || $isOnline;
 
                         // Ekstrak redaman Rx jika ada (misal -21.50)
                         $rxVal = null;
@@ -895,7 +949,8 @@ class HisfocusOltDriver extends BaseOltDriver
                             $detectedPort = (int)$pm[1];
                         }
 
-                        // Jika ONU sudah ada dari rule-profile, update rx_power atau statusnya
+                        // Jika ONU sudah ada dari rule-profile, update rx_power-nya saja
+                        // (status akan diterapkan otoritatif setelah loop).
                         $existingIdx = null;
                         foreach ($onus as $idx => $existing) {
                             if ($existing['serial_number'] === $cleanSn) {
@@ -907,9 +962,6 @@ class HisfocusOltDriver extends BaseOltDriver
                         if ($existingIdx !== null) {
                             if ($rxVal !== null) {
                                 $onus[$existingIdx]['rx_power_dbm'] = $rxVal;
-                            }
-                            if ($isOnline) {
-                                $onus[$existingIdx]['status'] = 'online';
                             }
                         } else {
                             $onus[] = [
@@ -925,8 +977,17 @@ class HisfocusOltDriver extends BaseOltDriver
                                 'firmware_version' => null,
                                 'model'            => null,
                                 'name'             => null,
-                                'status'           => $isOnline ? 'online' : 'offline',
+                                'status'           => 'unknown',
                             ];
+                        }
+                    }
+                }
+
+                // 3. Terapkan status otoritatif dari tabel ke seluruh ONU (termasuk entri rule-profile).
+                foreach ($tableStatus as $tableSn => $tableOnline) {
+                    foreach ($onus as $i => $o) {
+                        if (($o['serial_number'] ?? null) === $tableSn) {
+                            $onus[$i]['status'] = $tableOnline ? 'online' : 'offline';
                         }
                     }
                 }
@@ -1105,7 +1166,7 @@ class HisfocusOltDriver extends BaseOltDriver
             $onuId = $onu->getKey();
             $this->cli->execute("configure terminal");
             $this->cli->execute("interface pon $ponPort");
-            $this->cli->execute("ont add $onuId sn-auth $serialNumber omci desc \"" . ($onu->name ?? 'CUST-' . $onuId) . "\"");
+            $this->cli->execute("ont add $onuId sn-auth " . $this->sanitizeCliValue($serialNumber) . " omci desc \"" . $this->sanitizeCliValue($onu->name ?? 'CUST-' . $onuId) . "\"");
             $this->cli->execute("exit");
             $this->cli->execute("write");
             return true;
@@ -1139,6 +1200,6 @@ class HisfocusOltDriver extends BaseOltDriver
 
     public function setOnuBandwidthLimit(Onu $onu, int $downloadMbps, int $uploadMbps): bool
     {
-        return true;
+        throw new \RuntimeException('setOnuBandwidthLimit belum didukung untuk driver Hisfocus/GP210.');
     }
 }

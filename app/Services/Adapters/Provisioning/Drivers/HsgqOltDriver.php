@@ -215,16 +215,24 @@ class HsgqOltDriver extends BaseOltDriver
                         'model'            => $this->cachedOnuModels[$onuIndex] ?? null,
                         'status'           => (function() use ($statusVal, $onuIndex) {
                             // Raw SNMP shows 1 for active ONUs on OID .22 (likely Admin/OperStatus)
+                            $hasEvidence = array_key_exists($onuIndex, $this->cachedOnuStatuses);
+                            $rx = $this->cachedOnuRx[$onuIndex] ?? null;
+
+                            // RX valid = bukti kuat modem online
+                            if ($rx !== null && $rx > -40 && $rx < -5) {
+                                return 'online';
+                            }
+                            if (!$hasEvidence) {
+                                // Status absen & tanpa bukti RX -> jangan paksa offline
+                                return 'unknown';
+                            }
+
                             $isOnline = match ($statusVal) {
                                 1, 3, 4, 10 => true,
                                 default     => false
                             };
-                            $rx = $this->cachedOnuRx[$onuIndex] ?? null;
                             if ($rx !== null && $rx <= -40) {
                                 $isOnline = false;
-                            }
-                            if ($rx !== null && $rx > -40 && $rx < -5) {
-                                $isOnline = true;
                             }
                             return $isOnline ? 'online' : 'offline';
                         })(),
@@ -348,16 +356,21 @@ class HsgqOltDriver extends BaseOltDriver
                 'firmware_version' => $fw,
                 'model'            => $modelVal,
                 'status'           => (function() use ($statuses, $idx, $rx) {
-                    $statusVal = (int)($statuses[$idx] ?? 0);
-                    $isOnline = match ($statusVal) {
+                    $hasEvidence = array_key_exists($idx, $statuses);
+                    // RX valid = bukti kuat modem online
+                    if ($rx !== null && $rx > -40 && $rx < -5) {
+                        return 'online';
+                    }
+                    if (!$hasEvidence) {
+                        // Status absen & tanpa bukti RX -> jangan paksa offline
+                        return 'unknown';
+                    }
+                    $isOnline = match ((int)$statuses[$idx]) {
                         1, 3, 4, 10 => true,
                         default     => false
                     };
                     if ($rx !== null && $rx <= -40) {
                         $isOnline = false;
-                    }
-                    if ($rx !== null && $rx > -40 && $rx < -5) {
-                        $isOnline = true;
                     }
                     return $isOnline ? 'online' : 'offline';
                 })(),
@@ -398,7 +411,7 @@ class HsgqOltDriver extends BaseOltDriver
             $onuId = $onu->getKey();
             $this->cli->execute("configure");
             $this->cli->execute("interface pon $ponPort");
-            $this->cli->execute("ont add $onuId sn-auth $serialNumber omci ont-lineprofile-id 1 ont-srvprofile-id 1 desc \"" . ($onu->name ?? 'CUST-' . $onuId) . "\"");
+            $this->cli->execute("ont add $onuId sn-auth " . $this->sanitizeCliValue($serialNumber) . " omci ont-lineprofile-id 1 ont-srvprofile-id 1 desc \"" . $this->sanitizeCliValue($onu->name ?? 'CUST-' . $onuId) . "\"");
             $this->cli->execute("exit");
             $this->cli->execute("write");
             return true;

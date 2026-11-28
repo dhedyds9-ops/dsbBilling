@@ -122,7 +122,7 @@ class ZteOltDriver extends BaseOltDriver
                 'temperature'      => $tempVal,
                 'distance_meters'  => $distVal,
                 'firmware_version' => $fw,
-                'status'           => match ((int)($statuses[$idx] ?? 0)) {
+                'status'           => !array_key_exists($idx, $statuses) ? 'unknown' : match ((int)$statuses[$idx]) {
                     1, 10, 100 => 'online',
                     2, 0       => 'offline',
                     3          => 'dying_gasp',
@@ -181,11 +181,11 @@ class ZteOltDriver extends BaseOltDriver
             $cmds = [
                 "configure terminal",
                 "interface gpon-olt_1/1/$ponPort",
-                "onu " . $onu->getKey() . " type ZTE-F609 sn $serialNumber",
+                "onu " . $onu->getKey() . " type ZTE-F609 sn " . $this->sanitizeCliValue($serialNumber),
                 "exit",
                 "interface gpon-onu_1/1/$ponPort:" . $onu->getKey(),
-                "name " . ($onu->name ?? 'ONU-' . $onu->getKey()),
-                "profile line $profile",
+                "name " . $this->sanitizeCliValue($onu->name ?? 'ONU-' . $onu->getKey()),
+                "profile line " . $this->sanitizeCliValue($profile),
                 "profile internet default",
                 "exit",
                 "exit",

@@ -3,27 +3,25 @@
 namespace App\Listeners\ISP;
 
 use App\Models\Customer\CustomerService;
-use App\Models\ISP\Onu;
-use App\Services\Adapters\Provisioning\OltRegistry;
-use App\Services\ISP\GenieAcsProvisioningService;
-use App\Services\ISP\OdpOccupancyService;
-use App\Services\Provisioning\WanConfigurationService;
+use App\Services\Provisioning\ProvisioningOrchestrator;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Src\Domain\Customer\Events\ServiceActivatedEvent;
 use Src\Domain\Customer\Events\ServiceReactivatedEvent;
 use Throwable;
 
+/**
+ * Memicu provisioning perangkat saat layanan diaktifkan/diaktifkan ulang.
+ *
+ * Logika OLT-QoS, ACS/TR-069, dan ODP kini terpusat di ProvisioningOrchestrator
+ * sehingga listener ini hanya bertugas sebagai jembatan event -> orkestrator.
+ */
 class FiberServiceProvisioningListener implements ShouldQueue
 {
     public $queue = 'provisioning';
 
     public function __construct(
-        protected OltRegistry $oltRegistry,
-        protected GenieAcsProvisioningService $genieAcs,
-        protected OdpOccupancyService $odpOccupancy,
-        protected WanConfigurationService $wanConfig,
+        protected ProvisioningOrchestrator $orchestrator,
     ) {
     }
 
@@ -34,80 +32,18 @@ class FiberServiceProvisioningListener implements ShouldQueue
             if (!$uuid) {
                 return;
             }
+
             $customerService = CustomerService::where('uuid', $uuid)->first();
             if (!$customerService) {
                 return;
             }
-            $onu = $customerService->onu;
-            if (!$onu) {
-                return;
-            }
 
-            DB::transaction(function () use ($customerService, $onu) {
-                $onu->provision_status = 'provisioning';
-                $onu->saveQuietly();
-
-                if ($onu->olt && $onu->serial_number && $onu->pon_port) {
-                    try {
-                        $driver = $this->oltRegistry->forOlt($onu->olt);
-                        $driver->setOnuAdminStatus($onu, 'enable');
-                        $package = $customerService->service?->servicePackage;
-                        if ($package) {
-                            $down = (int)($package->download_speed_mbps ?? $package->bandwidth_download ?? 100);
-                            $up   = (int)($package->upload_speed_mbps ?? $package->bandwidth_upload ?? 20);
-                            if ($down > 0 && $up > 0) {
-                                $driver->setOnuBandwidthLimit($onu, $down, $up);
-                            }
-                        }
-                        $onu->provision_status = 'provisioned';
-                        $onu->provisioned_at = now();
-                        $onu->saveQuietly();
-                    } catch (Throwable $e) {
-                        Log::warning('OLT provision failed on activation', [
-                            'onu_id' => $onu->id,
-                            'msg' => $e->getMessage(),
-                        ]);
-                        $onu->provision_status = 'olt_failed';
-                        $onu->saveQuietly();
-                    }
-                }
-
-                try {
-                    $this->genieAcs->syncDeviceFromBilling($onu);
-                    
-                    // NEW: Integrasi CustomerService (PPPoEUser) -> WanConfigurationService (GenieACS TR-069)
-                    $pppoeUser = \App\Models\ISP\PPPoEUser::where('customer_service_id', $customerService->id)->first();
-                    if ($pppoeUser) {
-                        Log::info('Dispatching WAN Configuration for PPPoE', ['onu_id' => $onu->id, 'username' => $pppoeUser->username]);
-                        
-                        // Konfigurasi WAN (PPPoE). WAN Index 1 biasanya untuk Internet.
-                        // Tidak disimpan di GenieACS, tapi dipush langsung.
-                        $this->wanConfig->configureWan($onu, 1, 'pppoe', [
-                            'username' => $pppoeUser->username,
-                            'password' => (str_starts_with($pppoeUser->password, 'eyJ') ? \Illuminate\Support\Facades\Crypt::decryptString($pppoeUser->password) : $pppoeUser->password),
-                            'vlan' => $customerService->networkProfile?->vlan_id,
-                        ], $customerService->id, 1);
-                    }
-
-                } catch (Throwable $e) {
-                    Log::warning('GenieACS sync/WAN config failed on activation', [
-                        'onu_id' => $onu->id,
-                        'msg' => $e->getMessage(),
-                    ]);
-                }
-
-                if ($onu->odp_id) {
-                    try {
-                        $this->odpOccupancy->recalculateOne($onu->odp);
-                    } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
-        }
-                }
-            });
+            $result = $this->orchestrator->provisionOnu($customerService);
 
             Log::info('Fiber provisioning done for service activation', [
                 'uuid' => $uuid,
-                'onu_id' => $onu->id ?? null,
-                'provision_status' => $onu->provision_status ?? null,
+                'onu_id' => $customerService->onu_id,
+                'result' => $result['status'] ?? null,
             ]);
         } catch (Throwable $e) {
             Log::error('FiberServiceProvisioningListener failed', [
@@ -117,4 +53,3 @@ class FiberServiceProvisioningListener implements ShouldQueue
         }
     }
 }
-

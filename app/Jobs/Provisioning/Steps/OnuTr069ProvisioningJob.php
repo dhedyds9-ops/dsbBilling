@@ -2,8 +2,7 @@
 
 namespace App\Jobs\Provisioning\Steps;
 
-use App\Models\ISP\Onu;
-use App\Services\ISP\GenieAcsProvisioningService;
+use App\Services\Provisioning\ProvisioningOrchestrator;
 use Exception;
 
 class OnuTr069ProvisioningJob extends BasePipelineStepJob
@@ -15,23 +14,16 @@ class OnuTr069ProvisioningJob extends BasePipelineStepJob
             return ['status' => 'skipped', 'reason' => 'No CustomerService linked to pipeline.'];
         }
 
-        $onu = $cs->onu ?? ($cs->onu_id ? Onu::withoutGlobalScopes()->find($cs->onu_id) : null);
-        if (!$onu) {
-            return ['status' => 'skipped', 'reason' => 'No ONU attached. Configuration will rely on OMCI/RADIUS.'];
-        }
+        // SSOT provisioning ACS/TR-069 (WAN PPPoE + Wi-Fi) ada di orkestrator.
+        $result = app(ProvisioningOrchestrator::class)->provisionAcs($cs);
 
-        $provisioningService = app(GenieAcsProvisioningService::class);
-        $result = $provisioningService->provisionOnt($onu, [
-            'customer_service' => $cs,
-        ]);
-
-        if ($result['status'] === 'failed') {
+        if (($result['status'] ?? null) === 'failed') {
             throw new Exception($result['error'] ?? 'GenieACS NBI provisioning failed.');
         }
 
         return [
-            'tr069_status' => $result['status'] === 'success' ? 'completed' : $result['status'],
-            'device_id' => $result['device_id'] ?? $onu->serial_number,
+            'tr069_status' => ($result['status'] ?? null) === 'success' ? 'completed' : ($result['status'] ?? null),
+            'device_id' => $result['device_id'] ?? null,
             'message' => $result['message'] ?? null,
         ];
     }

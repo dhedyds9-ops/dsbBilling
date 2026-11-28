@@ -154,9 +154,9 @@ class BtPonOltDriver extends BaseOltDriver
             $this->cli->execute('enable');
             $this->cli->execute('configure');
             $this->cli->execute("interface xgpon $ponPort");
-            $this->cli->execute("onu add $onuId serial-number $serialNumber");
-            $this->cli->execute("onu description \"" . ($onu->name ?? 'CUST-' . $onuId) . "\"");
-            $this->cli->execute("onu profile line $profile");
+            $this->cli->execute("onu add $onuId serial-number " . $this->sanitizeCliValue($serialNumber));
+            $this->cli->execute("onu description \"" . $this->sanitizeCliValue($onu->name ?? 'CUST-' . $onuId) . "\"");
+            $this->cli->execute("onu profile line " . $this->sanitizeCliValue($profile));
             $this->cli->execute('exit');
             $this->cli->execute('write');
             return true;

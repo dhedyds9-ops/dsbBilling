@@ -39,6 +39,16 @@ class OltRegistry extends BaseAdapterRegistry
 
         $vendorKey = strtolower(trim($vendorName));
 
+        // Fail-fast untuk vendor tanpa driver native (lihat config/olt-drivers.php).
+        // Mencegah pemetaan senyap ke MIB vendor lain yang menghasilkan data salah.
+        $unsupported = (array) config('olt-drivers.unsupported_vendors', []);
+        if (in_array($vendorKey, $unsupported, true)) {
+            throw new InvalidArgumentException(
+                "Vendor OLT '{$vendorName}' belum memiliki driver native. " .
+                "Jika perangkat ini adalah rebrand HSGQ, ubah vendor OLT menjadi 'HSGQ'."
+            );
+        }
+
         if ($this->has($vendorKey)) {
             $class = $this->adapters[$vendorKey];
             return new $class($olt);

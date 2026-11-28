@@ -25,7 +25,6 @@ use App\Services\Billing\SubscriptionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
-use Src\Domain\Customer\Events\ServiceActivatedEvent;
 use Src\Domain\Provisioning\Events\ProvisioningCompletedEvent;
 use Src\Domain\Provisioning\Events\ProvisioningFailedEvent;
 use Src\Domain\Provisioning\Events\RollbackCompletedEvent;
@@ -41,6 +40,7 @@ class ProvisioningService
         protected InvoiceService $invoiceService,
         protected PPPoEService $pppoeService,
         protected HotspotService $hotspotService,
+        protected ProvisioningOrchestrator $orchestrator,
     ) {}
 
     public function activatePPPoEService(array $data, int $userId): array
@@ -375,12 +375,8 @@ class ProvisioningService
         }
 
         if ($hardwareSuccess) {
-            $customerService->update([
-                'status' => 'active',
-                'service_status' => 'online',
-                'activated_at' => $customerService->activated_at ?? now(),
-            ]);
-            $pppoeUser->update(['status' => 'active']);
+            // SSOT aktivasi layanan (status aktif + PPPoE aktif + publikasi ServiceActivatedEvent).
+            $this->orchestrator->activate($customerService, $userId);
             $serviceInstance->update([
                 'status' => 'active',
                 'provisioned_at' => now(),
@@ -404,15 +400,6 @@ class ProvisioningService
                 ]);
                 SendNotificationJob::dispatch($notification);
             } catch (\Throwable $ne) {}
-
-            // Dispatch Service Activated Event
-            try {
-                Event::dispatch(new ServiceActivatedEvent(
-                    $customerService->uuid,
-                    $customer->id,
-                    $userId
-                ));
-            } catch (\Throwable $ee) {}
 
             // Otomatis kirim notifikasi WhatsApp ke Pelanggan Baru via Gateway
             try {
@@ -797,12 +784,8 @@ class ProvisioningService
         }
 
         if ($hardwareSuccess) {
-            $customerService->update([
-                'status' => 'active',
-                'service_status' => 'online',
-                'activated_at' => $customerService->activated_at ?? now(),
-            ]);
-            $hotspotUser->update(['status' => 'active']);
+            // SSOT aktivasi layanan (status aktif + publikasi ServiceActivatedEvent).
+            $this->orchestrator->activate($customerService, $userId);
             $serviceInstance->update([
                 'status' => 'active',
                 'provisioned_at' => now(),
@@ -826,15 +809,6 @@ class ProvisioningService
                 ]);
                 SendNotificationJob::dispatch($notification);
             } catch (\Throwable $ne) {}
-
-            // Dispatch Event
-            try {
-                Event::dispatch(new ServiceActivatedEvent(
-                    $customerService->uuid,
-                    $customer->id,
-                    $userId
-                ));
-            } catch (\Throwable $ee) {}
 
             // WA Notification
             try {
