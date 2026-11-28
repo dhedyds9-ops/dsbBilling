@@ -122,6 +122,7 @@ class TelegramService
                 || str_contains($events, 'all') 
                 || str_contains($events, strtolower($eventType)) 
                 || ($eventType === 'installation' && str_contains($events, 'ticket'))
+                || (in_array(strtolower($eventType), ['alarm', 'outage']) && (str_contains($events, 'alarm') || str_contains($events, 'outage') || str_contains($events, 'noc')))
                 || ($eventType === 'attendance' && (str_contains($events, 'absen') || str_contains($events, 'workforce') || count($this->chatIds) === 1))
             ) {
                 $this->sendDirectOrQueue($message, (string)$chat['id'], $parseMode);
@@ -366,11 +367,40 @@ class TelegramService
         $message .= "Detail: {$details}\n";
         $message .= "Waktu: " . now()->format('Y-m-d H:i:s');
 
-        foreach ($this->chatIds as $chat) {
-            if (!empty($chat['enabled']) && str_contains($chat['events'] ?? '', 'alarm')) {
-                $this->sendMessage($message, $chat['id'], 'Markdown');
-            }
+        $this->broadcastEvent('alarm', $message, 'Markdown');
+    }
+
+    /**
+     * Notifikasi Status Perangkat Jaringan (Router MikroTik / Server / OLT) ke Bot Telegram
+     */
+    public function sendNetworkDeviceAlert(
+        string $deviceName,
+        string $ipAddress,
+        string $status, // 'OFFLINE' | 'ONLINE' | 'WARNING'
+        string $details = '',
+        string $deviceType = 'Router MikroTik'
+    ): void {
+        $statusUpper = strtoupper(trim($status));
+        $isOnline = in_array($statusUpper, ['ONLINE', 'UP', 'RECOVERED', 'NORMAL']);
+        $icon = $isOnline ? '🟢' : ($statusUpper === 'WARNING' ? '⚠️' : '🔴');
+        $statusBadge = $isOnline ? 'PULIH (ONLINE / UP)' : ($statusUpper === 'WARNING' ? 'PERINGATAN (WARNING)' : 'GANGGUAN (OFFLINE / DOWN)');
+
+        $now = now()->format('d M Y - H:i:s') . ' WIB';
+
+        $msg = "{$icon} <b>STATUS PERANGKAT JARINGAN</b>\n\n"
+            . "📡 <b>Perangkat:</b> {$deviceName}\n"
+            . "🏷️ <b>Tipe:</b> {$deviceType}\n"
+            . "🌐 <b>IP Address:</b> <code>{$ipAddress}</code>\n"
+            . "📊 <b>Status:</b> <b>{$statusBadge}</b>\n"
+            . "⏰ <b>Waktu:</b> {$now}\n";
+
+        if (!empty($details)) {
+            $msg .= "📝 <b>Detail:</b> " . htmlspecialchars($details) . "\n";
         }
+
+        $msg .= "\n🚀 <i>dsBilling NOC System</i>";
+
+        $this->broadcastEvent('outage', $msg, 'HTML');
     }
 
     public function sendOnuRedamanAlert(array $data, string $chatId = null): void

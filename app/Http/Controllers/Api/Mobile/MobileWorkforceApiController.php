@@ -1353,7 +1353,7 @@ class MobileWorkforceApiController extends Controller
     /**
      * Format a work order for API response with role-aware permissions.
      */
-    protected function formatWorkOrder(WorkOrder $wo, User $user, bool $includeDetails = false): array
+    public function formatWorkOrder(WorkOrder $wo, User $user, bool $includeDetails = false): array
     {
         $customer = $wo->customer ?: $wo->userCustomer;
         if (!$customer && !empty($wo->customer_id)) {
@@ -1624,6 +1624,30 @@ class MobileWorkforceApiController extends Controller
             }
         }
 
+        $ticketPlainPhotos = [];
+        $rawTicketPhotos = $ticket?->photos;
+        if (is_string($rawTicketPhotos)) {
+            $decoded = json_decode($rawTicketPhotos, true);
+            $rawTicketPhotos = is_array($decoded) ? $decoded : (trim($rawTicketPhotos) !== '' ? [$rawTicketPhotos] : []);
+        }
+        if (is_array($rawTicketPhotos)) {
+            foreach ($rawTicketPhotos as $tp) {
+                if (is_string($tp) && trim($tp) !== '') {
+                    $ticketPlainPhotos[] = trim($tp);
+                } elseif (is_array($tp)) {
+                    $u = $tp['url'] ?? ($tp['path'] ?? ($tp['file'] ?? (is_string(reset($tp)) ? reset($tp) : '')));
+                    if (is_string($u) && trim($u) !== '') {
+                        $ticketPlainPhotos[] = trim($u);
+                    }
+                } elseif (is_object($tp)) {
+                    $u = $tp->url ?? ($tp->path ?? ($tp->file ?? ''));
+                    if (is_string($u) && trim($u) !== '') {
+                        $ticketPlainPhotos[] = trim($u);
+                    }
+                }
+            }
+        }
+
         $technician = $wo->technician;
         $isManager = $this->isManagerOrAdmin($user);
         $isAssignedTech = $wo->assigned_to && (int)$wo->assigned_to === (int)$user->id;
@@ -1648,15 +1672,15 @@ class MobileWorkforceApiController extends Controller
             'completed_at' => $wo->completed_at?->toIso8601String(),
             'approved_at' => $wo->approved_at?->toIso8601String(),
             'customer_id' => $wo->customer_id ?: ($customerData['id'] ?? null),
-            'customer' => !empty($customerData) ? $customerData : null,
+            'customer' => (!empty($customerData) && is_array($customerData)) ? $customerData : null,
             'assigned_to' => $wo->assigned_to,
-            'assigned_technician' => $technician ? [
+            'assigned_technician' => ($technician && is_object($technician)) ? [
                 'id' => $technician->id,
                 'name' => $technician->name,
                 'email' => $technician->email,
                 'phone' => $technician->whatsapp ?? null,
             ] : null,
-            'approver' => $wo->approver ? [
+            'approver' => ($wo->approver && is_object($wo->approver)) ? [
                 'id' => $wo->approver->id,
                 'name' => $wo->approver->name,
             ] : null,
@@ -1666,7 +1690,7 @@ class MobileWorkforceApiController extends Controller
             'reseller_name' => $resellerName,
             'odp_name' => $ticketPayload['object_name'] ?? $ticketPayload['network_details'] ?? null,
             'network_object' => $ticketPayload['object_name'] ?? null,
-            'ticket' => $ticket ? [
+            'ticket' => ($ticket && is_object($ticket)) ? [
                 'id' => $ticket->id,
                 'ticket_code' => $ticketCode,
                 'ticket_number' => $ticket->ticket_number ?? $ticketCode ?? ('#' . $ticket->id),
@@ -1676,12 +1700,12 @@ class MobileWorkforceApiController extends Controller
                 'reseller_id' => $resellerId,
                 'reseller_name' => $resellerName,
                 'object_name' => $ticketPayload['object_name'] ?? null,
-                'photos' => $ticket->photos ?? [],
+                'photos' => array_values($ticketPlainPhotos),
                 'latitude' => $latitude,
                 'longitude' => $longitude,
             ] : null,
-            'evidence_photos' => $evidencePhotosList,
-            'photos' => $plainPhotos,
+            'evidence_photos' => array_values($evidencePhotosList),
+            'photos' => array_values($plainPhotos),
             'checklists_count' => $wo->checklists->count(),
             'checklists_completed_count' => $wo->checklists->where('completed', true)->count(),
             'materials_count' => $wo->materialUsages->count(),
@@ -1810,7 +1834,12 @@ class MobileWorkforceApiController extends Controller
                         'customer_name' => $t->customer?->name ?? 'Klien Umum',
                         'assigned_to' => $t->assigned_to,
                         'work_order_id' => $t->workOrder?->id,
-                        'photos' => is_array($t->photos) ? $t->photos : (is_string($t->photos) ? json_decode($t->photos, true) : []),
+                        'photos' => array_values(array_filter(array_map(function ($p) {
+                            if (is_string($p)) return trim($p);
+                            if (is_array($p)) return trim($p['url'] ?? ($p['path'] ?? ($p['file'] ?? (is_string(reset($p)) ? reset($p) : ''))));
+                            if (is_object($p)) return trim($p->url ?? ($p->path ?? ($p->file ?? '')));
+                            return '';
+                        }, is_array($t->photos) ? $t->photos : (is_string($t->photos) ? (json_decode($t->photos, true) ?: [$t->photos]) : [])))),
                         'created_at' => $t->created_at?->format('d M Y H:i'),
                     ];
                 });

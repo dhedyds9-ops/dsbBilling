@@ -157,6 +157,12 @@
               Test Absensi
             </button>
           </div>
+          <div>
+            <button wire:click="sendTestNetworkAlert" type="button" class="w-full px-3 py-1.5 text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-md inline-flex items-center justify-center gap-1.5 transition-colors" title="Uji coba format notifikasi Router/Server Offline & Online ke Telegram">
+              <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">router</span>
+              Test Alert Router / Server
+            </button>
+          </div>
           @if($testResult)
             <div class="p-2 rounded {{ str_contains(strtolower($testResult),'ok') || str_contains(strtolower($testResult),'true') || str_contains(strtolower($testResult),'berhasil') ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800' }} text-[11px] font-mono whitespace-pre-wrap break-words max-h-40 overflow-auto">{{ $testResult }}</div>
           @endif

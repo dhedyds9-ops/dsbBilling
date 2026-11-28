@@ -357,6 +357,41 @@ class Index extends AdminComponent
         }
     }
 
+    public function sendTestNetworkAlert(): void
+    {
+        try {
+            if (empty($this->bot['bot_token']) || empty($this->testChatId)) {
+                $this->testResult = 'Isi Bot Token dan Chat ID terlebih dahulu untuk test Notifikasi Jaringan.';
+                return;
+            }
+
+            $now = now()->format('d M Y - H:i:s') . ' WIB';
+            $message = "🔴 <b>[TEST] STATUS PERANGKAT JARINGAN</b>\n\n"
+                . "📡 <b>Perangkat:</b> Core-MikroTik-CCR1036 (Simulasi Uji Coba)\n"
+                . "🏷️ <b>Tipe:</b> Router MikroTik\n"
+                . "🌐 <b>IP Address:</b> <code>192.168.88.1</code>\n"
+                . "📊 <b>Status:</b> <b>GANGGUAN (OFFLINE / DOWN)</b>\n"
+                . "⏰ <b>Waktu:</b> {$now}\n"
+                . "📝 <b>Detail:</b> Uji coba deteksi offline: Router tidak merespons ping / API connection timeout.\n\n"
+                . "🚀 <i>dsBilling NOC System</i>";
+
+            $resp = \Illuminate\Support\Facades\Http::timeout(10)->withOptions(['force_ip_resolve' => 'v4'])->post('https://api.telegram.org/bot' . $this->bot['bot_token'] . '/sendMessage', [
+                'chat_id' => $this->testChatId,
+                'text' => $message,
+                'parse_mode' => 'HTML',
+            ]);
+
+            if ($resp->successful() && ($resp->json('ok') ?? false)) {
+                $r = $resp->json('result') ?? [];
+                $this->testResult = 'OK: Notifikasi Jaringan/MikroTik (Msg #' . ($r['message_id'] ?? '?') . ') berhasil terkirim ke ' . $this->testChatId . '.';
+            } else {
+                $this->testResult = 'Gagal kirim test Notifikasi Jaringan: ' . substr($resp->body(), 0, 250);
+            }
+        } catch (\Throwable $e) {
+            $this->testResult = 'ERROR: ' . $e->getMessage();
+        }
+    }
+
     public function addChatId(): void
     {
         $this->chatIds[] = ['id' => '', 'name' => 'Baru', 'type' => 'private', 'enabled' => true, 'events' => ''];

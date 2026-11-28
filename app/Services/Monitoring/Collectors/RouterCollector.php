@@ -21,7 +21,10 @@ class RouterCollector extends BaseCollector
         private MikroTikDriver $driver,
         private AlertEngine $alertEngine,
         private OnlineSessionStore $onlineSessionStore,
-    ) {}
+        private ?\App\Services\Telegram\TelegramService $telegram = null,
+    ) {
+        $this->telegram = $telegram ?? app(\App\Services\Telegram\TelegramService::class);
+    }
     
     public function collect(): void
     {
@@ -56,6 +59,13 @@ class RouterCollector extends BaseCollector
                 
                 $this->updateCache($router, false, 'Router is offline');
                 
+                // Cek apakah alarm OFFLINE sudah aktif sebelumnya (untuk mencegah spam alert tiap menit)
+                $existingOpenAlarm = \App\Models\Alarm::where('source_type', Router::class)
+                    ->where('source_id', $router->id)
+                    ->where('title', 'Router is offline')
+                    ->where('status', 'open')
+                    ->first();
+
                 $this->alertEngine->createAlert(
                     'critical',
                     $router,
@@ -63,16 +73,52 @@ class RouterCollector extends BaseCollector
                     "Router {$router->name} is not responding to pings",
                     ['ip' => $router->ip_address]
                 );
+
+                // Kirim notifikasi Telegram saat transisi pertama kali menjadi offline
+                if (!$existingOpenAlarm) {
+                    try {
+                        $this->telegram?->sendNetworkDeviceAlert(
+                            $router->name ?? 'MikroTik ' . $router->code,
+                            $router->ip_address ?? '-',
+                            'OFFLINE',
+                            "Router MikroTik tidak merespons ping / API connection timeout. Mohon periksa fisik perangkat atau uplink transmisi.",
+                            'Router MikroTik'
+                        );
+                    } catch (\Throwable $te) {
+                        \Illuminate\Support\Facades\Log::warning('[RouterCollector] Telegram alert offline failed: ' . $te->getMessage());
+                    }
+                }
                 
                 return;
             }
 
             // Auto-resolve any previous offline/monitoring error alerts when router is confirmed online
-            \App\Models\Alarm::where('source_type', Router::class)
+            $prevOfflineAlarms = \App\Models\Alarm::where('source_type', Router::class)
                 ->where('source_id', $router->id)
                 ->whereIn('title', ['Router is offline', 'Router monitoring error'])
                 ->where('status', 'open')
-                ->update(['status' => 'resolved', 'resolved_at' => now()]);
+                ->get();
+
+            if ($prevOfflineAlarms->isNotEmpty()) {
+                \App\Models\Alarm::where('source_type', Router::class)
+                    ->where('source_id', $router->id)
+                    ->whereIn('title', ['Router is offline', 'Router monitoring error'])
+                    ->where('status', 'open')
+                    ->update(['status' => 'resolved', 'resolved_at' => now()]);
+
+                // Kirim notifikasi Telegram pemulihan (transisi DOWN -> UP)
+                try {
+                    $this->telegram?->sendNetworkDeviceAlert(
+                        $router->name ?? 'MikroTik ' . $router->code,
+                        $router->ip_address ?? '-',
+                        'ONLINE',
+                        "Koneksi ke Router telah pulih dan kembali merespons dengan normal.",
+                        'Router MikroTik'
+                    );
+                } catch (\Throwable $te) {
+                    \Illuminate\Support\Facades\Log::warning('[RouterCollector] Telegram alert recovery failed: ' . $te->getMessage());
+                }
+            }
             
             $systemInfo = $this->driver->getSystemInfo($router);
             $pppSessions = $this->driver->getPPPActive($router);

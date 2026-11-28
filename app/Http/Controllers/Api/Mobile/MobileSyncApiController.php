@@ -64,11 +64,14 @@ class MobileSyncApiController extends Controller
             $workOrdersQuery->where('branch_id', $user->branch_id);
         }
 
-        $workOrders = $workOrdersQuery->with(['customer', 'checklists', 'materialUsages'])
+        $rawWorkOrders = $workOrdersQuery->with(['customer', 'technician', 'approver', 'ticket', 'checklists', 'materialUsages', 'installation'])
             ->whereNotIn('status', ['cancelled'])
             ->orderByDesc('updated_at')
             ->limit(100)
             ->get();
+
+        $workforceApi = app(MobileWorkforceApiController::class);
+        $workOrders = $rawWorkOrders->map(fn($wo) => $workforceApi->formatWorkOrder($wo, $user, true));
 
         // 2. Custody items held by this technician
         $custodyItems = InventoryCustody::query()->withoutGlobalScopes()

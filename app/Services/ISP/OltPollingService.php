@@ -108,7 +108,21 @@ class OltPollingService
                     $updateData['serial_number'] = $systemInfo['serial_number'];
                 }
                 
+                $wasInactive = ($olt->status === 'inactive' || $olt->status === 'offline');
+
                 $olt->update($updateData);
+
+                if ($wasInactive && ($updateData['status'] ?? '') === 'active') {
+                    try {
+                        app(\App\Services\Telegram\TelegramService::class)->sendNetworkDeviceAlert(
+                            $olt->name ?? 'OLT ' . $olt->code,
+                            $olt->ip_address ?? '-',
+                            'ONLINE',
+                            "Koneksi SNMP ke OLT telah kembali normal dan port PON aktif.",
+                            'OLT Fiber Optic'
+                        );
+                    } catch (\Throwable) {}
+                }
 
                 $this->recordMetric($olt, 'temperature', (float)($systemInfo['temperature'] ?? 0), 'C');
 
@@ -651,6 +665,7 @@ class OltPollingService
             $errorMsg = $e->getMessage();
             Log::warning('OLT Poll failed', ['olt_id' => $olt->id, 'msg' => $errorMsg]);
             try {
+                $wasActive = ($olt->status === 'active' || $olt->status === 'online');
                 $payload = [
                     'status' => 'inactive',
                     'last_polled_at' => now(),
@@ -659,6 +674,18 @@ class OltPollingService
                     $payload['last_error'] = $errorMsg;
                 }
                 $olt->update($payload);
+
+                if ($wasActive) {
+                    try {
+                        app(\App\Services\Telegram\TelegramService::class)->sendNetworkDeviceAlert(
+                            $olt->name ?? 'OLT ' . $olt->code,
+                            $olt->ip_address ?? '-',
+                            'OFFLINE',
+                            "Gagal polling SNMP ke OLT: {$errorMsg}. Mohon periksa catu daya atau uplink link optik.",
+                            'OLT Fiber Optic'
+                        );
+                    } catch (\Throwable) {}
+                }
             } catch (Throwable $dbErr) {
                 Log::error("Failed updating OLT status on poll failure: " . $dbErr->getMessage());
             }
