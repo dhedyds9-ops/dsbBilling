@@ -33,6 +33,7 @@ class CDataOltDriver extends BaseOltDriver
     protected ?array $cachedOnuTx = null;
     protected ?array $cachedOnuTemps = null;
     protected ?array $cachedOnuMacs = null;
+    protected ?bool $cachedIsEpon = null;
     protected ?array $cachedCliParsedOnus = null;
     protected ?array $macsCache = null;
 
@@ -65,53 +66,24 @@ class CDataOltDriver extends BaseOltDriver
             return;
         }
 
-        $user = !empty($this->olt->username) ? $this->olt->username : 'root';
-        $pass = !empty($this->olt->password) ? $this->olt->password : 'admin';
+        if (empty($this->olt->username) || empty($this->olt->password)) {
+            throw new \RuntimeException(
+                "Kredensial CLI OLT #{$this->olt->id} belum dikonfigurasi. " .
+                "Isi username/password pada data OLT sebelum menjalankan operasi CLI."
+            );
+        }
+
         $port = (int)($this->olt->cli_port ?: 23);
 
         $this->cli = new \App\Services\Adapters\Provisioning\Support\TelnetSshClient();
-        try {
-            $this->cli->connect(
-                $this->olt->ip_address,
-                $user,
-                $pass,
-                $this->cliMode ?: 'telnet',
-                $port,
-                $this->olt->enable_secret ?? ''
-            );
-        } catch (\Throwable $e) {
-            // Coba fallback kombinasi kredensial umum C-Data (root/admin, root/root, admin/admin, admin/stdONUpwd, dll)
-            $fallbackCreds = [
-                ['root', 'admin'],
-                ['root', 'root'],
-                ['admin', 'admin'],
-                ['admin', 'stdONUpwd'],
-                ['admin', '123456'],
-                ['admin', 'cdata'],
-            ];
-            $connected = false;
-            foreach ($fallbackCreds as [$altUser, $altPass]) {
-                if ($altUser === $user && $altPass === $pass) {
-                    continue;
-                }
-                try {
-                    $this->cli = new \App\Services\Adapters\Provisioning\Support\TelnetSshClient();
-                    $this->cli->connect(
-                        $this->olt->ip_address,
-                        $altUser,
-                        $altPass,
-                        $this->cliMode ?: 'telnet',
-                        $port,
-                        $this->olt->enable_secret ?? ''
-                    );
-                    $connected = true;
-                    break;
-                } catch (\Throwable) {}
-            }
-            if (!$connected) {
-                throw $e;
-            }
-        }
+        $this->cli->connect(
+            $this->olt->ip_address,
+            $this->olt->username,
+            $this->olt->password,
+            $this->cliMode ?: 'telnet',
+            $port,
+            $this->olt->enable_secret ?? ''
+        );
     }
 
     public function getSystemInfo(): array
@@ -163,12 +135,14 @@ class CDataOltDriver extends BaseOltDriver
             };
 
             // 2. LAYER 2: SNMP Enterprise OID C-Data (GPON & EPON MIB)
-            $cdataModel = $cliInfo['model'] ?? ($cleanStr(
-                $this->snmp->get('.1.3.6.1.4.1.34592.1.3.100.1.8.1.0')
-                ?: ($this->snmp->get('.1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.1.1')
+            $rawModel = $cleanStr(
+                $this->snmp->get('.1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.1.1')
                 ?: ($this->snmp->get('.1.3.6.1.4.1.34592.1.3.1.1.1.0')
-                ?: ($this->snmp->get('.1.3.6.1.4.1.51810.1.1.1.1.0') ?: null)))
-            ));
+                ?: ($this->snmp->get('.1.3.6.1.4.1.51810.1.1.1.1.0')
+                ?: ($this->snmp->get('.1.3.6.1.4.1.34592.1.3.100.1.8.1.0') ?: null)))
+            );
+            // Tolak model yang hanya angka pendek (seperti '1' atau '0') yang merupakan chassis/device ID
+            $cdataModel = $cliInfo['model'] ?? ((!empty($rawModel) && !preg_match('/^\d{1,3}$/', $rawModel)) ? $rawModel : null);
 
             $cdataSn = $cliInfo['serial_number'] ?? ($cleanStr(
                 $this->snmp->get('.1.3.6.1.4.1.34592.1.3.100.1.8.4.0')
@@ -186,7 +160,7 @@ class CDataOltDriver extends BaseOltDriver
             ));
 
             $descr = (string)($info['description'] ?? '');
-            if (!$cdataModel && preg_match('/(FD\d{4}[A-Z0-9\-_]*|CD\d{4}[A-Z0-9\-_]*)/i', $descr, $m)) {
+            if (!$cdataModel && preg_match('/(FD\d{4}[A-Z0-9\-_]*|CD\d{4}[A-Z0-9\-_]*|V\d{4}[A-Z0-9\-_]*)/i', $descr, $m)) {
                 $cdataModel = strtoupper($m[1]);
             }
 
@@ -197,7 +171,7 @@ class CDataOltDriver extends BaseOltDriver
                 }
             }
 
-            if ($cdataModel && ($info['model'] === 'olt' || empty($info['model']) || strtolower($info['model']) === 'c-data')) {
+            if ($cdataModel && ($info['model'] === 'olt' || empty($info['model']) || strtolower($info['model']) === 'c-data' || preg_match('/^\d{1,3}$/', (string)$info['model']))) {
                 $info['model'] = $cdataModel;
             }
             if (!empty($cdataSn)) {
@@ -208,6 +182,10 @@ class CDataOltDriver extends BaseOltDriver
             }
             if (!empty($cliInfo['pon_type'])) {
                 $info['pon_type'] = $cliInfo['pon_type'];
+            } elseif (str_contains(strtolower($descr . ' ' . (string)$cdataModel), 'epon') || preg_match('/(fd11|fd12)/i', $descr . ' ' . (string)$cdataModel)) {
+                $info['pon_type'] = 'epon';
+            } elseif (str_contains(strtolower($descr . ' ' . (string)$cdataModel), 'gpon') || preg_match('/(fd16|cd16)/i', $descr . ' ' . (string)$cdataModel)) {
+                $info['pon_type'] = 'gpon';
             }
         } catch (\Throwable) {}
 
@@ -216,6 +194,10 @@ class CDataOltDriver extends BaseOltDriver
 
     public function getPonPortsStatus(): array
     {
+        $modelStr = strtolower(($this->olt->model ?? '') . ' ' . ($this->olt->name ?? '') . ' ' . ($this->olt->hardware_type ?? ''));
+        $isEpon = ($this->olt->pon_type === 'epon') || str_contains($modelStr, 'epon') || str_contains($modelStr, 'fd11') || str_contains($modelStr, 'fd12');
+        $ponPrefix = $isEpon ? 'EPON' : 'GPON';
+
         if ($this->checkIsNewBranch()) {
             $statuses = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.2.1.1.4')
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.2.1.1.2')
@@ -231,7 +213,7 @@ class CDataOltDriver extends BaseOltDriver
                         $portNum = $realPortIdx - 1310720;
                         $ports[] = [
                             'port_index' => $realPortIdx,
-                            'port_name'  => "GPON 0/0/$portNum",
+                            'port_name'  => "{$ponPrefix} 0/0/{$portNum}",
                             'status'     => match ((int)$status) {
                                 1 => 'up',
                                 2 => 'down',
@@ -257,7 +239,7 @@ class CDataOltDriver extends BaseOltDriver
                         }
                         $ports[] = [
                             'port_index' => $realPortIdx,
-                            'port_name'  => "GPON 0/$slot/$port",
+                            'port_name'  => "{$ponPrefix} 0/{$slot}/{$port}",
                             'status'     => match ((int)$status) {
                                 1, 101, 100 => 'up',
                                 2, 102      => 'down',
@@ -1059,8 +1041,8 @@ class CDataOltDriver extends BaseOltDriver
 
             // A. GPON SNMP TABLES (hanya dipindai jika bukan EPON murni)
             if (!$isExplicitEpon) {
-                // 1. gponOnuSn (.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.3 - Official CDATA-GPON-MIB)
-                $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.3') ?: [];
+                // 1. gponOnuSn (.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.4 - Official CDATA-GPON-MIB: .4=gponOnuSn, .3=OnuId)
+                $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.4') ?: [];
 
                 // 2. gponOnuBindSn (.18.10.1.1.2) - Gabungkan seluruh ONU yang terdaftar/terikat pada bind table
                 $bindSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.10.1.1.2') ?: [];
@@ -1090,12 +1072,17 @@ class CDataOltDriver extends BaseOltDriver
                     }
                 }
 
-                // 5. Fallbacks
-                if (empty($gponSerials)) {
-                    $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.4')
-                        ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.1')
-                        ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.2')
-                        ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.1.1.2') ?: [])));
+                // Validasi: pastikan serial number bukan cuma angka integer pendek (seperti ONU ID 1, 2)
+                $hasValidSn = false;
+                foreach ($gponSerials as $chkSn) {
+                    $cParsed = $cleanSnString($chkSn);
+                    if (!empty($cParsed['sn']) && strlen($cParsed['sn']) >= 4) {
+                        $hasValidSn = true;
+                        break;
+                    }
+                }
+                if (!$hasValidSn) {
+                    $gponSerials = [];
                 }
             }
             
@@ -1224,7 +1211,7 @@ class CDataOltDriver extends BaseOltDriver
             $eponMacs = [];
 
             if (!$isExplicitGpon && empty($gponSerials)) {
-                // 1. C-Data 34592 EPON ONU Table
+                // 1. C-Data 34592 EPON ONU Table (.1.3.6.1.4.1.34592.1.3.3.1.1.2)
                 $eponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.3.1.1.2') ?: [];
                 if (!empty($eponSerials)) {
                     $eponStatuses = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.3.1.1.3') ?: [];
@@ -1233,7 +1220,32 @@ class CDataOltDriver extends BaseOltDriver
                     $eponMacs = $eponSerials;
                 }
 
-                // 2. C-Data 51810 EPON ONU Table
+                // 2. FD-ONU-MIB (.1.3.6.1.4.1.34592.1.3.4.1.1.2 - standard for FD11xx / FD12xx EPON)
+                if (empty($eponSerials)) {
+                    $eponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.2') ?: [];
+                    if (!empty($eponSerials)) {
+                        $eponStatuses = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.3') ?: [];
+                        $eponActive = $eponStatuses;
+                        $eponRx = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.8') ?: [];
+                        $eponMacs = $eponSerials;
+                    }
+                }
+
+                // 3. C-Data FD12xx/FD11xx EPON OID (.1.3.6.1.4.1.34592.1.3.100.9.1.1.2 / .100.9.2.1.2)
+                if (empty($eponSerials)) {
+                    $eponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.1.1.2')
+                        ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.2') ?: []);
+                    if (!empty($eponSerials)) {
+                        $eponStatuses = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.1.1.3')
+                            ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.3') ?: []);
+                        $eponActive = $eponStatuses;
+                        $eponRx = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.3')
+                            ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.3.1.3') ?: []);
+                        $eponMacs = $eponSerials;
+                    }
+                }
+
+                // 4. C-Data 51810 EPON ONU Table
                 if (empty($eponSerials)) {
                     $eponSerials = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.2')
                         ?: ($this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.4') ?: []);
@@ -1245,15 +1257,17 @@ class CDataOltDriver extends BaseOltDriver
                     $eponMacs = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.4') ?: $eponSerials;
                 }
 
-                // 3. CTC 17409 Standard EPON (Universal on Chinese EPON OLTs)
+                // 5. CTC 17409 Standard EPON (Universal on Chinese EPON OLTs)
                 if (empty($eponSerials)) {
                     $ctcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.2')
                         ?: ($this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.7')
                         ?: ($this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11') ?: []));
                     $ctcStatuses = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.3') ?: [];
                     $ctcActive = $ctcStatuses;
-                    $ctcRx = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.8') ?: [];
-                    $ctcTx = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.9') ?: [];
+                    $ctcRx = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.8')
+                        ?: ($this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.4.1.4') ?: []);
+                    $ctcTx = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.9')
+                        ?: ($this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.4.1.2') ?: []);
                     
                     if (!empty($ctcMacs)) {
                         $eponMacs = $ctcMacs;
@@ -1265,6 +1279,7 @@ class CDataOltDriver extends BaseOltDriver
                 }
             }
 
+            $this->cachedIsEpon = empty($gponSerials) && !empty($eponSerials);
             $this->cachedOnuSerials = $gponSerials ?: $eponSerials;
             $this->cachedOnuActiveStates = !empty($gponSerials) ? $gponActive : $eponActive;
             $this->cachedOnuBindStatuses = !empty($gponSerials) ? $gponBindStatus : null;
@@ -1583,19 +1598,27 @@ class CDataOltDriver extends BaseOltDriver
                 // - gponOnuOperStatus (.18.1.1.8): 1=init, 5=operation (O5/ONLINE), 6=popup (O6/alarm recovery), 101=online
                 // Di C-Data OLT Web GUI, statistik menunjukkan Active = Online = 308
                 $snmpOnline = false;
+                $isEponContext = !empty($this->cachedIsEpon) || !empty($parsed['mac']) || ($this->olt->pon_type ?? '') === 'epon';
+
                 if ($bindVal === 1 || str_contains($bindRaw, 'online') || str_contains($bindRaw, 'up')) {
                     $snmpOnline = true;
-                } elseif ($stVal === 5 || $stVal === 101 || $stVal === 1) {
+                } elseif ($stVal === 5 || $stVal === 101) {
+                    // GPON O5 (Operation) or standard 101
+                    $snmpOnline = true;
+                } elseif ($stVal === 1 && !$isEponContext) {
+                    $snmpOnline = true;
+                } elseif (($stVal === 1 || $stVal === 2) && $isEponContext) {
+                    // EPON CTC standard: 1 = authenticated, 2 = registered (ONLINE)
                     $snmpOnline = true;
                 } elseif (str_contains($stRaw, 'online') || str_contains($stRaw, 'oper') || str_contains($stRaw, 'o5') || str_contains($stRaw, 'up') || str_contains($stRaw, 'work') || str_contains($stRaw, 'auth') || str_contains($stRaw, 'reg')) {
                     $snmpOnline = true;
-                } elseif ($activeVal === 1 && $bindVal !== 2) {
-                    // Selaras dengan Web GUI C-DATA: Active (1) dihitung sebagai online selama bind status bukan 2 (offline)
+                } elseif ($activeVal === 1 && $bindVal !== 2 && !$isEponContext) {
                     $snmpOnline = true;
-                } elseif ($stVal === 2 && empty($gponSerials)) {
-                    // EPON CTC standard: 2 = registered (online)
+                } elseif ($activeVal === 1 && $isEponContext && $stVal !== 3 && $stVal !== 4) {
                     $snmpOnline = true;
-                } elseif ($bindVal === 2 || $activeVal === 2 || $stVal === 2 || str_contains($stRaw, 'offline') || str_contains($stRaw, 'down') || str_contains($stRaw, 'inactive') || str_contains($stRaw, 'dereg')) {
+                } elseif ($bindVal === 2 || $activeVal === 2 || str_contains($stRaw, 'offline') || str_contains($stRaw, 'down') || str_contains($stRaw, 'inactive') || str_contains($stRaw, 'dereg')) {
+                    $snmpOnline = false;
+                } elseif ($stVal === 2 && !$isEponContext) {
                     $snmpOnline = false;
                 } else {
                     $snmpOnline = ($activeVal === 1);
@@ -1838,12 +1861,12 @@ class CDataOltDriver extends BaseOltDriver
         try {
             $this->initializeCli();
             $onuId = $onu->onu_id_on_olt ?? $onu->getKey();
-            $name  = $onu->name ?? ('CUST-' . $onuId);
+            $name  = $this->sanitizeCliValue($onu->name ?? ('CUST-' . $onuId));
             $vlanId = $this->resolveVlanId($onu, 200);
 
             $this->cli->execute("configure terminal\r\n", false);
             $this->cli->execute("interface gpon 0/0/$ponPort\r\n", false);
-            $this->cli->execute("onu add $onuId sn-auth $serialNumber line-profile-id 1 srv-profile-id 1 description \"$name\"\r\n", false);
+            $this->cli->execute("onu add $onuId sn-auth " . $this->sanitizeCliValue($serialNumber) . " line-profile-id 1 srv-profile-id 1 description \"$name\"\r\n", false);
             $this->cli->execute("onu $onuId port uni 1 native-vlan $vlanId\r\n", false);
             $this->cli->execute("exit\r\n", false);
             $this->cli->execute("write\r\n", false);
@@ -1965,8 +1988,8 @@ class CDataOltDriver extends BaseOltDriver
             $this->cli->execute("interface gpon 0/0\r\n", false);
 
             if ($mode === 'pppoe') {
-                $user = $config['username'] ?? '';
-                $pass = $config['password'] ?? '';
+                $user = $this->sanitizeCliValue($config['username'] ?? '');
+                $pass = $this->sanitizeCliValue($config['password'] ?? '');
                 $cmd = "ont ipconfig $ponPort $onuId ip-index $ipIndex pppoe username $user password $pass vlan $vlanId priority $priority";
                 $this->cli->execute($cmd . "\r\n", false);
             } elseif ($mode === 'dhcp' || $mode === 'ipoe') {
@@ -1978,9 +2001,9 @@ class CDataOltDriver extends BaseOltDriver
             $tr069Mode = strtolower($config['tr069_mode'] ?? 'dhcp');
             $tr069Vlan = (int)($config['tr069_vlan'] ?? 901);
             if ($tr069Mode === 'static' && !empty($config['tr069_static_ip'])) {
-                $stIp = trim($config['tr069_static_ip']);
-                $stMask = trim($config['tr069_netmask'] ?? '255.255.255.0');
-                $stGw = trim($config['tr069_gateway'] ?? '');
+                $stIp = $this->sanitizeCliValue($config['tr069_static_ip']);
+                $stMask = $this->sanitizeCliValue($config['tr069_netmask'] ?? '255.255.255.0');
+                $stGw = $this->sanitizeCliValue($config['tr069_gateway'] ?? '');
                 $mgmtCmd = "ont ipconfig $ponPort $onuId ip-index 2 static ip $stIp mask $stMask gateway $stGw vlan $tr069Vlan priority 0";
             } else {
                 $mgmtCmd = "ont ipconfig $ponPort $onuId ip-index 2 dhcp vlan $tr069Vlan priority 0";
@@ -1989,10 +2012,10 @@ class CDataOltDriver extends BaseOltDriver
 
             // Injeksi OMCI TR-069 ACS Server URL jika tersedia di konfigurasi / pengaturan
             $acsSettings = \App\Models\Setting::getValue('connection.acs', []);
-            $acsUrl = $config['acs_url'] ?? ($acsSettings['acs_url'] ?? config('genieacs.cpe_defaults.acs_url', ''));
+            $acsUrl = $this->sanitizeCliValue($config['acs_url'] ?? ($acsSettings['acs_url'] ?? config('genieacs.cpe_defaults.acs_url', '')));
             if (!empty($acsUrl)) {
-                $acsUser = $config['acs_username'] ?? ($acsSettings['connection_request_username'] ?? config('genieacs.cpe_defaults.connection_request_username', 'dsbilling_cwmp'));
-                $acsPass = $config['acs_password'] ?? ($acsSettings['connection_request_password'] ?? config('genieacs.cpe_defaults.connection_request_password', 'ChangeMePlease!123'));
+                $acsUser = $this->sanitizeCliValue($config['acs_username'] ?? ($acsSettings['connection_request_username'] ?? config('genieacs.cpe_defaults.connection_request_username', 'dsbilling_cwmp')));
+                $acsPass = $this->sanitizeCliValue($config['acs_password'] ?? ($acsSettings['connection_request_password'] ?? config('genieacs.cpe_defaults.connection_request_password', 'ChangeMePlease!123')));
                 $tr069Cmd = "ont tr069-server $ponPort $onuId url $acsUrl user $acsUser password $acsPass";
                 $this->cli->execute($tr069Cmd . "\r\n", false);
             }

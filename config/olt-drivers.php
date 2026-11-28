@@ -27,9 +27,44 @@ return [
         'c-data'    => \App\Services\Adapters\Provisioning\Drivers\CDataOltDriver::class,
         'cdata'     => \App\Services\Adapters\Provisioning\Drivers\CDataOltDriver::class,
         'cdat'      => \App\Services\Adapters\Provisioning\Drivers\CDataOltDriver::class,
-        'fiberhome' => \App\Services\Adapters\Provisioning\Drivers\HsgqOltDriver::class,
-        'huawei'    => \App\Services\Adapters\Provisioning\Drivers\HsgqOltDriver::class,
         'default'   => \App\Services\Adapters\Provisioning\Drivers\HsgqOltDriver::class,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Unsupported OLT Vendors (Fail-Fast)
+    |--------------------------------------------------------------------------
+    |
+    | Vendor yang BELUM memiliki driver native. Sebelumnya vendor ini dipetakan
+    | secara senyap ke driver HSGQ sehingga menghasilkan OID/MIB yang salah.
+    | Kini OltRegistry akan menolak (fail-fast) agar kekeliruan tidak tersembunyi.
+    |
+    | Jika perangkat Anda sebenarnya adalah rebrand/OEM HSGQ, ubah vendor OLT
+    | tersebut menjadi 'HSGQ' agar ditangani driver yang tepat.
+    |
+    */
+    'unsupported_vendors' => [
+        'huawei',
+        'fiberhome',
+        'nokia',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Raw CLI Guard (Endpoint /execute-command)
+    |--------------------------------------------------------------------------
+    |
+    | Daftar prefix perintah CLI yang diizinkan dieksekusi melalui endpoint
+    | API execute-command. Peran Super Admin dikecualikan dari pembatasan ini.
+    | Default dibatasi pada perintah inspeksi (read-only) demi keamanan.
+    |
+    */
+    'cli' => [
+        'allowed_command_prefixes' => [
+            'show ',
+            'display ',
+            'dis ',
+        ],
     ],
 
     /*

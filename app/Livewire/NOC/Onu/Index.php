@@ -339,24 +339,28 @@ class Index extends AdminComponent
             ->when($this->oltFilter, fn ($q) => $q->where('olt_id', $this->oltFilter))
             ->when($this->ponFilter, fn ($q) => $q->where('pon_port_id', $this->ponFilter))
             ->when($this->statusFilter === 'online', fn ($q) => $q->where('status', 'active')->where(function ($sub) {
-                $sub->where(function ($oltSub) {
-                    $oltSub->whereNotNull('last_seen_at')->where('last_seen_at', '>=', now()->subMinutes(15));
+                $sub->where(function ($sigSub) {
+                    $sigSub->whereNotNull('rx_power_dbm')->whereBetween('rx_power_dbm', [-38.0, -6.0]);
+                })->orWhere(function ($oltSub) {
+                    $oltSub->whereNotNull('last_seen_at')->where('last_seen_at', '>=', now()->subHours(24));
                 })->orWhereHas('acsDevice', function ($aq) {
                     $aq->where('status', 'online')->where(function ($iq) {
-                        $iq->whereNull('last_inform')->orWhere('last_inform', '>=', now()->subMinutes(15));
+                        $iq->whereNull('last_inform')->orWhere('last_inform', '>=', now()->subHours(2));
                     });
                 });
             }))
             ->when($this->statusFilter === 'offline', fn ($q) => $q->where(function ($sq) {
                 $sq->where('status', 'inactive')
                    ->orWhere(function ($sub) {
-                       $sub->where(function ($oltSub) {
-                           $oltSub->whereNull('last_seen_at')->orWhere('last_seen_at', '<', now()->subMinutes(15));
-                       })->whereDoesntHave('acsDevice', function ($aq) {
-                           $aq->where('status', 'online')->where(function ($iq) {
-                               $iq->whereNull('last_inform')->orWhere('last_inform', '>=', now()->subMinutes(15));
+                       $sub->whereNull('rx_power_dbm')
+                           ->where(function ($staleSub) {
+                               $staleSub->whereNull('last_seen_at')->orWhere('last_seen_at', '<', now()->subHours(24));
+                           })
+                           ->whereDoesntHave('acsDevice', function ($aq) {
+                               $aq->where('status', 'online')->where(function ($iq) {
+                                   $iq->whereNull('last_inform')->orWhere('last_inform', '>=', now()->subHours(2));
+                               });
                            });
-                       });
                    });
             }))
             ->when($this->statusFilter === 'los', fn ($q) => $q->where(function ($q) use ($rxCrit) {
@@ -440,11 +444,13 @@ class Index extends AdminComponent
         $total = (clone $baseQuery)->count();
         $online = (clone $baseQuery)->where('status', 'active')
             ->where(function ($sub) {
-                $sub->where(function ($oltSub) {
-                    $oltSub->whereNotNull('last_seen_at')->where('last_seen_at', '>=', now()->subMinutes(15));
+                $sub->where(function ($sigSub) {
+                    $sigSub->whereNotNull('rx_power_dbm')->whereBetween('rx_power_dbm', [-38.0, -6.0]);
+                })->orWhere(function ($oltSub) {
+                    $oltSub->whereNotNull('last_seen_at')->where('last_seen_at', '>=', now()->subHours(24));
                 })->orWhereHas('acsDevice', function ($aq) {
                     $aq->where('status', 'online')->where(function ($iq) {
-                        $iq->whereNull('last_inform')->orWhere('last_inform', '>=', now()->subMinutes(15));
+                        $iq->whereNull('last_inform')->orWhere('last_inform', '>=', now()->subHours(2));
                     });
                 });
             })
@@ -472,19 +478,26 @@ class Index extends AdminComponent
             return 'OFFLINE';
         }
 
-        // Cek live TR-069 GenieACS (maksimal inform 15 menit)
+        // Golden Rule 1: Redaman optik RX valid (-38 s.d -6 dBm) membuktikan laser CPE aktif secara fisik
+        $hasValidOptical = $onu->rx_power_dbm !== null && (float)$onu->rx_power_dbm >= -38.0 && (float)$onu->rx_power_dbm <= -6.0;
+
+        // Cek live TR-069 GenieACS
         $hasRecentAcs = $onu->relationLoaded('acsDevice')
             && $onu->acsDevice?->status === 'online'
             && (
                 empty($onu->acsDevice?->last_inform)
-                || abs($onu->acsDevice->last_inform->diffInMinutes(now())) <= 15
+                || abs($onu->acsDevice->last_inform->diffInMinutes(now())) <= 120
             );
 
-        // Cek apakah ONU baru saja terlihat aktif oleh OLT (toleransi 15 menit)
-        $isRecentlySeen = !empty($onu->last_seen_at) && $onu->last_seen_at->diffInMinutes(now()) <= 15;
+        // Cek apakah ONU aktif di database dan terlihat oleh OLT
+        $isRecentlySeen = !empty($onu->last_seen_at) && $onu->last_seen_at->diffInHours(now()) <= 24;
 
-        // Jika tidak ada data live baik dari OLT maupun ACS dalam batas waktu 15 menit, ONU pasti OFFLINE
-        if (!$isRecentlySeen && !$hasRecentAcs) {
+        // Jika status bukan active, atau tidak ada bukti fisik optik / ACS / recent seen, maka OFFLINE
+        if ($onu->status !== 'active' && !$hasValidOptical && !$hasRecentAcs) {
+            return 'OFFLINE';
+        }
+
+        if (!$hasValidOptical && !$hasRecentAcs && !$isRecentlySeen) {
             return 'OFFLINE';
         }
 

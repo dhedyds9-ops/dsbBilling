@@ -327,7 +327,7 @@ class OltPollingService
                             $macCleaned = strtoupper(preg_replace('/[^A-F0-9]/i', '', trim($item['mac_address'])));
                             $macAddress = strlen($macCleaned) === 12 ? implode(':', str_split($macCleaned, 2)) : null;
                         }
-                        // Candidate serial numbers (mendukung format ASCII dan Hex Vendor seperti ZTEG <-> 5A544547, HWTC, FHTT)
+                        // Candidate serial numbers (mendukung format ASCII dan Hex Vendor seperti ZTEG <-> 5A544547, HWTC, FHTT, CIOT, CDAT, VSOL)
                         $candidates = [$snNormalized];
                         if (str_starts_with($snNormalized, 'ZTEG')) {
                             $candidates[] = '5A544547' . substr($snNormalized, 4);
@@ -341,6 +341,22 @@ class OltPollingService
                             $candidates[] = '46485454' . substr($snNormalized, 4);
                         } elseif (str_starts_with($snNormalized, '46485454')) {
                             $candidates[] = 'FHTT' . substr($snNormalized, 8);
+                        } elseif (str_starts_with($snNormalized, 'CIOT')) {
+                            $candidates[] = '43494F54' . substr($snNormalized, 4);
+                        } elseif (str_starts_with($snNormalized, '43494F54')) {
+                            $candidates[] = 'CIOT' . substr($snNormalized, 8);
+                        } elseif (str_starts_with($snNormalized, 'CDAT')) {
+                            $candidates[] = '43444154' . substr($snNormalized, 4);
+                        } elseif (str_starts_with($snNormalized, '43444154')) {
+                            $candidates[] = 'CDAT' . substr($snNormalized, 8);
+                        } elseif (str_starts_with($snNormalized, 'VSOL')) {
+                            $candidates[] = '56534F4C' . substr($snNormalized, 4);
+                        } elseif (str_starts_with($snNormalized, '56534F4C')) {
+                            $candidates[] = 'VSOL' . substr($snNormalized, 8);
+                        } elseif (str_starts_with($snNormalized, 'ALCL')) {
+                            $candidates[] = '414C434C' . substr($snNormalized, 4);
+                        } elseif (str_starts_with($snNormalized, '414C434C')) {
+                            $candidates[] = 'ALCL' . substr($snNormalized, 8);
                         }
                         $candidates = array_values(array_unique(array_filter($candidates)));
 
