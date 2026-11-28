@@ -176,13 +176,29 @@
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Tingkat Prioritas</label>
                             <select wire:model="priority"
-                                    class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                     class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <option value="low">Rendah (Low)</option>
                                 <option value="medium">Normal / Standar (Medium)</option>
                                 <option value="high">Tinggi (High)</option>
                                 <option value="critical">Kritis / Mendesak (Critical)</option>
                             </select>
                             @error('priority') <p class="mt-1.5 text-xs text-rose-500 font-medium">{{ $message }}</p> @enderror
+                        </div>
+
+                        {{-- Estimasi Waktu Pengerjaan (SLA) --}}
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Estimasi Waktu Pengerjaan (SLA)</label>
+                            <select wire:model="estimated_hours"
+                                    class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="1">1 Jam (Cepat)</option>
+                                <option value="2">2 Jam (Standar PSB Rumah)</option>
+                                <option value="3">3 Jam (Jalur Standar)</option>
+                                <option value="4">4 Jam (Standar Penarikan FO)</option>
+                                <option value="6">6 Jam (Jalur Panjang)</option>
+                                <option value="8">8 Jam (1 Hari Penuh)</option>
+                                <option value="24">1 Hari (24 Jam)</option>
+                            </select>
+                            @error('estimated_hours') <p class="mt-1.5 text-xs text-rose-500 font-medium">{{ $message }}</p> @enderror
                         </div>
 
                         {{-- Status --}}

@@ -185,6 +185,10 @@ class TicketService
                 $ticketData['due_date'] = !empty($data['due_date']) ? $data['due_date'] : null;
             }
 
+            if (Schema::hasColumn('tickets', 'estimated_hours') && !empty($data['estimated_hours'])) {
+                $ticketData['estimated_hours'] = (float) $data['estimated_hours'];
+            }
+
             try {
                 $ticket = Ticket::create($ticketData);
             } catch (\Illuminate\Database\QueryException $e) {
@@ -194,6 +198,12 @@ class TicketService
                 } else {
                     throw $e;
                 }
+            }
+
+            try {
+                app(\App\Services\Support\SlaTrackingService::class)->initializeSla($ticket);
+            } catch (\Throwable $slaEx) {
+                Log::warning('SLA initialization failed non-fatal: ' . $slaEx->getMessage());
             }
 
             Event::dispatch(TicketCreatedEvent::create(
@@ -260,7 +270,17 @@ class TicketService
             $updateData['due_date'] = !empty($data['due_date']) ? $data['due_date'] : null;
         }
 
+        if (Schema::hasColumn('tickets', 'estimated_hours') && array_key_exists('estimated_hours', $data)) {
+            $updateData['estimated_hours'] = !empty($data['estimated_hours']) ? (float) $data['estimated_hours'] : null;
+        }
+
         $ticket->update($updateData);
+
+        if (!empty($data['estimated_hours']) || !empty($data['priority'])) {
+            try {
+                app(\App\Services\Support\SlaTrackingService::class)->initializeSla($ticket, force: true);
+            } catch (\Throwable) {}
+        }
 
         if (!empty($ticket->assigned_to)) {
             try {

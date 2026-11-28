@@ -41,6 +41,7 @@ class Ticket extends Model
         'sla_status',
         'sla_warning_sent_at',
         'sla_breached_sent_at',
+        'estimated_hours',
     ];
 
     protected $casts = [
@@ -55,7 +56,29 @@ class Ticket extends Model
         'sla_target_minutes' => 'integer',
         'sla_warning_sent_at' => 'datetime',
         'sla_breached_sent_at' => 'datetime',
+        'estimated_hours' => 'float',
     ];
+
+    public function formatEstimatedDuration(): string
+    {
+        if ($this->estimated_hours) {
+            $h = (float) $this->estimated_hours;
+            return $h >= 24 ? round($h / 24, 1) . ' Hari' : ($h == (int)$h ? (int)$h : $h) . ' Jam';
+        }
+        if ($this->sla_target_minutes) {
+            $m = (int) $this->sla_target_minutes;
+            if ($m >= 1440) return round($m / 1440, 1) . ' Hari';
+            if ($m >= 60) return round($m / 60, 1) . ' Jam';
+            return $m . ' Menit';
+        }
+        $priority = strtolower((string) ($this->priority ?? 'medium'));
+        return match ($priority) {
+            'urgent', 'critical' => '2 Jam',
+            'high' => '8 Jam',
+            'low' => '2 Hari (48 Jam)',
+            default => '24 Jam (1 Hari)',
+        };
+    }
 
     public function branch(): BelongsTo
     {
@@ -351,6 +374,9 @@ class Ticket extends Model
             'description'       => $cleanDesc,
             'technician_name'   => $technicianName,
             'technicians'       => $techniciansList,
+            'estimated_duration' => $this->formatEstimatedDuration(),
+            'sla_target_minutes' => $this->sla_target_minutes,
+            'sla_due_at'        => $this->sla_due_at ? $this->sla_due_at->format('d/m/Y H:i') : null,
         ];
 
         return array_merge($payload, $overrides);

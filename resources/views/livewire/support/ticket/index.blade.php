@@ -813,6 +813,23 @@ $statusLabels = [
 
                         <div>
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Estimasi Pengerjaan (SLA)
+                            </label>
+                            <select wire:model.live="newTicket.estimated_hours" 
+                                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Otomatis Sesuai Prioritas</option>
+                                <option value="1">1 Jam (Sangat Cepat)</option>
+                                <option value="2">2 Jam (Standar Gangguan)</option>
+                                <option value="4">4 Jam (Sedang)</option>
+                                <option value="8">8 Jam (Pekerjaan Lapangan)</option>
+                                <option value="24">1 Hari (24 Jam)</option>
+                                <option value="48">2 Hari (48 Jam)</option>
+                                <option value="72">3 Hari (72 Jam)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                                 Target Selesai (Due Date)
                             </label>
                             <input wire:model.live="newTicket.due_date" 
@@ -943,7 +960,7 @@ $statusLabels = [
                     </div>
 
                     {{-- Kategori & Target Selesai --}}
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                                 Kategori
@@ -954,6 +971,23 @@ $statusLabels = [
                                 <option value="billing">Billing & Pembayaran</option>
                                 <option value="installation">Pasang Baru / Instalasi</option>
                                 <option value="other">Lainnya</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Estimasi Pengerjaan (SLA)
+                            </label>
+                            <select wire:model.live="editingTicket.estimated_hours" 
+                                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                <option value="">Otomatis Sesuai Prioritas</option>
+                                <option value="1">1 Jam (Sangat Cepat)</option>
+                                <option value="2">2 Jam (Standar Gangguan)</option>
+                                <option value="4">4 Jam (Sedang)</option>
+                                <option value="8">8 Jam (Pekerjaan Lapangan)</option>
+                                <option value="24">1 Hari (24 Jam)</option>
+                                <option value="48">2 Hari (48 Jam)</option>
+                                <option value="72">3 Hari (72 Jam)</option>
                             </select>
                         </div>
 

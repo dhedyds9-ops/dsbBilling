@@ -633,14 +633,27 @@
             </div>
           </div>
 
-          <div>
-            <label class="block font-semibold text-slate-600 dark:text-slate-300 mb-1">Teknisi Bertugas</label>
-            <select wire:model="newMaint.technician_id" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100">
-              <option value="">-- Pilih Teknisi / NOC --</option>
-              @foreach($filterOptions['technicians'] ?? [] as $tId => $tName)
-                <option value="{{ $tId }}">{{ $tName }}</option>
-              @endforeach
-            </select>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-600 dark:text-slate-300 mb-1">Teknisi Bertugas</label>
+              <select wire:model="newMaint.technician_id" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100">
+                <option value="">-- Pilih Teknisi / NOC --</option>
+                @foreach($filterOptions['technicians'] ?? [] as $tId => $tName)
+                  <option value="{{ $tId }}">{{ $tName }}</option>
+                @endforeach
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 dark:text-slate-300 mb-1">Estimasi Durasi (SLA)</label>
+              <select wire:model="newMaint.estimated_hours" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100">
+                <option value="1">1 Jam (Singkat)</option>
+                <option value="2">2 Jam (Standar Pemeliharaan)</option>
+                <option value="4">4 Jam (Pergantian Alat / Splicing)</option>
+                <option value="8">8 Jam (Relokasi / Rekonfigurasi)</option>
+                <option value="24">1 Hari (24 Jam)</option>
+                <option value="48">2 Hari (48 Jam)</option>
+              </select>
+            </div>
           </div>
 
           <div>
@@ -764,14 +777,27 @@
             </div>
           </div>
 
-          <div>
-            <label class="block font-semibold text-slate-600 dark:text-slate-300 mb-1">Teknisi Bertugas</label>
-            <select wire:model="editMaint.technician_id" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100">
-              <option value="">-- Pilih Teknisi / NOC --</option>
-              @foreach($filterOptions['technicians'] ?? [] as $tId => $tName)
-                <option value="{{ $tId }}">{{ $tName }}</option>
-              @endforeach
-            </select>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-600 dark:text-slate-300 mb-1">Teknisi Bertugas</label>
+              <select wire:model="editMaint.technician_id" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100">
+                <option value="">-- Pilih Teknisi / NOC --</option>
+                @foreach($filterOptions['technicians'] ?? [] as $tId => $tName)
+                  <option value="{{ $tId }}">{{ $tName }}</option>
+                @endforeach
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 dark:text-slate-300 mb-1">Estimasi Durasi (SLA)</label>
+              <select wire:model="editMaint.estimated_hours" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100">
+                <option value="1">1 Jam (Singkat)</option>
+                <option value="2">2 Jam (Standar Pemeliharaan)</option>
+                <option value="4">4 Jam (Pergantian Alat / Splicing)</option>
+                <option value="8">8 Jam (Relokasi / Rekonfigurasi)</option>
+                <option value="24">1 Hari (24 Jam)</option>
+                <option value="48">2 Hari (48 Jam)</option>
+              </select>
+            </div>
           </div>
 
           <div>

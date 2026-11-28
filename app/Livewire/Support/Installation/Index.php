@@ -75,6 +75,7 @@ class Index extends BaseEnterpriseList
             'technician_ids' => [],
             'notes' => '',
             'priority' => 'medium',
+            'estimated_hours' => 4,
         ];
         $this->scheduleDateFrom = now()->startOfMonth()->toDateString();
         $this->scheduleDateTo = now()->endOfMonth()->toDateString();
@@ -485,6 +486,7 @@ class Index extends BaseEnterpriseList
             'technician_ids' => [],
             'notes' => '',
             'priority' => 'medium',
+            'estimated_hours' => 4,
         ];
         $this->showCreateWo = true;
     }
@@ -696,9 +698,14 @@ class Index extends BaseEnterpriseList
             $wo->technician_ids = !empty($selectedTechIds) ? $selectedTechIds : null;
             $wo->notes = $notes;
             $wo->priority = $this->newWo['priority'] ?? 'medium';
+            $wo->estimated_hours = !empty($this->newWo['estimated_hours']) ? (float) $this->newWo['estimated_hours'] : 4;
             $wo->status = !empty($primaryTechId) ? 'scheduled' : 'pending';
             $wo->created_by = Auth::id() ?? 0;
             $wo->save();
+
+            try {
+                app(\App\Services\Support\SlaTrackingService::class)->initializeSla($wo);
+            } catch (\Throwable) {}
 
             // Notifikasi in-app Portal Teknisi & Mobile App Android untuk semua teknisi di tim
             if (!empty($selectedTechIds)) {
@@ -935,6 +942,8 @@ class Index extends BaseEnterpriseList
                 'technician_name'  => $technicianName,
                 'notes'            => $wo->notes ?? '',
                 'priority'         => $wo->priority ?? 'medium',
+                'estimated_duration' => method_exists($wo, 'formatEstimatedDuration') ? $wo->formatEstimatedDuration() : null,
+                'sla_due_at'       => $wo->sla_due_at ? (is_string($wo->sla_due_at) ? $wo->sla_due_at : $wo->sla_due_at->format('d/m/Y H:i')) : null,
             ]);
 
             // 1. Kirim ke Grup WhatsApp (ticket_group_id)

@@ -40,6 +40,11 @@ class SupportMaintenance extends Model
         'qc_verified_by',
         'qc_verified_at',
         'qc_notes',
+        'sla_due_at',
+        'sla_started_at',
+        'sla_target_minutes',
+        'sla_status',
+        'estimated_hours',
         'created_by',
         'updated_by',
     ];
@@ -48,7 +53,26 @@ class SupportMaintenance extends Model
         'scheduled_date' => 'date',
         'completed_at' => 'datetime',
         'qc_verified_at' => 'datetime',
+        'sla_due_at' => 'datetime',
+        'sla_started_at' => 'datetime',
+        'sla_target_minutes' => 'integer',
+        'estimated_hours' => 'float',
     ];
+
+    public function formatEstimatedDuration(): string
+    {
+        if ($this->estimated_hours) {
+            $h = (float) $this->estimated_hours;
+            return $h >= 24 ? round($h / 24, 1) . ' Hari' : ($h == (int)$h ? (int)$h : $h) . ' Jam';
+        }
+        if ($this->sla_target_minutes) {
+            $m = (int) $this->sla_target_minutes;
+            if ($m >= 1440) return round($m / 1440, 1) . ' Hari';
+            if ($m >= 60) return round($m / 60, 1) . ' Jam';
+            return $m . ' Menit';
+        }
+        return '24 Jam';
+    }
 
     public function branch(): BelongsTo
     {

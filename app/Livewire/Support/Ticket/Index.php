@@ -200,6 +200,7 @@ class Index extends BaseEnterpriseList
             'description' => '',
             'category' => 'internet',
             'priority' => 'medium',
+            'estimated_hours' => '',
             'assigned_to' => '',
             'technician_ids' => [],
             'due_date' => '',
@@ -433,6 +434,7 @@ class Index extends BaseEnterpriseList
             'description' => '',
             'category' => 'internet',
             'priority' => 'medium',
+            'estimated_hours' => '',
             'assigned_to' => '',
             'technician_ids' => [],
             'due_date' => '',
@@ -714,6 +716,7 @@ class Index extends BaseEnterpriseList
             'description' => $ticket->description ?? '',
             'category' => $ticket->category ?? 'internet',
             'priority' => $ticket->priority ?? 'medium',
+            'estimated_hours' => $ticket->estimated_hours ? (string) (fmod((float) $ticket->estimated_hours, 1) === 0.0 ? (int) $ticket->estimated_hours : $ticket->estimated_hours) : '',
             'status' => $ticket->status ?? 'open',
             'assigned_to' => $ticket->assigned_to ? (string) $ticket->assigned_to : '',
             'technician_ids' => $ticket->technician_ids ?? ($ticket->assigned_to ? [$ticket->assigned_to] : []),
@@ -795,10 +798,19 @@ class Index extends BaseEnterpriseList
             if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'due_date')) {
                 $updatePayload['due_date'] = !empty($this->editingTicket['due_date']) ? $this->editingTicket['due_date'] : null;
             }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'estimated_hours')) {
+                $updatePayload['estimated_hours'] = !empty($this->editingTicket['estimated_hours']) ? (float) $this->editingTicket['estimated_hours'] : null;
+            }
             if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'resolution_notes') && isset($this->editingTicket['note']) && trim((string) $this->editingTicket['note']) !== '') {
                 $updatePayload['resolution_notes'] = trim((string) $this->editingTicket['note']);
             }
             $ticket->update($updatePayload);
+
+            if (!empty($updatePayload['estimated_hours']) || !empty($updatePayload['priority'])) {
+                try {
+                    app(\App\Services\Support\SlaTrackingService::class)->initializeSla($ticket, force: true);
+                } catch (\Throwable) {}
+            }
 
             $isAssigneeChanged = ($newAssignee && $newAssignee != $oldAssignee);
             $isResolvedChanged = ($newStatus === 'resolved' && $oldStatus !== 'resolved');

@@ -59,12 +59,26 @@ class SlaTrackingService
         }
 
         $priority = $model->priority ?? 'normal';
-        $targetMinutes = $this->getTargetMinutesByPriority($priority);
+        $targetMinutes = !empty($model->estimated_hours) && (float) $model->estimated_hours > 0
+            ? (int) round(((float) $model->estimated_hours) * 60)
+            : $this->getTargetMinutesByPriority($priority);
 
-        $start = $startTime 
-            ?: ($model->started_at 
-                ?: ($model->scheduled_at 
-                    ?: ($model->created_at ?: now())));
+        $start = $startTime;
+        if (!$start) {
+            if (!empty($model->started_at)) {
+                $start = Carbon::parse($model->started_at);
+            } elseif (!empty($model->scheduled_at)) {
+                $start = Carbon::parse($model->scheduled_at);
+            } elseif (!empty($model->scheduled_date)) {
+                $time = !empty($model->scheduled_time) ? substr((string) $model->scheduled_time, 0, 5) : '09:00';
+                $dateStr = is_string($model->scheduled_date) ? $model->scheduled_date : $model->scheduled_date->toDateString();
+                $start = Carbon::parse("{$dateStr} {$time}:00");
+            } elseif (!empty($model->created_at)) {
+                $start = Carbon::parse($model->created_at);
+            } else {
+                $start = now();
+            }
+        }
 
         $dueAt = $start->copy()->addMinutes($targetMinutes);
 
@@ -91,10 +105,25 @@ class SlaTrackingService
         // Pastikan snapshot SLA sudah ada
         if (empty($model->sla_due_at) || empty($model->sla_target_minutes)) {
             $priority = $model->priority ?? 'normal';
-            $targetMinutes = $this->getTargetMinutesByPriority($priority);
-            $start = $model->started_at 
-                ?: ($model->scheduled_at 
-                    ?: ($model->created_at ?: $now));
+            $targetMinutes = !empty($model->estimated_hours) && (float) $model->estimated_hours > 0
+                ? (int) round(((float) $model->estimated_hours) * 60)
+                : $this->getTargetMinutesByPriority($priority);
+
+            $start = null;
+            if (!empty($model->started_at)) {
+                $start = Carbon::parse($model->started_at);
+            } elseif (!empty($model->scheduled_at)) {
+                $start = Carbon::parse($model->scheduled_at);
+            } elseif (!empty($model->scheduled_date)) {
+                $time = !empty($model->scheduled_time) ? substr((string) $model->scheduled_time, 0, 5) : '09:00';
+                $dateStr = is_string($model->scheduled_date) ? $model->scheduled_date : $model->scheduled_date->toDateString();
+                $start = Carbon::parse("{$dateStr} {$time}:00");
+            } elseif (!empty($model->created_at)) {
+                $start = Carbon::parse($model->created_at);
+            } else {
+                $start = $now;
+            }
+
             $dueAt = $start->copy()->addMinutes($targetMinutes);
         } else {
             $targetMinutes = (int) $model->sla_target_minutes;

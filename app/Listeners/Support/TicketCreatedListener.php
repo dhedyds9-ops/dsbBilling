@@ -83,12 +83,17 @@ class TicketCreatedListener
             try {
                 $custPhone = $this->normalizePhone($customer?->phone ?? null);
                 if ($custPhone && $customer) {
+                    $durasiStr = $ticket->formatEstimatedDuration();
+                    $slaDueStr = $ticket->sla_due_at ? $ticket->sla_due_at->format('d/m/Y H:i') : null;
                     $text = "🎫 *TIKET ANDA DITERIMA*\n\n"
                         . "Halo *{$customer->name}*,\n\n"
                         . "Tiket support Anda telah berhasil dibuat:\n\n"
-                        . "No. Tiket : *#{$ticket->id}*\n"
-                        . "Judul     : {$ticket->title}\n\n"
-                        . "Tim kami akan segera menangani keluhan Anda.\n"
+                        . "• No. Tiket : *#{$ticket->id}*\n"
+                        . "• Perihal   : {$ticket->title}\n"
+                        . "• Estimasi  : *{$durasiStr}*\n"
+                        . ($slaDueStr ? "• Target Selesai (SLA): *{$slaDueStr} WIB*\n" : "")
+                        . "• Status    : Menunggu Penanganan\n\n"
+                        . "Tim teknisi kami akan segera menangani keluhan Anda.\n"
                         . "Terima kasih 🙏\n— dsBilling Support";
                     $msg = new WaOutgoingMessage(
                         toPhone: $custPhone,

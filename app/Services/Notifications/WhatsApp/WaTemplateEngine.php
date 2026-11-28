@@ -420,6 +420,16 @@ final class WaTemplateEngine
         $desc = !empty($d['description']) ? trim((string)$d['description']) : '';
         $descLine = ($desc !== '' && $desc !== '-' && $desc !== $subj) ? "\n💬 Keluhan: " . $this->e($desc) : "";
 
+        $durasi = !empty($d['estimated_duration']) ? $this->e($d['estimated_duration']) : null;
+        $slaDue = !empty($d['sla_due_at']) ? $this->e($d['sla_due_at']) : null;
+        $slaBlock = "";
+        if ($durasi) {
+            $slaBlock .= "\n⏳ Estimasi Pengerjaan: *{$durasi}*";
+        }
+        if ($slaDue) {
+            $slaBlock .= "\n🎯 Target Selesai (SLA): *{$slaDue} WIB*";
+        }
+
         return "🎫 *TIKET BARU: {$code}*\n\n"
             . "Yang ditugaskan :\n"
             . "👷 Teknisi: *{$tech}*\n"
@@ -427,7 +437,8 @@ final class WaTemplateEngine
             . $targetBlock . "\n"
             . "📝 Subjek: {$subj}"
             . $descLine . "\n"
-            . "⚡ Prioritas: {$prio}\n"
+            . "⚡ Prioritas: {$prio}"
+            . $slaBlock . "\n"
             . "📍 Alamat: {$addr}"
             . $locLine . "\n\n"
             . "🔗 Detail: {$url}\n\n"
@@ -467,6 +478,16 @@ final class WaTemplateEngine
         $desc = !empty($d['description']) ? trim((string)$d['description']) : '';
         $descLine = ($desc !== '' && $desc !== '-' && $desc !== $subj) ? "\n💬 Keluhan: " . $this->e($desc) : "";
 
+        $durasi = !empty($d['estimated_duration']) ? $this->e($d['estimated_duration']) : null;
+        $slaDue = !empty($d['sla_due_at']) ? $this->e($d['sla_due_at']) : null;
+        $slaBlock = "";
+        if ($durasi) {
+            $slaBlock .= "\n⏳ Estimasi Pengerjaan: *{$durasi}*";
+        }
+        if ($slaDue) {
+            $slaBlock .= "\n🎯 Target Selesai (SLA): *{$slaDue} WIB*";
+        }
+
         return "🎫 *TIKET DITUGASKAN: {$code}*\n\n"
             . "Yang ditugaskan :\n"
             . "👷 Teknisi: *{$tech}*\n"
@@ -474,7 +495,8 @@ final class WaTemplateEngine
             . $targetBlock . "\n"
             . "📝 Subjek: {$subj}"
             . $descLine . "\n"
-            . "⚡ Prioritas: {$prio}\n"
+            . "⚡ Prioritas: {$prio}"
+            . $slaBlock . "\n"
             . "📍 Alamat: {$addr}"
             . $locLine . "\n\n"
             . "🔗 Detail: {$url}\n\n"
@@ -535,6 +557,16 @@ final class WaTemplateEngine
 
         $targetBlock = $this->formatTicketTargetBlock($d);
 
+        $durasi = !empty($d['estimated_duration']) ? $this->e($d['estimated_duration']) : null;
+        $slaDue = !empty($d['sla_due_at']) ? $this->e($d['sla_due_at']) : null;
+        $slaBlock = "";
+        if ($durasi) {
+            $slaBlock .= "\n⏳ Estimasi Pengerjaan: *{$durasi}*";
+        }
+        if ($slaDue) {
+            $slaBlock .= "\n🎯 Target Selesai (SLA): *{$slaDue} WIB*";
+        }
+
         return "✏️ *TIKET DIPERBARUI: {$code}*\n\n"
             . "Yang ditugaskan :\n"
             . "👷 Teknisi: *{$tech}*\n"
@@ -542,7 +574,8 @@ final class WaTemplateEngine
             . "📊 Status: *{$statusRaw}*\n"
             . $targetBlock . "\n"
             . "📝 Subjek: {$subj}\n"
-            . "⚡ Prioritas: {$prio}\n"
+            . "⚡ Prioritas: {$prio}"
+            . $slaBlock . "\n"
             . "📍 Alamat: {$addr}"
             . $locLine . "\n"
             . ($note ? "💬 Catatan: {$note}\n\n" : "\n")
@@ -569,6 +602,16 @@ final class WaTemplateEngine
             'critical' => '🔴', 'high' => '🟠', 'medium' => '🟡', default => '🟢'
         };
 
+        $durasi = !empty($d['estimated_duration']) ? $this->e($d['estimated_duration']) : null;
+        $slaDue = !empty($d['sla_due_at']) ? $this->e($d['sla_due_at']) : null;
+        $slaBlock = "";
+        if ($durasi) {
+            $slaBlock .= "\n⏳ Estimasi Pengerjaan: *{$durasi}*";
+        }
+        if ($slaDue) {
+            $slaBlock .= "\n🎯 Target Selesai (SLA): *{$slaDue} WIB*";
+        }
+
         return "📦 *WORK ORDER INSTALASI BARU*\n\n"
             . "No. WO    : *#{$no}*\n"
             . "Pelanggan : *{$cust}*\n"
@@ -576,11 +619,59 @@ final class WaTemplateEngine
             . "Alamat    : {$addr}"
             . $locLine . "\n"
             . "Jadwal    : 🗓️ *{$date}* pk *{$time}*\n"
-            . "Prioritas : {$prioEmoji} *{$prio}*\n"
+            . "Prioritas : {$prioEmoji} *{$prio}*"
+            . $slaBlock . "\n"
             . "Teknisi   : 👨‍🔧 *{$tech}*\n"
             . ($notes ? "\n📝 *Catatan:*\n{$notes}\n" : "\n")
             . "\nMohon tim teknisi mempersiapkan perangkat & material instalasi.\n"
             . "— " . $this->brand();
+    }
+
+    /** Notifikasi Jadwal MAINTENANCE / PEMELIHARAAN ke Teknisi & Grup WA */
+    public function maintenanceAssigned(array $d): string
+    {
+        $id = $d['maintenance_id'] ?? ($d['id'] ?? '-');
+        $code = "MT-" . $id;
+        $tech = $this->e($d['technician_name'] ?? 'Teknisi');
+        $title = $this->e($d['title'] ?? 'Pemeliharaan Jaringan');
+        $type = strtoupper($this->e($d['type'] ?? 'Preventive'));
+        $prioRaw = strtolower((string)($d['priority'] ?? 'medium'));
+        $prio = match($prioRaw) {
+            'low' => '🟢 RENDAH',
+            'medium' => '🟡 SEDANG',
+            'high' => '🟠 TINGGI',
+            'critical' => '🔴 KRITIS',
+            default => '🟢 ' . strtoupper($prioRaw),
+        };
+        $device = $this->e($d['device_name'] ?? '-');
+        $location = $this->e($d['location_name'] ?? '-');
+        $schedDate = $this->e($d['scheduled_date'] ?? '-');
+        $schedTime = $this->e($d['scheduled_time'] ?? '09:00');
+        $durasi = !empty($d['estimated_duration']) ? $this->e($d['estimated_duration']) : null;
+        $slaDue = !empty($d['sla_due_at']) ? $this->e($d['sla_due_at']) : null;
+        $slaBlock = "";
+        if ($durasi) {
+            $slaBlock .= "\n⏳ Estimasi Pengerjaan: *{$durasi}*";
+        }
+        if ($slaDue) {
+            $slaBlock .= "\n🎯 Target Selesai (SLA): *{$slaDue} WIB*";
+        }
+        $notes = !empty($d['notes']) ? $this->e($d['notes']) : '';
+        $url = route('technician.my-jobs.maintenance');
+
+        return "🔧 *JADWAL MAINTENANCE: #{$code}*\n\n"
+            . "Yang ditugaskan :\n"
+            . "👷 Teknisi: *{$tech}*\n"
+            . "🏷️ Jenis: {$type}\n"
+            . "📝 Pekerjaan: *{$title}*\n"
+            . "📡 Perangkat: {$device}\n"
+            . "📍 Lokasi: {$location}\n"
+            . "🗓️ Jadwal: *{$schedDate}* pk *{$schedTime} WIB*\n"
+            . "⚡ Prioritas: {$prio}"
+            . $slaBlock . "\n"
+            . ($notes ? "💬 Catatan: {$notes}\n\n" : "\n")
+            . "🔗 Portal Teknisi: {$url}\n\n"
+            . "🚀 Sistem";
     }
 
     private function resolveMapsUrl(mixed $lat, mixed $lng, ?string $customUrl = null): ?string

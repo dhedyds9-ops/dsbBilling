@@ -123,6 +123,9 @@ class InstallationTechnicianNotifier
                 continue;
             }
 
+            $durasiStr = $wo->formatEstimatedDuration();
+            $slaDueStr = $wo->sla_due_at ? (is_string($wo->sla_due_at) ? $wo->sla_due_at : $wo->sla_due_at->format('d/m/Y H:i')) : null;
+
             $text = "*[{$heading}]*\n\n"
                 . "Halo {$technician->name},\n"
                 . "Anda ditugaskan untuk pekerjaan instalasi berikut:\n\n"
@@ -133,6 +136,8 @@ class InstallationTechnicianNotifier
                 . $mapsLine . "\n"
                 . "*Jadwal:* {$date} {$time} WIB\n"
                 . "*Prioritas:* {$priority}\n"
+                . "*Estimasi Pengerjaan:* {$durasiStr}\n"
+                . ($slaDueStr ? "*Target Selesai (SLA):* {$slaDueStr} WIB\n" : "")
                 . "*Catatan:* " . ($wo->notes ?: '-')
                 . $teamLine . "\n\n"
                 . "Buka Portal Teknisi: {$portalUrl}";

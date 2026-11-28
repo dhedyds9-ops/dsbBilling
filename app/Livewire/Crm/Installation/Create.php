@@ -22,6 +22,7 @@ class Create extends AdminComponent
     public $scheduled_time = '09:00';
     public $status = 'scheduled';
     public $priority = 'medium';
+    public $estimated_hours = 4;
     public $notes = '';
 
     // Device Information
@@ -107,6 +108,7 @@ class Create extends AdminComponent
             }],
             'status' => 'required|in:scheduled,in_progress,completed,canceled',
             'priority' => 'required|in:low,medium,high,critical',
+            'estimated_hours' => 'nullable|numeric|min:0.5|max:720',
             'notes' => 'nullable|string',
             'onu_serial_number' => 'nullable|string|max:100',
             'onu_mac_address' => 'nullable|string|max:100',
@@ -153,6 +155,7 @@ class Create extends AdminComponent
             'scheduled_at' => $scheduledAt,
             'status' => $this->status,
             'priority' => $this->priority,
+            'estimated_hours' => $this->estimated_hours ?: 4,
             'notes' => $this->notes,
             'onu_serial_number' => $this->onu_serial_number,
             'onu_mac_address' => $this->onu_mac_address,
@@ -160,6 +163,10 @@ class Create extends AdminComponent
             'router_serial_number' => $this->router_serial_number,
             'created_by' => Auth::id() ?? 1,
         ]);
+
+        try {
+            app(\App\Services\Support\SlaTrackingService::class)->initializeSla($wo, $scheduledAt);
+        } catch (\Throwable) {}
 
         $this->sendInstallationWhatsAppNotification($wo);
 
@@ -206,6 +213,8 @@ class Create extends AdminComponent
                 'technician_name'  => $technicianName,
                 'notes'            => $wo->notes ?? '',
                 'priority'         => $wo->priority ?? 'medium',
+                'estimated_duration' => method_exists($wo, 'formatEstimatedDuration') ? $wo->formatEstimatedDuration() : null,
+                'sla_due_at'       => $wo->sla_due_at ? (is_string($wo->sla_due_at) ? $wo->sla_due_at : $wo->sla_due_at->format('d/m/Y H:i')) : null,
             ]);
 
             // 1. Kirim ke Grup WhatsApp (ticket_group_id)

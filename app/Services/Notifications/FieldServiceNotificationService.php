@@ -126,11 +126,16 @@ class FieldServiceNotificationService
             );
 
             if ($phone = $this->normalizePhone($supervisor->whatsapp ?? $supervisor->phone)) {
+                $durasiStr = method_exists($ticket, 'formatEstimatedDuration') ? $ticket->formatEstimatedDuration() : null;
+                $slaDueStr = !empty($ticket->sla_due_at) ? (is_string($ticket->sla_due_at) ? $ticket->sla_due_at : $ticket->sla_due_at->format('d/m/Y H:i')) : null;
+
                 $text = "🎫 *TIKET SUPPORT BARU #{$ticket->id}*\n\n"
                     . "*Pelapor:* {$custName}\n"
                     . "*Judul:* {$ticket->title}\n"
                     . "*Kategori:* " . ucfirst($ticket->category ?? 'Umum') . "\n"
                     . "*Prioritas:* " . strtoupper($ticket->priority ?? 'Normal') . "\n"
+                    . ($durasiStr ? "*Estimasi Pengerjaan:* {$durasiStr}\n" : "")
+                    . ($slaDueStr ? "*Target Selesai (SLA):* {$slaDueStr} WIB\n" : "")
                     . "*Waktu:* " . now()->format('d/m/Y H:i') . " WIB\n\n"
                     . "Buka Tiket: " . route('tickets.direct', $ticket->id);
 
@@ -146,11 +151,16 @@ class FieldServiceNotificationService
 
         // 2. Konfirmasi WA ke Pelanggan jika tiket punya customer_id
         if ($custPhone = $this->normalizePhone($ticket->customer?->phone)) {
+            $durasiStr = method_exists($ticket, 'formatEstimatedDuration') ? $ticket->formatEstimatedDuration() : null;
+            $slaDueStr = !empty($ticket->sla_due_at) ? (is_string($ticket->sla_due_at) ? $ticket->sla_due_at : $ticket->sla_due_at->format('d/m/Y H:i')) : null;
+
             $custText = "🎫 *TIKET ANDA BERHASIL DIBUAT*\n\n"
                 . "Halo *{$custName}*,\n\n"
                 . "Laporan/keluhan Anda telah kami terima:\n"
                 . "• No. Tiket: *#{$ticket->id}*\n"
                 . "• Perihal: {$ticket->title}\n"
+                . ($durasiStr ? "• Estimasi Penanganan: *{$durasiStr}*\n" : "")
+                . ($slaDueStr ? "• Target Selesai (SLA): *{$slaDueStr} WIB*\n" : "")
                 . "• Status: Menunggu Penanganan\n\n"
                 . "Tim teknis kami akan segera menindaklanjuti. Terima kasih telah menghubungi kami 🙏\n— dsBilling Support";
 
@@ -202,12 +212,17 @@ class FieldServiceNotificationService
             );
 
             if ($phone = $this->normalizePhone($tech->whatsapp ?? $tech->phone)) {
+                $durasiStr = method_exists($ticket, 'formatEstimatedDuration') ? $ticket->formatEstimatedDuration() : null;
+                $slaDueStr = !empty($ticket->sla_due_at) ? (is_string($ticket->sla_due_at) ? $ticket->sla_due_at : $ticket->sla_due_at->format('d/m/Y H:i')) : null;
+
                 $text = "🛠️ *{$heading} #{$ticket->id}*\n\n"
                     . "Halo *{$tech->name}*,\n"
                     . "Anda ditugaskan untuk menangani tiket berikut:\n\n"
                     . "*Pelanggan:* {$custName}\n"
                     . "*Keluhan:* {$ticket->title}\n"
                     . "*Prioritas:* " . strtoupper($ticket->priority ?? 'Normal') . "\n"
+                    . ($durasiStr ? "*Estimasi Pengerjaan:* {$durasiStr}\n" : "")
+                    . ($slaDueStr ? "*Target Selesai (SLA):* {$slaDueStr} WIB\n" : "")
                     . "*Catatan:* " . ($ticket->description ?: '-') . "\n\n"
                     . "Buka Tugas Saya: " . route('technician.my-jobs.index');
 
@@ -304,6 +319,9 @@ class FieldServiceNotificationService
         );
 
         if ($phone = $this->normalizePhone($tech->whatsapp ?? $tech->phone)) {
+            $durasiStr = method_exists($wo, 'formatEstimatedDuration') ? $wo->formatEstimatedDuration() : null;
+            $slaDueStr = !empty($wo->sla_due_at) ? (is_string($wo->sla_due_at) ? $wo->sla_due_at : $wo->sla_due_at->format('d/m/Y H:i')) : null;
+
             $text = "📋 *PENUGASAN WORK ORDER*\n\n"
                 . "Halo *{$tech->name}*,\n"
                 . "Anda mendapatkan tugas kerja lapangan baru:\n\n"
@@ -311,7 +329,9 @@ class FieldServiceNotificationService
                 . "*Judul:* {$wo->title}\n"
                 . "*Pelanggan:* {$custName}\n"
                 . "*Alamat:* " . ($wo->customer?->address ?: '-') . "\n"
-                . "*Jadwal:* " . ($wo->scheduled_at ? $wo->scheduled_at->format('d/m/Y H:i') . ' WIB' : 'Segera') . "\n\n"
+                . "*Jadwal:* " . ($wo->scheduled_at ? $wo->scheduled_at->format('d/m/Y H:i') . ' WIB' : 'Segera') . "\n"
+                . ($durasiStr ? "*Estimasi Pengerjaan:* {$durasiStr}\n" : "")
+                . ($slaDueStr ? "*Target Selesai (SLA):* {$slaDueStr} WIB\n" : "") . "\n"
                 . "Detail Pekerjaan: " . route('technician.my-jobs.show', $wo->id);
 
             $this->sendWhatsApp(
@@ -507,6 +527,8 @@ class FieldServiceNotificationService
             ? (is_string($inst->scheduled_date) ? $inst->scheduled_date : $inst->scheduled_date->format('d/m/Y'))
             : '-';
         $time = $inst->scheduled_time ? substr((string) $inst->scheduled_time, 0, 5) : '09:00';
+        $durasiStr = method_exists($inst, 'formatEstimatedDuration') ? $inst->formatEstimatedDuration() : null;
+        $slaDueStr = !empty($inst->sla_due_at) ? (is_string($inst->sla_due_at) ? $inst->sla_due_at : $inst->sla_due_at->format('d/m/Y H:i')) : null;
 
         if ($custPhone = $this->normalizePhone($inst->customer_phone ?: ($inst->customer?->phone ?? null))) {
             $text = "📅 *JADWAL INSTALASI INTERNET PASANG BARU (PSB)*\n\n"
@@ -514,6 +536,8 @@ class FieldServiceNotificationService
                 . "Pemasangan internet baru Anda telah dijadwalkan pada:\n\n"
                 . "• *Tanggal:* {$date}\n"
                 . "• *Waktu:* {$time} WIB\n"
+                . ($durasiStr ? "• *Estimasi Pemasangan:* {$durasiStr}\n" : "")
+                . ($slaDueStr ? "• *Target Selesai (SLA):* {$slaDueStr} WIB\n" : "")
                 . "• *Alamat:* " . ($inst->installation_address ?: '-') . "\n\n"
                 . "Pastikan ada orang di lokasi saat teknisi kami tiba. Terima kasih 🙏\n— dsBilling Operations";
 
@@ -626,7 +650,7 @@ class FieldServiceNotificationService
         $this->sendInApp(
             recipientId: $tech->id,
             title: "Tugas Maintenance: #{$maint->id}",
-            message: "Tugas maintenance: {$maint->title} di {$maint->location}",
+            message: "Tugas maintenance: {$maint->title} di " . ($maint->location_name ?? ($maint->location ?? '-')),
             data: [
                 'url' => route('technician.my-jobs.maintenance'),
                 'icon' => 'handyman',
@@ -637,6 +661,34 @@ class FieldServiceNotificationService
             entityType: 'maintenance',
             entityId: $maint->id
         );
+
+        if ($phone = $this->normalizePhone($tech->whatsapp ?? $tech->phone)) {
+            $durasiStr = method_exists($maint, 'formatEstimatedDuration') ? $maint->formatEstimatedDuration() : null;
+            $slaDueStr = !empty($maint->sla_due_at) ? (is_string($maint->sla_due_at) ? $maint->sla_due_at : $maint->sla_due_at->format('d/m/Y H:i')) : null;
+
+            $waText = $this->waTemplate->maintenanceAssigned([
+                'maintenance_id'    => $maint->id,
+                'technician_name'   => $tech->name,
+                'title'             => $maint->title,
+                'type'              => $maint->type ?? 'preventive',
+                'priority'          => $maint->priority ?? 'medium',
+                'device_name'       => $maint->device_name ?? ($maint->device_type ?? '-'),
+                'location_name'     => $maint->location_name ?? ($maint->location ?? '-'),
+                'scheduled_date'    => $maint->scheduled_date ? (is_string($maint->scheduled_date) ? $maint->scheduled_date : $maint->scheduled_date->format('d/m/Y')) : '-',
+                'scheduled_time'    => $maint->scheduled_time ? substr((string) $maint->scheduled_time, 0, 5) : '09:00',
+                'estimated_duration' => $durasiStr,
+                'sla_due_at'        => $slaDueStr,
+                'notes'             => $maint->notes ?? '',
+            ]);
+
+            $this->sendWhatsApp(
+                phone: $phone,
+                text: $waText,
+                category: 'workforce',
+                context: ['maintenance_id' => $maint->id, 'type' => 'maint_assigned_tech'],
+                idempotencyKey: "wa_maint_assigned_{$maint->id}_{$tech->id}"
+            );
+        }
     }
 
     protected function onMaintenanceStarted($maint): void

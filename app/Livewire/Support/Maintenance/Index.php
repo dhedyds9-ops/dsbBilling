@@ -151,6 +151,7 @@ class Index extends BaseEnterpriseList
             'technician_id' => '',
             'notes' => '',
             'priority' => 'medium',
+            'estimated_hours' => 2,
         ];
     }
 
@@ -923,27 +924,84 @@ class Index extends BaseEnterpriseList
 
     protected function notifyAssignedTechnician(?int $techId, int $maintId, string $title, ?string $schedDate, ?string $schedTime): void
     {
-        if (!$techId || !Schema::hasTable('notifications')) {
+        if (!$techId) {
             return;
         }
 
+        $maint = \App\Models\Support\SupportMaintenance::find($maintId);
+        $durasiStr = $maint ? $maint->formatEstimatedDuration() : null;
+        $slaDueStr = $maint && $maint->sla_due_at ? $maint->sla_due_at->format('d/m/Y H:i') : null;
+
+        if (Schema::hasTable('notifications')) {
+            try {
+                $msg = "Anda ditugaskan untuk pekerjaan maintenance: {$title} (Jadwal: " . ($schedDate ?: '-') . ' ' . ($schedTime ?: '09:00') . ').';
+                if ($durasiStr) {
+                    $msg .= " Estimasi: {$durasiStr}.";
+                }
+                if ($slaDueStr) {
+                    $msg .= " Target SLA: {$slaDueStr} WIB.";
+                }
+
+                Notification::create([
+                    'uuid' => (string) Str::uuid(),
+                    'recipient_id' => $techId,
+                    'title' => 'Penugasan Maintenance #MT-' . $maintId,
+                    'message' => $msg,
+                    'type' => 'maintenance_assigned',
+                    'status' => 'unread',
+                    'sent_at' => now(),
+                    'data' => [
+                        'maintenance_id' => $maintId,
+                        'url' => route('technician.my-jobs.maintenance'),
+                    ],
+                    'created_by' => Auth::id(),
+                ]);
+            } catch (Throwable $e) {
+                Log::warning('Failed sending maintenance notification', ['e' => $e->getMessage()]);
+            }
+        }
+
+        // WhatsApp Notifikasi Teknisi & Grup WhatsApp
         try {
-            Notification::create([
-                'uuid' => (string) Str::uuid(),
-                'recipient_id' => $techId,
-                'title' => 'Penugasan Maintenance #MT-' . $maintId,
-                'message' => "Anda ditugaskan untuk pekerjaan maintenance: {$title} (Jadwal: " . ($schedDate ?: '-') . ' ' . ($schedTime ?: '09:00') . ').',
-                'type' => 'maintenance_assigned',
-                'status' => 'unread',
-                'sent_at' => now(),
-                'data' => [
-                    'maintenance_id' => $maintId,
-                    'url' => route('technician.my-jobs.maintenance'),
-                ],
-                'created_by' => Auth::id(),
-            ]);
-        } catch (Throwable $e) {
-            Log::warning('Failed sending maintenance notification', ['e' => $e->getMessage()]);
+            $tech = User::find($techId);
+            $template = app(\App\Services\Notifications\WhatsApp\WaTemplateEngine::class);
+
+            $payload = [
+                'maintenance_id'    => $maintId,
+                'technician_name'   => $tech?->name ?? 'Teknisi',
+                'title'             => $title,
+                'type'              => $maint?->type ?? 'preventive',
+                'priority'          => $maint?->priority ?? 'medium',
+                'device_name'       => $maint?->device_name ?? ($maint?->device_type ?? '-'),
+                'location_name'     => $maint?->location_name ?? ($maint?->location ?? '-'),
+                'scheduled_date'    => $schedDate ?: ($maint?->scheduled_date ? (is_string($maint->scheduled_date) ? $maint->scheduled_date : $maint->scheduled_date->format('d/m/Y')) : '-'),
+                'scheduled_time'    => $schedTime ?: ($maint?->scheduled_time ? substr((string)$maint->scheduled_time, 0, 5) : '09:00'),
+                'estimated_duration' => $durasiStr,
+                'sla_due_at'        => $slaDueStr,
+                'notes'             => $maint?->notes ?? '',
+            ];
+
+            $waText = $template->maintenanceAssigned($payload);
+
+            // 1. Kirim WA ke teknisi pribadi
+            $rawPhone = $tech?->whatsapp ?: ($tech?->phone ?: null);
+            if ($rawPhone) {
+                $p = preg_replace('/\D/', '', $rawPhone);
+                if (str_starts_with($p, '0')) $p = '62' . substr($p, 1);
+                elseif (!str_starts_with($p, '62')) $p = '62' . $p;
+                if (strlen($p) >= 10) {
+                    \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($p, $waText);
+                }
+            }
+
+            // 2. Kirim ke grup tiket / NOC jika disetel
+            $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
+            $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
+            if ($ticketGroupId !== '') {
+                \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $waText);
+            }
+        } catch (\Throwable $we) {
+            Log::warning('Failed sending maintenance WA notification: ' . $we->getMessage());
         }
     }
 
@@ -977,6 +1035,7 @@ class Index extends BaseEnterpriseList
                 'type' => $this->newMaint['type'] ?? 'preventive',
                 'status' => 'scheduled',
                 'priority' => $this->newMaint['priority'] ?? 'medium',
+                'estimated_hours' => !empty($this->newMaint['estimated_hours']) ? (float) $this->newMaint['estimated_hours'] : 2,
                 'device_type' => $this->newMaint['device_type'] ?? 'router',
                 'device_name' => trim((string) ($this->newMaint['device_name'] ?? '')) ?: null,
                 'location_name' => trim((string) ($this->newMaint['location_name'] ?? '')) ?: null,
@@ -994,6 +1053,13 @@ class Index extends BaseEnterpriseList
             }
 
             $id = DB::table('support_maintenances')->insertGetId($insertData);
+
+            $maintModel = \App\Models\Support\SupportMaintenance::find((int) $id);
+            if ($maintModel) {
+                try {
+                    app(\App\Services\Support\SlaTrackingService::class)->initializeSla($maintModel);
+                } catch (\Throwable) {}
+            }
 
             $this->notifyAssignedTechnician($assignedTo, (int) $id, $insertData['title'], $schedDate, $schedTime);
 
@@ -1021,6 +1087,7 @@ class Index extends BaseEnterpriseList
             'type' => (string) ($row->type ?? 'preventive'),
             'status' => (string) ($row->status ?? 'scheduled'),
             'priority' => (string) ($row->priority ?? 'medium'),
+            'estimated_hours' => !empty($row->estimated_hours) ? (string) (fmod((float) $row->estimated_hours, 1) === 0.0 ? (int) $row->estimated_hours : $row->estimated_hours) : '2',
             'device_type' => (string) ($row->device_type ?? 'router'),
             'device_name' => (string) ($row->device_name ?? ''),
             'location_name' => (string) ($row->location_name ?? ''),
@@ -1071,6 +1138,7 @@ class Index extends BaseEnterpriseList
                 'type' => $this->editMaint['type'] ?? 'preventive',
                 'status' => $newStatus,
                 'priority' => $this->editMaint['priority'] ?? 'medium',
+                'estimated_hours' => !empty($this->editMaint['estimated_hours']) ? (float) $this->editMaint['estimated_hours'] : 2,
                 'device_type' => $this->editMaint['device_type'] ?? 'router',
                 'device_name' => trim((string) ($this->editMaint['device_name'] ?? '')) ?: null,
                 'location_name' => trim((string) ($this->editMaint['location_name'] ?? '')) ?: null,
@@ -1085,6 +1153,13 @@ class Index extends BaseEnterpriseList
             ];
 
             DB::table('support_maintenances')->where('id', $id)->update($updateData);
+
+            $maintModel = \App\Models\Support\SupportMaintenance::find($id);
+            if ($maintModel) {
+                try {
+                    app(\App\Services\Support\SlaTrackingService::class)->initializeSla($maintModel, force: true);
+                } catch (\Throwable) {}
+            }
 
             if ($newTechId && (int) ($existing->assigned_to ?? 0) !== $newTechId) {
                 $this->notifyAssignedTechnician(
