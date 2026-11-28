@@ -31,7 +31,17 @@
                         <div class="mt-2 text-xs text-slate-500 flex items-center gap-4 flex-wrap">
                             <span class="flex items-center gap-1"><span class="material-symbols-outlined notranslate text-[14px]" translate="no">call</span> {{ $job->customer_phone }}</span>
                             <span class="flex items-center gap-1"><span class="material-symbols-outlined notranslate text-[14px]" translate="no">location_on</span> {{ $job->customer_address }}</span>
-                            <span class="flex items-center gap-1"><span class="material-symbols-outlined notranslate text-[14px]" translate="no">calendar_today</span> {{ $job->created_at ? \Carbon\Carbon::parse($job->created_at)->format('d M Y, H:i') : '-' }}</span>
+                            @php
+                                $psbDateStr = '-';
+                                if (!empty($job->created_at)) {
+                                    try {
+                                        $psbDateStr = \Carbon\Carbon::parse($job->created_at)->format('d M Y, H:i');
+                                    } catch (\Throwable) {
+                                        $psbDateStr = is_string($job->created_at) ? $job->created_at : '-';
+                                    }
+                                }
+                            @endphp
+                            <span class="flex items-center gap-1"><span class="material-symbols-outlined notranslate text-[14px]" translate="no">calendar_today</span> {{ $psbDateStr }}</span>
                         </div>
                     </div>
                 </div>

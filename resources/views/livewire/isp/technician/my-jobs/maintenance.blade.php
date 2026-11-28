@@ -67,7 +67,17 @@
                 <div class="flex justify-between items-start gap-2 mb-3 pb-2.5 border-b border-slate-100 dark:border-slate-800">
                     <div class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 text-xs font-semibold">
                         <span class="material-symbols-outlined text-sky-500 text-sm">calendar_month</span>
-                        {{ $job->date ? \Carbon\Carbon::parse($job->date)->format('d M Y, H:i') : '-' }}
+                        @php
+                            $mDateStr = '-';
+                            if (!empty($job->date)) {
+                                try {
+                                    $mDateStr = \Carbon\Carbon::parse($job->date)->format('d M Y, H:i');
+                                } catch (\Throwable) {
+                                    $mDateStr = is_string($job->date) ? $job->date : '-';
+                                }
+                            }
+                        @endphp
+                        {{ $mDateStr }}
                     </div>
                     <div class="flex items-center gap-1.5 shrink-0">
                         <span class="px-2 py-0.5 bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-lg text-[10px] font-bold uppercase">
@@ -139,8 +149,18 @@
                             Selesaikan
                         </button>
                     @else
+                        @php
+                            $compDateStr = '-';
+                            if (!empty($job->completed_at)) {
+                                try {
+                                    $compDateStr = \Carbon\Carbon::parse($job->completed_at)->format('d M Y, H:i');
+                                } catch (\Throwable) {
+                                    $compDateStr = is_string($job->completed_at) ? $job->completed_at : '-';
+                                }
+                            }
+                        @endphp
                         <div class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold ml-auto">
-                            Selesai: {{ $job->completed_at ? \Carbon\Carbon::parse($job->completed_at)->format('d M Y, H:i') : '-' }}
+                            Selesai: {{ $compDateStr }}
                         </div>
                         @if(!$job->is_locked)
                             <button wire:click="openCompleteModal('{{ $job->source }}', {{ $job->id }}, true)" type="button"

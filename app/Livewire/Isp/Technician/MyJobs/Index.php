@@ -893,6 +893,11 @@ class Index extends Component
                     'longitude' => $cs->customer?->longitude,
                     'survey_id' => null,
                     'ticket_id' => null,
+                    'maint_id' => null,
+                    'sla_due_at' => null,
+                    'sla_started_at' => null,
+                    'sla_status' => 'normal',
+                    'resolution_notes' => null,
                 ]);
             }
 
@@ -1152,6 +1157,13 @@ class Index extends Component
                     'survey_id' => null,
                     'ticket_id' => null,
                     'maint_id' => $mt->id,
+                    'sla_due_at' => null,
+                    'sla_started_at' => null,
+                    'sla_status' => 'normal',
+                    'customer_id' => null,
+                    'reseller_name' => null,
+                    'reseller_id' => null,
+                    'photos' => null,
                 ]);
             }
         }
@@ -1211,6 +1223,15 @@ class Index extends Component
                     'longitude' => $survey->prospect?->longitude ?? $survey->longitude,
                     'survey_id' => $survey->id,
                     'ticket_id' => null,
+                    'maint_id' => null,
+                    'sla_due_at' => null,
+                    'sla_started_at' => null,
+                    'sla_status' => 'normal',
+                    'customer_id' => null,
+                    'reseller_name' => null,
+                    'reseller_id' => null,
+                    'photos' => null,
+                    'resolution_notes' => null,
                 ]);
             }
         }

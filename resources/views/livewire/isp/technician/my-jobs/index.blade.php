@@ -134,7 +134,17 @@
             <div class="flex flex-wrap items-center justify-between gap-1.5 mb-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
                 <div class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs font-semibold">
                     <span class="material-symbols-outlined text-indigo-500 text-sm">event</span>
-                    <span>{{ $job->date ? \Carbon\Carbon::parse($job->date)->format('d M Y, H:i') : '-' }}</span>
+                    @php
+                        $jobDateStr = '-';
+                        if (!empty($job->date)) {
+                            try {
+                                $jobDateStr = \Carbon\Carbon::parse($job->date)->format('d M Y, H:i');
+                            } catch (\Throwable) {
+                                $jobDateStr = is_string($job->date) ? $job->date : '-';
+                            }
+                        }
+                    @endphp
+                    <span>{{ $jobDateStr }}</span>
                 </div>
                 <div class="flex flex-wrap items-center gap-1.5 ml-auto">
                     <span class="px-2 py-0.5 {{ $job->job_type === 'ticket' ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800' : ($job->job_type === 'maintenance' ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 border border-sky-200 dark:border-sky-800' : ($job->job_type === 'installation' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800' : 'bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800')) }} rounded-lg text-[10px] font-bold uppercase whitespace-nowrap">

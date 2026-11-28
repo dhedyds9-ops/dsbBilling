@@ -48,8 +48,15 @@
                     <span>&bull;</span>
                     <span>Prioritas: <span class="uppercase font-bold text-slate-700 dark:text-slate-300">{{ $jobData['priority'] ?? 'Normal' }}</span></span>
                     @if(!empty($jobData['sla_due_at']))
+                        @php
+                            try {
+                                $slaDueFormatted = \Carbon\Carbon::parse($jobData['sla_due_at'])->format('d M Y H:i');
+                            } catch (\Throwable) {
+                                $slaDueFormatted = is_string($jobData['sla_due_at']) ? $jobData['sla_due_at'] : '-';
+                            }
+                        @endphp
                         <span>&bull;</span>
-                        <span>Batas SLA: <strong class="text-slate-700 dark:text-slate-300">{{ \Carbon\Carbon::parse($jobData['sla_due_at'])->format('d M Y H:i') }} WIB</strong></span>
+                        <span>Batas SLA: <strong class="text-slate-700 dark:text-slate-300">{{ $slaDueFormatted }} WIB</strong></span>
                     @endif
                 </p>
             </div>
@@ -197,7 +204,17 @@
                         <div>
                             <p class="text-xs font-bold text-slate-800 dark:text-slate-200">Pekerjaan Dibuat / Ditugaskan</p>
                             <p class="text-[11px] text-slate-500 font-mono">
-                                {{ !empty($jobData['scheduled_at']) ? \Carbon\Carbon::parse($jobData['scheduled_at'])->format('d M Y, H:i') : '-' }}
+                                @php
+                                    $schedStr = '-';
+                                    if (!empty($jobData['scheduled_at'])) {
+                                        try {
+                                            $schedStr = \Carbon\Carbon::parse($jobData['scheduled_at'])->format('d M Y, H:i');
+                                        } catch (\Throwable) {
+                                            $schedStr = is_string($jobData['scheduled_at']) ? $jobData['scheduled_at'] : '-';
+                                        }
+                                    }
+                                @endphp
+                                {{ $schedStr }}
                             </p>
                         </div>
                     </div>
@@ -212,7 +229,17 @@
                                 Mulai Dikerjakan
                             </p>
                             <p class="text-[11px] text-slate-500 font-mono">
-                                {{ !empty($jobData['started_at']) ? \Carbon\Carbon::parse($jobData['started_at'])->format('d M Y, H:i') : (($jobData['status'] ?? '') === 'in_progress' ? 'Sedang berlangsung' : 'Belum dimulai') }}
+                                @php
+                                    $startedStr = ($jobData['status'] ?? '') === 'in_progress' ? 'Sedang berlangsung' : 'Belum dimulai';
+                                    if (!empty($jobData['started_at'])) {
+                                        try {
+                                            $startedStr = \Carbon\Carbon::parse($jobData['started_at'])->format('d M Y, H:i');
+                                        } catch (\Throwable) {
+                                            $startedStr = is_string($jobData['started_at']) ? $jobData['started_at'] : $startedStr;
+                                        }
+                                    }
+                                @endphp
+                                {{ $startedStr }}
                             </p>
                         </div>
                     </div>
@@ -227,7 +254,17 @@
                                 Pekerjaan Selesai
                             </p>
                             <p class="text-[11px] text-slate-500 font-mono">
-                                {{ !empty($jobData['completed_at']) ? \Carbon\Carbon::parse($jobData['completed_at'])->format('d M Y, H:i') : (!empty($jobData['is_completed']) ? 'Selesai' : 'Belum selesai') }}
+                                @php
+                                    $completedStr = !empty($jobData['is_completed']) ? 'Selesai' : 'Belum selesai';
+                                    if (!empty($jobData['completed_at'])) {
+                                        try {
+                                            $completedStr = \Carbon\Carbon::parse($jobData['completed_at'])->format('d M Y, H:i');
+                                        } catch (\Throwable) {
+                                            $completedStr = is_string($jobData['completed_at']) ? $jobData['completed_at'] : $completedStr;
+                                        }
+                                    }
+                                @endphp
+                                {{ $completedStr }}
                             </p>
                         </div>
                     </div>

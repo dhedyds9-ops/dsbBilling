@@ -7,8 +7,16 @@
 ])
 
 @php
-    $dueCarbon = $dueAt ? \Carbon\Carbon::parse($dueAt) : null;
-    $startCarbon = $startedAt ? \Carbon\Carbon::parse($startedAt) : null;
+    try {
+        $dueCarbon = $dueAt ? \Carbon\Carbon::parse($dueAt) : null;
+    } catch (\Throwable) {
+        $dueCarbon = null;
+    }
+    try {
+        $startCarbon = $startedAt ? \Carbon\Carbon::parse($startedAt) : null;
+    } catch (\Throwable) {
+        $startCarbon = null;
+    }
     $dueUnix = $dueCarbon ? $dueCarbon->timestamp : 0;
     $startUnix = $startCarbon ? $startCarbon->timestamp : 0;
     $nowUnix = now()->timestamp;
