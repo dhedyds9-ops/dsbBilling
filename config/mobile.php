@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10135,
-        'latest_version_name' => '1.1.35',
+        'latest_version_code' => 10136,
+        'latest_version_name' => '1.1.36',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'https://winets.mstore.id') . '/downloads/dsbilling-technician.apk',
-        'release_notes' => "dsBilling Staff & Reseller v1.1.35:\n- Perbaikan Kritis Crash Bukti Kerja (Work Evidence): Memperbaiki bug InflateException (ClassNotFoundException android.view.div) pada dialog upload evidensi dan foto pekerjaan teknisi.\n- Perbaikan Kritis Provisioning TR-069 GenieACS: Konfigurasi SSID Wi-Fi, sandi radio, WAN PPPoE, dan Hotspot Bridge 100% terkirim dan diaplikasikan ke hardware modem ONU fisik (mengeliminasi CWMP Fault 9005 dan 9007).\n- Akses Terpadu Sensus Area: Menu Sensus Area (Audit Fisik Lapangan, Cek Port ODP, Validasi GPS) kini resmi dapat diakses oleh Teknisi, Reseller, dan Administrator di Android & Web Portal.",
+        'release_notes' => "dsBilling Staff & Reseller v1.1.36:\n- OTA Auto-Update In-App: Pengunduhan dan instalasi pembaruan otomatis langsung di dalam aplikasi dilengkapi indikator persentase real-time, bebas hambatan perizinan OS.\n- Perbaikan Crash Bukti Kerja (Work Evidence): Mengatasi error ClassNotFoundException android.view.div pada dialog bukti kerja & evidensi teknisi.\n- Integrasi Penuh TR-069 GenieACS: Sinkronisasi SSID Wi-Fi, sandi radio, WAN PPPoE, Hotspot Bridge ke hardware modem ONU fisik (CWMP Fault 9005 & 9007 tuntas terselesaikan).\n- Akses Terpadu Sensus Area: Menu Sensus Area (Audit Fisik Lapangan, Cek Port ODP, Validasi GPS) resmi untuk Teknisi, Reseller, dan Administrator.",
     ],
     'customer' => [
         'latest_version_code' => 10112,

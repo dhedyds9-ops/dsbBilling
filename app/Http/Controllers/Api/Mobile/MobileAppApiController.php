@@ -23,7 +23,7 @@ class MobileAppApiController extends Controller
         $configKey = ($app === 'customer') ? 'mobile.customer' : 'mobile.staff';
         $appConfig = config($configKey, []);
 
-        $defaultApk = ($app === 'customer') ? 'dsbilling-customer-release.apk' : 'dsbilling-mobile-release.apk';
+        $defaultApk = ($app === 'customer') ? 'dsbilling-customer-release.apk' : 'dsbilling-technician.apk';
         $defaultName = ($app === 'customer') ? 'dsBilling Customer' : 'dsBilling Staff';
 
         $latestVersionCode = (int) (config('mobile.latest_version_code') ?? $appConfig['latest_version_code'] ?? 10101);
@@ -31,11 +31,11 @@ class MobileAppApiController extends Controller
         $minimumSupportedCode = (int) (config('mobile.minimum_supported_code') ?? $appConfig['minimum_supported_code'] ?? 1);
 
         $configuredUrl = (string) ($appConfig['download_url'] ?? config('mobile.download_url') ?? '');
-        if (empty($configuredUrl) || str_contains($configuredUrl, 'localhost') || str_contains($configuredUrl, '127.0.0.1')) {
-            $downloadUrl = $request->getSchemeAndHttpHost() . "/downloads/{$defaultApk}";
-        } else {
-            $downloadUrl = $configuredUrl;
-        }
+        $urlPath = parse_url($configuredUrl, PHP_URL_PATH);
+        $filename = $urlPath ? basename($urlPath) : $defaultApk;
+
+        // Use incoming request scheme & host so mobile client always downloads from reachable host
+        $downloadUrl = $request->getSchemeAndHttpHost() . "/downloads/{$filename}";
 
         // Anti-cache query parameter to ensure download is always fresh
         $separator = str_contains($downloadUrl, '?') ? '&' : '?';
