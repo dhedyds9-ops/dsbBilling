@@ -325,11 +325,24 @@
                         <span>Foto Bukti Pekerjaan ({{ count($job->photos) }}):</span>
                     </div>
                     <div class="grid grid-cols-3 gap-2">
-                        @foreach($job->photos as $photoUrl)
+                        @foreach($job->photos as $photoItem)
                             @php
-                                $secureUrl = \Illuminate\Support\Str::startsWith($photoUrl, ['http://', 'https://', '/technician-portal'])
-                                    ? $photoUrl
-                                    : (\Illuminate\Support\Str::contains($photoUrl, 'tickets/') ? route('technician.tickets.photo', ['ticket' => $job->id, 'filename' => basename($photoUrl)]) : asset($photoUrl));
+                                $photoPath = '';
+                                if (is_string($photoItem)) {
+                                    $photoPath = $photoItem;
+                                } elseif (is_array($photoItem)) {
+                                    $photoPath = $photoItem['url'] ?? $photoItem['path'] ?? $photoItem['file'] ?? (is_string(reset($photoItem)) ? reset($photoItem) : '');
+                                } elseif (is_object($photoItem)) {
+                                    $photoPath = $photoItem->url ?? $photoItem->path ?? $photoItem->file ?? '';
+                                }
+
+                                if (empty($photoPath) || !is_string($photoPath)) {
+                                    continue;
+                                }
+
+                                $secureUrl = \Illuminate\Support\Str::startsWith($photoPath, ['http://', 'https://', '/technician-portal'])
+                                    ? $photoPath
+                                    : (\Illuminate\Support\Str::contains($photoPath, 'tickets/') ? route('technician.tickets.photo', ['ticket' => $job->raw_id ?? $job->ticket_id ?? $job->id, 'filename' => basename($photoPath)]) : asset($photoPath));
                             @endphp
                             <a href="{{ $secureUrl }}" target="_blank" class="block aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 hover:opacity-90 transition-opacity">
                                 <img src="{{ $secureUrl }}" alt="Bukti Lapangan" class="w-full h-full object-cover">

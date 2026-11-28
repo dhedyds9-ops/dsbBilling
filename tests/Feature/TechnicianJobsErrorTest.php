@@ -140,5 +140,41 @@ class TechnicianJobsErrorTest extends TestCase
         $component = Livewire::test(\App\Livewire\NotificationCenter::class);
         $component->assertStatus(200);
     }
+
+    public function test_05_ticket_with_structured_array_photos_renders_without_type_error(): void
+    {
+        $this->actingAs($this->technician);
+
+        $customer = Customer::create([
+            'name' => 'Pak Joko',
+            'phone' => '081299998888',
+            'address' => 'Jl. Kenanga No. 5',
+            'branch_id' => $this->branch->id,
+        ]);
+
+        $ticket = Ticket::create([
+            'title' => 'Kabel Putus Tertabrak Truk',
+            'description' => 'Dropcore putus di tiang',
+            'customer_id' => $customer->id,
+            'branch_id' => $this->branch->id,
+            'assigned_to' => $this->technician->id,
+            'status' => 'in_progress',
+            'priority' => 'critical',
+            'photos' => [
+                ['url' => 'https://winets.mstore.id/storage/evidence1.jpg', 'category' => 'before'],
+                ['path' => 'tickets/5/evidence2.jpg', 'category' => 'after'],
+                'simple_string_path.jpg',
+            ],
+        ]);
+
+        $component = Livewire::test(\App\Livewire\Isp\Technician\MyJobs\Index::class);
+        $component->assertStatus(200)
+            ->assertSee('Kabel Putus Tertabrak Truk');
+
+        // Also test tickets index component
+        $ticketsComponent = Livewire::test(\App\Livewire\Isp\Technician\Tickets\Index::class);
+        $ticketsComponent->assertStatus(200)
+            ->assertSee('Kabel Putus Tertabrak Truk');
+    }
 }
 

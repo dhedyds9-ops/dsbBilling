@@ -444,7 +444,11 @@
                     @php $photos = is_array($odc->photos) ? $odc->photos : []; @endphp
                     @if(count($photos) > 0)
                         <div class="grid grid-cols-2 gap-2">
-                            @foreach($photos as $pIdx => $photoUrl)
+                            @foreach($photos as $pIdx => $photoItem)
+                                @php
+                                    $photoUrl = is_array($photoItem) ? ($photoItem['url'] ?? $photoItem['path'] ?? (is_string(reset($photoItem)) ? reset($photoItem) : '')) : (is_string($photoItem) ? $photoItem : '');
+                                @endphp
+                                @if(!empty($photoUrl))
                                 <div class="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video bg-slate-100 dark:bg-slate-800">
                                     <img src="{{ $photoUrl }}" alt="Dokumentasi ODC" class="w-full h-full object-cover">
                                     <button type="button" wire:click="deletePhoto({{ $pIdx }})" wire:confirm="Hapus foto ini?"
@@ -452,6 +456,7 @@
                                         <span class="material-symbols-outlined text-xs">delete</span>
                                     </button>
                                 </div>
+                                @endif
                             @endforeach
                         </div>
                     @else

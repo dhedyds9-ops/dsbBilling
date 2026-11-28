@@ -871,8 +871,10 @@ Route::get('/storage/{path}', function ($path) {
             foreach ($models as $m) {
                 if ($m && is_array($m->photos)) {
                     foreach ($m->photos as $p) {
-                        if (str_starts_with($p, 'data:image')) {
-                            [$header, $data] = explode(',', $p, 2);
+                        $pStr = is_array($p) ? ($p['url'] ?? $p['path'] ?? (is_string(reset($p)) ? reset($p) : '')) : (is_string($p) ? $p : '');
+                        if (empty($pStr)) continue;
+                        if (str_starts_with($pStr, 'data:image')) {
+                            [$header, $data] = explode(',', $pStr, 2);
                             preg_match('#data:(image/\w+);base64#', $header, $matches);
                             $mime = $matches[1] ?? 'image/jpeg';
                             return response(base64_decode($data))->header('Content-Type', $mime)->header('Cache-Control', 'public, max-age=86400');
@@ -971,15 +973,16 @@ Route::get('/node-photo/{type}/{id}', function ($type, $id) {
 
     if ($model && !empty($model->photos) && is_array($model->photos)) {
         foreach ($model->photos as $p) {
-            if (empty($p)) continue;
-            if (str_contains($p, 'data:image')) {
-                $dataUri = strstr($p, 'data:image');
+            $pStr = is_array($p) ? ($p['url'] ?? $p['path'] ?? (is_string(reset($p)) ? reset($p) : '')) : (is_string($p) ? $p : '');
+            if (empty($pStr)) continue;
+            if (str_contains($pStr, 'data:image')) {
+                $dataUri = strstr($pStr, 'data:image');
                 [$header, $data] = explode(',', $dataUri, 2);
                 preg_match('#data:(image/\w+);base64#', $header, $m);
                 $mime = $m[1] ?? 'image/jpeg';
                 return response(base64_decode($data))->header('Content-Type', $mime)->header('Cache-Control', 'public, max-age=86400');
             }
-            $cleanPath = ltrim(preg_replace('/^https?:\/\/[^\/]+(\/storage\/.*)$/', '$1', (string) $p), '/');
+            $cleanPath = ltrim(preg_replace('/^https?:\/\/[^\/]+(\/storage\/.*)$/', '$1', $pStr), '/');
             $cleanPath = preg_replace('/^storage\//', '', $cleanPath);
             $basename = basename($cleanPath);
 

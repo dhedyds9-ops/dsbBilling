@@ -530,10 +530,14 @@
             @if(count($photos) > 0)
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     @foreach($photos as $idx => $photo)
+                        @php
+                            $photoPath = is_array($photo) ? ($photo['url'] ?? $photo['path'] ?? (is_string(reset($photo)) ? reset($photo) : '')) : (is_string($photo) ? $photo : '');
+                        @endphp
+                        @if(!empty($photoPath))
                         <div class="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video bg-slate-100 dark:bg-slate-900">
-                            <img src="{{ asset($photo) }}" class="w-full h-full object-cover">
+                            <img src="{{ asset($photoPath) }}" class="w-full h-full object-cover">
                             <div class="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                <a href="{{ asset($photo) }}" target="_blank" class="p-1.5 bg-white text-slate-800 rounded-lg hover:bg-slate-100">
+                                <a href="{{ asset($photoPath) }}" target="_blank" class="p-1.5 bg-white text-slate-800 rounded-lg hover:bg-slate-100">
                                     <span class="material-symbols-outlined text-sm">visibility</span>
                                 </a>
                                 <button type="button" wire:click="deletePhoto({{ $idx }})" wire:confirm="Hapus foto ini?" class="p-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700">
@@ -541,6 +545,7 @@
                                 </button>
                             </div>
                         </div>
+                        @endif
                     @endforeach
                 </div>
             @else
