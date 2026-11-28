@@ -792,6 +792,18 @@ class Index extends Component
         }
     }
 
+    private function applyTechnicianIdsScope($query, $userId, string $column = 'technician_ids')
+    {
+        $query->whereNotNull($column)
+            ->where($column, '!=', '');
+
+        if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'])) {
+            $query->whereRaw("JSON_VALID(`{$column}`)");
+        }
+
+        $query->whereJsonContains($column, $userId);
+    }
+
     public function getJobsProperty()
     {
         $userId = Auth::id();
@@ -898,11 +910,7 @@ class Index extends Component
                     $q->where('technician_id', $userId)
                       ->orWhere('assigned_to', $userId);
                     if ($hasInstTechIds) {
-                        $q->orWhere(function ($sub) use ($userId) {
-                            $sub->whereNotNull('technician_ids')
-                                ->where('technician_ids', '!=', '')
-                                ->whereJsonContains('technician_ids', $userId);
-                        });
+                        $q->orWhere(fn ($sub) => $this->applyTechnicianIdsScope($sub, $userId, 'technician_ids'));
                     }
                 });
             }
@@ -992,11 +1000,7 @@ class Index extends Component
                 $ticketQuery->where(function ($q) use ($userId, $hasTicketTechIds) {
                     $q->where('assigned_to', $userId);
                     if ($hasTicketTechIds) {
-                        $q->orWhere(function ($sub) use ($userId) {
-                            $sub->whereNotNull('technician_ids')
-                                ->where('technician_ids', '!=', '')
-                                ->whereJsonContains('technician_ids', $userId);
-                        });
+                        $q->orWhere(fn ($sub) => $this->applyTechnicianIdsScope($sub, $userId, 'technician_ids'));
                     }
                 });
             }
@@ -1211,7 +1215,16 @@ class Index extends Component
             }
         }
 
-        return $items->sortByDesc(fn ($item) => $item->date ? \Carbon\Carbon::parse($item->date)->timestamp : 0);
+        return $items->sortByDesc(function ($item) {
+            if (empty($item->date)) {
+                return 0;
+            }
+            try {
+                return \Carbon\Carbon::parse($item->date)->timestamp;
+            } catch (\Throwable) {
+                return 0;
+            }
+        });
     }
 
     public function getStatsProperty()
@@ -1242,11 +1255,7 @@ class Index extends Component
                 $q->where(function ($sub) use ($userId, $hasInstTechIds) {
                     $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId);
                     if ($hasInstTechIds) {
-                        $sub->orWhere(function ($jsonQ) use ($userId) {
-                            $jsonQ->whereNotNull('technician_ids')
-                                  ->where('technician_ids', '!=', '')
-                                  ->whereJsonContains('technician_ids', $userId);
-                        });
+                        $sub->orWhere(fn ($jsonQ) => $this->applyTechnicianIdsScope($jsonQ, $userId, 'technician_ids'));
                     }
                 });
             })
@@ -1258,11 +1267,7 @@ class Index extends Component
                 $q->where(function ($sub) use ($userId, $hasInstTechIds) {
                     $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId);
                     if ($hasInstTechIds) {
-                        $sub->orWhere(function ($jsonQ) use ($userId) {
-                            $jsonQ->whereNotNull('technician_ids')
-                                  ->where('technician_ids', '!=', '')
-                                  ->whereJsonContains('technician_ids', $userId);
-                        });
+                        $sub->orWhere(fn ($jsonQ) => $this->applyTechnicianIdsScope($jsonQ, $userId, 'technician_ids'));
                     }
                 });
             })
@@ -1286,11 +1291,7 @@ class Index extends Component
                 $q->where(function ($sub) use ($userId, $hasTicketTechIds) {
                     $sub->where('assigned_to', $userId);
                     if ($hasTicketTechIds) {
-                        $sub->orWhere(function ($jsonQ) use ($userId) {
-                            $jsonQ->whereNotNull('technician_ids')
-                                  ->where('technician_ids', '!=', '')
-                                  ->whereJsonContains('technician_ids', $userId);
-                        });
+                        $sub->orWhere(fn ($jsonQ) => $this->applyTechnicianIdsScope($jsonQ, $userId, 'technician_ids'));
                     }
                 });
             })
@@ -1302,11 +1303,7 @@ class Index extends Component
                 $q->where(function ($sub) use ($userId, $hasTicketTechIds) {
                     $sub->where('assigned_to', $userId);
                     if ($hasTicketTechIds) {
-                        $sub->orWhere(function ($jsonQ) use ($userId) {
-                            $jsonQ->whereNotNull('technician_ids')
-                                  ->where('technician_ids', '!=', '')
-                                  ->whereJsonContains('technician_ids', $userId);
-                        });
+                        $sub->orWhere(fn ($jsonQ) => $this->applyTechnicianIdsScope($jsonQ, $userId, 'technician_ids'));
                     }
                 });
             })
@@ -1375,6 +1372,10 @@ class Index extends Component
             'odps' => $odps,
             'isAdmin' => $this->isAdminOversight(),
             'availableMaterials' => $availableMaterials,
+            'activeTab' => $this->activeTab,
+            'scope' => $this->scope,
+            'jobType' => $this->jobType,
+            'search' => $this->search,
         ]);
     }
 }
