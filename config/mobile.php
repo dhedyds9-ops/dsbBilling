@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10131,
-        'latest_version_name' => '1.1.31',
+        'latest_version_code' => 10135,
+        'latest_version_name' => '1.1.35',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'https://winets.mstore.id') . '/downloads/dsbilling-technician.apk',
-        'release_notes' => "dsBilling Staff & Reseller v1.1.31:\n- Paritas Menu Reseller Lengkap (12 Akses Cepat): Menghadirkan kembali User Online, Peta Jaringan, SpeedTest, dan 1-Klik Web Portal untuk akun Reseller.\n- Eliminasi Redundansi Menu: Tombol duplikat Komisi diganti dengan User Online karena Komisi sudah terpampang jelas pada kartu KPI utama.\n- Katalog Material Gudang Lengkap: Menampilkan seluruh stok barang di gudang cabang tanpa batas 20 item.\n- Perapian Tampilan Detail ONT: Nilai CPU & RAM yang tidak didukung ditampilkan sebagai 0% dengan tata letak ringkas, proporsional, dan tanpa overflow.\n- Monitoring Koneksi WAN Aktif: Menampilkan daftar koneksi WAN aktif (PPPoE/IPoE, IP WAN, status terhubung, dan VLAN) di dalam panel Pengaturan WAN.",
+        'release_notes' => "dsBilling Staff & Reseller v1.1.35:\n- Perbaikan Kritis Crash Bukti Kerja (Work Evidence): Memperbaiki bug InflateException (ClassNotFoundException android.view.div) pada dialog upload evidensi dan foto pekerjaan teknisi.\n- Perbaikan Kritis Provisioning TR-069 GenieACS: Konfigurasi SSID Wi-Fi, sandi radio, WAN PPPoE, dan Hotspot Bridge 100% terkirim dan diaplikasikan ke hardware modem ONU fisik (mengeliminasi CWMP Fault 9005 dan 9007).\n- Akses Terpadu Sensus Area: Menu Sensus Area (Audit Fisik Lapangan, Cek Port ODP, Validasi GPS) kini resmi dapat diakses oleh Teknisi, Reseller, dan Administrator di Android & Web Portal.",
     ],
     'customer' => [
         'latest_version_code' => 10112,

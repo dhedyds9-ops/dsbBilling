@@ -127,7 +127,14 @@ class MobileWorkforceApiTest extends TestCase
             'material_name' => 'Dropcore 1 Core 100m',
         ]);
 
-        // 4. Complete Work Order
+        // 4. Complete Work Order (Attach required evidence photos adhering to Phase 12 Documentation Gate)
+        $wo->update([
+            'evidence_photos' => [
+                ['uuid' => (string) \Illuminate\Support\Str::uuid(), 'url' => 'evidence/before.jpg', 'category' => 'before'],
+                ['uuid' => (string) \Illuminate\Support\Str::uuid(), 'url' => 'evidence/after.jpg', 'category' => 'after'],
+            ],
+        ]);
+
         $compRes = $this->withHeader('Authorization', 'Bearer ' . $token)
             ->postJson("/api/mobile/workforce/work-orders/{$wo->id}/complete");
 

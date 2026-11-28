@@ -1121,9 +1121,24 @@ class Wizard extends Component
                     $this->provisioning_message = 'Data pelanggan & layanan PPPoE berhasil disimpan. Status hardware: ' . ($executionResult['hardware_error'] ?? 'Router belum terjangkau.');
                 }
 
-                // Push Konfigurasi Wi-Fi SSID & Password via TR-069 GenieACS untuk PPPoE
+                // Push Konfigurasi WAN PPPoE & Wi-Fi via TR-069 GenieACS untuk PPPoE
                 $wifiSsid = $onu->wifi_ssid ?: trim((string)($this->wifi_ssid ?? ''));
                 $wifiPass = $onu->wifi_password ?: trim((string)($this->wifi_password ?? ''));
+                $npVlan = $npId ? (\App\Models\ISP\NetworkProfile::withoutGlobalScopes()->where('id', $npId)->value('vlan_id') ?? 200) : 200;
+
+                try {
+                    $acsProv = app(\App\Services\ISP\GenieAcsProvisioningService::class);
+                    $acsProv->provisionOnt($onu, [
+                        'pppoe_username' => $service->username ?? $this->pppoe_username,
+                        'pppoe_password' => $this->pppoe_password,
+                        'vlan_id' => $npVlan,
+                        'wifi_ssid' => $wifiSsid,
+                        'wifi_password' => $wifiPass ?: null,
+                        'force_retry' => true,
+                    ]);
+                } catch (\Throwable $pe) {
+                    \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal push WAN PPPoE TR-069 ke GenieACS: ' . $pe->getMessage());
+                }
 
                 if (!empty($wifiSsid)) {
                     try {

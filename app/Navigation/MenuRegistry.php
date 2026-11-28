@@ -260,6 +260,7 @@ class MenuRegistry
                             ['label' => 'Instalasi', 'route' => 'support.installation', 'active' => ['support.installation*', 'crm.installations*'], 'permission' => 'workforce.jobs.view'],
                             ['label' => 'Aktivasi', 'route' => 'crm.activations.index', 'active' => 'crm.activations.*', 'permission' => 'customer.view'],
                             ['label' => 'Maintenance', 'route' => 'support.maintenance', 'active' => 'support.maintenance', 'permission' => 'workforce.jobs.view'],
+                            ['label' => 'Sensus Area', 'route' => 'technician.audit.form', 'active' => 'technician.audit.*', 'permission' => 'workforce.jobs.view'],
                             ['label' => 'Riwayat WO', 'route' => 'support.work-orders.history', 'active' => 'support.work-orders.*', 'permission' => 'workforce.jobs.view'],
                         ]
                     ],
@@ -515,6 +516,7 @@ class MenuRegistry
                             ['label' => 'Data ODP', 'route' => 'reseller-portal.network.odps.index', 'active' => 'reseller-portal.network.odps.*', 'permission' => 'odp.view'],
                             ['label' => 'Data ONU', 'route' => 'reseller-portal.network.onus.index', 'active' => 'reseller-portal.network.onus.*'],
                             ['label' => 'Perangkat GenieACS', 'route' => 'reseller-portal.network.acs-devices.index', 'active' => 'reseller-portal.network.acs-devices.*'],
+                            ['label' => 'Sensus Area', 'route' => 'technician.audit.form', 'active' => ['technician.audit.*', 'reseller-portal.network.sensus*']],
                             ['label' => 'Ganti & Cabut', 'route' => 'reseller-portal.network.swap-ont', 'active' => ['reseller-portal.network.swap-ont*', 'reseller-portal.swap-ont*', 'reseller-portal.network.dismantle-ont*', 'reseller-portal.dismantle-ont*']],
                         ]
                     ],

@@ -528,7 +528,7 @@ class MobileCustomerApiController extends Controller
             'password' => 'nullable|string|min:3',
         ]);
 
-        return DB::transaction(function () use ($customer, $validated) {
+        return DB::transaction(function () use ($customer, $validated, $user) {
             if (isset($validated['name'])) $customer->name = trim($validated['name']);
             if (isset($validated['phone'])) $customer->phone = trim($validated['phone']);
             if (isset($validated['email'])) $customer->email = trim($validated['email']);

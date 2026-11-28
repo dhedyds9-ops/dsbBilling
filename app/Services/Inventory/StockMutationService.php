@@ -925,7 +925,8 @@ class StockMutationService
                     ]);
                 } else {
                     $isAdmin = $techUser && ($techUser->isSuperAdmin() || $techUser->hasAnyRole(['administrator', 'admin', 'manager', 'admin_gudang']));
-                    if (!$isAdmin) {
+                    $hasAnyCustody = InventoryCustody::whereIn('holder_id', $candidateHolderIds)->exists();
+                    if (!$isAdmin && $hasAnyCustody) {
                         throw new \InvalidArgumentException(
                             "Kewajiban inventaris belum terpenuhi: Perangkat ONT SN '{$snClean}' tidak ditemukan dalam custody aktif teknisi. Aktivasi PSB dibatalkan."
                         );

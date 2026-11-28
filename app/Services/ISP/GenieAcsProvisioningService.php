@@ -118,17 +118,25 @@ let isHuawei = (brand.indexOf("Huawei") !== -1 || brand.indexOf("EcomTech") !== 
 let isFiberHome = (brand.indexOf("FiberHome") !== -1 || sn.indexOf("FHTT") !== -1 || model.indexOf("AN5506") !== -1 || model.indexOf("HG6") !== -1);
 
 let pppPath = "";
-let wanDevices = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*.Username", {path: 1});
+try {
+    let wanDevices = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*.Username", {path: 1});
+    if (wanDevices && wanDevices.path) {
+        pppPath = wanDevices.path.replace(".Username", "");
+    }
+} catch (e) {}
 
-if (!wanDevices.size) {
-    wanDevices = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*", {path: 1});
+if (!pppPath) {
+    try {
+        let wanDevs = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*", {path: 1});
+        if (wanDevs && wanDevs.path) {
+            pppPath = wanDevs.path;
+        }
+    } catch (e) {}
 }
 
-if (wanDevices.size) {
-    for (let p of wanDevices) {
-        pppPath = p.path.replace(".Username", "");
-        break; 
-    }
+if (!pppPath) {
+    pppPath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1";
+    declare(pppPath, {path: 1}, {path: 1});
 }
 
 if (pppPath !== "") {
@@ -185,16 +193,14 @@ let isHuawei = (brand.indexOf("Huawei") !== -1 || brand.indexOf("EcomTech") !== 
 let isFiberHome = (brand.indexOf("FiberHome") !== -1 || sn.indexOf("FHTT") !== -1 || model.indexOf("AN5506") !== -1 || model.indexOf("HG6") !== -1);
 
 let pppPath = "";
-
-let wanDevices = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*", {path: 1});
-if (wanDevices.size) {
-    for (let p of wanDevices) {
-        pppPath = p.path;
-        break;
+try {
+    let wanDevices = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*", {path: 1});
+    if (wanDevices && wanDevices.path) {
+        pppPath = wanDevices.path;
     }
-}
+} catch (e) {}
 
-if (pppPath === "") {
+if (!pppPath) {
     declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1", {path: 1}, {path: 1});
     pppPath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1";
 }
@@ -645,6 +651,32 @@ JS,
         $hotspotSsid = $options['wifi_ssid'] ?? $onu->wifi_ssid ?? \App\Models\Setting::getValue('company.name', 'WINETS.ID');
 
         try {
+            // 1. Direct SetParameterValues attempt for immediate Bridge activation
+            try {
+                $bridgeParams = [
+                    'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Enable' => true,
+                    'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ConnectionType' => 'PPPoE_Bridged',
+                    'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.NATEnabled' => false,
+                    'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Name' => 'Bridged',
+                    'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ConnectionTrigger' => 'AlwaysOn',
+                ];
+                if ($vlanId && (int)$vlanId > 0) {
+                    $bridgeParams['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_ZTE-COM_VLANID'] = (int)$vlanId;
+                    $bridgeParams['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_ZTE-COM_VLANEnable'] = 1;
+                    $bridgeParams['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANEthernetLinkConfig.X_HW_VLAN'] = (int)$vlanId;
+                }
+                if ($hotspotSsid) {
+                    $bridgeParams['InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID'] = $hotspotSsid;
+                    $bridgeParams['InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType'] = 'None';
+                    $bridgeParams['InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BasicEncryptionModes'] = 'None';
+                    $bridgeParams['InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.Enable'] = true;
+                }
+                $this->driver->setParameterValues($deviceId, $bridgeParams);
+            } catch (\Throwable $dbe) {
+                Log::info("Direct Hotspot Bridge setParameterValues deferred: " . $dbe->getMessage());
+            }
+
+            // 2. Queue robust provision task for persistence
             $cleanId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $deviceId);
             $provName = "temp_hotspot_" . $cleanId;
             $rawScript = self::DEFAULT_PROVISIONS['dsBilling_Setup_Hotspot_Bridge']['script'] ?? '';

@@ -63,6 +63,100 @@ class WorkOrderHistory extends AdminComponent
         $this->resetPage();
     }
 
+    public function openDetailInspection(string $type, int $rawId): void
+    {
+        $wo = null;
+
+        if ($type === 'qc_approval' || $type === 'wo') {
+            $wo = WorkOrder::withoutGlobalScopes()->find($rawId);
+        } elseif ($type === 'installation') {
+            $wo = WorkOrder::withoutGlobalScopes()->where('installation_id', $rawId)->first();
+            if (!$wo) {
+                $inst = Installation::withoutGlobalScopes()->with(['customer.reseller', 'technician'])->find($rawId);
+                if ($inst) {
+                    $wo = WorkOrder::create([
+                        'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                        'company_id' => $inst->customer?->company_id ?? Auth::user()?->company_id,
+                        'branch_id' => $inst->customer?->branch_id ?? Auth::user()?->branch_id,
+                        'reseller_id' => $inst->customer?->reseller_id,
+                        'customer_id' => $inst->customer_id,
+                        'installation_id' => $inst->id,
+                        'type' => 'installation',
+                        'title' => 'Instalasi PSB: ' . ($inst->customer?->name ?? $inst->customer_name),
+                        'assigned_to' => $inst->assigned_to ?? $inst->technician_id,
+                        'status' => in_array($inst->status, ['verified', 'completed']) ? 'completed' : ($inst->status === 'in_progress' ? 'in_progress' : 'assigned'),
+                        'evidence_photos' => is_array($inst->photos) ? $inst->photos : [],
+                        'optical_rx_power' => $inst->optical_power ? (float) $inst->optical_power : null,
+                        'scheduled_at' => $inst->scheduled_at ?? $inst->created_at,
+                        'completed_at' => $inst->completed_at,
+                    ]);
+                }
+            } elseif (empty($wo->evidence_photos)) {
+                $inst = Installation::withoutGlobalScopes()->find($rawId);
+                if ($inst && !empty($inst->photos)) {
+                    $wo->update(['evidence_photos' => $inst->photos]);
+                }
+            }
+        } elseif ($type === 'repair' || $type === 'ticket') {
+            $wo = WorkOrder::withoutGlobalScopes()->where('ticket_id', $rawId)->first();
+            if (!$wo) {
+                $ticket = Ticket::withoutGlobalScopes()->with(['customer.reseller', 'assignedTo'])->find($rawId);
+                if ($ticket) {
+                    $wo = WorkOrder::create([
+                        'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                        'company_id' => $ticket->company_id ?? Auth::user()?->company_id,
+                        'branch_id' => $ticket->branch_id ?: ($ticket->customer?->branch_id ?: Auth::user()?->branch_id),
+                        'reseller_id' => $ticket->reseller_id ?? $ticket->customer?->reseller_id,
+                        'customer_id' => $ticket->customer_id ?? $ticket->user_id,
+                        'ticket_id' => $ticket->id,
+                        'type' => $ticket->category ?? 'troubleshooting',
+                        'title' => 'Perbaikan: ' . ($ticket->title ?: ($ticket->ticket_number . ' - ' . $ticket->subject)),
+                        'description' => $ticket->description ?? '',
+                        'assigned_to' => $ticket->assigned_to,
+                        'status' => in_array($ticket->status, ['resolved', 'closed']) ? 'completed' : ($ticket->status === 'in_progress' ? 'in_progress' : 'assigned'),
+                        'evidence_photos' => is_array($ticket->photos) ? $ticket->photos : [],
+                        'scheduled_at' => $ticket->created_at,
+                        'completed_at' => $ticket->resolved_at,
+                    ]);
+                }
+            } elseif (empty($wo->evidence_photos)) {
+                $ticket = Ticket::withoutGlobalScopes()->find($rawId);
+                if ($ticket && !empty($ticket->photos)) {
+                    $wo->update(['evidence_photos' => $ticket->photos]);
+                }
+            }
+        } elseif ($type === 'maintenance') {
+            $wo = WorkOrder::withoutGlobalScopes()->where('source_type', 'maintenance')->where('source_id', $rawId)->first();
+            if (!$wo) {
+                $maint = DB::table('support_maintenances')->where('id', $rawId)->first();
+                if ($maint) {
+                    $wo = WorkOrder::create([
+                        'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                        'company_id' => Auth::user()?->company_id,
+                        'branch_id' => $maint->branch_id ?: Auth::user()?->branch_id,
+                        'type' => 'maintenance',
+                        'source_type' => 'maintenance',
+                        'source_id' => $maint->id,
+                        'ticket_id' => $maint->ticket_id ?? null,
+                        'customer_id' => $maint->customer_id ?? null,
+                        'title' => 'Pemeliharaan: ' . ($maint->title ?: ($maint->device_name ?: 'Jaringan')),
+                        'description' => $maint->notes ?: 'Jadwal pemeliharaan berkala jaringan ISP.',
+                        'assigned_to' => $maint->assigned_to,
+                        'status' => $maint->status === 'completed' ? 'completed' : ($maint->status === 'in_progress' ? 'in_progress' : 'assigned'),
+                        'scheduled_at' => !empty($maint->scheduled_date) ? \Carbon\Carbon::parse($maint->scheduled_date) : now(),
+                        'completed_at' => $maint->completed_at ? \Carbon\Carbon::parse($maint->completed_at) : null,
+                    ]);
+                }
+            }
+        }
+
+        if ($wo) {
+            $this->openQcInspection($wo->id);
+        } else {
+            $this->dispatch('alert', ['type' => 'warning', 'message' => 'Data detail pekerjaan tidak ditemukan.']);
+        }
+    }
+
     public function openQcInspection(int $workOrderId): void
     {
         $this->selectedWoId = $workOrderId;
@@ -151,6 +245,11 @@ class WorkOrderHistory extends AdminComponent
         $m = $this->selectedMonth;
         $y = $this->selectedYear;
 
+        // Preload WorkOrder mappings untuk mengaitkan SPK & foto eviden secara instan (O(1))
+        $instWoMap = WorkOrder::withoutGlobalScopes()->whereNotNull('installation_id')->pluck('id', 'installation_id');
+        $ticketWoMap = WorkOrder::withoutGlobalScopes()->whereNotNull('ticket_id')->pluck('id', 'ticket_id');
+        $maintWoMap = WorkOrder::withoutGlobalScopes()->where('source_type', 'maintenance')->whereNotNull('source_id')->pluck('id', 'source_id');
+
         // 0. ANTREAN QC / WORK ORDERS PENDING APPROVAL
         $qcQuery = app(UnifiedQcApprovalService::class)->getPendingQcQuery(Auth::user());
         $this->pendingQcCount = $qcQuery->count();
@@ -186,11 +285,17 @@ class WorkOrderHistory extends AdminComponent
 
             if ($this->typeFilter === 'qc_approval' || $this->statusFilter === 'all' || $this->statusFilter === 'pending' || $this->statusFilter === 'pending_approval') {
                 foreach ($pendingWos as $wo) {
+                    $prefix = match(strtolower((string)$wo->type)) {
+                        'installation', 'psb', 'install' => 'SPK-PSB-',
+                        'troubleshooting', 'ticket', 'repair' => 'SPK-TKT-',
+                        'maintenance' => 'SPK-MNT-',
+                        default => 'SPK-WO-',
+                    };
                     $items->push((object)[
                         'id' => 'wo_' . $wo->id,
                         'raw_id' => $wo->id,
                         'work_order_id' => $wo->id,
-                        'code' => $wo->uuid ? ('SPK-' . strtoupper(substr(str_replace('-', '', $wo->uuid), 0, 6))) : ('SPK-' . $wo->id),
+                        'code' => $prefix . str_pad($wo->id, 4, '0', STR_PAD_LEFT),
                         'type' => 'qc_approval',
                         'type_badge' => 'Menunggu QC',
                         'service_type' => ucfirst($wo->type ?? 'Work Order'),
@@ -289,12 +394,13 @@ class WorkOrderHistory extends AdminComponent
                 $items->push((object)[
                     'id' => 'inst_' . $inst->id,
                     'raw_id' => $inst->id,
-                    'code' => $inst->uuid ? substr($inst->uuid, 0, 8) : ('INST-' . $inst->id),
+                    'work_order_id' => $instWoMap[$inst->id] ?? null,
+                    'code' => 'SPK-PSB-' . str_pad($inst->id, 4, '0', STR_PAD_LEFT),
                     'type' => 'installation',
                     'type_badge' => 'Pasang Baru (PSB)',
                     'service_type' => 'FTTH / ONT',
                     'customer_name' => $inst->customer?->name ?? $inst->customer_name,
-                    'customer_code' => $inst->customer?->code ?? ('SPK-' . $inst->id),
+                    'customer_code' => 'PSB #' . $inst->id,
                     'customer_phone' => $inst->customer?->phone ?? '-',
                     'customer_address' => $inst->customer?->address ?? ($inst->installation_address ?? 'Alamat pemasangan'),
                     'technician_name' => $techName,
@@ -379,12 +485,13 @@ class WorkOrderHistory extends AdminComponent
                 $items->push((object)[
                     'id' => 'ticket_' . $ticket->id,
                     'raw_id' => $ticket->id,
-                    'code' => $ticket->uuid ? ('TKT-' . substr(str_replace('-', '', $ticket->uuid), 0, 6)) : ('TIKET-' . $ticket->id),
+                    'work_order_id' => $ticketWoMap[$ticket->id] ?? null,
+                    'code' => 'SPK-TKT-' . str_pad($ticket->id, 4, '0', STR_PAD_LEFT),
                     'type' => 'repair',
                     'type_badge' => 'Gangguan (' . strtoupper($ticket->category ?? 'Internet') . ')',
                     'service_type' => 'TIKET',
                     'customer_name' => $ticket->customer?->name ?? 'Pelanggan #' . $ticket->customer_id,
-                    'customer_code' => $ticket->customer?->code ?? ('TIKET #' . $ticket->id),
+                    'customer_code' => 'TIKET #' . $ticket->id,
                     'customer_phone' => $ticket->customer?->phone ?? '-',
                     'customer_address' => $ticket->customer?->address ?? 'Alamat tidak tersedia',
                     'technician_name' => $ticket->assignedTo?->name ?? 'Teknisi Lapangan',
@@ -409,10 +516,31 @@ class WorkOrderHistory extends AdminComponent
         if (($this->typeFilter === 'all' || $this->typeFilter === 'maintenance') && Schema::hasTable('support_maintenances')) {
             $mQ = DB::table('support_maintenances')
                 ->leftJoin('users', 'support_maintenances.assigned_to', '=', 'users.id')
-                ->select(['support_maintenances.*', 'users.name as technician_name', 'users.email as technician_email']);
+                ->leftJoin('customers', 'support_maintenances.customer_id', '=', 'customers.id')
+                ->leftJoin('resellers', 'customers.reseller_id', '=', 'resellers.id')
+                ->select([
+                    'support_maintenances.*',
+                    'users.name as technician_name',
+                    'users.email as technician_email',
+                    'customers.reseller_id as customer_reseller_id',
+                    'resellers.name as customer_reseller_name',
+                ]);
+
+            // Jika filter 'all', sembunyikan record maintenance turunan dari tiket agar tidak muncul ganda (tiket sudah tampil di section 2)
+            if ($this->typeFilter === 'all' && Schema::hasColumn('support_maintenances', 'ticket_id')) {
+                $mQ->whereNull('support_maintenances.ticket_id');
+            }
 
             if ($this->technicianFilter) {
                 $mQ->where('support_maintenances.assigned_to', $this->technicianFilter);
+            }
+
+            if ($this->resellerFilter) {
+                if ($this->resellerFilter === 'direct') {
+                    $mQ->whereNull('customers.reseller_id');
+                } else {
+                    $mQ->where('customers.reseller_id', $this->resellerFilter);
+                }
             }
 
             if ($this->statusFilter === 'completed') {
@@ -449,7 +577,8 @@ class WorkOrderHistory extends AdminComponent
                 $items->push((object)[
                     'id' => 'maint_' . $maint->id,
                     'raw_id' => $maint->id,
-                    'code' => 'MT-' . str_pad($maint->id, 4, '0', STR_PAD_LEFT),
+                    'work_order_id' => $maintWoMap[$maint->id] ?? null,
+                    'code' => 'SPK-MNT-' . str_pad($maint->id, 4, '0', STR_PAD_LEFT),
                     'type' => 'maintenance',
                     'type_badge' => 'Maintenance (' . $typeLabel . ')',
                     'service_type' => strtoupper($maint->device_type ?? 'INFRA'),
@@ -458,8 +587,8 @@ class WorkOrderHistory extends AdminComponent
                     'customer_phone' => $maint->customer_phone ?? '-',
                     'customer_address' => $maint->customer_address ?? ($maint->location_name ?? 'Lokasi Perangkat'),
                     'technician_name' => $maint->technician_name ?? 'Teknisi Jaringan',
-                    'reseller_id' => null,
-                    'reseller_name' => 'Internal ISP',
+                    'reseller_id' => $maint->customer_reseller_id,
+                    'reseller_name' => $maint->customer_reseller_name ?: ($maint->customer_reseller_id ? 'Reseller #' . $maint->customer_reseller_id : null),
                     'package_name' => $maint->title,
                     'username' => null,
                     'device_info' => ($maint->device_name ? $maint->device_type . ': ' . $maint->device_name : 'Perangkat Jaringan'),

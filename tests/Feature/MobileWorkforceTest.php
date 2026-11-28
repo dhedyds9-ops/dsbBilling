@@ -249,7 +249,13 @@ class MobileWorkforceTest extends TestCase
             'status' => 'in_progress',
         ]);
 
-        // 2. Technician finishes field work and requests approval
+        // 2. Technician finishes field work, attaches evidence photo, and requests approval
+        $wo->update([
+            'evidence_photos' => [
+                ['uuid' => (string) \Illuminate\Support\Str::uuid(), 'url' => 'evidence/test.jpg', 'category' => 'after'],
+            ],
+        ]);
+
         $pendingApprovalRes = $this->withHeader('Authorization', 'Bearer ' . $token)
             ->postJson("/api/mobile/work-orders/{$wo->id}/status", [
                 'status' => 'pending_approval',

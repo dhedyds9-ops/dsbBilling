@@ -72,19 +72,22 @@ class GenieACSDriver
         $candidateSn = end($parts);
 
         try {
+            $cleanUpper = strtoupper($cleanId);
             $orConditions = [
                 ['_id' => $cleanId],
                 ['_deviceId._SerialNumber' => $cleanId],
                 ['_deviceId._MACAddress' => $cleanId],
-                ['_id' => ['$regex' => preg_quote($cleanId, '/')]],
             ];
+            if ($cleanUpper !== $cleanId) {
+                $orConditions[] = ['_id' => $cleanUpper];
+                $orConditions[] = ['_deviceId._SerialNumber' => $cleanUpper];
+                $orConditions[] = ['_deviceId._MACAddress' => $cleanUpper];
+            }
             if (!empty($candidateSn) && $candidateSn !== $cleanId) {
                 $orConditions[] = ['_deviceId._SerialNumber' => $candidateSn];
-                $orConditions[] = ['_id' => ['$regex' => preg_quote($candidateSn, '/')]];
                 $candUpper = strtoupper($candidateSn);
                 if ($candUpper !== $candidateSn) {
                     $orConditions[] = ['_deviceId._SerialNumber' => $candUpper];
-                    $orConditions[] = ['_id' => ['$regex' => preg_quote($candUpper, '/')]];
                 }
             }
 
@@ -128,7 +131,7 @@ class GenieACSDriver
 
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($this->timeout)
-                ->get("{$this->baseUrl}/devices/?query={$query}&projection={$projection}");
+                ->get("{$this->baseUrl}/devices?query={$query}&projection={$projection}");
                 
             if ($response->successful()) {
                 $data = $response->json();
@@ -748,6 +751,10 @@ class GenieACSDriver
                 if ($path === '' || $path === null) {
                     continue;
                 }
+                // Filter out non-TR069 virtual parameters and internal tags to prevent Fault 9005
+                if (str_starts_with($path, 'VirtualParameters.') || str_starts_with($path, 'Tags.')) {
+                    continue;
+                }
                 $type = is_bool($value) ? 'xsd:boolean' : (is_int($value) ? 'xsd:int' : (is_numeric($value) ? 'xsd:unsignedInt' : 'xsd:string'));
                 if ($type === 'xsd:unsignedInt' && str_contains($path, 'SSID')) {
                     $type = 'xsd:string';
@@ -948,35 +955,24 @@ let isHuawei = (brand.indexOf("Huawei") !== -1 || brand.indexOf("EchoLife") !== 
 let isFiberHome = (brand.indexOf("FiberHome") !== -1 || sn.indexOf("FHTT") !== -1 || model.indexOf("AN5506") !== -1 || model.indexOf("HG6") !== -1);
 
 let pppPath = "";
+try {
+    let wanConns = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*.Username", {path: 1});
+    if (wanConns && wanConns.path) {
+        pppPath = wanConns.path.replace(".Username", "");
+    }
+} catch (e) {}
 
-let wanConns = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*.Username", {path: 1});
-if (!wanConns.size) {
-    wanConns = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*", {path: 1});
-}
-
-for (let p of wanConns) {
-    pppPath = p.path.replace(".Username", "");
-    break;
+if (!pppPath) {
+    try {
+        let wanDevs = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*", {path: 1});
+        if (wanDevs && wanDevs.path) {
+            pppPath = wanDevs.path;
+        }
+    } catch (e) {}
 }
 
 if (!pppPath) {
-    let allConns = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*", {path: 1});
-    let maxIdx = 0;
-    let basePath = null;
-    for (let c of allConns) {
-        let idx = parseInt(c.path.split(".").pop());
-        if (idx > maxIdx) maxIdx = idx;
-        let ppps = declare(c.path + ".WANPPPConnection.*", {path: 1});
-        let ips = declare(c.path + ".WANIPConnection.*", {path: 1});
-        if (!ppps.size && !ips.size && !basePath) {
-            basePath = c.path;
-        }
-    }
-    if (!basePath) {
-        basePath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + (maxIdx + 1);
-        declare(basePath, {path: 1}, {path: 1});
-    }
-    pppPath = basePath + ".WANPPPConnection.1";
+    pppPath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1";
     declare(pppPath, {path: 1}, {path: 1});
 }
 
@@ -1012,6 +1008,27 @@ if ({$vlanVal} > 0) {
 }
 JS;
 
+            // 1. Direct SetParameterValues attempt for immediate WAN PPPoE push
+            try {
+                $directWanParams = [
+                    'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Enable' => true,
+                    'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ConnectionType' => 'IP_Routed',
+                    'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.NATEnabled' => true,
+                    'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username' => $username,
+                    'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Password' => $password,
+                    'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ConnectionTrigger' => 'AlwaysOn',
+                ];
+                if ($vlanVal > 0) {
+                    $directWanParams['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_ZTE-COM_VLANID'] = $vlanVal;
+                    $directWanParams['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_ZTE-COM_VLANEnable'] = 1;
+                    $directWanParams['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANEthernetLinkConfig.X_HW_VLAN'] = $vlanVal;
+                }
+                $this->setParameterValues($realDeviceId, $directWanParams);
+            } catch (\Throwable $de) {
+                \Illuminate\Support\Facades\Log::info("Direct WAN setParameterValues skipped or deferred: " . $de->getMessage());
+            }
+
+            // 2. Queue robust provision task for persistence
             $this->upsertProvision($provName, $script);
             $success = $this->addProvisionTask($realDeviceId, $provName);
             if ($success) {
@@ -1938,6 +1955,8 @@ JS;
         // 1. Radio status (Enable)
         if ($isEnabled !== null) {
             $params[$prefix . 'Enable'] = (bool) $isEnabled;
+        } else {
+            $params[$prefix . 'Enable'] = true;
         }
 
         // 2. SSID Broadcast (Hidden / Visible)
@@ -1945,73 +1964,59 @@ JS;
             $params[$prefix . 'SSIDAdvertisementEnabled'] = !$isHidden;
         }
 
-        // 3. SSID Name (Vendor + Standard + VirtualParameter sync)
+        // 3. SSID Name (Standard TR-098)
         $params[$prefix . 'SSID'] = trim($ssid);
-        $vendorSsidPath = $this->wlanIndexedPath($this->getWifiParameterPath($vendor, 'ssid'), $wlanIndex);
-        if (!empty($vendorSsidPath)) {
-            $params[$vendorSsidPath] = trim($ssid);
-        }
-        if ($wlanIndex === 1) {
-            $params['VirtualParameters.WlanSSID'] = trim($ssid);
-        }
 
         // 4. Security Mode & Password
-        if ($password !== null) {
+        if ($password !== null && $password !== '') {
             $trimmedPass = (string) $password;
             $openBeacon = $this->resolveOpenBeaconValue($vendor, $deviceId);
 
-            if ($securityMode === 'OPEN') {
-                // Mode Open: JANGAN kirim parameter password/PSK kosong.
-                // SetParameterValues bersifat atomik — PreSharedKey '' ditolak ONU (fault 9007)
-                // sehingga BeaconType ikut batal diterapkan.
+            if ($securityMode === 'OPEN' || $securityMode === 'None' || $securityMode === 'none') {
                 $params[$prefix . 'BeaconType'] = $openBeacon;
                 if ($openBeacon === 'Basic') {
-                    // Huawei/FiberHome: Open = Basic tanpa enkripsi WEP.
                     $params[$prefix . 'BasicEncryptionModes'] = 'None';
                 }
             } elseif ($securityMode === 'WPA2') {
                 $params[$prefix . 'BeaconType'] = '11i';
                 $params[$prefix . 'WPAEncryptionModes'] = 'AESEncryption';
-                $params[$prefix . 'PreSharedKey.1.KeyPassphrase'] = $trimmedPass;
                 $params[$prefix . 'KeyPassphrase'] = $trimmedPass;
-                $params[$prefix . 'PreSharedKey.1.PreSharedKey'] = $trimmedPass;
             } elseif ($securityMode === 'WPA') {
                 $params[$prefix . 'BeaconType'] = 'WPA';
                 $params[$prefix . 'WPAEncryptionModes'] = 'TKIPEncryption';
-                $params[$prefix . 'PreSharedKey.1.KeyPassphrase'] = $trimmedPass;
                 $params[$prefix . 'KeyPassphrase'] = $trimmedPass;
-                $params[$prefix . 'PreSharedKey.1.PreSharedKey'] = $trimmedPass;
             } else { // WPA_WPA2 (Default Rekomendasi)
                 $params[$prefix . 'BeaconType'] = '11i';
                 $params[$prefix . 'WPAEncryptionModes'] = 'TKIPandAESEncryption';
-                $params[$prefix . 'PreSharedKey.1.KeyPassphrase'] = $trimmedPass;
                 $params[$prefix . 'KeyPassphrase'] = $trimmedPass;
-                $params[$prefix . 'PreSharedKey.1.PreSharedKey'] = $trimmedPass;
             }
 
-            // Vendor-specific paths fallback (path di config di-hardcode index 1 → sesuaikan ke WLAN target)
-            $secPath = $this->wlanIndexedPath($this->getWifiParameterPath($vendor, 'security_mode'), $wlanIndex);
-            if (!empty($secPath) && !isset($params[$secPath])) {
-                $params[$secPath] = str_contains($secPath, 'BeaconType') ? ($securityMode === 'OPEN' ? $openBeacon : '11i') : 'WPA2-Personal';
+            // Vendor-specific ZTE fallback if ZTE-specific WPAKey is configured
+            if (strtolower($vendor) === 'zte' || str_contains(strtolower($deviceId), 'zte')) {
+                $params[$prefix . 'X_ZTE-COM_WPAKey'] = $trimmedPass;
             }
-
-            if ($securityMode !== 'OPEN') {
-                $vPass1 = $this->wlanIndexedPath($this->getWifiParameterPath($vendor, 'wpa_passphrase'), $wlanIndex);
-                if (!empty($vPass1)) {
-                    $params[$vPass1] = $trimmedPass;
-                }
-                $vPass2 = $this->wlanIndexedPath($this->getWifiParameterPath($vendor, 'wpa_pre_shared_key'), $wlanIndex);
-                if (!empty($vPass2)) {
-                    $params[$vPass2] = $trimmedPass;
-                }
-            }
-
-            if ($wlanIndex === 1 && $securityMode !== 'OPEN') {
-                $params['VirtualParameters.WlanPassword'] = $trimmedPass;
+        } elseif ($securityMode === 'OPEN' || $securityMode === 'None' || $securityMode === 'none') {
+            $openBeacon = $this->resolveOpenBeaconValue($vendor, $deviceId);
+            $params[$prefix . 'BeaconType'] = $openBeacon;
+            if ($openBeacon === 'Basic') {
+                $params[$prefix . 'BasicEncryptionModes'] = 'None';
             }
         }
 
-        return $this->setParameterValues($deviceId, $params);
+        // Try primary batch with fallback to essential parameters if CPE rejects optional vendor keys
+        try {
+            return $this->setParameterValues($deviceId, $params);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("updateWifiSsidAndPassword primary batch failed for device {$deviceId}: {$e->getMessage()}, attempting fallback to core parameters.");
+            $coreParams = [
+                $prefix . 'SSID' => trim($ssid),
+                $prefix . 'Enable' => true,
+            ];
+            if ($password !== null && $password !== '' && !in_array($securityMode, ['OPEN', 'None', 'none'], true)) {
+                $coreParams[$prefix . 'KeyPassphrase'] = (string)$password;
+            }
+            return $this->setParameterValues($deviceId, $coreParams);
+        }
     }
 
     /**

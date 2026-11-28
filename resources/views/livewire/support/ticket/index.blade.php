@@ -180,6 +180,49 @@ $statusLabels = [
                                 </div>
                             @endforeach
                         </div>
+
+                        {{-- Foto Bukti Penanganan Lapangan --}}
+                        @php
+                            $ticketPhotos = is_array($this->timelineData['ticket']->photos) ? $this->timelineData['ticket']->photos : [];
+                        @endphp
+                        @if(count($ticketPhotos) > 0)
+                            <div class="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined notranslate text-sm text-indigo-500" translate="no">photo_camera</span>
+                                    Foto Bukti Penanganan Lapangan ({{ count($ticketPhotos) }} Foto)
+                                </h4>
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    @foreach($ticketPhotos as $idx => $p)
+                                        @php
+                                            $isArr = is_array($p);
+                                            $pUrl = $isArr ? ($p['url'] ?? ($p['path'] ?? '')) : (string)$p;
+                                            $fullPUrl = str_starts_with($pUrl, 'http') ? $pUrl : (str_starts_with($pUrl, '/storage') ? asset(ltrim($pUrl, '/')) : asset('storage/' . ltrim($pUrl, '/')));
+                                            $cat = $isArr ? strtolower((string)($p['type'] ?? ($p['category'] ?? 'evidence'))) : 'evidence';
+                                            $caption = $isArr ? ($p['caption'] ?? '') : '';
+                                            $lat = $isArr ? ($p['latitude'] ?? null) : null;
+                                            $lng = $isArr ? ($p['longitude'] ?? null) : null;
+                                        @endphp
+                                        <div class="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 p-1.5 flex flex-col">
+                                            <a href="{{ $fullPUrl }}" target="_blank" class="block aspect-video rounded-lg overflow-hidden relative group bg-slate-200 dark:bg-slate-800">
+                                                <img src="{{ $fullPUrl }}" alt="Foto Bukti" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.src='https://placehold.co/400x300?text=Foto+Bukti';">
+                                                <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[11px] font-bold">
+                                                    Lihat Penuh
+                                                </div>
+                                            </a>
+                                            @if($caption)
+                                                <p class="text-[11px] text-slate-700 dark:text-slate-300 font-medium mt-1 truncate">{{ $caption }}</p>
+                                            @endif
+                                            @if($lat && $lng)
+                                                <a href="https://www.google.com/maps?q={{ $lat }},{{ $lng }}" target="_blank" class="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline mt-0.5 flex items-center gap-0.5">
+                                                    <span class="material-symbols-outlined notranslate text-[11px]" translate="no">pin_drop</span>
+                                                    GPS: {{ number_format((float)$lat, 4) }}, {{ number_format((float)$lng, 4) }}
+                                                </a>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
             @else

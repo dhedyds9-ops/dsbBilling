@@ -358,6 +358,15 @@ class MobileWorkforceApiController extends Controller
                 $isForce = (bool) $request->input('force', false);
                 if (!$isForce) {
                     $woPhotos = (array) ($workOrder->evidence_photos ?? []);
+                    if (empty($woPhotos) && !empty($workOrder->photos)) {
+                        $woPhotos = (array) $workOrder->photos;
+                    }
+                    if (empty($woPhotos) && $workOrder->installation && !empty($workOrder->installation->photos)) {
+                        $woPhotos = (array) $workOrder->installation->photos;
+                    }
+                    if (empty($woPhotos) && $workOrder->ticket && !empty($workOrder->ticket->photos)) {
+                        $woPhotos = (array) $workOrder->ticket->photos;
+                    }
                     $photoCount = count($woPhotos);
                     $isInstallation = in_array(strtolower((string)$workOrder->type), ['installation', 'psb', 'install']);
 
@@ -412,6 +421,12 @@ class MobileWorkforceApiController extends Controller
                 Ticket::withoutGlobalScopes()
                     ->where('id', $workOrder->ticket_id)
                     ->update(['status' => 'in_progress']);
+
+                if (\Illuminate\Support\Facades\Schema::hasTable('support_maintenances')) {
+                    \Illuminate\Support\Facades\DB::table('support_maintenances')
+                        ->where('ticket_id', $workOrder->ticket_id)
+                        ->update(['status' => 'in_progress', 'updated_at' => now()]);
+                }
             }
 
             if ($workOrder->installation_id) {
@@ -424,7 +439,20 @@ class MobileWorkforceApiController extends Controller
                     ]);
             }
         } elseif ($targetStatus === 'pending_approval') {
-            // Waiting for supervisor approval - tandai pekerjaan fisik selesai di CRM Installation
+            // Waiting for supervisor approval - tandai pekerjaan fisik selesai di CRM Installation & SupportMaintenance
+            if ($workOrder->ticket_id) {
+                if (\Illuminate\Support\Facades\Schema::hasTable('support_maintenances')) {
+                    \Illuminate\Support\Facades\DB::table('support_maintenances')
+                        ->where('ticket_id', $workOrder->ticket_id)
+                        ->update([
+                            'status' => 'completed',
+                            'completed_at' => now(),
+                            'resolution_notes' => $notes ?: null,
+                            'updated_at' => now(),
+                        ]);
+                }
+            }
+
             if ($workOrder->installation_id) {
                 $instUpdates = [
                     'status' => 'completed',
@@ -446,7 +474,22 @@ class MobileWorkforceApiController extends Controller
             if ($workOrder->ticket_id) {
                 Ticket::withoutGlobalScopes()
                     ->where('id', $workOrder->ticket_id)
-                    ->update(['status' => 'resolved']);
+                    ->update([
+                        'status' => 'resolved',
+                        'resolved_at' => now(),
+                        'resolution_notes' => $notes ?: null,
+                    ]);
+
+                if (\Illuminate\Support\Facades\Schema::hasTable('support_maintenances')) {
+                    \Illuminate\Support\Facades\DB::table('support_maintenances')
+                        ->where('ticket_id', $workOrder->ticket_id)
+                        ->update([
+                            'status' => 'completed',
+                            'completed_at' => now(),
+                            'resolution_notes' => $notes ?: null,
+                            'updated_at' => now(),
+                        ]);
+                }
             }
 
             if ($workOrder->installation_id) {
@@ -467,6 +510,12 @@ class MobileWorkforceApiController extends Controller
                 Ticket::withoutGlobalScopes()
                     ->where('id', $workOrder->ticket_id)
                     ->update(['status' => 'closed']);
+
+                if (\Illuminate\Support\Facades\Schema::hasTable('support_maintenances')) {
+                    \Illuminate\Support\Facades\DB::table('support_maintenances')
+                        ->where('ticket_id', $workOrder->ticket_id)
+                        ->update(['status' => 'cancelled', 'updated_at' => now()]);
+                }
             }
 
             if ($workOrder->installation_id) {
@@ -477,14 +526,27 @@ class MobileWorkforceApiController extends Controller
         }
 
         if ($workOrder->source_type === 'maintenance' && $workOrder->source_id && \Illuminate\Support\Facades\Schema::hasTable('support_maintenances')) {
+            $maintStatus = in_array($targetStatus, ['completed', 'pending_approval']) ? 'completed' : ($targetStatus === 'in_progress' ? 'in_progress' : ($targetStatus === 'cancelled' ? 'cancelled' : 'scheduled'));
             \Illuminate\Support\Facades\DB::table('support_maintenances')
                 ->where('id', $workOrder->source_id)
                 ->update([
-                    'status' => $targetStatus === 'completed' ? 'completed' : ($targetStatus === 'in_progress' ? 'in_progress' : ($targetStatus === 'cancelled' ? 'cancelled' : 'scheduled')),
+                    'status' => $maintStatus,
                     'resolution_notes' => $notes ?: null,
-                    'completed_at' => $targetStatus === 'completed' ? now() : null,
+                    'completed_at' => in_array($targetStatus, ['completed', 'pending_approval']) ? now() : null,
                     'updated_at' => now(),
                 ]);
+
+            // Two-way sync: jika maintenance ini terikat pada tiket, selesaikan tiketnya juga
+            $maintRow = \Illuminate\Support\Facades\DB::table('support_maintenances')->where('id', $workOrder->source_id)->first();
+            if ($maintRow && !empty($maintRow->ticket_id) && in_array($targetStatus, ['completed', 'pending_approval'])) {
+                Ticket::withoutGlobalScopes()
+                    ->where('id', $maintRow->ticket_id)
+                    ->update([
+                        'status' => 'resolved',
+                        'resolved_at' => now(),
+                        'resolution_notes' => $notes ?: null,
+                    ]);
+            }
         }
 
         if ($workOrder->source_type === 'survey' && $workOrder->source_id && \Illuminate\Support\Facades\Schema::hasTable('surveys')) {
@@ -1153,9 +1215,22 @@ class MobileWorkforceApiController extends Controller
                 );
             }
 
-            // 3. Sync Pemeliharaan Jaringan (Network Maintenance Schedules)
+            // 3. Sync Pemeliharaan Jaringan (Network Maintenance Schedules - Khusus Pemeliharaan Preventif Mandiri)
             if (\Illuminate\Support\Facades\Schema::hasTable('support_maintenances')) {
+                // Bersihkan duplikat WorkOrder maintenance yang berasal dari tiket (karena sudah diwakili oleh SPK Tiket)
+                $hasTicketIdCol = \Illuminate\Support\Facades\Schema::hasColumn('support_maintenances', 'ticket_id');
+                if ($hasTicketIdCol) {
+                    WorkOrder::where('source_type', 'maintenance')
+                        ->whereIn('source_id', function ($sub) {
+                            $sub->select('id')->from('support_maintenances')->whereNotNull('ticket_id');
+                        })
+                        ->delete();
+                }
+
                 $maintQuery = \Illuminate\Support\Facades\DB::table('support_maintenances');
+                if ($hasTicketIdCol) {
+                    $maintQuery->whereNull('ticket_id');
+                }
                 if ($user->isTechnician() && !$this->isManagerOrAdmin($user)) {
                     $maintQuery->where(function ($q) use ($user) {
                         $q->where('assigned_to', $user->id)
@@ -1636,7 +1711,10 @@ class MobileWorkforceApiController extends Controller
             $isManager = $this->isManagerOrAdmin($user);
 
             $query = \App\Models\Support\Ticket::withoutGlobalScopes()
-                ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()]);
+                ->with([
+                    'customer' => fn ($q) => $q->withoutGlobalScopes(),
+                    'workOrder' => fn ($q) => $q->withoutGlobalScopes(),
+                ]);
 
             $columns = [];
             try {
@@ -1705,6 +1783,8 @@ class MobileWorkforceApiController extends Controller
                         'customer_id' => $t->customer_id,
                         'customer_name' => $t->customer?->name ?? 'Klien Umum',
                         'assigned_to' => $t->assigned_to,
+                        'work_order_id' => $t->workOrder?->id,
+                        'photos' => is_array($t->photos) ? $t->photos : (is_string($t->photos) ? json_decode($t->photos, true) : []),
                         'created_at' => $t->created_at?->format('d M Y H:i'),
                     ];
                 });

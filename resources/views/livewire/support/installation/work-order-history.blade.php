@@ -207,7 +207,9 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                     @forelse($items as $item)
-                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
+                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
+                            wire:click="openDetailInspection('{{ $item->type }}', {{ $item->raw_id }})"
+                            title="Klik untuk membuka detail & foto bukti pengerjaan">
                             <td class="px-6 py-4 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
                                 <div class="font-semibold text-slate-800 dark:text-slate-200">
                                     {{ $item->date ? \Carbon\Carbon::parse($item->date)->format('d M Y') : '-' }}
@@ -217,23 +219,27 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="font-bold text-xs font-mono text-indigo-600 dark:text-indigo-400 mb-1 flex items-center gap-1">
+                                    <span class="material-symbols-outlined notranslate text-xs" translate="no">tag</span>
+                                    {{ $item->code }}
+                                </div>
                                 @if($item->type === 'installation')
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                                         <span class="material-symbols-outlined notranslate text-xs" translate="no">build_circle</span>
                                         {{ $item->type_badge }}
                                     </span>
                                 @elseif($item->type === 'repair')
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                                         <span class="material-symbols-outlined notranslate text-xs" translate="no">build</span>
                                         {{ $item->type_badge }}
                                     </span>
                                 @elseif($item->type === 'maintenance')
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                                         <span class="material-symbols-outlined notranslate text-xs" translate="no">home_repair_service</span>
                                         {{ $item->type_badge }}
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                                         <span class="material-symbols-outlined notranslate text-xs" translate="no">verified</span>
                                         {{ $item->type_badge }}
                                     </span>
@@ -306,21 +312,19 @@
                                     <span class="text-xs text-slate-400 dark:text-slate-500 font-mono">-</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 text-center whitespace-nowrap">
+                            <td class="px-6 py-4 text-center whitespace-nowrap" onclick="event.stopPropagation()">
                                 @if(!empty($item->is_qc_pending) || $item->status === 'pending_approval')
-                                    <button wire:click="openQcInspection({{ $item->work_order_id ?? $item->raw_id }})" type="button"
+                                    <button wire:click="openDetailInspection('{{ $item->type }}', {{ $item->raw_id }})" type="button"
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all focus:ring-2 focus:ring-amber-400">
                                         <span class="material-symbols-outlined notranslate text-xs" translate="no">verified</span>
                                         Periksa QC
                                     </button>
-                                @elseif(!empty($item->work_order_id))
-                                    <button wire:click="openQcInspection({{ $item->work_order_id }})" type="button"
-                                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
-                                        <span class="material-symbols-outlined notranslate text-xs" translate="no">visibility</span>
-                                        Detail QC
-                                    </button>
                                 @else
-                                    <span class="text-xs text-slate-300 dark:text-slate-600">-</span>
+                                    <button wire:click="openDetailInspection('{{ $item->type }}', {{ $item->raw_id }})" type="button"
+                                            class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-indigo-50 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400 transition-all border border-slate-200 dark:border-slate-600">
+                                        <span class="material-symbols-outlined notranslate text-xs text-indigo-500" translate="no">photo_camera</span>
+                                        Lihat Eviden &amp; QC
+                                    </button>
                                 @endif
                             </td>
                         </tr>
@@ -500,7 +504,11 @@
                             @endif
                         </div>
                         @php
-                            $photos = is_array($selectedWo->evidence_photos) ? $selectedWo->evidence_photos : (is_array($selectedWo->installation?->photos) ? $selectedWo->installation->photos : []);
+                            $photos = is_array($selectedWo->evidence_photos) && count($selectedWo->evidence_photos) > 0
+                                ? $selectedWo->evidence_photos
+                                : (is_array($selectedWo->installation?->photos) && count($selectedWo->installation->photos) > 0
+                                    ? $selectedWo->installation->photos
+                                    : (is_array($selectedWo->ticket?->photos) ? $selectedWo->ticket->photos : []));
                         @endphp
                         @if(count($photos) > 0)
                             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">

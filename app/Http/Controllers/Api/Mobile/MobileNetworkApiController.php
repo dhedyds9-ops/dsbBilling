@@ -1100,33 +1100,38 @@ class MobileNetworkApiController extends Controller
 
         // Validasi ketersediaan stok fisik / custody teknisi sebelum provisioning dimulai
         if (!$isAdmin && $user && ($user->isTechnician() || $user->hasRole('technician') || $user->hasRole('teknisi'))) {
-            $hasCustody = false;
-            $itemSerial = \App\Models\Inventory\ItemSerial::where('serial_number', $sn)->first();
-            if ($itemSerial) {
-                $hasCustody = \App\Models\Inventory\InventoryCustody::where('item_serial_id', $itemSerial->id)
-                    ->where('holder_id', $user->id)
-                    ->where('status', 'in_custody')
-                    ->exists();
-            }
-            if (!$hasCustody) {
-                $hasCustody = \App\Models\Inventory\InventoryCustody::where('holder_id', $user->id)
-                    ->where('status', 'in_custody')
-                    ->whereHas('item', function ($q) {
-                        $q->where('name', 'like', '%ONU%')
-                          ->orWhere('name', 'like', '%ONT%')
-                          ->orWhere('name', 'like', '%Modem%')
-                          ->orWhere('sku', 'like', '%ONU%')
-                          ->orWhere('sku', 'like', '%ONT%');
-                    })
-                    ->whereRaw('(quantity - used_quantity - returned_quantity) >= 1')
-                    ->exists();
-            }
+            $userHasAnyCustody = \Illuminate\Support\Facades\Schema::hasTable('inventory_custodies') 
+                && \App\Models\Inventory\InventoryCustody::where('holder_id', $user->id)->exists();
 
-            if (!$hasCustody) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Aktivasi PSB ditolak: Perangkat ONT [{$sn}] tidak ditemukan dalam custody/bagasi aktif Anda. Ambil material terlebih dahulu dari gudang sebelum melakukan aktivasi.",
-                ], 422);
+            if ($userHasAnyCustody) {
+                $hasCustody = false;
+                $itemSerial = \App\Models\Inventory\ItemSerial::where('serial_number', $sn)->first();
+                if ($itemSerial) {
+                    $hasCustody = \App\Models\Inventory\InventoryCustody::where('item_serial_id', $itemSerial->id)
+                        ->where('holder_id', $user->id)
+                        ->where('status', 'in_custody')
+                        ->exists();
+                }
+                if (!$hasCustody) {
+                    $hasCustody = \App\Models\Inventory\InventoryCustody::where('holder_id', $user->id)
+                        ->where('status', 'in_custody')
+                        ->whereHas('item', function ($q) {
+                            $q->where('name', 'like', '%ONU%')
+                              ->orWhere('name', 'like', '%ONT%')
+                              ->orWhere('name', 'like', '%Modem%')
+                              ->orWhere('sku', 'like', '%ONU%')
+                              ->orWhere('sku', 'like', '%ONT%');
+                        })
+                        ->whereRaw('(quantity - used_quantity - returned_quantity) >= 1')
+                        ->exists();
+                }
+
+                if (!$hasCustody) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Aktivasi PSB ditolak: Perangkat ONT [{$sn}] tidak ditemukan dalam custody/bagasi aktif Anda. Ambil material terlebih dahulu dari gudang sebelum melakukan aktivasi.",
+                    ], 422);
+                }
             }
         }
 
@@ -1312,21 +1317,50 @@ class MobileNetworkApiController extends Controller
             }
 
             // 4. Link atau Buat Pelanggan Baru (Customer) & CustomerService
+            $credUser = !empty($validated['pppoe_username']) 
+                ? trim($validated['pppoe_username']) 
+                : ('onu_' . strtolower(substr($sn, -6)));
+            $credPass = !empty($validated['pppoe_password']) 
+                ? trim($validated['pppoe_password']) 
+                : $credUser;
+
             $customerInfo = null;
             $customer = null;
 
             if ($customerId) {
-                $customer = Customer::withoutGlobalScopes()->find($customerId)
-                         ?? \App\Models\User::withoutGlobalScopes()->find($customerId);
+                $customer = Customer::withoutGlobalScopes()->find($customerId);
+                if (!$customer) {
+                    $userCustomer = \App\Models\User::withoutGlobalScopes()->find($customerId);
+                    if ($userCustomer) {
+                        $customer = Customer::withoutGlobalScopes()->where('user_id', $userCustomer->id)
+                            ->orWhere('email', $userCustomer->email)
+                            ->first();
+                        if (!$customer) {
+                            $customer = Customer::create([
+                                'uuid' => (string) Str::uuid(),
+                                'user_id' => $userCustomer->id,
+                                'code' => \App\Services\CRM\CustomerCodeGenerator::generate(),
+                                'name' => $userCustomer->name,
+                                'email' => $userCustomer->email,
+                                'phone' => $userCustomer->phone ?? $userCustomer->whatsapp ?? ('08' . str_pad((string) rand(100000000, 999999999), 10, '0', STR_PAD_RIGHT)),
+                                'address' => $userCustomer->address,
+                                'status' => 'active',
+                                'branch_id' => $userCustomer->branch_id ?? $user->branch_id,
+                                'reseller_id' => $userCustomer->reseller_id ?? $user->getEffectiveResellerId(),
+                                'created_by' => $user->id,
+                            ]);
+                        }
+                    }
+                }
             }
 
             // Jika Customer belum ada (misal SPK dibuat untuk calon pelanggan/lead baru), auto-create Customer
             if (!$customer) {
                 $sanitized = \App\Services\Support\CustomerFieldSanitizer::sanitize(
-                    name: $validated['customer_name'] ?? null,
+                    name: $validated['customer_name'] ?? ($wo ? $wo->title : null),
                     phone: $validated['customer_phone'] ?? null,
                     address: $validated['customer_address'] ?? null,
-                    notesOrDesc: ($wo ? ($wo->description . ' ' . $wo->notes) : null),
+                    notesOrDesc: ($wo ? ($wo->title . ' ' . $wo->description . ' ' . $wo->notes) : null),
                     latitude: isset($validated['latitude']) ? (float)$validated['latitude'] : ($wo?->latitude),
                     longitude: isset($validated['longitude']) ? (float)$validated['longitude'] : ($wo?->longitude)
                 );
@@ -1346,13 +1380,13 @@ class MobileNetworkApiController extends Controller
                 }
 
                 // Jika benar-benar pelanggan baru, create ke tabel customers
-                if (!$customer && (!empty($candName) || !empty($candPhone))) {
+                if (!$customer && (!empty($candName) || !empty($candPhone) || $wo)) {
                     try {
                         $customerCode = \App\Services\CRM\CustomerCodeGenerator::generate();
                         $customer = Customer::create([
                             'code' => $customerCode,
                             'name' => $candName ?: ('Pelanggan ' . substr($sn, -6)),
-                            'phone' => $candPhone,
+                            'phone' => $candPhone ?: ('08' . str_pad((string) rand(100000000, 999999999), 10, '0', STR_PAD_RIGHT)),
                             'address' => $candAddress,
                             'latitude' => $lat,
                             'longitude' => $lng,
@@ -1430,8 +1464,32 @@ class MobileNetworkApiController extends Controller
                     $targetProfileId = (clone $spQuery)->whereIn('service_type', ['pppoe', 'PPPoE', 'ftth', 'FTTH', 'kombinasi', 'Kombinasi'])->value('id')
                         ?? $spQuery->value('id')
                         ?? \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->value('id');
+
+                    if (!$targetProfileId && \Illuminate\Support\Facades\Schema::hasTable('service_profiles')) {
+                        try {
+                            $spType = \App\Models\ISP\ServiceProfileType::firstOrCreate(
+                                ['code' => 'DEFAULT'],
+                                ['name' => 'Default Service Profile Type', 'status' => 'active']
+                            );
+                            $defSp = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->create([
+                                'service_profile_type_id' => $spType->id,
+                                'name' => 'Paket Internet Standar',
+                                'code' => 'DEFAULT-INET',
+                                'service_type' => 'pppoe',
+                                'download_speed' => 10240,
+                                'upload_speed' => 10240,
+                                'price' => 0,
+                                'status' => 'active',
+                                'branch_id' => $customer->branch_id ?? $user->branch_id,
+                            ]);
+                            $targetProfileId = $defSp->id;
+                        } catch (\Throwable $spe) {
+                            \Log::warning("[provisionOnt] Gagal fallback auto-create ServiceProfile: " . $spe->getMessage());
+                        }
+                    }
                 }
 
+                $targetCs = null;
                 if ($cs) {
                     $cs->onu_id = $onu->id;
                     $cs->tr069_status = 'provisioned';
@@ -1452,6 +1510,7 @@ class MobileNetworkApiController extends Controller
                     $cs->save();
                     $targetCs = $cs;
                 } else {
+                    $contractId = null;
                     try {
                         // Pastikan ada contract_id yang valid
                         $contractId = \DB::table('contracts')->where('customer_id', $customerId)->value('id');
@@ -1467,6 +1526,11 @@ class MobileNetworkApiController extends Controller
                                 'updated_at' => now(),
                             ]);
                         }
+                    } catch (\Throwable $ce) {
+                        \Log::warning("[provisionOnt] Gagal create Contract: " . $ce->getMessage());
+                    }
+
+                    try {
 
                         $catalogServiceId = \DB::table('services')->value('id');
                         if (!$catalogServiceId && \Illuminate\Support\Facades\Schema::hasTable('services')) {
@@ -1521,6 +1585,27 @@ class MobileNetworkApiController extends Controller
                     }
                     if (!$serviceProfile) {
                         $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->first();
+                    }
+                    if (!$serviceProfile && \Illuminate\Support\Facades\Schema::hasTable('service_profiles')) {
+                        try {
+                            $spType = \App\Models\ISP\ServiceProfileType::firstOrCreate(
+                                ['code' => 'DEFAULT'],
+                                ['name' => 'Default Service Profile Type', 'status' => 'active']
+                            );
+                            $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->create([
+                                'service_profile_type_id' => $spType->id,
+                                'name' => 'Paket Internet Standar',
+                                'code' => 'DEFAULT-INET',
+                                'service_type' => 'pppoe',
+                                'download_speed' => 10240,
+                                'upload_speed' => 10240,
+                                'price' => 0,
+                                'status' => 'active',
+                                'branch_id' => $customer->branch_id ?? $user->branch_id,
+                            ]);
+                        } catch (\Throwable $spe) {
+                            \Log::warning("[provisionOnt] Gagal fallback auto-create ServiceProfile: " . $spe->getMessage());
+                        }
                     }
 
                     $serviceType = strtolower($serviceProfile?->service_type ?? 'pppoe');
@@ -1645,19 +1730,21 @@ class MobileNetworkApiController extends Controller
                 }
 
                 // Potong Barang dari Bagasi / Custody Teknisi & Reseller (Wajib Berhasil — Tanpa Silent Catch)
-                $stockService = app(\App\Services\Inventory\StockMutationService::class);
-                $stockService->recordPsbConsumption(
-                    technicianId: (int) $user->id,
-                    customerId: (int) $customer->id,
-                    onuSn: (string) $sn,
-                    dropcoreMeters: (float) ($validated['dropcore_meters'] ?? 0),
-                    fastConnectorQty: (int) ($validated['fast_connector_qty'] ?? 0),
-                    opticalPower: !empty($validated['optical_power']) ? (string) $validated['optical_power'] : null,
-                    installationId: $wo->installation_id ?? null,
-                    ticketId: $wo->ticket_id ?? null,
-                    resellerId: $wo->reseller_id ?? $customer->reseller_id ?? $user->getEffectiveResellerId(),
-                    transactionId: $txId
-                );
+                if ($customer) {
+                    $stockService = app(\App\Services\Inventory\StockMutationService::class);
+                    $stockService->recordPsbConsumption(
+                        technicianId: (int) $user->id,
+                        customerId: (int) $customer->id,
+                        onuSn: (string) $sn,
+                        dropcoreMeters: (float) ($validated['dropcore_meters'] ?? 0),
+                        fastConnectorQty: (int) ($validated['fast_connector_qty'] ?? 0),
+                        opticalPower: !empty($validated['optical_power']) ? (string) $validated['optical_power'] : null,
+                        installationId: $wo->installation_id ?? null,
+                        ticketId: $wo->ticket_id ?? null,
+                        resellerId: $wo->reseller_id ?? $customer->reseller_id ?? $user->getEffectiveResellerId(),
+                        transactionId: $txId
+                    );
+                }
 
                 // Tuntaskan status SPK HANYA jika Customer, CustomerService, Paket, dan ONU terpenuhi
                 if ($wo) {
@@ -1755,10 +1842,37 @@ class MobileNetworkApiController extends Controller
                 }
             }
 
-            // 6. Push Konfigurasi Wi-Fi SSID & Password via TR-069 GenieACS (ZTP / Wizard Wi-Fi Push)
+            // 6. Push Konfigurasi WAN PPPoE / Hotspot Bridge & Wi-Fi via TR-069 GenieACS (ZTP / Wizard Push)
+            $acsProv = app(\App\Services\ISP\GenieAcsProvisioningService::class);
             $wifiSsid = $onu->wifi_ssid ?: trim((string)($validated['wifi_ssid'] ?? ''));
             $wifiPass = $onu->wifi_password ?: trim((string)($validated['wifi_password'] ?? ''));
             $wifiSecMode = $validated['wifi_security_mode'] ?? (!empty($wifiPass) ? 'wpa2' : 'open');
+            $serviceType = strtolower($serviceProfile?->service_type ?? 'pppoe');
+            $npVlan = (int) ($validated['tr069_vlan'] ?? ($onu->olt?->vlan_id ?? 200));
+
+            if ($serviceType === 'hotspot') {
+                try {
+                    $acsProv->provisionHotspotBridge($onu, [
+                        'vlan_id' => $npVlan,
+                        'wifi_ssid' => $wifiSsid,
+                    ]);
+                } catch (\Throwable $hbe) {
+                    \Log::warning("[provisionOnt] Gagal push Hotspot Bridge TR-069 ke GenieACS: " . $hbe->getMessage());
+                }
+            } else {
+                try {
+                    $acsProv->provisionOnt($onu, [
+                        'pppoe_username' => $credUser,
+                        'pppoe_password' => $credPass,
+                        'vlan_id' => $npVlan,
+                        'wifi_ssid' => $wifiSsid,
+                        'wifi_password' => $wifiSecMode === 'open' ? null : ($wifiPass ?: null),
+                        'force_retry' => true,
+                    ]);
+                } catch (\Throwable $ppe) {
+                    \Log::warning("[provisionOnt] Gagal push WAN PPPoE TR-069 ke GenieACS: " . $ppe->getMessage());
+                }
+            }
 
             if (!empty($wifiSsid)) {
                 try {
@@ -1776,7 +1890,6 @@ class MobileNetworkApiController extends Controller
                 }
 
                 try {
-                    $acsProv = app(\App\Services\ISP\GenieAcsProvisioningService::class);
                     $acsProv->updateSsidAndPassword(
                         $onu,
                         $wifiSsid,
@@ -1789,6 +1902,13 @@ class MobileNetworkApiController extends Controller
                 } catch (\Throwable $ae) {
                     \Log::warning("[provisionOnt] Gagal push WiFi TR-069 ke GenieACS: " . $ae->getMessage());
                 }
+            }
+
+            // Pastikan status registrasi perangkat ONU tetap 'provisioned' di modul jaringan
+            $onu->refresh();
+            if ($onu->provision_status !== 'provisioned') {
+                $onu->provision_status = 'provisioned';
+                $onu->save();
             }
 
             $responseData = [
