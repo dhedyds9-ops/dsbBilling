@@ -462,6 +462,30 @@ class Index extends Component
 
             $ticket->update($payload);
 
+            // Sinkronkan penyelesaian ke Work Order Maintenance terkait agar teknisi tidak perlu selesaikan 2x
+            if (Schema::hasTable('support_maintenances')) {
+                try {
+                    $maintPayload = [
+                        'status' => 'completed',
+                        'completed_at' => now(),
+                        'updated_by' => Auth::id(),
+                        'updated_at' => now(),
+                    ];
+                    if (Schema::hasColumn('support_maintenances', 'resolution_notes')) {
+                        $maintPayload['resolution_notes'] = $note;
+                    }
+
+                    if (!empty($ticket->maintenance_wo_id)) {
+                        DB::table('support_maintenances')->where('id', $ticket->maintenance_wo_id)->update($maintPayload);
+                    }
+                    if (Schema::hasColumn('support_maintenances', 'ticket_id')) {
+                        DB::table('support_maintenances')->where('ticket_id', $ticket->id)->update($maintPayload);
+                    }
+                } catch (\Throwable $syncEx) {
+                    \Illuminate\Support\Facades\Log::warning('[MyJobs] Sync maintenance on resolve ticket failed: ' . $syncEx->getMessage());
+                }
+            }
+
             try {
                 Event::dispatch(
                     TicketResolvedEvent::create(
@@ -551,6 +575,23 @@ class Index extends Component
                 }
                 $ticket->update($payload);
 
+                if (Schema::hasTable('support_maintenances')) {
+                    try {
+                        $maintReopen = [
+                            'status' => 'in_progress',
+                            'completed_at' => null,
+                            'updated_by' => Auth::id(),
+                            'updated_at' => now(),
+                        ];
+                        if (!empty($ticket->maintenance_wo_id)) {
+                            DB::table('support_maintenances')->where('id', $ticket->maintenance_wo_id)->update($maintReopen);
+                        }
+                        if (Schema::hasColumn('support_maintenances', 'ticket_id')) {
+                            DB::table('support_maintenances')->where('ticket_id', $ticket->id)->update($maintReopen);
+                        }
+                    } catch (\Throwable) {}
+                }
+
                 $this->showEditTicketResolutionModal = false;
                 $this->selectedTicketId = null;
                 $this->activeTab = 'active';
@@ -570,6 +611,26 @@ class Index extends Component
                 $payload['resolution_notes'] = $note;
             }
             $ticket->update($payload);
+
+            if (Schema::hasTable('support_maintenances')) {
+                try {
+                    $maintSync = [
+                        'status' => 'completed',
+                        'completed_at' => $ticket->resolved_at ?? now(),
+                        'updated_by' => Auth::id(),
+                        'updated_at' => now(),
+                    ];
+                    if (Schema::hasColumn('support_maintenances', 'resolution_notes')) {
+                        $maintSync['resolution_notes'] = $note;
+                    }
+                    if (!empty($ticket->maintenance_wo_id)) {
+                        DB::table('support_maintenances')->where('id', $ticket->maintenance_wo_id)->update($maintSync);
+                    }
+                    if (Schema::hasColumn('support_maintenances', 'ticket_id')) {
+                        DB::table('support_maintenances')->where('ticket_id', $ticket->id)->update($maintSync);
+                    }
+                } catch (\Throwable) {}
+            }
 
             $this->showEditTicketResolutionModal = false;
             $this->selectedTicketId = null;
@@ -602,6 +663,14 @@ class Index extends Component
                 'updated_by' => Auth::id(),
                 'updated_at' => now(),
             ]);
+
+            // Sinkronkan status tiket jika maintenance ini terikat tiket
+            if (!empty($row->ticket_id)) {
+                Ticket::withoutGlobalScopes()
+                    ->where('id', $row->ticket_id)
+                    ->where('status', 'open')
+                    ->update(['status' => 'in_progress']);
+            }
 
             session()->flash('success', "Maintenance #MT-{$maintId} mulai dikerjakan.");
         } catch (\Throwable $e) {
@@ -668,6 +737,13 @@ class Index extends Component
                     'updated_at' => now(),
                 ]);
 
+                // Sinkronkan status tiket jika maintenance dibuka kembali
+                if (!empty($row->ticket_id)) {
+                    Ticket::withoutGlobalScopes()
+                        ->where('id', $row->ticket_id)
+                        ->update(['status' => 'in_progress', 'resolved_at' => null]);
+                }
+
                 $this->showResolveMaintModal = false;
                 $this->selectedMaintId = null;
                 $this->activeTab = 'active';
@@ -686,6 +762,27 @@ class Index extends Component
                 'updated_by' => Auth::id(),
                 'updated_at' => now(),
             ]);
+
+            // Sinkronisasi penyelesaian 2 arah ke Tiket terkait (jika ada)
+            if (!empty($row->ticket_id)) {
+                $ticket = Ticket::withoutGlobalScopes()->find($row->ticket_id);
+                if ($ticket && !in_array($ticket->status, ['resolved', 'closed'])) {
+                    $ticket->update([
+                        'status' => 'resolved',
+                        'resolved_at' => now(),
+                        'resolution_notes' => $note,
+                    ]);
+                    try {
+                        Event::dispatch(
+                            TicketResolvedEvent::create(
+                                (string) $ticket->id,
+                                (string) Auth::id(),
+                                $note
+                            )
+                        );
+                    } catch (\Throwable) {}
+                }
+            }
 
             $wasEdit = $this->isEditingMaintResolution;
             $this->showResolveMaintModal = false;
@@ -716,6 +813,24 @@ class Index extends Component
 
             if ($ticket->status === 'open') {
                 $ticket->update(['status' => 'in_progress']);
+
+                // Sinkronkan status maintenance terkait jika ada
+                if (Schema::hasTable('support_maintenances')) {
+                    try {
+                        $maintStart = [
+                            'status' => 'in_progress',
+                            'updated_by' => Auth::id(),
+                            'updated_at' => now(),
+                        ];
+                        if (!empty($ticket->maintenance_wo_id)) {
+                            DB::table('support_maintenances')->where('id', $ticket->maintenance_wo_id)->where('status', 'scheduled')->update($maintStart);
+                        }
+                        if (Schema::hasColumn('support_maintenances', 'ticket_id')) {
+                            DB::table('support_maintenances')->where('ticket_id', $ticket->id)->where('status', 'scheduled')->update($maintStart);
+                        }
+                    } catch (\Throwable) {}
+                }
+
                 session()->flash('success', 'Status tiket diperbarui menjadi Sedang Diproses.');
             }
         } catch (\Throwable $e) {
@@ -1107,6 +1222,17 @@ class Index extends Component
                 $maintQuery->where('assigned_to', $userId);
             }
 
+            // Cegah duplikasi tugas: Work Order Maintenance yang dibuat otomatis dari tiket aduan pelanggan
+            // sudah direpresentasikan secara utuh oleh kartu Tiket di atas.
+            if (Schema::hasColumn('support_maintenances', 'ticket_id')) {
+                $maintQuery->whereNull('ticket_id');
+            }
+            if (Schema::hasColumn('support_maintenances', 'source')) {
+                $maintQuery->where(function ($q) {
+                    $q->whereNull('source')->orWhere('source', '!=', 'ticket');
+                });
+            }
+
             if ($this->activeTab === 'active') {
                 $maintQuery->whereIn('status', ['scheduled', 'in_progress']);
             } else {
@@ -1331,17 +1457,27 @@ class Index extends Component
             ->whereIn('status', ['resolved', 'closed'])
             ->count();
 
-        // Active & History Network Maintenances
+        // Active & History Network Maintenances (exclude ticket-generated maintenance to prevent double-counting)
         $activeMaint = 0;
         $historyMaint = 0;
         if (Schema::hasTable('support_maintenances')) {
-            $activeMaint = DB::table('support_maintenances')
-                ->when(!$isAllScope, fn ($q) => $q->where('assigned_to', $userId))
+            $baseMaintQuery = DB::table('support_maintenances')
+                ->when(!$isAllScope, fn ($q) => $q->where('assigned_to', $userId));
+
+            if (Schema::hasColumn('support_maintenances', 'ticket_id')) {
+                $baseMaintQuery->whereNull('ticket_id');
+            }
+            if (Schema::hasColumn('support_maintenances', 'source')) {
+                $baseMaintQuery->where(function ($q) {
+                    $q->whereNull('source')->orWhere('source', '!=', 'ticket');
+                });
+            }
+
+            $activeMaint = (clone $baseMaintQuery)
                 ->whereIn('status', ['scheduled', 'in_progress'])
                 ->count();
 
-            $historyMaint = DB::table('support_maintenances')
-                ->when(!$isAllScope, fn ($q) => $q->where('assigned_to', $userId))
+            $historyMaint = (clone $baseMaintQuery)
                 ->whereIn('status', ['completed', 'cancelled'])
                 ->count();
         }

@@ -616,6 +616,15 @@ class Maintenance extends Component
             $baseMaint = DB::table('support_maintenances')
                 ->when(!$isAdmin, fn ($q) => $q->where('assigned_to', $uid));
 
+            if (Schema::hasColumn('support_maintenances', 'ticket_id')) {
+                $baseMaint->whereNull('ticket_id');
+            }
+            if (Schema::hasColumn('support_maintenances', 'source')) {
+                $baseMaint->where(function ($q) {
+                    $q->whereNull('source')->orWhere('source', '!=', 'ticket');
+                });
+            }
+
             $activeCount += (clone $baseMaint)->whereIn('status', ['scheduled', 'in_progress'])->count();
             $historyCount += (clone $baseMaint)->whereIn('status', ['completed', 'cancelled'])->count();
 

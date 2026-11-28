@@ -146,7 +146,6 @@ class MaintenanceWorkOrderService
                     \Illuminate\Support\Facades\Event::dispatch(
                         TicketResolvedEvent::create(
                             (string) $ticket->id,
-                            (string) $ticket->assigned_to,
                             (string) $userId,
                             $resolutionNotes ?? 'Diselesaikan melalui pekerjaan lapangan'
                         )

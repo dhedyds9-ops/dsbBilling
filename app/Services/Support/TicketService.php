@@ -368,7 +368,12 @@ class TicketService
             // Sinkronkan status WO Maintenance terkait jika belum completed
             try {
                 \App\Models\Support\SupportMaintenance::withoutGlobalScopes()
-                    ->where('ticket_id', $ticket->id)
+                    ->where(function ($q) use ($ticket) {
+                        $q->where('ticket_id', $ticket->id);
+                        if (!empty($ticket->maintenance_wo_id)) {
+                            $q->orWhere('id', $ticket->maintenance_wo_id);
+                        }
+                    })
                     ->whereNotIn('status', ['completed', 'cancelled'])
                     ->update([
                         'status' => 'completed',

@@ -207,6 +207,25 @@ class Show extends Component
                         'status' => 'in_progress',
                         'started_at' => $now,
                     ]);
+
+                // Sinkronkan status Work Order Maintenance terkait
+                if (class_exists(SupportMaintenance::class)) {
+                    try {
+                        SupportMaintenance::withoutGlobalScopes()
+                            ->where(function ($q) use ($ticket) {
+                                $q->where('ticket_id', $ticket->id);
+                                if (!empty($ticket->maintenance_wo_id)) {
+                                    $q->orWhere('id', $ticket->maintenance_wo_id);
+                                }
+                            })
+                            ->where('status', 'scheduled')
+                            ->update([
+                                'status' => 'in_progress',
+                                'technician_id' => $user->id,
+                                'started_at' => $now,
+                            ]);
+                    } catch (\Throwable) {}
+                }
             } elseif ($this->sourceType === 'maintenance') {
                 /** @var SupportMaintenance $maint */
                 $maint = $this->sourceModel;
@@ -215,6 +234,16 @@ class Show extends Component
                     'technician_id' => $maint->technician_id ?: $user->id,
                     'started_at' => $maint->started_at ?: $now,
                 ]);
+
+                // Sinkronkan status tiket jika maintenance ini terikat tiket
+                if (!empty($maint->ticket_id)) {
+                    try {
+                        Ticket::withoutGlobalScopes()
+                            ->where('id', $maint->ticket_id)
+                            ->where('status', 'open')
+                            ->update(['status' => 'in_progress']);
+                    } catch (\Throwable) {}
+                }
             }
         });
 
@@ -338,6 +367,25 @@ class Show extends Component
                         'completed_at' => $now,
                         'notes' => $this->completion_notes ?: null,
                     ]);
+
+                // Sinkronkan penyelesaian ke Work Order Maintenance terkait
+                if (class_exists(SupportMaintenance::class)) {
+                    try {
+                        SupportMaintenance::withoutGlobalScopes()
+                            ->where(function ($q) use ($ticket) {
+                                $q->where('ticket_id', $ticket->id);
+                                if (!empty($ticket->maintenance_wo_id)) {
+                                    $q->orWhere('id', $ticket->maintenance_wo_id);
+                                }
+                            })
+                            ->update([
+                                'status' => 'completed',
+                                'completed_at' => $now,
+                                'resolution_notes' => $this->completion_notes ?: 'Diselesaikan melalui tiket oleh ' . $user->name,
+                                'updated_by' => $user->id,
+                            ]);
+                    } catch (\Throwable) {}
+                }
             } elseif ($this->sourceType === 'maintenance') {
                 /** @var SupportMaintenance $maint */
                 $maint = $this->sourceModel;
@@ -346,6 +394,29 @@ class Show extends Component
                     'completed_at' => $now,
                     'resolution_notes' => $this->completion_notes ?: 'Maintenance diselesaikan oleh teknisi ' . $user->name,
                 ]);
+
+                // Sinkronkan penyelesaian ke Tiket terkait jika ada
+                if (!empty($maint->ticket_id)) {
+                    try {
+                        $linkedTicket = Ticket::withoutGlobalScopes()->find($maint->ticket_id);
+                        if ($linkedTicket && !in_array($linkedTicket->status, ['resolved', 'closed'])) {
+                            $linkedTicket->update([
+                                'status' => 'resolved',
+                                'resolved_at' => $now,
+                                'resolved_by' => $user->id,
+                                'resolution_notes' => $this->completion_notes ?: 'Diselesaikan melalui maintenance oleh ' . $user->name,
+                            ]);
+
+                            \Illuminate\Support\Facades\Event::dispatch(
+                                \Src\Domain\Support\Events\TicketResolvedEvent::create(
+                                    (string) $linkedTicket->id,
+                                    (string) $user->id,
+                                    $this->completion_notes ?: 'Diselesaikan melalui maintenance'
+                                )
+                            );
+                        }
+                    } catch (\Throwable) {}
+                }
             }
         });
 
