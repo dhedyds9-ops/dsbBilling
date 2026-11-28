@@ -176,5 +176,27 @@ class TechnicianJobsErrorTest extends TestCase
         $ticketsComponent->assertStatus(200)
             ->assertSee('Kabel Putus Tertabrak Truk');
     }
+
+    public function test_06_storage_fallback_serves_image_or_placeholder_without_404(): void
+    {
+        // 1. Missing image returns 200 with SVG placeholder instead of crashing with 404
+        $response = $this->get('/storage/evidence/35/evidence_1795842659_XkznORdx.jpg');
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertStringContainsString('image/svg+xml', $response->headers->get('Content-Type'));
+        $this->assertStringContainsString('Foto Bukti Lapangan', $response->getContent());
+
+        // 2. Physical image in storage/app/public is served directly
+        $testDir = storage_path('app/public/evidence/35');
+        @mkdir($testDir, 0777, true);
+        file_put_contents($testDir . '/test_sample.jpg', 'fake-image-bytes');
+
+        try {
+            $existingResponse = $this->get('/storage/evidence/35/test_sample.jpg');
+            $this->assertEquals(200, $existingResponse->getStatusCode());
+        } finally {
+            @unlink($testDir . '/test_sample.jpg');
+            @rmdir($testDir);
+        }
+    }
 }
 

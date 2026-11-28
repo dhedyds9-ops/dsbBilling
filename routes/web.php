@@ -809,101 +809,140 @@ Route::post('/pengaturan/perusahaan/upload-logo', function (\Illuminate\Http\Req
 // Fallback direct storage file serving (in case symlink /public/storage is missing or multi-directory on VPS)
 Route::get('/storage/{path}', function ($path) {
     $cleanPath = ltrim($path, '/');
-    $candidates = [
-        storage_path('app/public/' . $cleanPath),
-        storage_path('app/' . $cleanPath),
-        storage_path('app/private/' . $cleanPath),
-        public_path('storage/' . $cleanPath),
-        public_path($cleanPath),
-        '/var/www/shared_storage/' . $cleanPath,
-        '/var/www/mstore/storage/app/public/' . $cleanPath,
-        '/var/www/winets/storage/app/public/' . $cleanPath,
-        '/var/www/mstore/storage/app/' . $cleanPath,
-        '/var/www/winets/storage/app/' . $cleanPath,
-        dirname(base_path()) . '/mstore/storage/app/public/' . $cleanPath,
-        dirname(base_path()) . '/winets/storage/app/public/' . $cleanPath,
+    $filename = basename($cleanPath);
+    $subDir = dirname($cleanPath);
+    if ($subDir === '.') $subDir = '';
+
+    $bases = [
+        storage_path('app/public'),
+        storage_path('app/private/public'),
+        storage_path('app/private'),
+        storage_path('app'),
+        public_path('storage'),
+        public_path(),
+        '/var/www/mstore/storage/app/public',
+        '/var/www/mstore/storage/app/private/public',
+        '/var/www/mstore/storage/app/private',
+        '/var/www/mstore/storage/app',
+        '/var/www/mstore/public/storage',
+        '/var/www/winets/storage/app/public',
+        '/var/www/winets/storage/app/private/public',
+        '/var/www/winets/storage/app/private',
+        '/var/www/winets/storage/app',
+        '/var/www/winets/public/storage',
+        '/var/www/shared_storage',
+        '/var/www/shared_storage/public',
+        dirname(base_path()) . '/mstore/storage/app/public',
+        dirname(base_path()) . '/winets/storage/app/public',
     ];
 
     $filePath = null;
-    foreach ($candidates as $cand) {
-        if (@file_exists($cand) && @is_file($cand)) {
-            $filePath = $cand;
-            break;
+
+    // 1. Direct candidate paths with path variations
+    $subVariations = array_filter([
+        $cleanPath,
+        'public/' . $cleanPath,
+        preg_replace('#^evidence/#', '', $cleanPath),
+        preg_replace('#^tickets/#', '', $cleanPath),
+        preg_replace('#^evidence/#', 'tickets/', $cleanPath),
+        preg_replace('#^tickets/#', 'evidence/', $cleanPath),
+    ]);
+
+    foreach ($bases as $b) {
+        foreach ($subVariations as $sv) {
+            $cand = $b . '/' . ltrim($sv, '/');
+            if (@file_exists($cand) && @is_file($cand)) {
+                $filePath = $cand;
+                break 2;
+            }
         }
     }
 
-    // Fuzzy search by filename in case of extension mismatch or nested directory variation
-    if (!$filePath) {
-        $filename = basename($cleanPath);
-        $nameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
-        $subDir = dirname($cleanPath);
-        $searchBases = [
-            '/var/www/shared_storage',
-            storage_path('app/public'),
-            storage_path('app'),
-            '/var/www/mstore/storage/app/public',
-            '/var/www/winets/storage/app/public',
-            '/var/www/mstore/storage/app',
-            '/var/www/winets/storage/app',
-        ];
-        foreach ($searchBases as $sb) {
-            $targetDir = $sb . '/' . $subDir;
-            if (@is_dir($targetDir)) {
-                $matches = @glob($targetDir . '/' . $nameWithoutExt . '.*');
+    // 2. Fuzzy search by filename in candidate folders (up to 4 directory levels)
+    if (!$filePath && strlen($filename) >= 5) {
+        foreach ($bases as $b) {
+            if (!@is_dir($b)) continue;
+            if ($subDir !== '') {
+                $matches = @glob($b . '/' . $subDir . '/' . pathinfo($filename, PATHINFO_FILENAME) . '.*');
+                if (!empty($matches)) {
+                    $filePath = $matches[0];
+                    break;
+                }
+                $matches = @glob($b . '/public/' . $subDir . '/' . pathinfo($filename, PATHINFO_FILENAME) . '.*');
                 if (!empty($matches)) {
                     $filePath = $matches[0];
                     break;
                 }
             }
+            $c = @glob($b . '/*/' . $filename);
+            if (empty($c)) $c = @glob($b . '/*/*/' . $filename);
+            if (empty($c)) $c = @glob($b . '/*/*/*/' . $filename);
+            if (empty($c)) $c = @glob($b . '/*/*/*/*/' . $filename);
+            if (!empty($c)) {
+                $filePath = $c[0];
+                break;
+            }
         }
     }
 
-    if (!$filePath) {
-        // If path is a network photo, attempt DB Base64 recovery or return clean SVG badge instead of 404
-        if (str_contains($cleanPath, 'network_photos/')) {
-            $fn = basename($cleanPath);
-            $models = [
-                \App\Models\ISP\Odc::withoutGlobalScopes()->where('photos', 'like', "%{$fn}%")->first(),
-                \App\Models\ISP\Odp::withoutGlobalScopes()->where('photos', 'like', "%{$fn}%")->first(),
-                \App\Models\ISP\Olt::withoutGlobalScopes()->where('photos', 'like', "%{$fn}%")->first(),
-                class_exists(\App\Models\ISP\JointClosure::class) ? \App\Models\ISP\JointClosure::withoutGlobalScopes()->where('photos', 'like', "%{$fn}%")->first() : null,
-            ];
-            foreach ($models as $m) {
-                if ($m && is_array($m->photos)) {
-                    foreach ($m->photos as $p) {
-                        $pStr = is_array($p) ? ($p['url'] ?? $p['path'] ?? (is_string(reset($p)) ? reset($p) : '')) : (is_string($p) ? $p : '');
-                        if (empty($pStr)) continue;
-                        if (str_starts_with($pStr, 'data:image')) {
-                            [$header, $data] = explode(',', $pStr, 2);
-                            preg_match('#data:(image/\w+);base64#', $header, $matches);
-                            $mime = $matches[1] ?? 'image/jpeg';
-                            return response(base64_decode($data))->header('Content-Type', $mime)->header('Cache-Control', 'public, max-age=86400');
-                        }
+    // 3. If file physically exists, serve it and copy to public storage so Nginx can serve directly
+    if ($filePath && @is_file($filePath)) {
+        $publicTarget = storage_path('app/public/' . $cleanPath);
+        if (!@file_exists($publicTarget)) {
+            @mkdir(dirname($publicTarget), 0775, true);
+            @copy($filePath, $publicTarget);
+        }
+        $mime = @mime_content_type($filePath) ?: 'image/jpeg';
+        return response()->file($filePath, [
+            'Content-Type' => $mime,
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    }
+
+    // 4. Special recovery for network photos from DB Base64
+    if (str_contains($cleanPath, 'network_photos/')) {
+        $fn = basename($cleanPath);
+        $models = [
+            \App\Models\ISP\Odc::withoutGlobalScopes()->where('photos', 'like', "%{$fn}%")->first(),
+            \App\Models\ISP\Odp::withoutGlobalScopes()->where('photos', 'like', "%{$fn}%")->first(),
+            \App\Models\ISP\Olt::withoutGlobalScopes()->where('photos', 'like', "%{$fn}%")->first(),
+            class_exists(\App\Models\ISP\JointClosure::class) ? \App\Models\ISP\JointClosure::withoutGlobalScopes()->where('photos', 'like', "%{$fn}%")->first() : null,
+        ];
+        foreach ($models as $m) {
+            if ($m && is_array($m->photos)) {
+                foreach ($m->photos as $p) {
+                    $pStr = is_array($p) ? ($p['url'] ?? $p['path'] ?? (is_string(reset($p)) ? reset($p) : '')) : (is_string($p) ? $p : '');
+                    if (empty($pStr)) continue;
+                    if (str_starts_with($pStr, 'data:image')) {
+                        [$header, $data] = explode(',', $pStr, 2);
+                        preg_match('#data:(image/\w+);base64#', $header, $matches);
+                        $mime = $matches[1] ?? 'image/jpeg';
+                        return response(base64_decode($data))->header('Content-Type', $mime)->header('Cache-Control', 'public, max-age=86400');
                     }
                 }
             }
-
-            // Clean SVG placeholder so <img> tags in any view/portal never display broken image icon
-            $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250">
-                <rect width="100%" height="100%" fill="#0f172a" rx="12"/>
-                <circle cx="200" cy="100" r="36" fill="#1e293b" stroke="#334155" stroke-width="2"/>
-                <path d="M185 108 L215 108 M190 92 L200 82 L210 82 L220 92 L225 92 C228 92 230 94 230 97 L230 113 C230 116 228 118 225 118 L175 118 C172 118 170 116 170 113 L170 97 C170 94 172 92 175 92 Z" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <circle cx="200" cy="104" r="7" fill="none" stroke="#64748b" stroke-width="2"/>
-                <text x="200" y="160" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="13" font-weight="bold" text-anchor="middle">Foto Belum Tersedia / Menunggu Unggahan</text>
-                <text x="200" y="180" fill="#475569" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">' . htmlspecialchars(substr($fn, 0, 32)) . '</text>
-            </svg>';
-            return response($svg, 200)->header('Content-Type', 'image/svg+xml')->header('Cache-Control', 'no-cache');
         }
-
-        \Illuminate\Support\Facades\Log::warning("[StorageFallback] File not found: {$cleanPath}");
-        abort(404);
     }
 
-    $mime = @mime_content_type($filePath) ?: 'image/jpeg';
-    return response()->file($filePath, [
-        'Content-Type' => $mime,
-        'Cache-Control' => 'public, max-age=86400',
-    ]);
+    // 5. Clean SVG Placeholder for ANY missing image so <img> tags never render broken boxes
+    $ext = strtolower(pathinfo($cleanPath, PATHINFO_EXTENSION));
+    $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']);
+    if ($isImage) {
+        $badgeText = str_contains($cleanPath, 'evidence') || str_contains($cleanPath, 'tickets') ? 'Foto Bukti Lapangan' : 'Dokumentasi Perangkat';
+        $fnSafe = htmlspecialchars(substr($filename, 0, 32));
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250">
+            <rect width="100%" height="100%" fill="#0f172a" rx="12"/>
+            <circle cx="200" cy="95" r="34" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+            <path d="M185 103 L215 103 M190 87 L200 77 L210 77 L220 87 L225 87 C228 87 230 89 230 92 L230 108 C230 111 228 113 225 113 L175 113 C172 113 170 111 170 108 L170 92 C170 89 172 87 175 87 Z" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="200" cy="99" r="6" fill="none" stroke="#64748b" stroke-width="2"/>
+            <text x="200" y="155" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="13" font-weight="bold" text-anchor="middle">' . $badgeText . '</text>
+            <text x="200" y="175" fill="#64748b" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">Menunggu Sinkronisasi / ' . $fnSafe . '</text>
+        </svg>';
+        return response($svg, 200)->header('Content-Type', 'image/svg+xml')->header('Cache-Control', 'no-cache');
+    }
+
+    \Illuminate\Support\Facades\Log::warning("[StorageFallback] File not found: {$cleanPath}");
+    abort(404);
 })->where('path', '.*')->name('storage.fallback');
 
 Route::get('/storage-check', function () {

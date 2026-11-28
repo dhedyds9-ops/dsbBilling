@@ -824,7 +824,20 @@ class MobileWorkforceApiController extends Controller
         $uuid = (string)($request->input('uuid') ?: Str::uuid());
 
         $filename = 'evidence_' . time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('public/evidence/' . $id, $filename);
+        try {
+            $path = $file->storeAs('evidence/' . $id, $filename, 'public');
+        } catch (\Throwable $e) {
+            $path = $file->storeAs('public/evidence/' . $id, $filename);
+        }
+
+        // Guarantee copy in standard public storage for direct Nginx serving
+        $publicDest = storage_path('app/public/evidence/' . $id . '/' . $filename);
+        if (!file_exists($publicDest)) {
+            @mkdir(dirname($publicDest), 0775, true);
+            if (file_exists($file->getRealPath())) {
+                @copy($file->getRealPath(), $publicDest);
+            }
+        }
         $publicUrl = '/storage/evidence/' . $id . '/' . $filename;
 
         $photos = is_array($workOrder->evidence_photos) ? $workOrder->evidence_photos : [];
@@ -939,7 +952,20 @@ class MobileWorkforceApiController extends Controller
         $uuid = (string)($request->input('uuid') ?: Str::uuid());
 
         $filename = 'ticket_evidence_' . time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('public/evidence/tickets/' . $id, $filename);
+        try {
+            $path = $file->storeAs('evidence/tickets/' . $id, $filename, 'public');
+        } catch (\Throwable $e) {
+            $path = $file->storeAs('public/evidence/tickets/' . $id, $filename);
+        }
+
+        // Guarantee copy in standard public storage for direct Nginx serving
+        $publicDest = storage_path('app/public/evidence/tickets/' . $id . '/' . $filename);
+        if (!file_exists($publicDest)) {
+            @mkdir(dirname($publicDest), 0775, true);
+            if (file_exists($file->getRealPath())) {
+                @copy($file->getRealPath(), $publicDest);
+            }
+        }
         $publicUrl = '/storage/evidence/tickets/' . $id . '/' . $filename;
 
         $photoData = [
