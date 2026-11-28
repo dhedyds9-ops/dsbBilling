@@ -515,15 +515,15 @@ class WorkOrderHistory extends AdminComponent
         // 3. PEMELIHARAAN / MAINTENANCE JARINGAN (support_maintenances)
         if (($this->typeFilter === 'all' || $this->typeFilter === 'maintenance') && Schema::hasTable('support_maintenances')) {
             $mQ = DB::table('support_maintenances')
-                ->leftJoin('users', 'support_maintenances.assigned_to', '=', 'users.id')
+                ->leftJoin('users as tech_user', 'support_maintenances.assigned_to', '=', 'tech_user.id')
                 ->leftJoin('customers', 'support_maintenances.customer_id', '=', 'customers.id')
-                ->leftJoin('resellers', 'customers.reseller_id', '=', 'resellers.id')
+                ->leftJoin('users as reseller_user', 'customers.reseller_id', '=', 'reseller_user.id')
                 ->select([
                     'support_maintenances.*',
-                    'users.name as technician_name',
-                    'users.email as technician_email',
+                    'tech_user.name as technician_name',
+                    'tech_user.email as technician_email',
                     'customers.reseller_id as customer_reseller_id',
-                    'resellers.name as customer_reseller_name',
+                    'reseller_user.name as customer_reseller_name',
                 ]);
 
             // Jika filter 'all', sembunyikan record maintenance turunan dari tiket agar tidak muncul ganda (tiket sudah tampil di section 2)
